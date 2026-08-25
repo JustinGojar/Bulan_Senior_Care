@@ -1,0 +1,186 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  BarChart3,
+  Bell,
+  ClipboardCheck,
+  FileText,
+  HandCoins,
+  LayoutGrid,
+  LogOut,
+  Search,
+  Settings,
+  UserCircle,
+  UserCog,
+  Users,
+} from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { API_URL, getStoredUser, logout, type ApiUser } from "@/lib/api";
+import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
+import { BrandLogo } from "./BrandLogo";
+
+const NAV = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
+  { to: "/seniors", label: "Senior Record", icon: Users },
+  { to: "/eligibility", label: "Eligibility Review", icon: ClipboardCheck },
+  { to: "/age-threshold", label: "Age Threshold", icon: ClipboardCheck },
+  { to: "/benefits", label: "Benefit Tracking", icon: HandCoins },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/reports", label: "Reports", icon: FileText },
+  { to: "/users", label: "User Management", icon: UserCog },
+  { to: "/settings", label: "Settings", icon: Settings },
+] as const;
+
+export function AppShell({
+  title,
+  subtitle,
+  breadcrumb,
+  actions,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  breadcrumb: string[];
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [user, setUser] = useState<ApiUser | null>(getStoredUser());
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    const handleUserUpdated = (event: Event) => {
+      setUser((event as CustomEvent<ApiUser>).detail);
+    };
+    window.addEventListener("bulan-user-updated", handleUserUpdated);
+    return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
+  }, []);
+  useEffect(() => {
+    const updateUnreadCount = () => setUnreadCount(getUnreadNotificationCount());
+    updateUnreadCount();
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, updateUnreadCount);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, updateUnreadCount);
+  }, []);
+  const initials = (user?.name ?? "Geraldine So")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const photoUrl = user?.profile_photo_path
+    ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
+    : null;
+
+  async function signOut() {
+    await logout().catch(() => undefined);
+    navigate({ to: "/login" });
+  }
+
+  return (
+    <div className="bg-app min-h-screen p-4 lg:p-6">
+      <div className="mx-auto flex max-w-[1500px] gap-6">
+        <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex">
+          <div className="flex items-center gap-3">
+            <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
+            <div>
+              <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
+              <p className="text-xs text-muted-foreground">OSCA Bulan</p>
+            </div>
+          </div>
+
+          <nav className="mt-8 flex flex-col gap-1.5">
+            {NAV.filter(({ to }) => to !== "/users" || user?.role === "admin").map(({ to, label, icon: Icon }) => {
+              const active = pathname === to;
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  className={
+                    active
+                      ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
+                      : "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  }
+                >
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto border-t border-border pt-4">
+            <Link to="/profile" className="flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-secondary">
+              <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
+                {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{user?.name ?? "Geraldine So"}</p>
+                <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
+              </div>
+            </Link>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1">
+          <header className="flex flex-wrap items-center gap-4">
+            <nav className="hidden items-center gap-2 text-sm text-muted-foreground md:flex">
+              {breadcrumb.map((crumb, i) => (
+                <span key={crumb} className="flex items-center gap-2">
+                  {i > 0 && <span>›</span>}
+                  {crumb}
+                </span>
+              ))}
+            </nav>
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                placeholder="Search citizens, records..."
+                className="h-12 w-full rounded-full bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
+              />
+            </div>
+            <div className="relative flex items-center gap-3">
+              <button
+                onClick={() => navigate({ to: "/notifications" })}
+                aria-label="Notifications"
+                className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2.5 right-3 h-2 w-2 rounded-full bg-coral" />
+                )}
+              </button>
+              <button
+                onClick={() => setProfileOpen((open) => !open)}
+                aria-label="Open profile menu"
+                className="bg-navy grid h-11 w-11 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground"
+              >
+                {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+              </button>
+              {profileOpen && (
+                <div className="surface-card absolute top-14 right-0 z-20 w-64 p-3">
+                  <div className="flex items-center gap-3 border-b border-border px-2 pb-3">
+                    <UserCircle className="h-8 w-8 text-muted-foreground" />
+                    <div className="min-w-0"><p className="truncate text-sm font-bold">{user?.name ?? "Geraldine So"}</p><p className="truncate text-xs text-muted-foreground">{user?.email ?? "Admin"}</p></div>
+                  </div>
+                  <Link to="/profile" onClick={() => setProfileOpen(false)} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><UserCircle className="h-4 w-4" /> My profile</Link>
+                  <button onClick={signOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"><LogOut className="h-4 w-4" /> Log out</button>
+                </div>
+              )}
+            </div>
+          </header>
+
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-extrabold">{title}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+            </div>
+            {actions}
+          </div>
+
+          <div className="mt-6 pb-10">{children}</div>
+        </main>
+      </div>
+    </div>
+  );
+}
