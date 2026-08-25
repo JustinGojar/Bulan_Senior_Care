@@ -15,14 +15,11 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as BenefitsRouteImport } from './routes/benefits'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EligibilityRouteImport } from './routes/eligibility'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SeniorsRouteImport } from './routes/seniors'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UsersRouteImport } from './routes/users'
@@ -57,19 +54,9 @@ const EligibilityRoute = EligibilityRouteImport.update({
   path: '/eligibility',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MessagesRoute = MessagesRouteImport.update({
-  id: '/messages',
-  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -90,11 +77,6 @@ const RegisterRoute = RegisterRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SeniorsRoute = SeniorsRouteImport.update({
@@ -120,14 +102,11 @@ export interface FileRoutesByFullPath {
   '/benefits': typeof BenefitsRoute
   '/dashboard': typeof DashboardRoute
   '/eligibility': typeof EligibilityRoute
-  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -139,14 +118,11 @@ export interface FileRoutesByTo {
   '/benefits': typeof BenefitsRoute
   '/dashboard': typeof DashboardRoute
   '/eligibility': typeof EligibilityRoute
-  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -159,14 +135,11 @@ export interface FileRoutesById {
   '/benefits': typeof BenefitsRoute
   '/dashboard': typeof DashboardRoute
   '/eligibility': typeof EligibilityRoute
-  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -180,14 +153,11 @@ export interface FileRouteTypes {
     | '/benefits'
     | '/dashboard'
     | '/eligibility'
-    | '/forgot-password'
     | '/login'
-    | '/messages'
     | '/notifications'
     | '/profile'
     | '/register'
     | '/reports'
-    | '/reset-password'
     | '/seniors'
     | '/settings'
     | '/users'
@@ -199,14 +169,11 @@ export interface FileRouteTypes {
     | '/benefits'
     | '/dashboard'
     | '/eligibility'
-    | '/forgot-password'
     | '/login'
-    | '/messages'
     | '/notifications'
     | '/profile'
     | '/register'
     | '/reports'
-    | '/reset-password'
     | '/seniors'
     | '/settings'
     | '/users'
@@ -218,14 +185,11 @@ export interface FileRouteTypes {
     | '/benefits'
     | '/dashboard'
     | '/eligibility'
-    | '/forgot-password'
     | '/login'
-    | '/messages'
     | '/notifications'
     | '/profile'
     | '/register'
     | '/reports'
-    | '/reset-password'
     | '/seniors'
     | '/settings'
     | '/users'
@@ -238,14 +202,11 @@ export interface RootRouteChildren {
   BenefitsRoute: typeof BenefitsRoute
   DashboardRoute: typeof DashboardRoute
   EligibilityRoute: typeof EligibilityRoute
-  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
-  MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   SeniorsRoute: typeof SeniorsRoute
   SettingsRoute: typeof SettingsRoute
   UsersRoute: typeof UsersRoute
@@ -295,25 +256,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EligibilityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/messages': {
-      id: '/messages'
-      path: '/messages'
-      fullPath: '/messages'
-      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -342,13 +289,6 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/seniors': {
@@ -382,14 +322,11 @@ const rootRouteChildren: RootRouteChildren = {
   BenefitsRoute: BenefitsRoute,
   DashboardRoute: DashboardRoute,
   EligibilityRoute: EligibilityRoute,
-  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
-  MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   SeniorsRoute: SeniorsRoute,
   SettingsRoute: SettingsRoute,
   UsersRoute: UsersRoute,

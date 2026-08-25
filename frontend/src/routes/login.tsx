@@ -110,9 +110,9 @@ function LoginPage() {
               <input type="checkbox" defaultChecked className="h-4 w-4 accent-primary" />
               Remember Me
             </label>
-            <a href="#reset" className="font-bold">
+            <Link to="/forgot-password" className="font-bold">
               Forgot Password?
-            </a>
+            </Link>
           </div>
 
           {error && <p className="mt-5 text-sm font-medium text-destructive">{error}</p>}

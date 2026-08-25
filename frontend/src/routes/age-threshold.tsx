@@ -1,8 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { getStoredUser } from "@/lib/api";
 import { BENEFIT_PROGRAMS, findNewEligibilityFlags } from "@/lib/osca-data";
 import { useSeniors } from "@/lib/use-seniors";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/age-threshold")({
   head: () => ({ meta: [{ title: "Age Threshold — Bulan SeniorCare" }] }),
@@ -10,7 +12,13 @@ export const Route = createFileRoute("/age-threshold")({
 });
 
 function AgeThresholdPage() {
+  const navigate = useNavigate();
+  const currentUser = getStoredUser();
   const { seniors, loading } = useSeniors({ excludePending: true });
+  useEffect(() => {
+    if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
+  }, [currentUser?.role, navigate]);
+  if (currentUser?.role === "leader") return null;
   const flags = findNewEligibilityFlags(seniors);
   const programs = BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension");
 

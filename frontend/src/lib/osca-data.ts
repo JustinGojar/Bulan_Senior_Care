@@ -6,6 +6,8 @@ export type Senior = {
   contact: string;
   benefit: string;
   status: "Active" | "Pending" | "Inactive";
+  photoPath?: string | null;
+  idDocumentPath?: string | null;
 };
 
 export type BenefitProgram = {

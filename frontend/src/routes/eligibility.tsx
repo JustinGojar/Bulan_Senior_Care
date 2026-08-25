@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ClipboardCheck, Plus } from "lucide-react";
-import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ClipboardCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { SeniorFormDialog } from "@/components/SeniorFormDialog";
+import { API_URL, getStoredUser } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
-import { getStoredUser } from "@/lib/api";
+import type { Senior } from "@/lib/osca-data";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/eligibility")({
   head: () => ({ meta: [{ title: "Eligibility Review — Bulan SeniorCare" }] }),
@@ -13,10 +14,18 @@ export const Route = createFileRoute("/eligibility")({
 });
 
 function EligibilityReview() {
-  const { seniors, createSenior, updateSenior } = useSeniors({ pendingOnly: true });
-  const [formOpen, setFormOpen] = useState(false);
+  const navigate = useNavigate();
+  const currentUser = getStoredUser();
+  const { seniors, updateSenior } = useSeniors({ pendingOnly: true });
   const pendingSeniors = seniors;
-  const isHead = getStoredUser()?.role === "head";
+  const isHead = currentUser?.role === "head";
+  const [viewing, setViewing] = useState<Senior | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.role !== "admin") navigate({ to: "/dashboard", replace: true });
+  }, [currentUser?.role, navigate]);
+
+  if (currentUser?.role !== "admin") return null;
 
   async function reviewSenior(senior: (typeof seniors)[number], status: "Active" | "Inactive") {
     try {
@@ -32,14 +41,6 @@ function EligibilityReview() {
       title="Eligibility Review"
       subtitle="Verify age-threshold flags before enrollment"
       breadcrumb={["Dashboard", "Eligibility Review"]}
-      actions={!isHead ? (
-        <button
-          onClick={() => setFormOpen(true)}
-          className="bg-navy inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
-        >
-          <Plus className="h-4 w-4" /> Register Senior
-        </button>
-      ) : undefined}
     >
       <section className="surface-card p-7">
         <div className="flex items-center gap-3">
@@ -70,8 +71,16 @@ function EligibilityReview() {
                   <p className="mt-1 text-sm text-coral">Age {senior.age} · {senior.barangay}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Review this registration before it becomes an active record.</p>
                 </div>
-                {!isHead && (
-                  <div className="flex gap-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setViewing(senior)}
+                    aria-label={`View full information for ${senior.name}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2.5 text-sm font-semibold"
+                  >
+                    <Eye className="h-4 w-4" /> View
+                  </button>
+                  {!isHead && (
+                    <div className="flex gap-2">
                     <button
                       onClick={() => reviewSenior(senior, "Inactive")}
                       className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive"
@@ -84,8 +93,9 @@ function EligibilityReview() {
                     >
                       Eligible
                     </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </article>
             );
           })}
@@ -94,16 +104,40 @@ function EligibilityReview() {
           )}
         </div>
       </section>
-      {!isHead && (
-        <SeniorFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          onSubmit={(draft) => {
-            createSenior(draft);
-            toast.success(`${draft.name} was registered.`);
-          }}
-        />
-      )}
+      <Dialog open={!!viewing} onOpenChange={(open) => !open && setViewing(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">{viewing?.name}</DialogTitle>
+            <DialogDescription>Full senior citizen information</DialogDescription>
+          </DialogHeader>
+          <dl className="grid grid-cols-2 gap-4 text-sm">
+            {[
+              ["Senior ID", viewing?.id],
+              ["Name", viewing?.name],
+              ["Age", viewing?.age],
+              ["Barangay", viewing?.barangay],
+              ["Contact", viewing?.contact],
+              ["Benefit", viewing?.benefit],
+              ["Status", viewing?.status],
+            ].map(([label, value]) => (
+              <div key={String(label)}>
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="mt-1 font-semibold">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          {viewing?.idDocumentPath && (
+            <a
+              href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl bg-secondary px-4 py-3 text-center text-sm font-semibold"
+            >
+              Open supporting document
+            </a>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

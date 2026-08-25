@@ -1,19 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { UserCog, UserPlus, X } from "lucide-react";
+import { Pencil, Trash2, UserCog, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { apiFetch, createBarangayLeader, getStoredUser } from "@/lib/api";
+import {
+  apiFetch,
+  API_URL,
+  createBarangayLeader,
+  deleteManagedUser,
+  getManagedUsers,
+  getStoredUser,
+  updateManagedUser,
+  type ManagedUser,
+} from "@/lib/api";
 
 export const Route = createFileRoute("/users")({
   head: () => ({ meta: [{ title: "User Management — Bulan SeniorCare" }] }),
   component: UserManagement,
 });
-
-const USERS = [
-  ["Geraldine So", "admin@osca-bulan.gov.ph", "Admin", "All barangays", "Active"],
-  ["Maribel Dela Cruz", "head@osca-bulan.gov.ph", "Head", "All barangays", "Active"],
-];
 
 type BarangayOption = { id: number; barangay_name: string };
 
@@ -31,10 +35,15 @@ function getAge(birthdate: string) {
   return age >= 0 ? String(age) : "";
 }
 
+function initials(name: string) {
+  return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+}
+
 function UserManagement() {
   const currentUser = getStoredUser();
-  const [users, setUsers] = useState(USERS);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -45,15 +54,18 @@ function UserManagement() {
   const [barangays, setBarangays] = useState<BarangayOption[]>([]);
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [role, setRole] = useState<"admin" | "head" | "leader">("leader");
+  const [status, setStatus] = useState<"active" | "inactive">("active");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
+    getManagedUsers().then(setUsers).catch(() => setUsers([]));
     apiFetch<BarangayOption[]>("/barangays")
       .then(setBarangays)
       .catch(() => setBarangays([]));
-  });
+  }, []);
 
   if (!isAdmin) {
     return (
@@ -71,41 +83,90 @@ function UserManagement() {
     );
   }
 
-  async function handleCreateLeader(event: React.FormEvent<HTMLFormElement>) {
+  function resetForm() {
+    setFirstName("");
+    setMiddleName("");
+    setLastName("");
+    setEmail("");
+    setContactNumber("");
+    setBirthdate("");
+    setBarangayId("");
+    setPassword("");
+    setPasswordConfirmation("");
+    setRole("leader");
+    setStatus("active");
+    setEditingUser(null);
+  }
+
+  function openEditForm(user: ManagedUser) {
+    setEditingUser(user);
+    setFirstName(user.first_name ?? "");
+    setMiddleName(user.middle_name ?? "");
+    setLastName(user.last_name ?? "");
+    setEmail(user.email);
+    setContactNumber(user.contact_number ?? "");
+    setBirthdate(user.birthdate ?? "");
+    setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
+    setRole(user.role as "admin" | "head" | "leader");
+    setStatus(user.status);
+    setError(null);
+    setShowCreateForm(true);
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const leader = await createBarangayLeader({
-        firstName,
-        middleName,
-        lastName,
-        email,
-        contactNumber,
-        birthdate,
-        barangayId: Number(barangayId),
-        password,
-        passwordConfirmation,
-      });
-      setUsers((current) => [
-        ...current,
-        [leader.name, leader.email, "Leader", "Unassigned", "Active"],
-      ]);
-      setFirstName("");
-      setMiddleName("");
-      setLastName("");
-      setEmail("");
-      setContactNumber("");
-      setBirthdate("");
-      setBarangayId("");
-      setPassword("");
-      setPasswordConfirmation("");
+      if (editingUser) {
+        const updated = await updateManagedUser(editingUser.id, {
+          name: [firstName, middleName, lastName].filter(Boolean).join(" ") || editingUser.name,
+          first_name: firstName || null,
+          middle_name: middleName || null,
+          last_name: lastName || null,
+          email,
+          contact_number: contactNumber || null,
+          birthdate: birthdate || null,
+          barangay_id: barangayId ? Number(barangayId) : null,
+          role,
+          status,
+          password: password || undefined,
+          password_confirmation: passwordConfirmation || undefined,
+        });
+        setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+        toast.success("User account updated.");
+      } else {
+        const leader = await createBarangayLeader({
+          firstName,
+          middleName,
+          lastName,
+          email,
+          contactNumber,
+          birthdate,
+          barangayId: Number(barangayId),
+          password,
+          passwordConfirmation,
+        });
+        setUsers((current) => [...current, leader]);
+        toast.success("Barangay Leader account created.");
+      }
+      resetForm();
       setShowCreateForm(false);
-      toast.success("Barangay Leader account created.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to create account.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(user: ManagedUser) {
+    if (!window.confirm(`Delete the account for ${user.name}?`)) return;
+    try {
+      await deleteManagedUser(user.id);
+      setUsers((current) => current.filter((item) => item.id !== user.id));
+      toast.success("User account deleted.");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Unable to delete account.");
     }
   }
 
@@ -149,26 +210,55 @@ function UserManagement() {
               </tr>
             </thead>
             <tbody>
-              {users.map(([name, email, role, scope, status]) => (
-                <tr key={email} className="border-t border-border">
-                  <td className="px-4 py-4 font-semibold">{name}</td>
-                  <td className="px-4 py-4 text-muted-foreground">{email}</td>
+              {users.map((user) => (
+                <tr key={user.id} className="border-t border-border">
+                  <td className="px-4 py-4 font-semibold">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-primary-foreground">
+                        {user.profile_photo_path ? (
+                          <img
+                            src={`${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`}
+                            alt={`${user.name} profile`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          initials(user.name)
+                        )}
+                      </div>
+                      {user.name}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-muted-foreground">{user.email}</td>
                   <td className="px-4 py-4">
                     <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">
-                      {role}
+                      {user.role}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-muted-foreground">{scope}</td>
-                  <td className="px-4 py-4 font-bold text-success">{status}</td>
+                  <td className="px-4 py-4 text-muted-foreground">
+                    {user.role === "leader"
+                      ? barangays.find((item) => item.id === user.barangay_id)?.barangay_name ?? "Unassigned"
+                      : "All barangays"}
+                  </td>
+                  <td className={`px-4 py-4 font-bold ${user.status === "active" ? "text-success" : "text-destructive"}`}>
+                    {user.status}
+                  </td>
                   <td className="px-4 py-4">
-                    {currentUser?.role !== "head" && (
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => toast.success(`Editing ${name}.`)}
-                        className="rounded-full bg-secondary px-4 py-2 text-xs font-bold"
+                        onClick={() => openEditForm(user)}
+                        aria-label={`Edit ${user.name}`}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary"
                       >
-                        Edit
+                        <Pencil className="h-4 w-4" />
                       </button>
-                    )}
+                      <button
+                        onClick={() => handleDelete(user)}
+                        aria-label={`Delete ${user.name}`}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -179,12 +269,12 @@ function UserManagement() {
 
       {showCreateForm && isAdmin && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-navy/40 px-4">
-          <form className="surface-card w-full max-w-lg p-7" onSubmit={handleCreateLeader}>
+          <form className="surface-card w-full max-w-lg p-7" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold">Create Barangay Leader</h2>
+                <h2 className="text-xl font-bold">{editingUser ? "Edit user account" : "Create Barangay Leader"}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Only Admin can create this account type.
+                  Only Admin can manage these accounts.
                 </p>
               </div>
               <button
@@ -211,37 +301,48 @@ function UserManagement() {
                 placeholder="Email address"
                 className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
               />
-              <input required type="tel" value={contactNumber} onChange={(event) => setContactNumber(event.target.value)} placeholder="Phone / mobile number" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
+              <input required={!editingUser} type="tel" value={contactNumber} onChange={(event) => setContactNumber(event.target.value)} placeholder="Phone / mobile number" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="rounded-xl border border-border px-4 py-3">
                   <span className="block text-xs font-semibold text-muted-foreground">Birthday</span>
-                  <input required type="date" value={birthdate} onChange={(event) => setBirthdate(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none" />
+                  <input required={!editingUser} type="date" value={birthdate} onChange={(event) => setBirthdate(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none" />
                 </label>
                 <label className="rounded-xl border border-border px-4 py-3">
                   <span className="block text-xs font-semibold text-muted-foreground">Age</span>
                   <input value={getAge(birthdate)} readOnly placeholder="Calculated automatically" className="mt-1 w-full bg-transparent text-sm outline-none" />
                 </label>
               </div>
-              <select required value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
-                <option value="">Select barangay assignment</option>
+              {editingUser && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <select required value={role} onChange={(event) => setRole(event.target.value as typeof role)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                    <option value="admin">Admin</option>
+                    <option value="head">Head</option>
+                    <option value="leader">Leader</option>
+                  </select>
+                  <select required value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              )}
+              <select required={!editingUser || role === "leader"} value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                <option value="">No barangay assignment</option>
                 {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.barangay_name}</option>)}
               </select>
               <input
-                required
                 minLength={8}
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Password (8+ characters)"
+                placeholder={editingUser ? "New password (optional)" : "Password (8+ characters)"}
                 className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
               />
               <input
-                required
                 minLength={8}
                 type="password"
                 value={passwordConfirmation}
                 onChange={(event) => setPasswordConfirmation(event.target.value)}
-                placeholder="Confirm password"
+                placeholder="Confirm new password"
                 className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
               />
             </div>
@@ -252,7 +353,7 @@ function UserManagement() {
               disabled={submitting}
               className="bg-navy mt-6 w-full rounded-full py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-60"
             >
-              {submitting ? "Creating account..." : "Create account"}
+              {submitting ? "Saving..." : editingUser ? "Save changes" : "Create account"}
             </button>
           </form>
         </div>

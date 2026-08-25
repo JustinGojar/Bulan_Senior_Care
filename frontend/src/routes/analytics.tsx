@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { MapPin, PieChart as PieIcon, Users } from "lucide-react";
 import {
   Area,
@@ -16,7 +16,9 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
+import { getStoredUser } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -58,7 +60,13 @@ function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string })
 }
 
 function Analytics() {
+  const navigate = useNavigate();
+  const currentUser = getStoredUser();
   const { seniors, loading } = useSeniors({ excludePending: true });
+  useEffect(() => {
+    if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
+  }, [currentUser?.role, navigate]);
+  if (currentUser?.role === "leader") return null;
   const barangayTotals = seniors.reduce<Record<string, number>>((totals, senior) => {
     totals[senior.barangay] = (totals[senior.barangay] ?? 0) + 1;
     return totals;

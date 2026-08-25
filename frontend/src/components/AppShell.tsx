@@ -7,6 +7,7 @@ import {
   HandCoins,
   LayoutGrid,
   LogOut,
+  Mail,
   Search,
   Settings,
   UserCircle,
@@ -15,8 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, getStoredUser, logout, type ApiUser } from "@/lib/api";
-import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
+import { API_URL, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -58,12 +58,20 @@ export function AppShell({
     return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
   }, []);
   useEffect(() => {
-    const updateUnreadCount = () => setUnreadCount(getUnreadNotificationCount());
+    const updateUnreadCount = () => {
+      getServerNotifications()
+        .then((notifications) => {
+          setUnreadCount(notifications.filter((item) => item.status === "unread").length);
+        })
+        .catch(() => setUnreadCount(0));
+    };
     updateUnreadCount();
-    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, updateUnreadCount);
-    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, updateUnreadCount);
+    const refreshTimer = window.setInterval(updateUnreadCount, 15000);
+    return () => {
+      window.clearInterval(refreshTimer);
+    };
   }, []);
-  const initials = (user?.name ?? "Geraldine So")
+  const initials = (user?.name ?? "User")
     .split(" ")
     .map((part) => part[0])
     .join("")
@@ -81,7 +89,7 @@ export function AppShell({
   return (
     <div className="bg-app min-h-screen p-4 lg:p-6">
       <div className="mx-auto flex max-w-[1500px] gap-6">
-        <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex">
+        <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex print:hidden">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
             <div>
@@ -91,7 +99,11 @@ export function AppShell({
           </div>
 
           <nav className="mt-8 flex flex-col gap-1.5">
-            {NAV.filter(({ to }) => to !== "/users" || user?.role === "admin").map(({ to, label, icon: Icon }) => {
+            {NAV.filter(({ to }) =>
+              (to !== "/users" || user?.role === "admin") &&
+              (to !== "/eligibility" || !["leader", "head"].includes(user?.role ?? "")) &&
+              (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
+            ).map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
               return (
                 <Link
@@ -116,7 +128,7 @@ export function AppShell({
                 {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{user?.name ?? "Geraldine So"}</p>
+                <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
                 <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
               </div>
             </Link>
@@ -124,7 +136,7 @@ export function AppShell({
         </aside>
 
         <main className="min-w-0 flex-1">
-          <header className="flex flex-wrap items-center gap-4">
+          <header className="flex flex-wrap items-center gap-4 print:hidden">
             <nav className="hidden items-center gap-2 text-sm text-muted-foreground md:flex">
               {breadcrumb.map((crumb, i) => (
                 <span key={crumb} className="flex items-center gap-2">
@@ -142,6 +154,14 @@ export function AppShell({
             </div>
             <div className="relative flex items-center gap-3">
               <ThemeToggle />
+              <button
+                onClick={() => navigate({ to: "/messages" })}
+                aria-label="Open messages"
+                title="Messages"
+                className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
+              >
+                <Mail className="h-5 w-5" />
+              </button>
               <button
                 onClick={() => navigate({ to: "/notifications" })}
                 aria-label="Notifications"
@@ -163,7 +183,7 @@ export function AppShell({
                 <div className="surface-card absolute top-14 right-0 z-20 w-64 p-3">
                   <div className="flex items-center gap-3 border-b border-border px-2 pb-3">
                     <UserCircle className="h-8 w-8 text-muted-foreground" />
-                    <div className="min-w-0"><p className="truncate text-sm font-bold">{user?.name ?? "Geraldine So"}</p><p className="truncate text-xs text-muted-foreground">{user?.email ?? "Admin"}</p></div>
+                    <div className="min-w-0"><p className="truncate text-sm font-bold">{user?.name ?? "User"}</p><p className="truncate text-xs text-muted-foreground">{user?.email ?? "Admin"}</p></div>
                   </div>
                   <Link to="/profile" onClick={() => setProfileOpen(false)} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><UserCircle className="h-4 w-4" /> My profile</Link>
                   <button onClick={signOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"><LogOut className="h-4 w-4" /> Log out</button>
@@ -172,7 +192,7 @@ export function AppShell({
             </div>
           </header>
 
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
             <div>
               <h1 className="text-4xl font-extrabold">{title}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>

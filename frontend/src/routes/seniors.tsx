@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Eye, Pencil, Search, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Download, Eye, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { getStoredUser } from "@/lib/api";
+import { API_URL, getStoredUser } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
@@ -61,9 +61,33 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+function avatarPath(senior: Senior) {
+  if (senior.photoPath) return senior.photoPath;
+  return senior.idDocumentPath && /\.(jpe?g|png|webp)$/i.test(senior.idDocumentPath)
+    ? senior.idDocumentPath
+    : null;
+}
+
+function parseCsvRow(row: string) {
+  const values: string[] = [];
+  let value = "";
+  let quoted = false;
+  for (const character of row) {
+    if (character === '"') quoted = !quoted;
+    else if (character === "," && !quoted) {
+      values.push(value.trim());
+      value = "";
+    } else value += character;
+  }
+  values.push(value.trim());
+  return values;
+}
+
 function SeniorRecords() {
-  const { seniors, totalCount, activeCount, updateSenior, deleteSenior } = useSeniors({ excludePending: true });
-  const isHead = getStoredUser()?.role === "head";
+  const { seniors, totalCount, activeCount, pendingCount, createSenior, updateSenior, deleteSenior } = useSeniors();
+  const currentUser = getStoredUser();
+  const isHead = currentUser?.role === "head";
+  const isLeader = currentUser?.role === "leader";
   const [filter, setFilter] = useState<string>("Active");
   const [barangayFilter, setBarangayFilter] = useState("All");
   const [query, setQuery] = useState("");
@@ -71,14 +95,16 @@ function SeniorRecords() {
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
   const [deleting, setDeleting] = useState<Senior | null>(null);
+  const bulkFileInput = useRef<HTMLInputElement>(null);
 
   const filters = useMemo(
     () => [
       { key: "All", count: totalCount },
       { key: "Active", count: activeCount },
+      { key: "Pending", count: pendingCount },
       { key: "Inactive", count: seniors.filter((s) => s.status === "Inactive").length },
     ],
-    [seniors, totalCount, activeCount],
+    [seniors, totalCount, activeCount, pendingCount],
   );
 
   const rows = useMemo(
@@ -94,6 +120,47 @@ function SeniorRecords() {
     [seniors, filter, barangayFilter, query],
   );
 
+  async function handleBulkFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const lines = (await file.text()).split(/\r?\n/).filter((line) => line.trim());
+    if (lines.length < 2) {
+      toast.error("The CSV must contain a header row and at least one senior record.");
+      return;
+    }
+    const headers = parseCsvRow(lines[0]!).map((header) => header.toLowerCase().replace(/\s+/g, "_"));
+    const records = lines.slice(1).map((line) => {
+      const values = parseCsvRow(line);
+      return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+    });
+    let created = 0;
+    let failed = 0;
+    for (const record of records) {
+      const birthdate = new Date(`${record.birthdate}T00:00:00`);
+      const age = Number.isNaN(birthdate.getTime()) ? 60 : new Date().getFullYear() - birthdate.getFullYear();
+      try {
+        await createSenior({
+          name: [record.first_name, record.middle_name, record.last_name].filter(Boolean).join(" "),
+          firstName: record.first_name,
+          middleName: record.middle_name,
+          lastName: record.last_name,
+          age,
+          barangay: record.barangay,
+          contact: record.contact_number,
+          benefit: record.benefit || "Social Pension",
+          status: "Pending",
+        });
+        created += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    if (failed) toast.error(`${created} records added, ${failed} records failed.`);
+    else toast.success(`${created} senior records added and are pending review.`);
+  }
+
   return (
     <AppShell
       title="Senior Record"
@@ -101,6 +168,26 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-3">
+          {isLeader && (
+                <>
+                  <button
+                    onClick={() => bulkFileInput.current?.click()}
+                    className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+                  >
+                    <Upload className="h-4 w-4" /> Bulk record
+                  </button>
+                  <input ref={bulkFileInput} type="file" accept=".csv,text/csv" onChange={handleBulkFile} className="hidden" />
+                  <button
+                    onClick={() => {
+                      setEditing(null);
+                      setFormOpen(true);
+                    }}
+                    className="bg-navy inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
+                  >
+                    <Plus className="h-4 w-4" /> Register Senior
+                  </button>
+                </>
+          )}
           <button className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]">
             <Download className="h-4 w-4" /> Export
           </button>
@@ -163,8 +250,16 @@ function SeniorRecords() {
               <tr key={s.id} className="border-t border-border">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <span className="bg-navy grid h-9 w-9 place-items-center rounded-full text-[11px] font-bold text-primary-foreground">
-                      {initials(s.name)}
+                    <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-primary-foreground">
+                      {avatarPath(s) ? (
+                        <img
+                          src={`${API_URL.replace(/\/api$/, "")}/storage/${avatarPath(s)}`}
+                          alt={`${s.name} profile`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        initials(s.name)
+                      )}
                     </span>
                     <span className="font-medium">{s.name}</span>
                   </div>
@@ -184,18 +279,17 @@ function SeniorRecords() {
                     >
                       <Eye className="h-4 w-4" />
                     </button>
+                    <button
+                      aria-label={`Edit record of ${s.name}`}
+                      onClick={() => {
+                        setEditing(s);
+                        setFormOpen(true);
+                      }}
+                      className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
                     {!isHead && (
-                      <>
-                        <button
-                          aria-label={`Edit record of ${s.name}`}
-                          onClick={() => {
-                            setEditing(s);
-                            setFormOpen(true);
-                          }}
-                          className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
                         <button
                           aria-label={`Delete record of ${s.name}`}
                           onClick={() => setDeleting(s)}
@@ -203,7 +297,6 @@ function SeniorRecords() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                      </>
                     )}
                   </div>
                 </td>
@@ -220,15 +313,18 @@ function SeniorRecords() {
         </table>
       </div>
 
-      {!isHead && (
+      {(!isHead || !!editing) && (
         <SeniorFormDialog
           open={formOpen}
           onOpenChange={setFormOpen}
           senior={editing}
-          onSubmit={(draft) => {
+          onSubmit={async (draft) => {
             if (editing) {
-              updateSenior(editing.id, draft);
+              await updateSenior(editing.id, draft);
               toast.success(`${draft.name}'s record was updated.`);
+            } else {
+              await createSenior(draft);
+              toast.success(`${draft.name} was registered and is pending review.`);
             }
           }}
         />
@@ -254,6 +350,37 @@ function SeniorRecords() {
               </div>
             ))}
           </dl>
+          {(viewing?.photoPath || viewing?.idDocumentPath) && (
+            <div className="mt-5 border-t border-border pt-5">
+              <p className="text-sm font-bold">Submitted files</p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {viewing.photoPath && (
+                  <a
+                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="overflow-hidden rounded-xl border border-border"
+                  >
+                    <img
+                      src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
+                      alt={`${viewing.name} profile`}
+                      className="h-24 w-24 object-cover"
+                    />
+                  </a>
+                )}
+                {viewing.idDocumentPath && (
+                  <a
+                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+                  >
+                    Open supporting document
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

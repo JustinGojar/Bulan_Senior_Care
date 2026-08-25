@@ -1,17 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import {
-  deleteNotification,
-  getNotificationState,
-  INITIAL_NOTIFICATIONS,
-  markAllNotificationsRead,
-  markNotificationRead,
-  markNotificationUnread,
-  NOTIFICATIONS_CHANGED_EVENT,
-  type NotificationItem,
-} from "@/lib/notifications";
+import { clearServerNotifications, deleteServerNotification, getServerNotifications, markServerNotificationRead, type ServerNotification } from "@/lib/api";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({ meta: [{ title: "Notifications — Bulan SeniorCare" }] }),
@@ -19,27 +10,46 @@ export const Route = createFileRoute("/notifications")({
 });
 
 function Notifications() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [read, setRead] = useState<string[]>([]);
-
-  function refreshNotifications() {
-    const state = getNotificationState();
-    setRead(state.read);
-    setNotifications(INITIAL_NOTIFICATIONS.filter((notification) => !state.deleted.includes(notification.id)));
-  }
+  const navigate = useNavigate();
+  const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
 
   useEffect(() => {
-    refreshNotifications();
-    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshNotifications);
-    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshNotifications);
+    getServerNotifications().then(setServerNotifications).catch(() => setServerNotifications([]));
   }, []);
 
-  function handleMarkRead(id: string) {
-    markNotificationRead(id);
+  function markAllServerNotificationsRead() {
+    Promise.all(
+      serverNotifications
+        .filter((notification) => notification.status === "unread")
+        .map((notification) => markServerNotificationRead(notification.id)),
+    ).then((updated) => {
+      const updatedById = new Map(updated.map((notification) => [notification.id, notification]));
+      setServerNotifications((current) => current.map((notification) => updatedById.get(notification.id) ?? notification));
+    }).catch(() => undefined);
   }
 
-  function handleOpenNotification(id: string) {
-    markNotificationRead(id);
+  function deleteNotification(id: number) {
+    deleteServerNotification(id)
+      .then(() => setServerNotifications((current) => current.filter((notification) => notification.id !== id)))
+      .catch(() => undefined);
+  }
+
+  function clearAllNotifications() {
+    clearServerNotifications()
+      .then(() => setServerNotifications([]))
+      .catch(() => undefined);
+  }
+
+  function handleOpenServerNotification(notification: ServerNotification) {
+    const markRead = notification.status === "unread"
+      ? markServerNotificationRead(notification.id)
+          .then((updated) => setServerNotifications((current) => current.map((item) => item.id === updated.id ? updated : item)))
+          .catch(() => undefined)
+      : Promise.resolve();
+    const destination = notification.source_type === "announcement" && notification.source_id
+      ? { to: "/dashboard" as const, hash: `announcement-${notification.source_id}` }
+      : { to: "/dashboard" as const };
+    void markRead.then(() => navigate(destination));
   }
 
   return (
@@ -60,74 +70,54 @@ function Notifications() {
             </p>
           </div>
         </div>
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button
             type="button"
-            onClick={markAllNotificationsRead}
-            disabled={!notifications.some((notification) => !read.includes(notification.id))}
+            onClick={markAllServerNotificationsRead}
+            disabled={!serverNotifications.some((notification) => notification.status === "unread")}
             className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CheckCheck className="h-4 w-4" /> Mark all as read
           </button>
+          <button
+            type="button"
+            onClick={clearAllNotifications}
+            disabled={serverNotifications.length === 0}
+            className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" /> Clear all
+          </button>
         </div>
         <div className="mt-3 space-y-3">
-          {notifications.map(({ id, title, body, date }) => (
+          {serverNotifications.map((notification) => (
             <div
-              key={id}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenNotification(id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  handleOpenNotification(id);
-                }
-              }}
-              className={`flex items-start gap-4 rounded-2xl p-5 ${read.includes(id) ? "bg-secondary/60" : "bg-secondary"}`}
+              key={`server-${notification.id}`}
+              onClick={() => handleOpenServerNotification(notification)}
+              className={`flex items-start gap-4 rounded-2xl p-5 ${notification.status === "unread" ? "bg-secondary" : "bg-secondary/60"}`}
             >
               <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold text-gold-foreground">
                 <Bell className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap justify-between gap-2">
-                  <strong className="text-sm">{title}</strong>
-                  <small className="text-xs text-muted-foreground">{date}</small>
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">{body}</span>
+                <strong className="block text-sm">New announcement comment</strong>
+                <span className="mt-1 block text-xs text-muted-foreground">{notification.message}</span>
+                <small className="mt-2 block text-xs text-muted-foreground">
+                  {new Date(notification.created_at).toLocaleDateString()}
+                </small>
               </span>
               <div className="flex shrink-0 items-center gap-2">
-                {!read.includes(id) ? (
-                  <button
-                    type="button"
-                    onClick={() => handleMarkRead(id)}
-                    className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-2 text-xs font-bold"
-                  >
+                {notification.status === "unread" && (
+                  <button type="button" onClick={(event) => { event.stopPropagation(); markServerNotificationRead(notification.id).then((updated) => setServerNotifications((current) => current.map((item) => item.id === updated.id ? updated : item))).catch(() => undefined); }} className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-2 text-xs font-bold">
                     <Check className="h-3.5 w-3.5" /> Mark as read
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      markNotificationUnread(id);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-2 text-xs font-bold"
-                  >
-                    <Check className="h-3.5 w-3.5 text-success" /> Mark as unread
-                  </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => deleteNotification(id)}
-                  aria-label={`Delete ${title}`}
-                  className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
+                <button type="button" onClick={(event) => { event.stopPropagation(); deleteNotification(notification.id); }} aria-label="Delete notification" title="Delete notification" className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
           ))}
-          {notifications.length === 0 && (
+          {serverNotifications.length === 0 && (
             <p className="rounded-2xl bg-secondary p-8 text-center text-sm text-muted-foreground">
               Your inbox is clear.
             </p>

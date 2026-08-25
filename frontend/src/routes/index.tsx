@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { apiFetch } from "@/lib/api";
 import { STATS } from "@/lib/osca-data";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -77,7 +79,27 @@ const ANALYTICS = [
   "Municipal-level summary",
 ];
 
+type Overview = {
+  total_registered: number;
+  active_seniors: number;
+  pending_applications: number;
+  benefits_distributed_amount: number;
+  benefits_distributed_count: number;
+  distribution_percentage: number;
+};
+
 function Landing() {
+  const [overview, setOverview] = useState<Overview | null>(null);
+
+  useEffect(() => {
+    apiFetch<Overview>("/overview").then(setOverview).catch(() => setOverview(null));
+  }, []);
+
+  const distributionAmount = overview?.benefits_distributed_amount ?? 0;
+  const formattedAmount = distributionAmount >= 1_000_000
+    ? `₱${(distributionAmount / 1_000_000).toFixed(1)}M`
+    : `₱${distributionAmount.toLocaleString()}`;
+
   return (
     <div className="bg-app min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-6">
@@ -163,23 +185,28 @@ function Landing() {
               <div>
                 <p className="text-xs text-muted-foreground">Total Registered</p>
                 <p className="font-display mt-1 text-3xl font-bold">
-                  {STATS.totalRegistered.toLocaleString()}
+                  {overview ? overview.total_registered.toLocaleString() : "..."}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Benefits Distributed</p>
                 <p className="font-display mt-1 text-3xl font-bold">
-                  {STATS.benefitsDistributed}
+                  {overview ? formattedAmount : "..."}
                 </p>
               </div>
             </div>
             <div className="mt-9">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Distribution status</span>
-                <span className="font-bold text-success">68% complete</span>
+                <span className="font-bold text-success">
+                  {overview ? `${overview.distribution_percentage}% complete` : "Loading..."}
+                </span>
               </div>
               <div className="mt-3 h-2 rounded-full bg-secondary">
-                <div className="bg-navy h-2 w-[68%] rounded-full" />
+                <div
+                  className="bg-navy h-2 rounded-full transition-all"
+                  style={{ width: `${overview?.distribution_percentage ?? 0}%` }}
+                />
               </div>
             </div>
           </div>
