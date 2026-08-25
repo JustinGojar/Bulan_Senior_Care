@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
 
         User::whereNotIn('email', collect($accounts)->pluck('email'))->each(fn (User $user) => $user->delete());
 
-        foreach (['admin', 'head'] as $role) {
+        foreach (['admin', 'head', 'leader'] as $role) {
             Role::findOrCreate($role, 'web');
         }
 

@@ -7,8 +7,10 @@ use App\Models\Barangay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
@@ -20,6 +22,7 @@ class AuthController extends Controller
     public function createBarangayLeader(Request $request): JsonResponse
     {
         abort_unless($request->user()->role === 'admin', 403, 'Only Admin can create Barangay Leader accounts.');
+        Role::findOrCreate('leader', 'web');
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:80'],
@@ -89,6 +92,37 @@ class AuthController extends Controller
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 
         return response()->json(['token' => $token, 'user' => $user->load('roles')]);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email']]);
+        PasswordBroker::sendResetLink(['email' => $data['email']]);
+
+        return response()->json(['message' => 'If an account exists for that email, a password reset link has been sent.']);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $status = PasswordBroker::reset(
+            $data,
+            function (User $user, string $password): void {
+                $user->forceFill(['password' => $password])->save();
+                $user->tokens()->delete();
+            },
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            return response()->json(['message' => __($status)], 422);
+        }
+
+        return response()->json(['message' => 'Your password has been reset. You can now log in.']);
     }
 
     public function logout(Request $request): JsonResponse

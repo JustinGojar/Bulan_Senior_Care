@@ -6,12 +6,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Notifications\ResetPasswordNotification;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $url = rtrim(config('app.frontend_url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($this->getEmailForPasswordReset());
+        $this->notify(new ResetPasswordNotification($url));
+    }
 
     /**
      * The attributes that are mass assignable.

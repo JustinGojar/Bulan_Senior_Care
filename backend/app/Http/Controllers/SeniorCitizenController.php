@@ -38,7 +38,12 @@ class SeniorCitizenController extends Controller
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
         $data = $request->validate($this->rules());
         if ($request->hasFile('id_document')) {
-            $data['id_document_path'] = $request->file('id_document')->store('senior-documents', 'public');
+            $document = $request->file('id_document');
+            $documentPath = $document->store('senior-documents', 'public');
+            $data['id_document_path'] = $documentPath;
+            if (str_starts_with((string) $document->getMimeType(), 'image/')) {
+                $data['photo_path'] = $documentPath;
+            }
         }
         if ($request->filled('barangay')) {
             $barangay = Barangay::firstOrCreate([
@@ -85,7 +90,6 @@ class SeniorCitizenController extends Controller
 
     public function update(Request $request, SeniorCitizen $senior): JsonResponse
     {
-        abort_if($request->user()->role === 'head', 403, 'The Head role is read-only.');
         $this->authorizeScope($request, $senior);
         $data = $request->validate($this->rules(true));
         if ($request->user()->role === 'leader') {
