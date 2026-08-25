@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, Mail, Phone, UserRound } from "lucide-react";
 import { useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { register, type AccountRole } from "@/lib/api";
 
 export const Route = createFileRoute("/register")({
@@ -44,7 +45,8 @@ function RegisterPage() {
   }
 
   return (
-    <div className="bg-app grid min-h-screen place-items-center px-4 py-10">
+    <div className="bg-app relative grid min-h-screen place-items-center px-4 py-10">
+      <ThemeToggle className="absolute top-5 right-5" />
       <div className="surface-card grid w-full max-w-4xl overflow-hidden md:grid-cols-2">
         <div className="bg-navy p-10 text-primary-foreground">
           <div className="flex items-center gap-3">

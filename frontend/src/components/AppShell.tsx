@@ -18,6 +18,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { API_URL, getStoredUser, logout, type ApiUser } from "@/lib/api";
 import { getUnreadNotificationCount, NOTIFICATIONS_CHANGED_EVENT } from "@/lib/notifications";
 import { BrandLogo } from "./BrandLogo";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -140,6 +141,7 @@ export function AppShell({
               />
             </div>
             <div className="relative flex items-center gap-3">
+              <ThemeToggle />
               <button
                 onClick={() => navigate({ to: "/notifications" })}
                 aria-label="Notifications"

@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, Mail } from "lucide-react";
 import { useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { login } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
@@ -34,7 +35,8 @@ function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <div className="bg-app grid min-h-screen place-items-center px-4">
+    <div className="bg-app relative grid min-h-screen place-items-center px-4">
+      <ThemeToggle className="absolute top-5 right-5" />
       <div className="surface-card grid w-full max-w-4xl overflow-hidden md:grid-cols-2">
         <div className="bg-navy p-10 text-primary-foreground">
           <div className="flex items-center gap-3">
@@ -44,7 +46,7 @@ function LoginPage() {
               <p className="text-xs opacity-70">OSCA · Municipality of Bulan</p>
             </div>
           </div>
-          <h1 className="mt-12 text-4xl leading-tight font-extrabold">Welcome, Kagulangan!</h1>
+          <h1 className="mt-12 text-4xl leading-tight font-extrabold">Welcome, Kagurangnan!</h1>
           <p className="font-display mt-4 text-xl text-gold">Profile. Monitor. Serve better.</p>
           <p className="mt-5 max-w-sm text-sm leading-relaxed opacity-80">
             One portal for senior citizen records, benefits, and services across every barangay in

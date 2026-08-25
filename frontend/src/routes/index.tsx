@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { STATS } from "@/lib/osca-data";
 
 export const Route = createFileRoute("/")({
@@ -96,6 +97,7 @@ function Landing() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link
               to="/login"
               className="rounded-full bg-card px-5 py-2.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
