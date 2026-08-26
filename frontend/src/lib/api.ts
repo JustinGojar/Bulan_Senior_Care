@@ -89,6 +89,10 @@ export type SeniorEditRequest = {
   requester: { id: number; name: string; role: string };
 };
 
+export type ArchivedSenior = Pick<ApiSenior, "osca_id_number" | "first_name" | "last_name"> & {
+  deleted_at: string;
+};
+
 export type Announcement = {
   id: number;
   title: string;

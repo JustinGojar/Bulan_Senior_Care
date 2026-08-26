@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { API_URL, apiFetch, clearToken, getStoredUser, logout, setStoredUser, type ApiUser } from "@/lib/api";
+import oscaAdminImage from "@/images/osca_admin.jpg";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My Profile — Bulan SeniorCare" }] }),
@@ -51,7 +52,9 @@ function ProfilePage() {
 
   const photoUrl = photoPreview ?? (user?.profile_photo_path
     ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
-    : null);
+    : (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin"))
+      ? oscaAdminImage
+      : null);
   const initials = (name || "User").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   async function saveProfile(event: React.FormEvent) {
@@ -109,7 +112,7 @@ function ProfilePage() {
         <section className="surface-card p-7">
           <div className="flex flex-col items-center text-center">
             <div className="relative grid h-28 w-28 overflow-hidden place-items-center rounded-full bg-navy text-2xl font-bold text-primary-foreground ring-4 ring-gold/50">
-              {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+              {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin")) event.currentTarget.src = oscaAdminImage; }} /> : initials}
               <label htmlFor="profile-photo" className="absolute right-1 bottom-1 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-gold text-gold-foreground shadow-lg" title="Change profile picture"><Camera className="h-4 w-4" /></label>
             </div>
             <input id="profile-photo" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} />
@@ -147,6 +150,7 @@ function ProfilePage() {
             </div>
             <button type="submit" disabled={busy} className="bg-navy mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"><KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}</button>
           </form>
+
         </div>
       </div>
     </AppShell>

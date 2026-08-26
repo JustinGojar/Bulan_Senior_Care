@@ -50,12 +50,14 @@ export function SeniorFormDialog({
   onOpenChange,
   senior,
   isLeader,
+  leaderBarangay,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   senior?: Senior | null;
   isLeader?: boolean;
+  leaderBarangay?: string;
   onSubmit: (draft: SeniorDraft) => void;
 }) {
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
@@ -79,9 +81,9 @@ export function SeniorFormDialog({
             benefit: senior.benefit,
             status: senior.status,
           }
-        : { ...EMPTY },
+          : { ...EMPTY, ...(leaderBarangay ? { barangay: leaderBarangay } : {}) },
     );
-  }, [open, senior]);
+        }, [open, senior, leaderBarangay]);
 
   const set = <K extends keyof SeniorDraft>(key: K, value: SeniorDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -180,18 +182,24 @@ export function SeniorFormDialog({
 
           <div>
             <Label>Barangay</Label>
-            <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {BARANGAYS.map((b) => (
-                  <SelectItem key={b} value={b}>
-                    {b}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {leaderBarangay ? (
+              <div className="mt-1.5 flex h-10 items-center rounded-md border border-border bg-muted px-3 text-sm">
+                {leaderBarangay}
+              </div>
+            ) : (
+              <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BARANGAYS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div>

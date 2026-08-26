@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Bell, Check, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { BENEFIT_PROGRAMS } from "@/lib/osca-data";
 
 export const Route = createFileRoute("/settings")({
@@ -143,14 +142,6 @@ function SettingsPage() {
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="surface-card flex items-center justify-between gap-4 p-7">
-          <div>
-            <h2 className="text-lg font-bold">Appearance</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Choose light or dark mode.</p>
-          </div>
-          <ThemeToggle />
         </section>
 
       </div>
