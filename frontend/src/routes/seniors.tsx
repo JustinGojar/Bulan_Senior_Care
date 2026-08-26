@@ -289,7 +289,7 @@ function SeniorRecords() {
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    {!isHead && (
+                    {!isHead && !isLeader && (
                         <button
                           aria-label={`Delete record of ${s.name}`}
                           onClick={() => setDeleting(s)}
