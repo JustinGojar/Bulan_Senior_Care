@@ -49,6 +49,15 @@ class SeniorCitizenController extends Controller
         return response()->json($senior->fresh()->load(['barangay', 'benefits']));
     }
 
+    public function archiveRecord(Request $request, SeniorCitizen $senior): JsonResponse
+    {
+        abort_if($request->user()->role === 'admin', 403, 'Admin accounts should use permanent delete.');
+        $this->authorizeScope($request, $senior);
+        $senior->delete();
+
+        return response()->json(status: 204);
+    }
+
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');

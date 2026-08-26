@@ -78,7 +78,11 @@ export function AppShell({
     };
     updateUnreadMessageCount();
     const refreshTimer = window.setInterval(updateUnreadMessageCount, 15000);
-    return () => window.clearInterval(refreshTimer);
+    window.addEventListener("bulan-unread-updated", updateUnreadMessageCount);
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("bulan-unread-updated", updateUnreadMessageCount);
+    };
   }, [user?.id]);
   useEffect(() => {
     const updateUnreadCount = () => {
@@ -90,8 +94,11 @@ export function AppShell({
     };
     updateUnreadCount();
     const refreshTimer = window.setInterval(updateUnreadCount, 15000);
+    const handleUnreadUpdated = () => updateUnreadCount();
+    window.addEventListener("bulan-unread-updated", handleUnreadUpdated);
     return () => {
       window.clearInterval(refreshTimer);
+      window.removeEventListener("bulan-unread-updated", handleUnreadUpdated);
     };
   }, []);
   const initials = (user?.name ?? "User")
@@ -127,7 +134,7 @@ export function AppShell({
           <nav className="mt-8 flex flex-col gap-1.5">
             {NAV.filter(({ to }) =>
               (to !== "/users" || user?.role === "admin") &&
-              (to !== "/eligibility" || !["leader", "head"].includes(user?.role ?? "")) &&
+              (to !== "/eligibility" || user?.role !== "leader") &&
               (to !== "/reports" || user?.role !== "leader") &&
               (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
             ).map(({ to, label, icon: Icon }) => {

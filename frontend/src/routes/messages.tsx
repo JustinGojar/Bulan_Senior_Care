@@ -79,6 +79,7 @@ function MessagesPage() {
     try {
       const updated = await markMessageRead(item.id);
       setMessages((current) => current.map((messageItem) => messageItem.id === updated.id ? updated : messageItem));
+      window.dispatchEvent(new Event("bulan-unread-updated"));
     } catch {
       toast.error("Unable to mark message as read.");
     }

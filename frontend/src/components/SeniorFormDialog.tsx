@@ -182,24 +182,21 @@ export function SeniorFormDialog({
 
           <div>
             <Label>Barangay</Label>
-            {leaderBarangay ? (
-              <div className="mt-1.5 flex h-10 items-center rounded-md border border-border bg-muted px-3 text-sm">
-                {leaderBarangay}
-              </div>
-            ) : (
-              <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BARANGAYS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BARANGAYS.map((barangay) => (
+                  <SelectItem
+                    key={barangay}
+                    value={barangay}
+                  >
+                    {barangay}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

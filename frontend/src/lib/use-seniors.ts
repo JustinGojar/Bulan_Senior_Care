@@ -105,6 +105,7 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
         last_name: draft.lastName?.trim() ?? draft.name.trim(),
         birthdate: birthdate.toISOString().slice(0, 10),
         contact_number: draft.contact.trim() || null,
+        barangay: draft.barangay,
         benefit: draft.benefit,
       });
       return;

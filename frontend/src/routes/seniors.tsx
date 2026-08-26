@@ -25,6 +25,7 @@ import {
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import { API_URL, apiFetch, getStoredUser, type ArchivedSenior } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
+import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
@@ -91,7 +92,7 @@ function SeniorRecords() {
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
   const isAdmin = currentUser?.role === "admin";
-  const [filter, setFilter] = useState<string>("Active");
+  const [filter, setFilter] = useState<string>("All");
   const [barangayFilter, setBarangayFilter] = useState("All");
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -146,7 +147,7 @@ function SeniorRecords() {
     setArchiveLoading(true);
     try {
       const result = await apiFetch<{ data: ArchivedSenior[] }>("/seniors/archive");
-      setArchivedRecords(result.data);
+      setArchivedRecords(result.data.filter((record): record is ArchivedSenior => Boolean(record?.osca_id_number)));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load the archive.");
     } finally {
@@ -215,9 +216,11 @@ function SeniorRecords() {
       const { jsPDF } = await import("jspdf");
       const document = new jsPDF({ orientation: "landscape" });
       const generatedDate = new Date();
+      const logoDataUrl = await loadPdfLogo();
 
+      document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
       document.setFontSize(18);
-      document.text("Bulan SeniorCare", 14, 18);
+      document.text("Bulan SeniorCare", 32, 18);
       document.setFontSize(13);
       document.text("Senior Citizen Records", 14, 28);
       document.setFontSize(9);
@@ -433,6 +436,25 @@ function SeniorRecords() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                    )}
+                    {!isAdmin && (
+                      <button
+                        aria-label={`Archive record of ${s.name}`}
+                        title="Archive record"
+                        onClick={async () => {
+                          if (!window.confirm(`Archive the record of ${s.name}?`)) return;
+                          try {
+                            await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, { method: "POST" });
+                            toast.success(`${s.name}'s record was archived.`);
+                            window.location.reload();
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "Unable to archive the record.");
+                          }
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-muted"
+                      >
+                        <Archive className="h-4 w-4" />
+                      </button>
                     )}
                   </div>
                 </td>

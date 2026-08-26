@@ -32,6 +32,7 @@ class SeniorEditRequestController extends Controller
             'changes.last_name' => ['required', 'string', 'max:100'],
             'changes.birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
             'changes.contact_number' => ['nullable', 'string', 'max:30'],
+            'changes.barangay' => ['required', 'string', 'exists:barangays,barangay_name'],
             'changes.benefit' => ['required', 'string', 'max:100'],
         ]);
         $senior = \App\Models\SeniorCitizen::where('osca_id_number', $data['senior_id'])->firstOrFail();
@@ -73,6 +74,9 @@ class SeniorEditRequestController extends Controller
                     'last_name' => $changes['last_name'],
                     'birthdate' => $changes['birthdate'],
                     'contact_number' => $changes['contact_number'] ?? null,
+                ]);
+                $seniorEditRequest->senior->update([
+                    'barangay_id' => \App\Models\Barangay::where('barangay_name', $changes['barangay'])->value('id'),
                 ]);
                 $benefit = Benefit::where('benefit_name', $changes['benefit'])->where('status', 'active')->firstOrFail();
                 $seniorEditRequest->senior->benefits()->wherePivot('status', 'pending')->syncWithoutDetaching([

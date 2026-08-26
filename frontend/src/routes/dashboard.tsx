@@ -261,7 +261,7 @@ function Dashboard() {
               >
                 {announcement.image_path && (
                   <img
-                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8001"}/storage/${announcement.image_path}`}
+                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`}
                     alt=""
                     className="mb-3 max-h-96 w-full rounded-xl bg-card object-contain"
                   />
@@ -463,7 +463,7 @@ function Dashboard() {
             </div>
             {selectedAnnouncement.image_path && (
               <img
-                src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8001"}/storage/${selectedAnnouncement.image_path}`}
+                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`}
                 alt=""
                 className="max-h-[65vh] w-full object-contain"
               />

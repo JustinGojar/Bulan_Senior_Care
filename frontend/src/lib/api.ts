@@ -1,4 +1,4 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8001/api").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
 
@@ -83,6 +83,7 @@ export type SeniorEditRequest = {
     last_name: string;
     birthdate: string;
     contact_number?: string | null;
+    barangay: string;
     benefit: string;
   };
   senior: ApiSenior & { barangay?: { barangay_name: string } | null };
@@ -180,7 +181,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
     throw new Error(
-      `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve --port=8001" in the backend folder.`,
+      `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve" in the backend folder.`,
     );
   }
   const body = (await response.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | T | null;

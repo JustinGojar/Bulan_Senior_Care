@@ -18,14 +18,15 @@ function EligibilityReview() {
   const currentUser = getStoredUser();
   const { seniors, updateSenior } = useSeniors({ pendingOnly: true });
   const pendingSeniors = seniors;
-  const isHead = currentUser?.role === "head";
   const [viewing, setViewing] = useState<Senior | null>(null);
 
   useEffect(() => {
-    if (currentUser?.role !== "admin") navigate({ to: "/dashboard", replace: true });
+    if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
+      navigate({ to: "/dashboard", replace: true });
+    }
   }, [currentUser?.role, navigate]);
 
-  if (currentUser?.role !== "admin") return null;
+  if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) return null;
 
   async function reviewSenior(senior: (typeof seniors)[number], status: "Active" | "Inactive") {
     try {
@@ -79,8 +80,7 @@ function EligibilityReview() {
                   >
                     <Eye className="h-4 w-4" /> View
                   </button>
-                  {!isHead && (
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => reviewSenior(senior, "Inactive")}
                       className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive"
@@ -93,8 +93,7 @@ function EligibilityReview() {
                     >
                       Eligible
                     </button>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </article>
             );
