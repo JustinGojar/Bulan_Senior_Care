@@ -208,19 +208,21 @@ function SeniorRecords() {
             {f.key} <span className="ml-1 opacity-70">{f.count}</span>
           </button>
         ))}
-        <select
-          value={barangayFilter}
-          onChange={(event) => setBarangayFilter(event.target.value)}
-          aria-label="Filter by barangay"
-          className="h-12 min-w-[240px] rounded-full bg-card px-5 text-sm font-semibold text-foreground shadow-[var(--shadow-soft)] outline-none focus:ring-2 focus:ring-ring/30"
-        >
-          <option value="All">All barangays</option>
-          {BARANGAYS.map((barangay) => (
-            <option key={barangay} value={barangay}>
-              {barangay}
-            </option>
-          ))}
-        </select>
+        {!isLeader && (
+          <select
+            value={barangayFilter}
+            onChange={(event) => setBarangayFilter(event.target.value)}
+            aria-label="Filter by barangay"
+            className="h-12 min-w-[240px] rounded-full bg-card px-5 text-sm font-semibold text-foreground shadow-[var(--shadow-soft)] outline-none focus:ring-2 focus:ring-ring/30"
+          >
+            <option value="All">All barangays</option>
+            {BARANGAYS.map((barangay) => (
+              <option key={barangay} value={barangay}>
+                {barangay}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="relative min-w-[240px] flex-1">
           <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -318,6 +320,7 @@ function SeniorRecords() {
           open={formOpen}
           onOpenChange={setFormOpen}
           senior={editing}
+          leaderBarangay={isLeader ? BARANGAYS[(currentUser?.barangay_id ?? 0) - 1] : undefined}
           onSubmit={async (draft) => {
             if (editing) {
               await updateSenior(editing.id, draft);
