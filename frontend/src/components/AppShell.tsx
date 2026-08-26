@@ -17,6 +17,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { API_URL, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
+import oscaAdminImage from "@/images/osca_admin.jpg";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -77,9 +78,12 @@ export function AppShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const isAdmin = user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin");
   const photoUrl = user?.profile_photo_path
     ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
-    : null;
+    : isAdmin
+      ? oscaAdminImage
+      : null;
 
   async function signOut() {
     await logout().catch(() => undefined);
@@ -125,7 +129,7 @@ export function AppShell({
           <div className="mt-auto border-t border-border pt-4">
             <Link to="/profile" className="flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-secondary">
               <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
-                {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+                {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (isAdmin) event.currentTarget.src = oscaAdminImage; }} /> : initials}
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
@@ -153,7 +157,6 @@ export function AppShell({
               />
             </div>
             <div className="relative flex items-center gap-3">
-              <ThemeToggle />
               <button
                 onClick={() => navigate({ to: "/messages" })}
                 aria-label="Open messages"
@@ -177,7 +180,7 @@ export function AppShell({
                 aria-label="Open profile menu"
                 className="bg-navy grid h-11 w-11 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground"
               >
-                {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" /> : initials}
+                      {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (isAdmin) event.currentTarget.src = oscaAdminImage; }} /> : initials}
               </button>
               {profileOpen && (
                 <div className="surface-card absolute top-14 right-0 z-20 w-64 p-3">
@@ -186,6 +189,10 @@ export function AppShell({
                     <div className="min-w-0"><p className="truncate text-sm font-bold">{user?.name ?? "User"}</p><p className="truncate text-xs text-muted-foreground">{user?.email ?? "Admin"}</p></div>
                   </div>
                   <Link to="/profile" onClick={() => setProfileOpen(false)} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><UserCircle className="h-4 w-4" /> My profile</Link>
+                  <div className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold">
+                    <span className="flex items-center gap-3"><Settings className="h-4 w-4" /> Appearance</span>
+                    <ThemeToggle className="h-9 w-9 shadow-none" />
+                  </div>
                   <button onClick={signOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"><LogOut className="h-4 w-4" /> Log out</button>
                 </div>
               )}
