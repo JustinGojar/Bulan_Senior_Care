@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Eye, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
+import { Archive, Download, Eye, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { API_URL, getStoredUser } from "@/lib/api";
+import { API_URL, apiFetch, getStoredUser, type ArchivedSenior } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
@@ -88,6 +88,7 @@ function SeniorRecords() {
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
+  const isAdmin = currentUser?.role === "admin";
   const [filter, setFilter] = useState<string>("Active");
   const [barangayFilter, setBarangayFilter] = useState("All");
   const [query, setQuery] = useState("");
@@ -95,6 +96,9 @@ function SeniorRecords() {
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
   const [deleting, setDeleting] = useState<Senior | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const bulkFileInput = useRef<HTMLInputElement>(null);
 
   const filters = useMemo(
@@ -119,6 +123,29 @@ function SeniorRecords() {
         ),
     [seniors, filter, barangayFilter, query],
   );
+
+  async function openArchive() {
+    setArchiveOpen(true);
+    setArchiveLoading(true);
+    try {
+      const result = await apiFetch<{ data: ArchivedSenior[] }>("/seniors/archive");
+      setArchivedRecords(result.data);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to load the archive.");
+    } finally {
+      setArchiveLoading(false);
+    }
+  }
+
+  async function restoreRecord(oscaId: string) {
+    try {
+      await apiFetch(`/seniors/archive/${encodeURIComponent(oscaId)}/restore`, { method: "POST" });
+      setArchivedRecords((records) => records.filter((record) => record.osca_id_number !== oscaId));
+      toast.success(`${oscaId} was restored.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to restore the record.");
+    }
+  }
 
   async function handleBulkFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -187,6 +214,14 @@ function SeniorRecords() {
                     <Plus className="h-4 w-4" /> Register Senior
                   </button>
                 </>
+          )}
+          {isAdmin && (
+            <button
+              onClick={openArchive}
+              className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+            >
+              <Archive className="h-4 w-4" /> Archive
+            </button>
           )}
           <button className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]">
             <Download className="h-4 w-4" /> Export
@@ -314,6 +349,40 @@ function SeniorRecords() {
           </tbody>
         </table>
       </div>
+
+      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display">Deleted record archive</DialogTitle>
+            <DialogDescription>OSCA IDs for records deleted by an administrator.</DialogDescription>
+          </DialogHeader>
+          {archiveLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Loading archive...</p>
+          ) : archivedRecords.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No deleted records.</p>
+          ) : (
+            <div className="max-h-80 divide-y divide-border overflow-y-auto">
+              {archivedRecords.map((record) => (
+                <div key={record.osca_id_number} className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="font-semibold">{record.osca_id_number}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {[record.first_name, record.last_name].filter(Boolean).join(" ")} · Deleted {new Date(record.deleted_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => restoreRecord(record.osca_id_number)}
+                    aria-label={`Restore ${record.osca_id_number}`}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {(!isHead || !!editing) && (
         <SeniorFormDialog

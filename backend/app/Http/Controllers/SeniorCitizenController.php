@@ -33,6 +33,22 @@ class SeniorCitizenController extends Controller
         return response()->json($query->latest()->paginate(25));
     }
 
+    public function archive(Request $request): JsonResponse
+    {
+        abort_if($request->user()->role !== 'admin', 403, 'Only Admin can view the archive.');
+
+        return response()->json(SeniorCitizen::onlyTrashed()->latest('deleted_at')->paginate(25));
+    }
+
+    public function restore(Request $request, string $oscaId): JsonResponse
+    {
+        abort_if($request->user()->role !== 'admin', 403, 'Only Admin can restore records.');
+        $senior = SeniorCitizen::onlyTrashed()->where('osca_id_number', $oscaId)->firstOrFail();
+        $senior->restore();
+
+        return response()->json($senior->fresh()->load(['barangay', 'benefits']));
+    }
+
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
