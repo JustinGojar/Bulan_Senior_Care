@@ -40,7 +40,53 @@ export type ApiSenior = {
   id_document_path?: string | null;
   status: "active" | "pending" | "inactive";
   barangay?: { barangay_name: string } | null;
-  benefits?: Array<{ benefit_name: string }>;
+  benefits?: Array<{ benefit_name: string; pivot?: { status: string; amount: string; date_distributed?: string | null } }>;
+  encoder?: { id: number; name: string; role: string } | null;
+};
+
+export type Overview = {
+  total_registered: number;
+  active_seniors: number;
+  pending_applications: number;
+  benefits_distributed_amount: number;
+  benefits_distributed_count: number;
+  benefits_pending_count: number;
+  benefits_failed_count: number;
+  distribution_percentage: number;
+  received_by_benefit: Array<{ benefit: string; age_range: string; received_count: number }>;
+};
+
+export type BenefitTransaction = {
+  id: number;
+  amount: string;
+  status: "pending" | "released" | "failed";
+  period_label?: string | null;
+  date_distributed?: string | null;
+  senior: {
+    osca_id_number: string;
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    barangay?: { barangay_name: string } | null;
+    encoder?: { name: string; role: string } | null;
+  };
+  benefit: { benefit_name: string; amount?: string | null };
+  distributor?: { name: string; role: string } | null;
+};
+
+export type SeniorEditRequest = {
+  id: number;
+  status: "pending" | "approved" | "declined";
+  changes: {
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    birthdate: string;
+    contact_number?: string | null;
+    benefit: string;
+  };
+  senior: ApiSenior & { barangay?: { barangay_name: string } | null };
+  requester: { id: number; name: string; role: string };
 };
 
 export type Announcement = {
@@ -272,6 +318,24 @@ export function createAnnouncementComment(announcementId: number, message: strin
 
 export function getMessages() {
   return apiFetch<Message[]>("/messages");
+}
+
+export function getSeniorEditRequests() {
+  return apiFetch<SeniorEditRequest[]>("/senior-edit-requests");
+}
+
+export function submitSeniorEditRequest(seniorId: string, changes: SeniorEditRequest["changes"]) {
+  return apiFetch<SeniorEditRequest>("/senior-edit-requests", {
+    method: "POST",
+    body: JSON.stringify({ senior_id: seniorId, changes }),
+  });
+}
+
+export function reviewSeniorEditRequest(id: number, status: "approved" | "declined") {
+  return apiFetch<SeniorEditRequest>(`/senior-edit-requests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function getMessageRecipients(search: string) {

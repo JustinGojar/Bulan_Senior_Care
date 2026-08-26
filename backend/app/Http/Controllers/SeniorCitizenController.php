@@ -13,7 +13,7 @@ class SeniorCitizenController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = SeniorCitizen::with(['barangay', 'benefits']);
+        $query = SeniorCitizen::with(['barangay', 'benefits', 'encoder:id,name,role']);
         if ($request->user()->role === 'leader') {
             $query->where('barangay_id', $request->user()->barangay_id);
         }
@@ -90,6 +90,7 @@ class SeniorCitizenController extends Controller
 
     public function update(Request $request, SeniorCitizen $senior): JsonResponse
     {
+        abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
         $this->authorizeScope($request, $senior);
         $data = $request->validate($this->rules(true));
         if ($request->user()->role === 'leader') {

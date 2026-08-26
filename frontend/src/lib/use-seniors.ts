@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, type ApiSenior } from "./api";
+import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
 import type { Senior } from "./osca-data";
 
 export type SeniorDraft = Omit<Senior, "id"> & {
@@ -98,6 +98,17 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
   const updateSenior = useCallback(async (id: string, draft: SeniorDraft) => {
     const birthdate = new Date();
     birthdate.setFullYear(birthdate.getFullYear() - Math.max(60, draft.age));
+    if (getStoredUser()?.role === "leader") {
+      await submitSeniorEditRequest(id, {
+        first_name: draft.firstName?.trim() ?? draft.name.trim(),
+        middle_name: draft.middleName?.trim() || null,
+        last_name: draft.lastName?.trim() ?? draft.name.trim(),
+        birthdate: birthdate.toISOString().slice(0, 10),
+        contact_number: draft.contact.trim() || null,
+        benefit: draft.benefit,
+      });
+      return;
+    }
     const result = await apiFetch<ApiSenior>(`/seniors/${id}`, {
       method: "PUT",
       body: JSON.stringify({

@@ -49,11 +49,13 @@ export function SeniorFormDialog({
   open,
   onOpenChange,
   senior,
+  isLeader,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   senior?: Senior | null;
+  isLeader?: boolean;
   onSubmit: (draft: SeniorDraft) => void;
 }) {
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
@@ -220,7 +222,7 @@ export function SeniorFormDialog({
             <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, or PNG up to 5 MB.</p>
           </div>
 
-          {senior && (
+          {senior && !isLeader && (
             <div className="sm:col-span-2">
               <Label>Eligibility status</Label>
               <Select

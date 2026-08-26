@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ChevronLeft, Image, Maximize2, MoreHorizontal, PenLine, Plus, Search, Send, Smile } from "lucide-react";
+import { ArrowLeft, ChevronLeft, Image, MoreHorizontal, PenLine, Plus, Search, Send, Smile } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -155,9 +155,6 @@ function MessagesPage() {
         <div className="flex items-center gap-2">
           <button type="button" aria-label="More chat options" title="More options" className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]">
             <MoreHorizontal className="h-5 w-5" />
-          </button>
-          <button type="button" aria-label="Expand inbox" title="Expand" className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]">
-            <Maximize2 className="h-4 w-4" />
           </button>
           <button type="button" onClick={() => setComposerOpen((open) => !open)} aria-label="New message" title="New message" className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground shadow-[var(--shadow-soft)]">
             <PenLine className="h-4 w-4" />

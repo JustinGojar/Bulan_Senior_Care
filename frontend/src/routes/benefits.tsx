@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, HandCoins, ShieldCheck } from "lucide-react";
+import { CalendarDays, CheckCircle2, HandCoins, ShieldCheck, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { apiFetch, getStoredUser } from "@/lib/api";
-import { useSeniors } from "@/lib/use-seniors";
+import { apiFetch, getStoredUser, type BenefitTransaction } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/benefits")({
@@ -22,23 +21,41 @@ type BenefitProgram = {
 
 function BenefitTracking() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
+  const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { seniors, loading } = useSeniors({ excludePending: true });
   const isHead = getStoredUser()?.role === "head";
 
   useEffect(() => {
-    apiFetch<Array<{ benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits")
-      .then((result) => setPrograms(result.map((program) => ({
-        name: program.benefit_name,
-        type: program.benefit_type,
-        minAge: program.min_age,
-        maxAge: program.max_age ?? undefined,
-        amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
-        schedule: program.schedule === "one_time" ? "One-time" : program.schedule === "quarterly" ? "Quarterly" : "When funds are available",
-        funding: program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
-      }))))
+    Promise.all([
+      apiFetch<Array<{ benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits"),
+      apiFetch<BenefitTransaction[]>("/benefit-transactions"),
+    ])
+      .then(([benefitResult, transactionResult]) => {
+        setPrograms(benefitResult.map((program) => ({
+          name: program.benefit_name,
+          type: program.benefit_type,
+          minAge: program.min_age,
+          ...(program.max_age === null ? {} : { maxAge: program.max_age }),
+          amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
+          schedule: program.schedule === "one_time" ? "One-time" : program.schedule === "quarterly" ? "Quarterly" : "When funds are available",
+          funding: program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
+        })));
+        setTransactions(transactionResult);
+      })
       .catch((reason: Error) => setError(reason.message));
   }, []);
+
+  async function updateTransaction(transaction: BenefitTransaction, status: "released" | "failed") {
+    try {
+      const updated = await apiFetch<BenefitTransaction>(`/benefit-transactions/${transaction.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      setTransactions((current) => current.map((item) => item.id === updated.id ? updated : item));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to update benefit status.");
+    }
+  }
 
   return (
     <AppShell
@@ -91,10 +108,10 @@ function BenefitTracking() {
           </div>
         </div>
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[620px] text-sm">
+          <table className="w-full min-w-[940px] text-sm">
             <thead>
               <tr className="text-left">
-                {["Senior", "Program", "Barangay", "Status"].map((heading) => (
+                {["Senior", "Program", "Barangay", "Source", "Status", "Action"].map((heading) => (
                   <th key={heading} className="px-4 py-3 font-bold">
                     {heading}
                   </th>
@@ -102,19 +119,39 @@ function BenefitTracking() {
               </tr>
             </thead>
             <tbody>
-              {seniors.map((senior) => (
-                <tr key={senior.id} className="border-t border-border">
-                  <td className="px-4 py-4 font-semibold">{senior.name}</td>
-                  <td className="px-4 py-4">{senior.benefit}</td>
-                  <td className="px-4 py-4 text-muted-foreground">{senior.barangay}</td>
-                  <td className="px-4 py-4 font-bold text-success">
-                    {senior.status === "Active" ? "Ready for release" : "For review"}
+              {transactions.map((transaction) => {
+                const seniorName = [transaction.senior.first_name, transaction.senior.middle_name, transaction.senior.last_name].filter(Boolean).join(" ");
+                const statusLabel = transaction.status === "released" ? "Received" : transaction.status === "failed" ? "Not received" : "Pending";
+                return (
+                <tr key={transaction.id} className="border-t border-border">
+                  <td className="px-4 py-4 font-semibold">{seniorName}</td>
+                  <td className="px-4 py-4">{transaction.benefit.benefit_name}</td>
+                  <td className="px-4 py-4 text-muted-foreground">{transaction.senior.barangay?.barangay_name ?? "Unassigned"}</td>
+                  <td className="px-4 py-4 text-muted-foreground">
+                    {transaction.senior.encoder?.role === "leader" ? `Leader: ${transaction.senior.encoder.name}` : transaction.senior.encoder?.name ?? "Unknown"}
+                  </td>
+                  <td className={`px-4 py-4 font-bold ${transaction.status === "released" ? "text-success" : transaction.status === "failed" ? "text-destructive" : "text-gold-foreground"}`}>
+                    {statusLabel}
+                    {transaction.date_distributed && <span className="ml-2 text-xs font-normal text-muted-foreground">{transaction.date_distributed}</span>}
+                  </td>
+                  <td className="px-4 py-4">
+                    {!isHead && transaction.status === "pending" && (
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => updateTransaction(transaction, "released")} className="inline-flex items-center gap-1 rounded-full bg-success/15 px-3 py-2 text-xs font-bold text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Received
+                        </button>
+                        <button type="button" onClick={() => updateTransaction(transaction, "failed")} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive">
+                          <XCircle className="h-3.5 w-3.5" /> Not received
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))}
-              {!loading && seniors.length === 0 && (
+                );
+              })}
+              {transactions.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                     No benefit records available.
                   </td>
                 </tr>

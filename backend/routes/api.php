@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BenefitController;
+use App\Http\Controllers\BenefitTransactionController;
 use App\Http\Controllers\SeniorCitizenController;
+use App\Http\Controllers\SeniorEditRequestController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\AnnouncementController;
@@ -28,7 +30,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/admin/users/{user}', [UserController::class, 'update']);
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
     Route::apiResource('seniors', SeniorCitizenController::class);
+    Route::get('/senior-edit-requests', [SeniorEditRequestController::class, 'index']);
+    Route::post('/senior-edit-requests', [SeniorEditRequestController::class, 'store']);
+    Route::patch('/senior-edit-requests/{seniorEditRequest}', [SeniorEditRequestController::class, 'update']);
     Route::get('/benefits', [BenefitController::class, 'index']);
+    Route::get('/benefit-transactions', [BenefitTransactionController::class, 'index']);
+    Route::patch('/benefit-transactions/{benefitTransaction}', [BenefitTransactionController::class, 'update']);
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::post('/announcements/{announcement}/comments', [AnnouncementController::class, 'comment']);
     Route::get('/messages', [MessageController::class, 'index']);

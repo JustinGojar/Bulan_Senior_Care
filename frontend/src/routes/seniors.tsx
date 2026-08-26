@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Download, Eye, Pencil, Plus, Search, Trash2, Upload } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { API_URL, getStoredUser } from "@/lib/api";
+import { API_URL, getSeniorEditRequests, getStoredUser, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
@@ -95,7 +95,22 @@ function SeniorRecords() {
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
   const [deleting, setDeleting] = useState<Senior | null>(null);
+  const [editRequests, setEditRequests] = useState<SeniorEditRequest[]>([]);
   const bulkFileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isHead) getSeniorEditRequests().then(setEditRequests).catch(() => setEditRequests([]));
+  }, [isHead]);
+
+  async function reviewEditRequest(request: SeniorEditRequest, status: "approved" | "declined") {
+    try {
+      await reviewSeniorEditRequest(request.id, status);
+      setEditRequests((current) => current.filter((item) => item.id !== request.id));
+      toast.success(status === "approved" ? "Senior record update approved." : "Senior record update declined.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to review edit request.");
+    }
+  }
 
   const filters = useMemo(
     () => [
@@ -161,6 +176,60 @@ function SeniorRecords() {
     else toast.success(`${created} senior records added and are pending review.`);
   }
 
+  async function exportRecords() {
+    if (rows.length === 0) {
+      toast.error("There are no senior records to export.");
+      return;
+    }
+
+    try {
+      const { jsPDF } = await import("jspdf");
+      const document = new jsPDF({ orientation: "landscape" });
+      const generatedDate = new Date();
+
+      document.setFontSize(18);
+      document.text("Bulan SeniorCare", 14, 18);
+      document.setFontSize(13);
+      document.text("Senior Citizen Records", 14, 28);
+      document.setFontSize(9);
+      document.text(`Generated: ${generatedDate.toLocaleDateString()}`, 14, 36);
+      document.text(`Records: ${rows.length}`, 14, 43);
+
+      let y = 56;
+      document.setFontSize(9);
+      document.setFont("helvetica", "bold");
+      document.text("Senior ID", 14, y);
+      document.text("Name", 48, y);
+      document.text("Age", 118, y);
+      document.text("Barangay", 138, y);
+      document.text("Contact", 195, y);
+      document.text("Benefit", 235, y);
+      document.text("Status", 275, y);
+      document.setFont("helvetica", "normal");
+      y += 7;
+
+      rows.forEach((senior) => {
+        if (y > 195) {
+          document.addPage();
+          y = 18;
+        }
+        document.text(senior.id, 14, y);
+        document.text(document.splitTextToSize(senior.name, 62)[0] ?? senior.name, 48, y);
+        document.text(String(senior.age), 118, y);
+        document.text(document.splitTextToSize(senior.barangay, 52)[0] ?? senior.barangay, 138, y);
+        document.text(document.splitTextToSize(senior.contact, 34)[0] ?? senior.contact, 195, y);
+        document.text(document.splitTextToSize(senior.benefit, 34)[0] ?? senior.benefit, 235, y);
+        document.text(senior.status, 275, y);
+        y += 7;
+      });
+
+      document.save(`bulan-seniorcare-records-${generatedDate.toISOString().slice(0, 10)}.pdf`);
+      toast.success("Senior records exported as PDF.");
+    } catch {
+      toast.error("Unable to export senior records.");
+    }
+  }
+
   return (
     <AppShell
       title="Senior Record"
@@ -188,7 +257,11 @@ function SeniorRecords() {
                   </button>
                 </>
           )}
-          <button className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]">
+          <button
+            type="button"
+            onClick={exportRecords}
+            className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+          >
             <Download className="h-4 w-4" /> Export
           </button>
         </div>
@@ -231,6 +304,30 @@ function SeniorRecords() {
           />
         </div>
       </div>
+
+      {isHead && editRequests.length > 0 && (
+        <section className="surface-card mt-6 p-6">
+          <div>
+            <h2 className="text-lg font-bold">Senior record edit requests</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Review changes submitted by Barangay Leaders before they update the official record.</p>
+          </div>
+          <div className="mt-5 space-y-3">
+            {editRequests.map((request) => (
+              <div key={request.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
+                <div className="text-sm">
+                  <p className="font-bold">{request.changes.first_name} {request.changes.middle_name} {request.changes.last_name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{request.senior.osca_id_number} · Requested by {request.requester.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Age {new Date().getFullYear() - Number(request.changes.birthdate.slice(0, 4))} · {request.changes.contact_number || "No contact"} · {request.changes.benefit}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => reviewEditRequest(request, "declined")} className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive">Decline</button>
+                  <button type="button" onClick={() => reviewEditRequest(request, "approved")} className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground">Approve</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="surface-card mt-6 overflow-x-auto p-2">
         <table className="w-full min-w-[880px] border-collapse text-sm">
@@ -289,7 +386,7 @@ function SeniorRecords() {
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    {!isHead && (
+                    {currentUser?.role === "admin" && (
                         <button
                           aria-label={`Delete record of ${s.name}`}
                           onClick={() => setDeleting(s)}
@@ -318,10 +415,11 @@ function SeniorRecords() {
           open={formOpen}
           onOpenChange={setFormOpen}
           senior={editing}
+          isLeader={isLeader}
           onSubmit={async (draft) => {
             if (editing) {
               await updateSenior(editing.id, draft);
-              toast.success(`${draft.name}'s record was updated.`);
+              toast.success(isLeader ? "Update request sent to the Head for approval." : `${draft.name}'s record was updated.`);
             } else {
               await createSenior(draft);
               toast.success(`${draft.name} was registered and is pending review.`);

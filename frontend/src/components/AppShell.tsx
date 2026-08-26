@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
+import { API_URL, getMessages, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -50,6 +50,7 @@ export function AppShell({
   const [profileOpen, setProfileOpen] = useState(false);
   const [user, setUser] = useState<ApiUser | null>(getStoredUser());
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   useEffect(() => {
     const handleUserUpdated = (event: Event) => {
       setUser((event as CustomEvent<ApiUser>).detail);
@@ -57,6 +58,27 @@ export function AppShell({
     window.addEventListener("bulan-user-updated", handleUserUpdated);
     return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
   }, []);
+  useEffect(() => {
+    const updateUnreadMessageCount = () => {
+      if (!user?.id) {
+        setUnreadMessageCount(0);
+        return;
+      }
+      getMessages()
+        .then((messages) => {
+          const senders = new Set(
+            messages
+              .filter((message) => message.recipient.id === user.id && !message.read_at)
+              .map((message) => message.sender.id),
+          );
+          setUnreadMessageCount(senders.size);
+        })
+        .catch(() => setUnreadMessageCount(0));
+    };
+    updateUnreadMessageCount();
+    const refreshTimer = window.setInterval(updateUnreadMessageCount, 15000);
+    return () => window.clearInterval(refreshTimer);
+  }, [user?.id]);
   useEffect(() => {
     const updateUnreadCount = () => {
       getServerNotifications()
@@ -102,6 +124,7 @@ export function AppShell({
             {NAV.filter(({ to }) =>
               (to !== "/users" || user?.role === "admin") &&
               (to !== "/eligibility" || !["leader", "head"].includes(user?.role ?? "")) &&
+              (to !== "/reports" || user?.role !== "leader") &&
               (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
             ).map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
@@ -161,6 +184,11 @@ export function AppShell({
                 className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
               >
                 <Mail className="h-5 w-5" />
+                {unreadMessageCount > 0 && (
+                  <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => navigate({ to: "/notifications" })}
@@ -169,7 +197,9 @@ export function AppShell({
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-2.5 right-3 h-2 w-2 rounded-full bg-coral" />
+                  <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
                 )}
               </button>
               <button
