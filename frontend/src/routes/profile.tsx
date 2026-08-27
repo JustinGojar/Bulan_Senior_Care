@@ -117,7 +117,7 @@ function ProfilePage() {
   return (
     <AppShell title="My Profile" subtitle="Manage your account details and security" breadcrumb={["Dashboard", "My Profile"]}>
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <section className="surface-card p-7">
+        <section className="surface-card flex min-h-[640px] flex-col p-7">
           <div className="flex flex-col items-center text-center">
             <div className="relative grid h-28 w-28 overflow-hidden place-items-center rounded-full bg-navy text-2xl font-bold text-primary-foreground ring-4 ring-gold/50">
               {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin")) event.currentTarget.src = oscaAdminImage; }} /> : initials}
@@ -128,7 +128,7 @@ function ProfilePage() {
             <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
             <span className="mt-4 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase">{user?.role ?? "user"}</span>
           </div>
-          <button onClick={signOut} className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-destructive/10 py-3 text-sm font-bold text-destructive"><LogOut className="h-4 w-4" /> Log out</button>
+          <button onClick={signOut} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-destructive/10 py-3 text-sm font-bold text-destructive"><LogOut className="h-4 w-4" /> Log out</button>
         </section>
 
         <div className="space-y-6">
