@@ -17,6 +17,7 @@ class SeniorEditRequestController extends Controller
 
         return response()->json(SeniorEditRequest::with([
             'senior.barangay',
+            'senior.benefits',
             'requester:id,name,role',
         ])->where('status', 'pending')->latest()->get());
     }
@@ -31,6 +32,7 @@ class SeniorEditRequestController extends Controller
             'changes.middle_name' => ['nullable', 'string', 'max:100'],
             'changes.last_name' => ['required', 'string', 'max:100'],
             'changes.birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
+            'changes.address' => ['nullable', 'string'],
             'changes.contact_number' => ['nullable', 'string', 'max:30'],
             'changes.barangay' => ['required', 'string', 'exists:barangays,barangay_name'],
             'changes.benefit' => ['required', 'string', 'max:100'],
@@ -64,22 +66,25 @@ class SeniorEditRequestController extends Controller
             'status' => ['required', 'in:approved,declined'],
             'remarks' => ['nullable', 'string', 'max:500'],
         ]);
+        $senior = $seniorEditRequest->senior;
 
-        DB::transaction(function () use ($seniorEditRequest, $request, $data): void {
+        DB::transaction(function () use ($seniorEditRequest, $senior, $request, $data): void {
             if ($data['status'] === 'approved') {
+                abort_if(! $senior, 422, 'This senior record no longer exists and cannot be approved.');
                 $changes = $seniorEditRequest->changes;
-                $seniorEditRequest->senior->update([
+                $senior->update([
                     'first_name' => $changes['first_name'],
                     'middle_name' => $changes['middle_name'] ?? null,
                     'last_name' => $changes['last_name'],
                     'birthdate' => $changes['birthdate'],
+                    'address' => $changes['address'] ?? null,
                     'contact_number' => $changes['contact_number'] ?? null,
                 ]);
-                $seniorEditRequest->senior->update([
+                $senior->update([
                     'barangay_id' => \App\Models\Barangay::where('barangay_name', $changes['barangay'])->value('id'),
                 ]);
                 $benefit = Benefit::where('benefit_name', $changes['benefit'])->where('status', 'active')->firstOrFail();
-                $seniorEditRequest->senior->benefits()->wherePivot('status', 'pending')->syncWithoutDetaching([
+                $senior->benefits()->wherePivot('status', 'pending')->syncWithoutDetaching([
                     $benefit->id => [
                         'distributed_by' => $request->user()->id,
                         'amount' => $benefit->amount ?? 0,

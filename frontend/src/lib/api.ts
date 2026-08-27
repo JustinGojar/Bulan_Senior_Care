@@ -35,6 +35,7 @@ export type ApiSenior = {
   last_name: string;
   middle_name?: string | null;
   birthdate: string;
+  address?: string | null;
   contact_number?: string | null;
   photo_path?: string | null;
   id_document_path?: string | null;
@@ -67,6 +68,7 @@ export type BenefitTransaction = {
     first_name: string;
     middle_name?: string | null;
     last_name: string;
+    address?: string | null;
     barangay?: { barangay_name: string } | null;
     encoder?: { name: string; role: string } | null;
   };
@@ -82,6 +84,7 @@ export type SeniorEditRequest = {
     middle_name?: string | null;
     last_name: string;
     birthdate: string;
+    address?: string | null;
     contact_number?: string | null;
     barangay: string;
     benefit: string;

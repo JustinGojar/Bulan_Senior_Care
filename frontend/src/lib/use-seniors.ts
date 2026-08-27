@@ -25,8 +25,10 @@ function mapSenior(senior: ApiSenior): Senior {
   return {
     id: senior.osca_id_number,
     name: [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" "),
+    birthdate: String(senior.birthdate).slice(0, 10),
     age,
     barangay: senior.barangay?.barangay_name ?? "Unassigned",
+    address: senior.address ?? "",
     contact: senior.contact_number ?? "Not provided",
     benefit: senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
     status: senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
@@ -50,16 +52,20 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
       : "/seniors";
 
   useEffect(() => {
-    Promise.all([
+    Promise.allSettled([
       apiFetch<{ data: ApiSenior[]; meta?: { total?: number } }>(listPath),
       apiFetch<{ data: ApiSenior[]; meta?: { total?: number } }>("/seniors?status=active"),
       apiFetch<{ data: ApiSenior[]; meta?: { total?: number } }>("/seniors?pending_only=1"),
     ])
       .then(([result, activeResult, pendingResult]) => {
-        setSeniors(result.data.map(mapSenior));
-        setTotalCount(result.meta?.total ?? result.data.length);
-        setActiveCount(activeResult.meta?.total ?? activeResult.data.length);
-        setPendingCount(pendingResult.meta?.total ?? pendingResult.data.length);
+        if (result.status === "rejected") throw result.reason;
+        const seniorData = result.value;
+        const activeData = activeResult.status === "fulfilled" ? activeResult.value : null;
+        const pendingData = pendingResult.status === "fulfilled" ? pendingResult.value : null;
+        setSeniors(seniorData.data.map(mapSenior));
+        setTotalCount(seniorData.meta?.total ?? seniorData.data.length);
+        setActiveCount(activeData?.meta?.total ?? activeData?.data.length ?? 0);
+        setPendingCount(pendingData?.meta?.total ?? pendingData?.data.length ?? 0);
       })
       .catch((reason: Error) => {
         setError(reason.message);
@@ -69,14 +75,11 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
   }, [listPath]);
 
   const createSenior = useCallback(async (draft: SeniorDraft) => {
-    const age = Math.max(60, draft.age);
-    const birthdate = new Date();
-    birthdate.setFullYear(birthdate.getFullYear() - age);
     const body = new FormData();
     body.append("first_name", draft.firstName?.trim() ?? draft.name.trim());
     body.append("last_name", draft.lastName?.trim() ?? draft.name.trim());
     if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
-    body.append("birthdate", birthdate.toISOString().slice(0, 10));
+    body.append("birthdate", draft.birthdate ?? "");
     body.append("sex", "female");
     body.append("contact_number", draft.contact);
     body.append("status", "pending");
@@ -96,14 +99,13 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
   }, [excludePending]);
 
   const updateSenior = useCallback(async (id: string, draft: SeniorDraft) => {
-    const birthdate = new Date();
-    birthdate.setFullYear(birthdate.getFullYear() - Math.max(60, draft.age));
     if (getStoredUser()?.role === "leader") {
       await submitSeniorEditRequest(id, {
         first_name: draft.firstName?.trim() ?? draft.name.trim(),
         middle_name: draft.middleName?.trim() || null,
         last_name: draft.lastName?.trim() ?? draft.name.trim(),
-        birthdate: birthdate.toISOString().slice(0, 10),
+        birthdate: draft.birthdate ?? "",
+        address: draft.address.trim(),
         contact_number: draft.contact.trim() || null,
         barangay: draft.barangay,
         benefit: draft.benefit,
@@ -116,7 +118,8 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
         first_name: draft.firstName?.trim(),
         middle_name: draft.middleName?.trim() || null,
         last_name: draft.lastName?.trim(),
-        birthdate: birthdate.toISOString().slice(0, 10),
+        birthdate: draft.birthdate ?? "",
+        address: draft.address.trim(),
         contact_number: draft.contact.trim(),
         barangay: draft.barangay,
         benefit: draft.benefit,

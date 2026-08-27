@@ -62,7 +62,6 @@ function Dashboard() {
   const eligibilityFlags = findNewEligibilityFlags(
     seniors.filter((senior) => senior.status !== "Pending"),
   );
-
   useEffect(() => {
     getAnnouncements().then((loadedAnnouncements) => {
       setAnnouncements(loadedAnnouncements);
@@ -319,42 +318,44 @@ function Dashboard() {
         </section>
       </div>
 
-      <section className="surface-card mt-6 p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Age Threshold Detection</h2>
-              <p className="text-sm text-muted-foreground">
-                Derived eligibility surfaced from current senior ages.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
-            {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
-          </span>
-        </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
-            <div key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold">{senior.name}</p>
-                <span className="shrink-0 text-xs font-bold text-gold-foreground">
-                  Age {senior.age}
-                </span>
+      {currentUser?.role !== "leader" && (
+        <section className="surface-card mt-6 p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
+                <AlertTriangle className="h-4 w-4" />
               </div>
-              <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+              <div>
+                <h2 className="text-lg font-bold">Age Threshold Detection</h2>
+                <p className="text-sm text-muted-foreground">
+                  Derived eligibility surfaced from current senior ages.
+                </p>
+              </div>
             </div>
-          ))}
-          {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
-          {!loading && eligibilityFlags.length === 0 && (
-            <p className="text-sm text-muted-foreground">No age threshold flags.</p>
-          )}
-        </div>
-      </section>
+            <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
+              {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
+            </span>
+          </div>
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
+              <div key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-bold">{senior.name}</p>
+                  <span className="shrink-0 text-xs font-bold text-gold-foreground">
+                    Age {senior.age}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+              </div>
+            ))}
+            {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
+            {!loading && eligibilityFlags.length === 0 && (
+              <p className="text-sm text-muted-foreground">No age threshold flags.</p>
+            )}
+          </div>
+        </section>
+      )}
 
       {showAnnouncementForm && currentUser?.role === "head" && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 px-4">

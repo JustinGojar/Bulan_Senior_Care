@@ -1,8 +1,10 @@
 export type Senior = {
   id: string;
   name: string;
+  birthdate?: string;
   age: number;
   barangay: string;
+  address: string;
   contact: string;
   benefit: string;
   status: "Active" | "Pending" | "Inactive";
@@ -89,18 +91,19 @@ export type EligibilityFlag = {
 };
 
 export function findNewEligibilityFlags(seniors: Senior[]): EligibilityFlag[] {
-  return seniors.flatMap((senior) =>
-    BENEFIT_PROGRAMS.filter(
+  return seniors.flatMap((senior) => {
+    const program = BENEFIT_PROGRAMS.find(
       (program) =>
         senior.age >= program.minAge &&
         (program.maxAge === undefined || senior.age <= program.maxAge) &&
         program.type !== "social_pension",
-    ).map((program) => ({
+    );
+    return program ? [{
       senior,
       program,
       reason: `${senior.name} is ${senior.age}, within the ${program.name} age bracket.`,
-    })),
-  );
+    }] : [];
+  });
 }
 
 export const BARANGAYS = [
@@ -209,6 +212,7 @@ export const SENIORS: Senior[] = names.map((name, i) => {
     name,
     age,
     barangay: BARANGAYS[i % BARANGAYS.length] ?? BARANGAYS[0]!,
+    address: "",
     contact: `09${17 + (i % 8)}-${String(100 + i * 7).slice(0, 3)}-${String(4000 + i * 131).slice(0, 4)}`,
     benefit: benefitFor(age, i),
     status,

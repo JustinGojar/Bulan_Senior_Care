@@ -86,6 +86,23 @@ function parseCsvRow(row: string) {
   return values;
 }
 
+function changedFields(request: SeniorEditRequest) {
+  const changes = request.changes;
+  const senior = request.senior;
+  const currentName = senior ? [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" ") : "";
+  const nextName = [changes.first_name, changes.middle_name, changes.last_name].filter(Boolean).join(" ");
+  const currentAge = senior?.birthdate ? new Date().getFullYear() - Number(String(senior.birthdate).slice(0, 4)) : null;
+  const nextAge = changes.birthdate ? new Date().getFullYear() - Number(changes.birthdate.slice(0, 4)) : null;
+  const fields: Array<[string, string | number, string | number]> = [];
+  if (senior && currentName !== nextName) fields.push(["Name", currentName, nextName]);
+  if (senior && currentAge !== nextAge) fields.push(["Age", currentAge ?? "None", nextAge ?? "None"]);
+  if (senior && (senior.contact_number ?? "") !== (changes.contact_number ?? "")) fields.push(["Contact", senior.contact_number || "None", changes.contact_number || "None"]);
+  if (senior && senior.barangay?.barangay_name !== changes.barangay) fields.push(["Barangay", senior.barangay?.barangay_name || "None", changes.barangay]);
+  if (senior && senior.benefits?.[0]?.benefit_name !== changes.benefit) fields.push(["Benefit", senior.benefits[0]?.benefit_name || "None", changes.benefit]);
+  if (senior && (senior.address ?? "") !== (changes.address ?? "")) fields.push(["Address", senior.address || "None", changes.address || "None"]);
+  return fields;
+}
+
 function SeniorRecords() {
   const { seniors, totalCount, activeCount, pendingCount, createSenior, updateSenior, deleteSenior } = useSeniors();
   const currentUser = getStoredUser();
@@ -103,6 +120,7 @@ function SeniorRecords() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [reviewingRequestId, setReviewingRequestId] = useState<number | null>(null);
   const bulkFileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -110,12 +128,15 @@ function SeniorRecords() {
   }, [isHead]);
 
   async function reviewEditRequest(request: SeniorEditRequest, status: "approved" | "declined") {
+    setReviewingRequestId(request.id);
     try {
       await reviewSeniorEditRequest(request.id, status);
       setEditRequests((current) => current.filter((item) => item.id !== request.id));
       toast.success(status === "approved" ? "Senior record update approved." : "Senior record update declined.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to review edit request.");
+    } finally {
+      setReviewingRequestId(null);
     }
   }
 
@@ -269,7 +290,7 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-3">
-          {isLeader && (
+          {(isLeader || isAdmin) && (
                 <>
                   <button
                     onClick={() => bulkFileInput.current?.click()}
@@ -357,13 +378,18 @@ function SeniorRecords() {
             {editRequests.map((request) => (
               <div key={request.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
                 <div className="text-sm">
-                  <p className="font-bold">{request.changes.first_name} {request.changes.middle_name} {request.changes.last_name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{request.senior.osca_id_number} · Requested by {request.requester.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Age {new Date().getFullYear() - Number(request.changes.birthdate.slice(0, 4))} · {request.changes.contact_number || "No contact"} · {request.changes.benefit}</p>
+                  <p className="font-bold">{request.senior ? [request.senior.first_name, request.senior.middle_name, request.senior.last_name].filter(Boolean).join(" ") : [request.changes?.first_name, request.changes?.middle_name, request.changes?.last_name].filter(Boolean).join(" ") || "Senior record"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{request.senior?.osca_id_number ?? "Senior record"} · Requested by {request.requester?.name ?? "Unknown user"}</p>
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {changedFields(request).map(([field, current, next]) => (
+                      <p key={field}><span className="font-semibold text-foreground">{field}:</span> {current} to {next}</p>
+                    ))}
+                    {changedFields(request).length === 0 && <p>No changed values found.</p>}
+                  </div>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => reviewEditRequest(request, "declined")} className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive">Decline</button>
-                  <button type="button" onClick={() => reviewEditRequest(request, "approved")} className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground">Approve</button>
+                  <button type="button" disabled={reviewingRequestId === request.id} onClick={() => reviewEditRequest(request, "declined")} className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive disabled:opacity-50">{reviewingRequestId === request.id ? "Saving..." : "Decline"}</button>
+                  <button type="button" disabled={reviewingRequestId === request.id} onClick={() => reviewEditRequest(request, "approved")} className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{reviewingRequestId === request.id ? "Saving..." : "Approve"}</button>
                 </div>
               </div>
             ))}
@@ -512,7 +538,6 @@ function SeniorRecords() {
           senior={editing}
           isLeader={isLeader}
           leaderBarangay={isLeader ? BARANGAYS[(currentUser?.barangay_id ?? 0) - 1] : undefined}
-          isLeader={isLeader}
           onSubmit={async (draft) => {
             if (editing) {
               await updateSenior(editing.id, draft);

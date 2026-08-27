@@ -16,12 +16,12 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::get('/overview', OverviewController::class);
 Route::get('/announcements', [AnnouncementController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/overview', OverviewController::class);
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/barangays', [AuthController::class, 'barangays']);

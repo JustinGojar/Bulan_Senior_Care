@@ -16,6 +16,7 @@ function ProfilePage() {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [contact, setContact] = useState(user?.contact_number ?? "");
+  const [assignedBarangay, setAssignedBarangay] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -31,6 +32,13 @@ function ProfilePage() {
       setEmail(freshUser.email);
       setContact(freshUser.contact_number ?? "");
       setStoredUser(freshUser);
+      if (freshUser.role === "leader" && freshUser.barangay_id) {
+        apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+          .then((barangays) => setAssignedBarangay(
+            barangays.find((barangay) => barangay.id === freshUser.barangay_id)?.barangay_name ?? "",
+          ))
+          .catch(() => setAssignedBarangay(""));
+      }
     }).catch((error: Error) => {
       if (error.message.includes("session has expired")) {
         toast.error(error.message);
@@ -130,6 +138,12 @@ function ProfilePage() {
               <label className="text-sm font-semibold">Full name<input value={name} onChange={(event) => setName(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
               <label className="text-sm font-semibold">Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
               <label className="text-sm font-semibold sm:col-span-2">Contact number<input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="0917-123-4567" className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" /></label>
+              {user?.role === "leader" && (
+                <label className="text-sm font-semibold sm:col-span-2">
+                  Assigned barangay
+                  <input value={assignedBarangay || "Not assigned"} readOnly className="mt-2 h-12 w-full cursor-not-allowed rounded-xl bg-secondary px-4 text-muted-foreground outline-none" />
+                </label>
+              )}
             </div>
             {photo && <p className="mt-4 text-xs text-muted-foreground">Preview updated. Click Save profile to upload {photo.name}.</p>}
             <button type="submit" disabled={busy} className="bg-navy mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"><Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}</button>

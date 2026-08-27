@@ -28,11 +28,13 @@ const BENEFITS = [
 
 const EMPTY: SeniorDraft = {
   name: "",
+  birthdate: "",
   firstName: "",
   middleName: "",
   lastName: "",
   age: 60,
   barangay: BARANGAYS[0]!,
+  address: "",
   contact: "",
   benefit: "Social Pension",
   status: "Pending",
@@ -43,6 +45,15 @@ function benefitForAge(age: number) {
   if (age >= 90) return "Nonagenarian Grant";
   if (age >= 80) return "Octogenarian Grant";
   return "Social Pension";
+}
+
+function ageFromBirthdate(birthdate: string) {
+  const date = new Date(`${birthdate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return 0;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  if (today.getMonth() < date.getMonth() || (today.getMonth() === date.getMonth() && today.getDate() < date.getDate())) age -= 1;
+  return age;
 }
 
 export function SeniorFormDialog({
@@ -72,16 +83,18 @@ export function SeniorFormDialog({
       senior
         ? {
             name: senior.name,
+            birthdate: senior.birthdate ?? "",
             firstName: senior.name.split(" ")[0] ?? "",
             middleName: senior.name.split(" ").slice(1, -1).join(" "),
             lastName: senior.name.split(" ").at(-1) ?? "",
             age: senior.age,
             barangay: senior.barangay,
+            address: senior.address,
             contact: senior.contact,
             benefit: senior.benefit,
             status: senior.status,
           }
-          : { ...EMPTY, ...(leaderBarangay ? { barangay: leaderBarangay } : {}) },
+          : EMPTY,
     );
         }, [open, senior, leaderBarangay]);
 
@@ -93,6 +106,7 @@ export function SeniorFormDialog({
     if (!draft.lastName?.trim()) return setError("Last name is required.");
     if (draft.age < 60 || draft.age > 130)
       return setError("Age must be 60 or older to qualify for OSCA benefits.");
+    if (!draft.birthdate) return setError("Birthday is required.");
     if (!draft.contact.trim()) return setError("Contact number is required.");
     onSubmit({
       ...draft,
@@ -164,6 +178,21 @@ export function SeniorFormDialog({
               onChange={(e) => {
                 const age = Number(e.target.value);
                 setDraft((d) => ({ ...d, age, benefit: benefitForAge(age) }));
+              }}
+              className="mt-1.5"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="senior-birthdate">Birthday</Label>
+            <Input
+              id="senior-birthdate"
+              type="date"
+              value={draft.birthdate ?? ""}
+              onChange={(e) => {
+                const birthdate = e.target.value;
+                const age = ageFromBirthdate(birthdate);
+                setDraft((d) => ({ ...d, birthdate, age, benefit: benefitForAge(age) }));
               }}
               className="mt-1.5"
             />

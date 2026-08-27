@@ -76,9 +76,6 @@ class SeniorCitizenController extends Controller
             ]);
             $data['barangay_id'] = $barangay->id;
         }
-        if ($request->user()->role === 'leader') {
-            $data['barangay_id'] = $request->user()->barangay_id;
-        }
         abort_if(! $data['barangay_id'], 422, 'A barangay is required.');
         $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
         abort_if($duplicate, 422, 'A senior with the same name and birthdate already exists.');
@@ -118,8 +115,9 @@ class SeniorCitizenController extends Controller
         abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
         $this->authorizeScope($request, $senior);
         $data = $request->validate($this->rules(true));
-        if ($request->user()->role === 'leader') {
-            $data['barangay_id'] = $senior->barangay_id;
+        if (array_key_exists('barangay', $data)) {
+            $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
+            unset($data['barangay']);
         }
         $senior->update($data);
 

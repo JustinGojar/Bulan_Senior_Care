@@ -16,6 +16,7 @@ class BenefitTransactionController extends Controller
             'benefit:id,benefit_name,amount',
             'distributor:id,name,role',
         ])->latest();
+        $query->whereHas('senior')->whereHas('benefit');
 
         if ($request->user()->role === 'leader') {
             $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $request->user()->barangay_id));
