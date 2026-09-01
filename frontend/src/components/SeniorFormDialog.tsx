@@ -28,11 +28,13 @@ const BENEFITS = [
 
 const EMPTY: SeniorDraft = {
   name: "",
+  birthdate: "",
   firstName: "",
   middleName: "",
   lastName: "",
   age: 60,
   barangay: BARANGAYS[0]!,
+  address: "",
   contact: "",
   benefit: "Social Pension",
   status: "Pending",
@@ -45,16 +47,27 @@ function benefitForAge(age: number) {
   return "Social Pension";
 }
 
+function ageFromBirthdate(birthdate: string) {
+  const date = new Date(`${birthdate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return 0;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  if (today.getMonth() < date.getMonth() || (today.getMonth() === date.getMonth() && today.getDate() < date.getDate())) age -= 1;
+  return age;
+}
+
 export function SeniorFormDialog({
   open,
   onOpenChange,
   senior,
+  isLeader,
   leaderBarangay,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   senior?: Senior | null;
+  isLeader?: boolean;
   leaderBarangay?: string;
   onSubmit: (draft: SeniorDraft) => void;
 }) {
@@ -70,16 +83,18 @@ export function SeniorFormDialog({
       senior
         ? {
             name: senior.name,
+            birthdate: senior.birthdate ?? "",
             firstName: senior.name.split(" ")[0] ?? "",
             middleName: senior.name.split(" ").slice(1, -1).join(" "),
             lastName: senior.name.split(" ").at(-1) ?? "",
             age: senior.age,
             barangay: senior.barangay,
+            address: senior.address,
             contact: senior.contact,
             benefit: senior.benefit,
             status: senior.status,
           }
-          : { ...EMPTY, ...(leaderBarangay ? { barangay: leaderBarangay } : {}) },
+          : EMPTY,
     );
         }, [open, senior, leaderBarangay]);
 
@@ -91,6 +106,7 @@ export function SeniorFormDialog({
     if (!draft.lastName?.trim()) return setError("Last name is required.");
     if (draft.age < 60 || draft.age > 130)
       return setError("Age must be 60 or older to qualify for OSCA benefits.");
+    if (!draft.birthdate) return setError("Birthday is required.");
     if (!draft.contact.trim()) return setError("Contact number is required.");
     onSubmit({
       ...draft,
@@ -168,6 +184,21 @@ export function SeniorFormDialog({
           </div>
 
           <div>
+            <Label htmlFor="senior-birthdate">Birthday</Label>
+            <Input
+              id="senior-birthdate"
+              type="date"
+              value={draft.birthdate ?? ""}
+              onChange={(e) => {
+                const birthdate = e.target.value;
+                const age = ageFromBirthdate(birthdate);
+                setDraft((d) => ({ ...d, birthdate, age, benefit: benefitForAge(age) }));
+              }}
+              className="mt-1.5"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="senior-contact">Contact number</Label>
             <Input
               id="senior-contact"
@@ -180,24 +211,21 @@ export function SeniorFormDialog({
 
           <div>
             <Label>Barangay</Label>
-            {leaderBarangay ? (
-              <div className="mt-1.5 flex h-10 items-center rounded-md border border-border bg-muted px-3 text-sm">
-                {leaderBarangay}
-              </div>
-            ) : (
-              <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BARANGAYS.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BARANGAYS.map((barangay) => (
+                  <SelectItem
+                    key={barangay}
+                    value={barangay}
+                  >
+                    {barangay}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -228,7 +256,7 @@ export function SeniorFormDialog({
             <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, or PNG up to 5 MB.</p>
           </div>
 
-          {senior && (
+          {senior && !isLeader && (
             <div className="sm:col-span-2">
               <Label>Eligibility status</Label>
               <Select

@@ -13,7 +13,7 @@ class SeniorCitizenController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = SeniorCitizen::with(['barangay', 'benefits']);
+        $query = SeniorCitizen::with(['barangay', 'benefits', 'encoder:id,name,role']);
         if ($request->user()->role === 'leader') {
             $query->where('barangay_id', $request->user()->barangay_id);
         }
@@ -49,6 +49,15 @@ class SeniorCitizenController extends Controller
         return response()->json($senior->fresh()->load(['barangay', 'benefits']));
     }
 
+    public function archiveRecord(Request $request, SeniorCitizen $senior): JsonResponse
+    {
+        abort_if($request->user()->role === 'admin', 403, 'Admin accounts should use permanent delete.');
+        $this->authorizeScope($request, $senior);
+        $senior->delete();
+
+        return response()->json(status: 204);
+    }
+
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
@@ -66,9 +75,6 @@ class SeniorCitizenController extends Controller
                 'barangay_name' => $request->string('barangay'),
             ]);
             $data['barangay_id'] = $barangay->id;
-        }
-        if ($request->user()->role === 'leader') {
-            $data['barangay_id'] = $request->user()->barangay_id;
         }
         abort_if(! $data['barangay_id'], 422, 'A barangay is required.');
         $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
@@ -106,10 +112,12 @@ class SeniorCitizenController extends Controller
 
     public function update(Request $request, SeniorCitizen $senior): JsonResponse
     {
+        abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
         $this->authorizeScope($request, $senior);
         $data = $request->validate($this->rules(true));
-        if ($request->user()->role === 'leader') {
-            $data['barangay_id'] = $senior->barangay_id;
+        if (array_key_exists('barangay', $data)) {
+            $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
+            unset($data['barangay']);
         }
         $senior->update($data);
 

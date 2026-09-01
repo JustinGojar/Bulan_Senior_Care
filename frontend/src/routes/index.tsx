@@ -12,7 +12,6 @@ import {
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { apiFetch } from "@/lib/api";
-import { STATS } from "@/lib/osca-data";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -163,8 +162,8 @@ function Landing() {
             </div>
             <div className="mt-9 flex flex-wrap gap-7 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-2">
-                <Users className="h-4 w-4" /> {STATS.totalRegistered.toLocaleString()}+ seniors
-                served
+                <Users className="h-4 w-4" /> {overview ? `${overview.total_registered.toLocaleString()}+` : "..."} seniors
+                registered
               </span>
               <span className="inline-flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" /> Role-based secured

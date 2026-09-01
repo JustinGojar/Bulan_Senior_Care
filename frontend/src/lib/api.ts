@@ -1,4 +1,4 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8001/api").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
 
@@ -35,12 +35,62 @@ export type ApiSenior = {
   last_name: string;
   middle_name?: string | null;
   birthdate: string;
+  address?: string | null;
   contact_number?: string | null;
   photo_path?: string | null;
   id_document_path?: string | null;
   status: "active" | "pending" | "inactive";
   barangay?: { barangay_name: string } | null;
-  benefits?: Array<{ benefit_name: string }>;
+  benefits?: Array<{ benefit_name: string; pivot?: { status: string; amount: string; date_distributed?: string | null } }>;
+  encoder?: { id: number; name: string; role: string } | null;
+};
+
+export type Overview = {
+  total_registered: number;
+  active_seniors: number;
+  pending_applications: number;
+  benefits_distributed_amount: number;
+  benefits_distributed_count: number;
+  benefits_pending_count: number;
+  benefits_failed_count: number;
+  distribution_percentage: number;
+  received_by_benefit: Array<{ benefit: string; age_range: string; received_count: number }>;
+};
+
+export type BenefitTransaction = {
+  id: number;
+  amount: string;
+  status: "pending" | "released" | "failed";
+  period_label?: string | null;
+  date_distributed?: string | null;
+  senior: {
+    osca_id_number: string;
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    address?: string | null;
+    barangay?: { barangay_name: string } | null;
+    encoder?: { name: string; role: string } | null;
+  };
+  benefit: { benefit_name: string; amount?: string | null };
+  distributor?: { name: string; role: string } | null;
+};
+
+export type SeniorEditRequest = {
+  id: number;
+  status: "pending" | "approved" | "declined";
+  changes: {
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    birthdate: string;
+    address?: string | null;
+    contact_number?: string | null;
+    barangay: string;
+    benefit: string;
+  };
+  senior: ApiSenior & { barangay?: { barangay_name: string } | null };
+  requester: { id: number; name: string; role: string };
 };
 
 export type ArchivedSenior = Pick<ApiSenior, "osca_id_number" | "first_name" | "last_name"> & {
@@ -134,7 +184,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
     throw new Error(
-      `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve --port=8001" in the backend folder.`,
+      `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve" in the backend folder.`,
     );
   }
   const body = (await response.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | T | null;
@@ -276,6 +326,24 @@ export function createAnnouncementComment(announcementId: number, message: strin
 
 export function getMessages() {
   return apiFetch<Message[]>("/messages");
+}
+
+export function getSeniorEditRequests() {
+  return apiFetch<SeniorEditRequest[]>("/senior-edit-requests");
+}
+
+export function submitSeniorEditRequest(seniorId: string, changes: SeniorEditRequest["changes"]) {
+  return apiFetch<SeniorEditRequest>("/senior-edit-requests", {
+    method: "POST",
+    body: JSON.stringify({ senior_id: seniorId, changes }),
+  });
+}
+
+export function reviewSeniorEditRequest(id: number, status: "approved" | "declined") {
+  return apiFetch<SeniorEditRequest>(`/senior-edit-requests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function getMessageRecipients(search: string) {

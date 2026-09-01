@@ -16,6 +16,7 @@ function ProfilePage() {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [contact, setContact] = useState(user?.contact_number ?? "");
+  const [assignedBarangay, setAssignedBarangay] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -31,6 +32,13 @@ function ProfilePage() {
       setEmail(freshUser.email);
       setContact(freshUser.contact_number ?? "");
       setStoredUser(freshUser);
+      if (freshUser.role === "leader" && freshUser.barangay_id) {
+        apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+          .then((barangays) => setAssignedBarangay(
+            barangays.find((barangay) => barangay.id === freshUser.barangay_id)?.barangay_name ?? "",
+          ))
+          .catch(() => setAssignedBarangay(""));
+      }
     }).catch((error: Error) => {
       if (error.message.includes("session has expired")) {
         toast.error(error.message);
@@ -109,7 +117,7 @@ function ProfilePage() {
   return (
     <AppShell title="My Profile" subtitle="Manage your account details and security" breadcrumb={["Dashboard", "My Profile"]}>
       <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <section className="surface-card p-7">
+        <section className="surface-card flex min-h-[640px] flex-col p-7">
           <div className="flex flex-col items-center text-center">
             <div className="relative grid h-28 w-28 overflow-hidden place-items-center rounded-full bg-navy text-2xl font-bold text-primary-foreground ring-4 ring-gold/50">
               {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin")) event.currentTarget.src = oscaAdminImage; }} /> : initials}
@@ -120,7 +128,7 @@ function ProfilePage() {
             <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
             <span className="mt-4 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase">{user?.role ?? "user"}</span>
           </div>
-          <button onClick={signOut} className="mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-destructive/10 py-3 text-sm font-bold text-destructive"><LogOut className="h-4 w-4" /> Log out</button>
+          <button onClick={signOut} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-destructive/10 py-3 text-sm font-bold text-destructive"><LogOut className="h-4 w-4" /> Log out</button>
         </section>
 
         <div className="space-y-6">
@@ -130,6 +138,12 @@ function ProfilePage() {
               <label className="text-sm font-semibold">Full name<input value={name} onChange={(event) => setName(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
               <label className="text-sm font-semibold">Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
               <label className="text-sm font-semibold sm:col-span-2">Contact number<input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="0917-123-4567" className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" /></label>
+              {user?.role === "leader" && (
+                <label className="text-sm font-semibold sm:col-span-2">
+                  Assigned barangay
+                  <input value={assignedBarangay || "Not assigned"} readOnly className="mt-2 h-12 w-full cursor-not-allowed rounded-xl bg-secondary px-4 text-muted-foreground outline-none" />
+                </label>
+              )}
             </div>
             {photo && <p className="mt-4 text-xs text-muted-foreground">Preview updated. Click Save profile to upload {photo.name}.</p>}
             <button type="submit" disabled={busy} className="bg-navy mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"><Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}</button>

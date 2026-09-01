@@ -3,12 +3,14 @@ import { AlertTriangle, Clock, CornerUpLeft, ImagePlus, Megaphone, ShieldCheck, 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
+  apiFetch,
   createAnnouncement,
   createAnnouncementComment,
   getAnnouncements,
   getStoredUser,
   type Announcement,
   type AnnouncementComment,
+  type Overview,
 } from "@/lib/api";
 import { findNewEligibilityFlags } from "@/lib/osca-data";
 import { useSeniors } from "@/lib/use-seniors";
@@ -55,11 +57,11 @@ function Dashboard() {
   const [announcementImage, setAnnouncementImage] = useState<File | null>(null);
   const [announcementImagePreview, setAnnouncementImagePreview] = useState<string | null>(null);
   const [announcementError, setAnnouncementError] = useState<string | null>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const eligibilityFlags = findNewEligibilityFlags(
     seniors.filter((senior) => senior.status !== "Pending"),
   );
-
   useEffect(() => {
     getAnnouncements().then((loadedAnnouncements) => {
       setAnnouncements(loadedAnnouncements);
@@ -69,6 +71,10 @@ function Dashboard() {
         : undefined;
       if (announcement) setSelectedAnnouncement(announcement);
     }).catch(() => setAnnouncements([]));
+  }, []);
+
+  useEffect(() => {
+    apiFetch<Overview>("/overview").then(setOverview).catch(() => setOverview(null));
   }, []);
 
   useEffect(() => {
@@ -168,8 +174,8 @@ function Dashboard() {
           <p className="mt-6 text-sm font-semibold text-muted-foreground">
             Total Benefits Distributed
           </p>
-          <p className="font-display text-4xl font-extrabold">{loading ? "..." : "0"}</p>
-          <p className="mt-4 text-xs text-muted-foreground">No distribution data available</p>
+          <p className="font-display text-4xl font-extrabold">{overview ? overview.benefits_distributed_count.toLocaleString() : "..."}</p>
+          <p className="mt-4 text-xs text-muted-foreground">Released benefit transactions</p>
         </article>
 
         <article className="surface-card p-6">
@@ -196,6 +202,32 @@ function Dashboard() {
       </div>
 
       <div className={currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"}>
+        {currentUser?.role === "head" && (
+          <section className="surface-card p-7">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold">Benefits received by age</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Live count of seniors who received each age-based benefit.</p>
+              </div>
+              <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-bold text-success">
+                {overview?.distribution_percentage ?? 0}% released
+              </span>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {(overview?.received_by_benefit ?? []).map((item) => (
+                <div key={item.benefit} className="rounded-2xl bg-secondary p-4">
+                  <p className="text-sm font-bold">{item.benefit}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Age {item.age_range}</p>
+                  <p className="mt-3 text-2xl font-extrabold">{item.received_count}</p>
+                  <p className="text-xs text-muted-foreground">seniors received</p>
+                </div>
+              ))}
+              {overview && overview.received_by_benefit.length === 0 && (
+                <p className="text-sm text-muted-foreground">No released benefits yet.</p>
+              )}
+            </div>
+          </section>
+        )}
         <section className="surface-card flex h-[430px] flex-col overflow-hidden p-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -228,7 +260,7 @@ function Dashboard() {
               >
                 {announcement.image_path && (
                   <img
-                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8001"}/storage/${announcement.image_path}`}
+                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`}
                     alt=""
                     className="mb-3 max-h-96 w-full rounded-xl bg-card object-contain"
                   />
@@ -255,49 +287,75 @@ function Dashboard() {
               <h2 className="text-lg font-bold">Distribution Status</h2>
             </div>
             <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-              Q2 2026
+              Live
             </span>
           </div>
-          <p className="mt-7 text-sm text-muted-foreground">No distribution data available.</p>
+          <div className="mt-7 space-y-5">
+            {[
+              { label: "Received", value: overview?.benefits_distributed_count ?? 0, color: "bg-success", text: "text-success" },
+              { label: "Pending", value: overview?.benefits_pending_count ?? 0, color: "bg-gold", text: "text-gold-foreground" },
+              { label: "Not received", value: overview?.benefits_failed_count ?? 0, color: "bg-coral", text: "text-coral" },
+            ].map((item) => {
+              const total = (overview?.benefits_distributed_count ?? 0) + (overview?.benefits_pending_count ?? 0) + (overview?.benefits_failed_count ?? 0);
+              const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              return (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-semibold">{item.label}</span>
+                    <span className={`font-bold ${item.text}`}>{item.value}</span>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full bg-secondary">
+                    <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${percentage}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+            {!overview && <p className="text-sm text-muted-foreground">Loading distribution data...</p>}
+            {overview && (overview.benefits_distributed_count + overview.benefits_pending_count + overview.benefits_failed_count === 0) && (
+              <p className="text-sm text-muted-foreground">No benefit transactions recorded yet.</p>
+            )}
+          </div>
         </section>
       </div>
 
-      <section className="surface-card mt-6 p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">Age Threshold Detection</h2>
-              <p className="text-sm text-muted-foreground">
-                Derived eligibility surfaced from current senior ages.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
-            {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
-          </span>
-        </div>
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
-            <div key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold">{senior.name}</p>
-                <span className="shrink-0 text-xs font-bold text-gold-foreground">
-                  Age {senior.age}
-                </span>
+      {currentUser?.role !== "leader" && (
+        <section className="surface-card mt-6 p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
+                <AlertTriangle className="h-4 w-4" />
               </div>
-              <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+              <div>
+                <h2 className="text-lg font-bold">Age Threshold Detection</h2>
+                <p className="text-sm text-muted-foreground">
+                  Derived eligibility surfaced from current senior ages.
+                </p>
+              </div>
             </div>
-          ))}
-          {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
-          {!loading && eligibilityFlags.length === 0 && (
-            <p className="text-sm text-muted-foreground">No age threshold flags.</p>
-          )}
-        </div>
-      </section>
+            <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
+              {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
+            </span>
+          </div>
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
+              <div key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-bold">{senior.name}</p>
+                  <span className="shrink-0 text-xs font-bold text-gold-foreground">
+                    Age {senior.age}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+              </div>
+            ))}
+            {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
+            {!loading && eligibilityFlags.length === 0 && (
+              <p className="text-sm text-muted-foreground">No age threshold flags.</p>
+            )}
+          </div>
+        </section>
+      )}
 
       {showAnnouncementForm && currentUser?.role === "head" && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 px-4">
@@ -406,7 +464,7 @@ function Dashboard() {
             </div>
             {selectedAnnouncement.image_path && (
               <img
-                src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8001"}/storage/${selectedAnnouncement.image_path}`}
+                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`}
                 alt=""
                 className="max-h-[65vh] w-full object-contain"
               />

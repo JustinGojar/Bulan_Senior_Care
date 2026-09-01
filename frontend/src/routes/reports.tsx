@@ -3,7 +3,7 @@ import { CheckCircle2, Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { getStoredUser } from "@/lib/api";
+import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/reports")({
@@ -18,7 +18,6 @@ const REPORTS = [
 ];
 
 function Reports() {
-  const isHead = getStoredUser()?.role === "head";
   const { seniors, loading } = useSeniors();
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const summary = useMemo(() => ({
@@ -43,9 +42,11 @@ function Reports() {
     const document = new jsPDF();
     const generatedDate = new Date();
     const dateLabel = generatedDate.toLocaleDateString();
+    const logoDataUrl = await loadPdfLogo();
 
+    document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
     document.setFontSize(18);
-    document.text("Bulan SeniorCare", 14, 18);
+    document.text("Bulan SeniorCare", 32, 18);
     document.setFontSize(13);
     document.text("Municipal Senior Citizen Registry", 14, 28);
     document.setFontSize(9);
@@ -92,14 +93,14 @@ function Reports() {
       title="Reports"
       subtitle="Generate, approve, and publish OSCA reports"
       breadcrumb={["Dashboard", "Reports"]}
-      actions={!isHead ? (
+      actions={(
         <button
           onClick={generateReport}
           className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground print:hidden"
         >
           <FileText className="mr-2 inline h-4 w-4" /> Generate report
         </button>
-      ) : undefined}
+      )}
     >
       <section className="surface-card p-7 print:hidden">
         <div className="flex items-center gap-3">

@@ -14,7 +14,20 @@ function Notifications() {
   const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
 
   useEffect(() => {
-    getServerNotifications().then(setServerNotifications).catch(() => setServerNotifications([]));
+    getServerNotifications()
+      .then((notifications) => {
+        setServerNotifications(notifications);
+        const unread = notifications.filter((notification) => notification.status === "unread");
+        if (unread.length === 0) return;
+        return Promise.all(unread.map((notification) => markServerNotificationRead(notification.id)));
+      })
+      .then((updated) => {
+        if (!updated) return;
+        const updatedById = new Map(updated.map((notification) => [notification.id, notification]));
+        setServerNotifications((current) => current.map((notification) => updatedById.get(notification.id) ?? notification));
+        window.dispatchEvent(new Event("bulan-unread-updated"));
+      })
+      .catch(() => setServerNotifications([]));
   }, []);
 
   function markAllServerNotificationsRead() {
@@ -25,6 +38,7 @@ function Notifications() {
     ).then((updated) => {
       const updatedById = new Map(updated.map((notification) => [notification.id, notification]));
       setServerNotifications((current) => current.map((notification) => updatedById.get(notification.id) ?? notification));
+      window.dispatchEvent(new Event("bulan-unread-updated"));
     }).catch(() => undefined);
   }
 
