@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, getMessages, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
+import { API_URL, clearToken, getMessages, getRememberedUntil, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
@@ -59,6 +59,20 @@ export function AppShell({
     window.addEventListener("bulan-user-updated", handleUserUpdated);
     return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
   }, []);
+  useEffect(() => {
+    const rememberedUntil = getRememberedUntil();
+    if (!rememberedUntil) return;
+
+    const checkExpiry = () => {
+      if (Number(rememberedUntil) <= Date.now()) {
+        clearToken();
+        navigate({ to: "/login" });
+      }
+    };
+    checkExpiry();
+    const expiryTimer = window.setInterval(checkExpiry, 60_000);
+    return () => window.clearInterval(expiryTimer);
+  }, [navigate]);
   useEffect(() => {
     const updateUnreadMessageCount = () => {
       if (!user?.id) {

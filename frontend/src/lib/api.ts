@@ -1,6 +1,7 @@
 const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
+const REMEMBER_UNTIL_KEY = "bulan-api-remember-until";
 
 export type ApiUser = {
   id: number;
@@ -143,21 +144,44 @@ export type ServerNotification = {
 };
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+  const rememberedUntil = getRememberedUntil();
+  if (rememberedUntil && Number(rememberedUntil) <= Date.now()) {
+    clearToken();
+    return null;
+  }
+
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
 }
 
-export function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+export function getRememberedUntil() {
+  return localStorage.getItem(REMEMBER_UNTIL_KEY);
+}
+
+export function setToken(token: string, rememberMe: boolean) {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(REMEMBER_UNTIL_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
+
+  const storage = rememberMe ? localStorage : sessionStorage;
+  storage.setItem(TOKEN_KEY, token);
+  if (rememberMe) {
+    storage.setItem(REMEMBER_UNTIL_KEY, String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+  }
 }
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(REMEMBER_UNTIL_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
 }
 
 export function getStoredUser(): ApiUser | null {
   try {
-    const value = localStorage.getItem(USER_KEY);
+    const value = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
     return value ? (JSON.parse(value) as ApiUser) : null;
   } catch {
     return null;
@@ -165,7 +189,8 @@ export function getStoredUser(): ApiUser | null {
 }
 
 export function setStoredUser(user: ApiUser) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
+  storage.setItem(USER_KEY, JSON.stringify(user));
   window.dispatchEvent(new CustomEvent("bulan-user-updated", { detail: user }));
 }
 
@@ -199,12 +224,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return body as T;
 }
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, rememberMe: boolean) {
   const result = await apiFetch<{ token: string; user: ApiUser }>("/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, remember_me: rememberMe }),
   });
-  setToken(result.token);
+  setToken(result.token, rememberMe);
   setStoredUser(result.user);
   return result.user;
 }

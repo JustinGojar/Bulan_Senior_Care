@@ -55,7 +55,11 @@ class AuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
-        $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'remember_me' => ['sometimes', 'boolean'],
+        ]);
         $user = User::where('email', $credentials['email'])->where('status', 'active')->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
@@ -64,7 +68,8 @@ class AuthController extends Controller
 
         $user->update(['last_login' => now()]);
         $user->tokens()->delete();
-        $token = $user->createToken('bulan-seniorcare')->plainTextToken;
+        $expiresAt = ($credentials['remember_me'] ?? false) ? now()->addDays(30) : null;
+        $token = $user->createToken('bulan-seniorcare', ['*'], $expiresAt)->plainTextToken;
 
         return response()->json(['token' => $token, 'user' => $user->load('roles')]);
     }
