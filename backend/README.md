@@ -13,6 +13,10 @@ php artisan serve --port=8000
 
 Set `DB_DATABASE=osca`, `DB_USERNAME`, and `DB_PASSWORD` in `.env` for the XAMPP MySQL instance. Seeded demo accounts use the frontend emails and the password `password` for local development only.
 
+### Gmail password reset emails
+
+Copy the mail settings from `.env.example` into `.env` and replace the Gmail address and app password. Gmail requires 2-Step Verification and a 16-character App Password; use that App Password as `MAIL_PASSWORD`, not the normal Gmail password. Set `FRONTEND_URL` to the URL where the frontend is running so the email button opens the reset-password page. After changing `.env`, run `php artisan config:clear`.
+
 ## API Surface
 
 - `POST /api/login` with `email` and `password`

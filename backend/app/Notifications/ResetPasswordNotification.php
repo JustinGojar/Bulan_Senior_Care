@@ -26,6 +26,6 @@ class ResetPasswordNotification extends Notification
             ->greeting('Hello '.$notifiable->name.',')
             ->line('We received a request to reset your Bulan SeniorCare password.')
             ->action('Reset password', $this->url)
-            ->line('This link will expire in 60 minutes. If you did not request this, no action is needed.');
+            ->line('This link will expire in '.config('auth.passwords.users.expire').' minutes. If you did not request this, no action is needed.');
     }
 }
