@@ -47,7 +47,7 @@ function LoginPage() {
               <p className="text-xs opacity-70">OSCA · Municipality of Bulan</p>
             </div>
           </div>
-          <h1 className="mt-12 text-4xl leading-tight font-extrabold">Welcome, Kagurangnan!</h1>
+          <h1 className="mt-12 text-4xl leading-tight font-extrabold">Welcome, Lolo's and Lola's!</h1>
           <p className="font-display mt-4 text-xl text-gold">Profile. Monitor. Serve better.</p>
           <p className="mt-5 max-w-sm text-sm leading-relaxed opacity-80">
             One portal for senior citizen records, benefits, and services across every barangay in
