@@ -358,7 +358,7 @@ function Dashboard() {
       )}
 
       {showAnnouncementForm && currentUser?.role === "head" && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4">
           <form
             onSubmit={handleCreateAnnouncement}
             className="surface-card w-full max-w-2xl overflow-hidden p-0 shadow-2xl"
@@ -441,7 +441,7 @@ function Dashboard() {
 
       {selectedAnnouncement && (
         <div
-          className="fixed inset-0 z-30 grid place-items-center bg-black/50 px-4"
+          className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4"
           onClick={() => setSelectedAnnouncement(null)}
         >
           <article

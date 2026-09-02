@@ -55,6 +55,7 @@ function UserManagement() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [role, setRole] = useState<"admin" | "head" | "leader">("leader");
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +96,7 @@ function UserManagement() {
     setPassword("");
     setPasswordConfirmation("");
     setShowPassword(false);
+    setShowPasswordConfirmation(false);
     setRole("leader");
     setStatus("active");
     setEditingUser(null);
@@ -270,7 +272,7 @@ function UserManagement() {
       </section>
 
       {showCreateForm && isAdmin && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-navy/40 px-4">
+        <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4">
           <form className="surface-card w-full max-w-lg p-7" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -352,12 +354,20 @@ function UserManagement() {
               <div className="relative">
                 <input
                   minLength={8}
-                  type={showPassword ? "text" : "password"}
+                  type={showPasswordConfirmation ? "text" : "password"}
                   value={passwordConfirmation}
                   onChange={(event) => setPasswordConfirmation(event.target.value)}
                   placeholder="Confirm new password"
                   className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordConfirmation((visible) => !visible)}
+                  aria-label={showPasswordConfirmation ? "Hide confirmation password" : "Show confirmation password"}
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPasswordConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
