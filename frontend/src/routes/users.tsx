@@ -120,6 +120,19 @@ function UserManagement() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    if (
+      password &&
+      (!/(?=.*[a-z])/.test(password) ||
+        !/(?=.*[A-Z])/.test(password) ||
+        !/(?=.*\d)/.test(password) ||
+        !/(?=.*[^A-Za-z0-9])/.test(password) ||
+        password.length < 8)
+    ) {
+      setError(
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+      );
+      return;
+    }
     setSubmitting(true);
     try {
       if (editingUser) {
@@ -336,6 +349,7 @@ function UserManagement() {
               <div className="relative">
                 <input
                   minLength={8}
+                  required={!editingUser}
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -354,6 +368,7 @@ function UserManagement() {
               <div className="relative">
                 <input
                   minLength={8}
+                  required={!editingUser}
                   type={showPasswordConfirmation ? "text" : "password"}
                   value={passwordConfirmation}
                   onChange={(event) => setPasswordConfirmation(event.target.value)}

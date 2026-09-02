@@ -32,7 +32,11 @@ class AuthController extends Controller
             'contact_number' => ['required', 'string', 'max:30'],
             'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers()->symbols(),
+            ],
         ]);
 
         $user = User::create([
