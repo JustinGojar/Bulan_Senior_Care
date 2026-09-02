@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Pencil, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import { Eye, EyeOff, Pencil, Trash2, UserCog, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -54,6 +54,7 @@ function UserManagement() {
   const [barangays, setBarangays] = useState<BarangayOption[]>([]);
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<"admin" | "head" | "leader">("leader");
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +94,7 @@ function UserManagement() {
     setBarangayId("");
     setPassword("");
     setPasswordConfirmation("");
+    setShowPassword(false);
     setRole("leader");
     setStatus("active");
     setEditingUser(null);
@@ -329,22 +331,34 @@ function UserManagement() {
                 <option value="">No barangay assignment</option>
                 {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.barangay_name}</option>)}
               </select>
-              <input
-                minLength={8}
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={editingUser ? "New password (optional)" : "Password (8+ characters)"}
-                className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-              />
-              <input
-                minLength={8}
-                type="password"
-                value={passwordConfirmation}
-                onChange={(event) => setPasswordConfirmation(event.target.value)}
-                placeholder="Confirm new password"
-                className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-              />
+              <div className="relative">
+                <input
+                  minLength={8}
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={editingUser ? "New password (optional)" : "Password (8+ characters)"}
+                  className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  minLength={8}
+                  type={showPassword ? "text" : "password"}
+                  value={passwordConfirmation}
+                  onChange={(event) => setPasswordConfirmation(event.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                />
+              </div>
             </div>
 
             {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
