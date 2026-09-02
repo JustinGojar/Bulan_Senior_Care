@@ -124,12 +124,6 @@ function LoginPage() {
             {submitting ? "Signing in..." : "Log In"}
           </button>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/register" className="font-bold text-foreground">
-              Sign Up
-            </Link>
-          </p>
         </form>
       </div>
     </div>

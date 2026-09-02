@@ -26,7 +26,6 @@ export type ManagedUser = ApiUser & {
   status: "active" | "inactive";
 };
 
-export type AccountRole = "admin" | "head";
 
 export type ApiSenior = {
   id: number;
@@ -227,30 +226,6 @@ export function resetPassword(token: string, email: string, password: string, pa
       password_confirmation: passwordConfirmation,
     }),
   });
-}
-
-export async function register(
-  name: string,
-  email: string,
-  contactNumber: string,
-  password: string,
-  passwordConfirmation: string,
-  role: AccountRole,
-) {
-  const result = await apiFetch<{ token: string; user: ApiUser }>('/register', {
-    method: 'POST',
-    body: JSON.stringify({
-      name,
-      email,
-      contact_number: contactNumber || undefined,
-      password,
-      password_confirmation: passwordConfirmation,
-      role,
-    }),
-  });
-  setToken(result.token);
-  setStoredUser(result.user);
-  return result.user;
 }
 
 export async function createBarangayLeader(

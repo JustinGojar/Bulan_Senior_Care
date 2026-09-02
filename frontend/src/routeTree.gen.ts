@@ -20,7 +20,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SeniorsRouteImport } from './routes/seniors'
@@ -82,11 +81,6 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -125,7 +119,6 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
-  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
@@ -144,7 +137,6 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
-  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
@@ -164,7 +156,6 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
-  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
@@ -185,7 +176,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
-    | '/register'
     | '/reports'
     | '/reset-password'
     | '/seniors'
@@ -204,7 +194,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
-    | '/register'
     | '/reports'
     | '/reset-password'
     | '/seniors'
@@ -223,7 +212,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
-    | '/register'
     | '/reports'
     | '/reset-password'
     | '/seniors'
@@ -243,7 +231,6 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
-  RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SeniorsRoute: typeof SeniorsRoute
@@ -330,13 +317,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reports': {
       id: '/reports'
       path: '/reports'
@@ -387,7 +367,6 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
-  RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SeniorsRoute: SeniorsRoute,

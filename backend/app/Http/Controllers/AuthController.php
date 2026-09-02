@@ -53,31 +53,6 @@ class AuthController extends Controller
         return response()->json(['user' => $user->load('roles')], 201);
     }
 
-    public function register(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'contact_number' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-            'role' => ['required', Rule::in(['admin', 'head'])],
-        ]);
-
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'contact_number' => $data['contact_number'] ?? null,
-            'password' => $data['password'],
-            'role' => $data['role'],
-            'status' => 'active',
-        ]);
-        $user->syncRoles([$data['role']]);
-
-        $token = $user->createToken('bulan-seniorcare')->plainTextToken;
-
-        return response()->json(['token' => $token, 'user' => $user->load('roles')], 201);
-    }
-
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);

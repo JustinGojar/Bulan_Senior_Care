@@ -125,12 +125,6 @@ function Landing() {
             >
               Login
             </Link>
-            <Link
-              to="/register"
-              className="bg-navy rounded-full px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
-            >
-              Register
-            </Link>
           </div>
         </header>
 
