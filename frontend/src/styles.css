@@ -187,6 +187,7 @@
 
 @utility bg-app {
   background-image: var(--app-background-image);
+  background-attachment: fixed;
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;

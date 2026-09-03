@@ -3,6 +3,7 @@ import { Eye, EyeOff, Pencil, Trash2, UserCog, UserPlus, X } from "lucide-react"
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import oscaAdminImage from "@/images/osca_admin.jpg";
 import {
   apiFetch,
   API_URL,
@@ -237,7 +238,12 @@ function UserManagement() {
                             src={`${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`}
                             alt={`${user.name} profile`}
                             className="h-full w-full object-cover"
+                            onError={(event) => {
+                              if (user.role === "admin") event.currentTarget.src = oscaAdminImage;
+                            }}
                           />
+                        ) : user.role === "admin" ? (
+                          <img src={oscaAdminImage} alt={`${user.name} profile`} className="h-full w-full object-cover" />
                         ) : (
                           initials(user.name)
                         )}
