@@ -38,7 +38,7 @@ function LoginPage() {
   return (
     <div className="bg-app relative grid min-h-screen place-items-center px-4">
       <ThemeToggle className="absolute top-5 right-5" />
-      <div className="surface-card grid w-full max-w-4xl overflow-hidden md:grid-cols-2">
+      <div className="surface-card grid w-full max-w-4xl translate-y-4 overflow-hidden md:grid-cols-2">
         <div className="bg-navy p-10 text-primary-foreground">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-11 w-11 ring-2 ring-gold/70" />
