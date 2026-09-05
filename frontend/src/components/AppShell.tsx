@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   LogOut,
   Mail,
+  Menu,
   Search,
   Settings,
   UserCircle,
@@ -18,6 +19,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { API_URL, clearToken, getMessages, getRememberedUntil, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
 import oscaAdminImage from "@/images/osca_admin.jpg";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -49,6 +51,7 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<ApiUser | null>(getStoredUser());
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
@@ -127,6 +130,12 @@ export function AppShell({
     : isAdmin
       ? oscaAdminImage
       : null;
+  const visibleNav = NAV.filter(({ to }) =>
+    (to !== "/users" || user?.role === "admin") &&
+    (to !== "/eligibility" || user?.role !== "leader") &&
+    (to !== "/reports" || user?.role !== "leader") &&
+    (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
+  );
 
   async function signOut() {
     await logout().catch(() => undefined);
@@ -134,8 +143,8 @@ export function AppShell({
   }
 
   return (
-    <div className="bg-app min-h-screen p-4 lg:p-6">
-      <div className="mx-auto flex max-w-[1500px] gap-6">
+    <div className="bg-app min-h-screen w-full p-3 sm:p-4 lg:p-6">
+      <div className="flex w-full gap-4 lg:gap-6">
         <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex print:hidden">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
@@ -146,12 +155,7 @@ export function AppShell({
           </div>
 
           <nav className="mt-8 flex flex-col gap-1.5">
-            {NAV.filter(({ to }) =>
-              (to !== "/users" || user?.role === "admin") &&
-              (to !== "/eligibility" || user?.role !== "leader") &&
-              (to !== "/reports" || user?.role !== "leader") &&
-              (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
-            ).map(({ to, label, icon: Icon }) => {
+            {visibleNav.map(({ to, label, icon: Icon }) => {
               const active = pathname === to;
               return (
                 <Link
@@ -183,8 +187,67 @@ export function AppShell({
           </div>
         </aside>
 
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+          <SheetContent side="left" className="w-[min(84vw,20rem)] p-5 lg:hidden">
+            <div className="flex h-full flex-col">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation menu</SheetTitle>
+                <SheetDescription>Open a section of Bulan SeniorCare.</SheetDescription>
+              </SheetHeader>
+              <div className="flex items-center gap-3 pr-8">
+                <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
+                <div>
+                  <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
+                  <p className="text-xs text-muted-foreground">OSCA Bulan</p>
+                </div>
+              </div>
+              <nav className="mt-8 flex flex-col gap-1.5">
+                {visibleNav.map(({ to, label, icon: Icon }) => {
+                  const active = pathname === to;
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setMobileNavOpen(false)}
+                      className={
+                        active
+                          ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
+                          : "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      }
+                    >
+                      <Icon className="h-5 w-5" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <Link
+                to="/profile"
+                onClick={() => setMobileNavOpen(false)}
+                className="mt-auto flex items-center gap-3 rounded-2xl border-t border-border p-2 pt-4 transition-colors hover:bg-secondary"
+              >
+                <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
+                  {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (isAdmin) event.currentTarget.src = oscaAdminImage; }} /> : initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
+                </div>
+              </Link>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         <main className="min-w-0 flex-1">
           <header className="flex flex-wrap items-center gap-4 print:hidden">
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open navigation menu"
+              title="Open navigation menu"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <nav className="hidden items-center gap-2 text-sm text-muted-foreground md:flex">
               {breadcrumb.map((crumb, i) => (
                 <span key={crumb} className="flex items-center gap-2">
@@ -251,8 +314,8 @@ export function AppShell({
           </header>
 
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
-            <div>
-              <h1 className="text-4xl font-extrabold">{title}</h1>
+            <div className="min-w-0">
+              <h1 className="text-3xl font-extrabold sm:text-4xl">{title}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
             </div>
             {actions}
