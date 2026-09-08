@@ -10,6 +10,8 @@ export type Senior = {
   status: "Active" | "Pending" | "Inactive";
   photoPath?: string | null;
   idDocumentPath?: string | null;
+  validIdPath?: string | null;
+  birthCertificatePath?: string | null;
 };
 
 export type BenefitProgram = {

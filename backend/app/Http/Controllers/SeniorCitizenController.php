@@ -62,12 +62,10 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
         $data = $request->validate($this->rules());
-        if ($request->hasFile('id_document')) {
-            $document = $request->file('id_document');
-            $documentPath = $document->store('senior-documents', 'public');
-            $data['id_document_path'] = $documentPath;
-            if (str_starts_with((string) $document->getMimeType(), 'image/')) {
-                $data['photo_path'] = $documentPath;
+        foreach (['valid_id', 'birth_certificate'] as $documentField) {
+            if ($request->hasFile($documentField)) {
+                $documentPath = $request->file($documentField)->store('senior-documents', 'public');
+                $data["{$documentField}_path"] = $documentPath;
             }
         }
         if ($request->filled('barangay')) {
@@ -140,7 +138,8 @@ class SeniorCitizenController extends Controller
             'barangay_id' => [...$optional('integer'), 'exists:barangays,id'],
             'barangay' => [...$optional('nullable'), 'string', 'max:100'],
             'benefit' => [...$optional('required'), 'string', 'max:100'],
-            'id_document' => [...$optional('nullable'), 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'valid_id' => [...($sometimes ? ['sometimes', 'nullable'] : ['required']), 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'birth_certificate' => [...($sometimes ? ['sometimes', 'nullable'] : ['required']), 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'last_name' => [...$optional('string'), 'max:100'],
             'first_name' => [...$optional('string'), 'max:100'],
             'middle_name' => [...$optional('nullable'), 'string', 'max:100'],

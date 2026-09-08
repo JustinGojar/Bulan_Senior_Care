@@ -570,7 +570,7 @@ function SeniorRecords() {
               </div>
             ))}
           </dl>
-          {(viewing?.photoPath || viewing?.idDocumentPath) && (
+          {(viewing?.photoPath || viewing?.idDocumentPath || viewing?.validIdPath || viewing?.birthCertificatePath) && (
             <div className="mt-5 border-t border-border pt-5">
               <p className="text-sm font-bold">Submitted files</p>
               <div className="mt-3 flex flex-wrap gap-3">
@@ -596,6 +596,26 @@ function SeniorRecords() {
                     className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
                   >
                     Open supporting document
+                  </a>
+                )}
+                {viewing.validIdPath && (
+                  <a
+                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+                  >
+                    Open valid ID
+                  </a>
+                )}
+                {viewing.birthCertificatePath && (
+                  <a
+                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+                  >
+                    Open birth certificate
                   </a>
                 )}
               </div>

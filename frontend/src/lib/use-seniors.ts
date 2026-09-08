@@ -7,6 +7,8 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   middleName?: string;
   lastName?: string;
   document?: File | null;
+  validId?: File | null;
+  birthCertificate?: File | null;
 };
 
 function mapSenior(senior: ApiSenior): Senior {
@@ -34,6 +36,8 @@ function mapSenior(senior: ApiSenior): Senior {
     status: senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
     photoPath: senior.photo_path,
     idDocumentPath: senior.id_document_path,
+    validIdPath: senior.valid_id_path,
+    birthCertificatePath: senior.birth_certificate_path,
   };
 }
 
@@ -85,7 +89,8 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
     body.append("status", "pending");
     body.append("barangay", draft.barangay);
     body.append("benefit", draft.benefit);
-    if (draft.document) body.append("id_document", draft.document);
+    if (draft.validId) body.append("valid_id", draft.validId);
+    if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
     const result = await apiFetch<ApiSenior>("/seniors", {
       method: "POST",
       body,

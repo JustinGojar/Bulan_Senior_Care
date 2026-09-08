@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, clearToken, getMessages, getRememberedUntil, getServerNotifications, getStoredUser, logout, type ApiUser } from "@/lib/api";
+import { API_URL, apiFetch, clearToken, getRememberedUntil, getServerNotifications, getStoredUser, getUnreadMessageSummary, logout, type ApiUser } from "@/lib/api";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
@@ -53,6 +53,7 @@ export function AppShell({
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<ApiUser | null>(getStoredUser());
+  const [assignedBarangay, setAssignedBarangay] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   useEffect(() => {
@@ -77,20 +78,24 @@ export function AppShell({
     return () => window.clearInterval(expiryTimer);
   }, [navigate]);
   useEffect(() => {
+    if (user?.role?.toLowerCase() !== "leader" || !user.barangay_id) {
+      setAssignedBarangay("");
+      return;
+    }
+    apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+      .then((barangays) => setAssignedBarangay(
+        barangays.find((barangay) => barangay.id === user.barangay_id)?.barangay_name ?? "",
+      ))
+      .catch(() => setAssignedBarangay(""));
+  }, [user?.barangay_id, user?.role]);
+  useEffect(() => {
     const updateUnreadMessageCount = () => {
       if (!user?.id) {
         setUnreadMessageCount(0);
         return;
       }
-      getMessages()
-        .then((messages) => {
-          const senders = new Set(
-            messages
-              .filter((message) => message.recipient.id === user.id && !message.read_at)
-              .map((message) => message.sender.id),
-          );
-          setUnreadMessageCount(senders.size);
-        })
+      getUnreadMessageSummary()
+        .then(({ count }) => setUnreadMessageCount(count))
         .catch(() => setUnreadMessageCount(0));
     };
     updateUnreadMessageCount();
@@ -124,6 +129,9 @@ export function AppShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const roleLabel = user?.role?.toLowerCase() === "leader"
+    ? `Leader${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+    : user?.role ?? "Admin";
   const isAdmin = user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin");
   const photoUrl = user?.profile_photo_path
     ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
@@ -181,7 +189,7 @@ export function AppShell({
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
-                <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
+                <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
               </div>
             </Link>
           </div>

@@ -9,6 +9,17 @@ use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
+    public function unreadSummary(Request $request): JsonResponse
+    {
+        $count = Message::query()
+            ->where('recipient_id', $request->user()->id)
+            ->whereNull('read_at')
+            ->distinct('sender_id')
+            ->count('sender_id');
+
+        return response()->json(['count' => $count]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $messages = Message::query()

@@ -39,6 +39,8 @@ export type ApiSenior = {
   contact_number?: string | null;
   photo_path?: string | null;
   id_document_path?: string | null;
+  valid_id_path?: string | null;
+  birth_certificate_path?: string | null;
   status: "active" | "pending" | "inactive";
   barangay?: { barangay_name: string } | null;
   benefits?: Array<{ benefit_name: string; pivot?: { status: string; amount: string; date_distributed?: string | null } }>;
@@ -326,6 +328,10 @@ export function createAnnouncementComment(announcementId: number, message: strin
 
 export function getMessages() {
   return apiFetch<Message[]>("/messages");
+}
+
+export function getUnreadMessageSummary() {
+  return apiFetch<{ count: number }>("/messages/unread-summary");
 }
 
 export function getSeniorEditRequests() {

@@ -32,7 +32,7 @@ const EMPTY: SeniorDraft = {
   firstName: "",
   middleName: "",
   lastName: "",
-  age: 60,
+  age: 0,
   barangay: BARANGAYS[0]!,
   address: "",
   contact: "",
@@ -72,13 +72,15 @@ export function SeniorFormDialog({
   onSubmit: (draft: SeniorDraft) => void;
 }) {
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
-  const [document, setDocument] = useState<File | null>(null);
+  const [validId, setValidId] = useState<File | null>(null);
+  const [birthCertificate, setBirthCertificate] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setDocument(null);
+    setValidId(null);
+    setBirthCertificate(null);
     setDraft(
       senior
         ? {
@@ -87,7 +89,7 @@ export function SeniorFormDialog({
             firstName: senior.name.split(" ")[0] ?? "",
             middleName: senior.name.split(" ").slice(1, -1).join(" "),
             lastName: senior.name.split(" ").at(-1) ?? "",
-            age: senior.age,
+            age: senior.birthdate ? ageFromBirthdate(senior.birthdate) : 0,
             barangay: senior.barangay,
             address: senior.address,
             contact: senior.contact,
@@ -104,18 +106,24 @@ export function SeniorFormDialog({
   function submit() {
     if (!draft.firstName?.trim()) return setError("First name is required.");
     if (!draft.lastName?.trim()) return setError("Last name is required.");
-    if (draft.age < 60 || draft.age > 130)
-      return setError("Age must be 60 or older to qualify for OSCA benefits.");
     if (!draft.birthdate) return setError("Birthday is required.");
+    const age = ageFromBirthdate(draft.birthdate);
+    if (age < 60 || age > 130)
+      return setError("Age must be 60 or older to qualify for OSCA benefits.");
     if (!draft.contact.trim()) return setError("Contact number is required.");
+    if (!senior && !validId) return setError("A valid ID is required.");
+    if (!senior && !birthCertificate) return setError("A birth certificate is required.");
     onSubmit({
       ...draft,
+      age,
+      benefit: benefitForAge(age),
       name: [draft.firstName, draft.middleName, draft.lastName].filter(Boolean).join(" ").trim(),
       firstName: draft.firstName.trim(),
       middleName: draft.middleName?.trim() ?? "",
       lastName: draft.lastName.trim(),
       contact: draft.contact.trim(),
-      document,
+      validId,
+      birthCertificate,
     });
     onOpenChange(false);
   }
@@ -173,12 +181,11 @@ export function SeniorFormDialog({
             <Input
               id="senior-age"
               type="number"
-              min={60}
-              value={draft.age}
-              onChange={(e) => {
-                const age = Number(e.target.value);
-                setDraft((d) => ({ ...d, age, benefit: benefitForAge(age) }));
-              }}
+              value={draft.birthdate ? draft.age : ""}
+              placeholder="Calculated automatically"
+              readOnly
+              aria-readonly="true"
+              tabIndex={-1}
               className="mt-1.5"
             />
           </div>
@@ -244,16 +251,28 @@ export function SeniorFormDialog({
             </Select>
           </div>
 
-          <div className="sm:col-span-2">
-            <Label htmlFor="senior-document">Supporting document</Label>
+          <div>
+            <Label htmlFor="senior-valid-id">Valid ID{!senior && " *"}</Label>
             <Input
-              id="senior-document"
+              id="senior-valid-id"
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(event) => setDocument(event.target.files?.[0] ?? null)}
+              required={!senior}
+              onChange={(event) => setValidId(event.target.files?.[0] ?? null)}
               className="mt-1.5 cursor-pointer"
             />
-            <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, or PNG up to 5 MB.</p>
+          </div>
+          <div>
+            <Label htmlFor="senior-birth-certificate">Birth certificate{!senior && " *"}</Label>
+            <Input
+              id="senior-birth-certificate"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              required={!senior}
+              onChange={(event) => setBirthCertificate(event.target.files?.[0] ?? null)}
+              className="mt-1.5 cursor-pointer"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, or PNG up to 5 MB each.</p>
           </div>
 
           {senior && !isLeader && (

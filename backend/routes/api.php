@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/benefit-transactions/{benefitTransaction}', [BenefitTransactionController::class, 'update']);
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::post('/announcements/{announcement}/comments', [AnnouncementController::class, 'comment']);
+    Route::get('/messages/unread-summary', [MessageController::class, 'unreadSummary']);
     Route::get('/messages', [MessageController::class, 'index']);
     Route::get('/messages/recipients', [MessageController::class, 'recipients']);
     Route::post('/messages', [MessageController::class, 'store']);

@@ -348,48 +348,55 @@ function UserManagement() {
                   </select>
                 </div>
               )}
-              <select required={!editingUser || role === "leader"} value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
-                <option value="">No barangay assignment</option>
-                {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.barangay_name}</option>)}
-              </select>
-              <div className="relative">
-                <input
-                  minLength={8}
-                  required={!editingUser}
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder={editingUser ? "New password (optional)" : "Password (8+ characters)"}
-                  className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  minLength={8}
-                  required={!editingUser}
-                  type={showPasswordConfirmation ? "text" : "password"}
-                  value={passwordConfirmation}
-                  onChange={(event) => setPasswordConfirmation(event.target.value)}
-                  placeholder="Confirm new password"
-                  className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordConfirmation((visible) => !visible)}
-                  aria-label={showPasswordConfirmation ? "Hide confirmation password" : "Show confirmation password"}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPasswordConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              <label className="rounded-xl border border-border px-4 py-3">
+                <span className="block text-xs font-semibold text-muted-foreground">Barangay</span>
+                <select required={!editingUser || role === "leader"} value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none">
+                  <option value="">No barangay assignment</option>
+                  {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.barangay_name}</option>)}
+                </select>
+              </label>
+              {!editingUser && (
+                <>
+                  <div className="relative">
+                    <input
+                      minLength={8}
+                      required
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Password (8+ characters)"
+                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      minLength={8}
+                      required
+                      type={showPasswordConfirmation ? "text" : "password"}
+                      value={passwordConfirmation}
+                      onChange={(event) => setPasswordConfirmation(event.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordConfirmation((visible) => !visible)}
+                      aria-label={showPasswordConfirmation ? "Hide confirmation password" : "Show confirmation password"}
+                      className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswordConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}

@@ -63,6 +63,9 @@ function ProfilePage() {
     : (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin"))
       ? oscaAdminImage
       : null);
+  const roleLabel = user?.role?.toLowerCase() === "leader"
+    ? `Leader${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+    : user?.role ?? "user";
   const initials = (name || "User").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   async function saveProfile(event: React.FormEvent) {
@@ -126,7 +129,7 @@ function ProfilePage() {
             <input id="profile-photo" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} />
             <h2 className="mt-5 text-xl font-bold">{user?.name ?? "Your profile"}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
-            <span className="mt-4 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase">{user?.role ?? "user"}</span>
+            <span className="mt-4 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase">{roleLabel}</span>
           </div>
           <button onClick={signOut} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-destructive/10 py-3 text-sm font-bold text-destructive"><LogOut className="h-4 w-4" /> Log out</button>
         </section>
