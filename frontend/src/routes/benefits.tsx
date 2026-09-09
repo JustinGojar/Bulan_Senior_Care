@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays, CheckCircle2, Download, HandCoins, Plus, ShieldCheck, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { API_URL, apiFetch, getStoredUser, type BenefitRelease, type BenefitTransaction } from "@/lib/api";
+import { API_URL, apiFetch, getStoredUser, type BenefitRelease, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +26,8 @@ function BenefitTracking() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
   const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
   const [releaseSchedules, setReleaseSchedules] = useState<BenefitRelease[]>([]);
+  const [transactionPage, setTransactionPage] = useState(1);
+  const [transactionLastPage, setTransactionLastPage] = useState(1);
   const [releaseFormOpen, setReleaseFormOpen] = useState(false);
   const [selectedBenefitId, setSelectedBenefitId] = useState("");
   const [amount, setAmount] = useState("");
@@ -63,13 +65,16 @@ function BenefitTracking() {
         funding: program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
       }))))
       .catch((reason: Error) => setError(reason.message));
-    apiFetch<BenefitTransaction[]>("/benefit-transactions")
-      .then(setTransactions)
+    apiFetch<PaginatedResponse<BenefitTransaction>>(`/benefit-transactions?page=${transactionPage}&per_page=25`)
+      .then((result) => {
+        setTransactions(result.data);
+        setTransactionLastPage(result.last_page);
+      })
       .catch(() => setTransactions([]));
-    apiFetch<BenefitRelease[]>("/benefit-releases")
-      .then(setReleaseSchedules)
+    apiFetch<PaginatedResponse<BenefitRelease>>("/benefit-releases?page=1&per_page=50")
+      .then((result) => setReleaseSchedules(result.data))
       .catch(() => setReleaseSchedules([]));
-  }, []);
+  }, [transactionPage]);
 
   function resetReleaseForm() {
     setSelectedBenefitId("");
@@ -335,6 +340,15 @@ function BenefitTracking() {
             </tbody>
           </table>
         </div>
+        {transactionLastPage > 1 && (
+          <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground">Page {transactionPage} of {transactionLastPage}</p>
+            <div className="flex gap-2">
+              <button type="button" disabled={transactionPage === 1} onClick={() => setTransactionPage((page) => page - 1)} className="rounded-full px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40">Previous</button>
+              <button type="button" disabled={transactionPage === transactionLastPage} onClick={() => setTransactionPage((page) => page + 1)} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        )}
       </section>
       <Dialog open={releaseFormOpen} onOpenChange={(open) => { setReleaseFormOpen(open); if (!open) resetReleaseForm(); }}>
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">

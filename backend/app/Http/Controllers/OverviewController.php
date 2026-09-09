@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\SeniorCitizen;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class OverviewController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
+        $cacheKey = "overview:{$request->user()->id}:{$request->user()->role}:{$request->user()->barangay_id}";
+
+        return response()->json(Cache::remember($cacheKey, now()->addSeconds(10), function () use ($request) {
         $isLeader = $request->user()->role === 'leader';
         $leaderId = $request->user()->id;
         $barangayId = $request->user()->barangay_id;
@@ -60,7 +64,7 @@ class OverviewController extends Controller
                 'received_count' => (int) $row->received_count,
             ]);
 
-        return response()->json([
+        return [
             'total_registered' => $registered,
             'active_seniors' => $active,
             'pending_applications' => $pending,
@@ -72,6 +76,7 @@ class OverviewController extends Controller
                 ? round(($distributed->count() / $transactionCount) * 100)
                 : 0,
             'received_by_benefit' => $receivedByBenefit,
-        ]);
+        ];
+        }));
     }
 }

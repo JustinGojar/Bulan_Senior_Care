@@ -7,12 +7,13 @@ use App\Models\AnnouncementComment;
 use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AnnouncementController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Announcement::query()->with(['comments' => fn ($query) => $query->whereNull('parent_comment_id')->with(['user:id,name,role', 'replies'])])->latest('published_at')->latest('id')->get());
+        return response()->json(Cache::remember('announcements:dashboard', now()->addSeconds(10), fn () => Announcement::query()->with(['comments' => fn ($query) => $query->whereNull('parent_comment_id')->with(['user:id,name,role', 'replies'])])->latest('published_at')->latest('id')->get()->toArray()));
     }
 
     public function store(Request $request): JsonResponse
@@ -35,6 +36,7 @@ class AnnouncementController extends Controller
             'created_by' => $request->user()->id,
             'published_at' => now(),
         ]);
+        Cache::forget('announcements:dashboard');
 
         return response()->json($announcement->load('creator'), 201);
     }
@@ -60,6 +62,7 @@ class AnnouncementController extends Controller
             'parent_comment_id' => $data['parent_comment_id'] ?? null,
             'message' => $data['message'],
         ]);
+        Cache::forget('announcements:dashboard');
 
         $parentAuthor = ! empty($data['parent_comment_id'])
             ? AnnouncementComment::find($data['parent_comment_id'])?->user

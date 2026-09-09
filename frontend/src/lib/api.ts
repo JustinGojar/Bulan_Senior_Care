@@ -153,6 +153,16 @@ export type MessageRecipient = {
   role: "leader" | "head";
 };
 
+export type PaginatedResponse<T> = {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+export type PaginatedMessages = PaginatedResponse<Message>;
+
 export type ServerNotification = {
   id: number;
   message: string;
@@ -345,8 +355,8 @@ export function createAnnouncementComment(announcementId: number, message: strin
   });
 }
 
-export function getMessages() {
-  return apiFetch<Message[]>("/messages");
+export function getMessages(page = 1) {
+  return apiFetch<PaginatedMessages>(`/messages?page=${page}&per_page=25`);
 }
 
 export function getUnreadMessageSummary() {

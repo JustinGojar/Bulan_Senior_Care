@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { API_URL, apiFetch, getStoredUser, type ArchivedSenior, type BenefitTransaction } from "@/lib/api";
+import { API_URL, apiFetch, getStoredUser, type ArchivedSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
@@ -133,10 +133,12 @@ function SeniorRecords() {
   }, [isHead]);
 
   useEffect(() => {
-    apiFetch<BenefitTransaction[]>('/benefit-transactions')
-      .then(setBenefitTransactions)
+    if (!viewing) return;
+    setBenefitTransactions([]);
+    apiFetch<PaginatedResponse<BenefitTransaction>>(`/benefit-transactions?page=1&per_page=50`)
+      .then((result) => setBenefitTransactions(result.data))
       .catch(() => setBenefitTransactions([]));
-  }, []);
+  }, [viewing]);
 
   async function reviewEditRequest(request: SeniorEditRequest, status: "approved" | "declined") {
     setReviewingRequestId(request.id);

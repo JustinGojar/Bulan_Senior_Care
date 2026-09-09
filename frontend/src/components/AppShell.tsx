@@ -6,8 +6,8 @@ import {
   FileText,
   HandCoins,
   LayoutGrid,
-  LogOut,
   Mail,
+  LogOut,
   Menu,
   Search,
   Settings,
@@ -52,11 +52,12 @@ export function AppShell({
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [user, setUser] = useState<ApiUser | null>(getStoredUser());
+  const [user, setUser] = useState<ApiUser | null>(null);
   const [assignedBarangay, setAssignedBarangay] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   useEffect(() => {
+    setUser(getStoredUser());
     const handleUserUpdated = (event: Event) => {
       setUser((event as CustomEvent<ApiUser>).detail);
     };
@@ -89,6 +90,10 @@ export function AppShell({
       .catch(() => setAssignedBarangay(""));
   }, [user?.barangay_id, user?.role]);
   useEffect(() => {
+    if (user?.role?.toLowerCase() === "admin") {
+      setUnreadMessageCount(0);
+      return;
+    }
     const updateUnreadMessageCount = () => {
       if (!user?.id) {
         setUnreadMessageCount(0);
@@ -105,7 +110,7 @@ export function AppShell({
       window.clearInterval(refreshTimer);
       window.removeEventListener("bulan-unread-updated", updateUnreadMessageCount);
     };
-  }, [user?.id]);
+  }, [user?.id, user?.role]);
   useEffect(() => {
     const updateUnreadCount = () => {
       getServerNotifications()
@@ -276,19 +281,21 @@ export function AppShell({
               />
             </div>
             <div className="relative flex items-center gap-3">
-              <button
-                onClick={() => navigate({ to: "/messages" })}
-                aria-label="Open messages"
-                title="Messages"
-                className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
-              >
-                <Mail className="h-5 w-5" />
-                {unreadMessageCount > 0 && (
-                  <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
-                  </span>
-                )}
-              </button>
+              {!isAdmin && (
+                <button
+                  onClick={() => navigate({ to: "/messages" })}
+                  aria-label="Open messages"
+                  title="Messages"
+                  className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
+                >
+                  <Mail className="h-5 w-5" />
+                  {unreadMessageCount > 0 && (
+                    <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                      {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => navigate({ to: "/notifications" })}
                 aria-label="Notifications"

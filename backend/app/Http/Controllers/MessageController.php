@@ -6,6 +6,7 @@ use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class MessageController extends Controller
 {
@@ -22,13 +23,22 @@ class MessageController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $messages = Message::query()
+        $userId = $request->user()->id;
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = min(50, max(10, (int) $request->query('per_page', 25)));
+        $version = $this->messagesCacheVersion($userId);
+        $cacheKey = "messages:{$userId}:v{$version}:page{$page}:per{$perPage}";
+
+        $messages = Cache::remember($cacheKey, now()->addSeconds(10), fn () => Message::query()
             ->with(['sender:id,name,role,email', 'recipient:id,name,role,email'])
             ->where(fn ($query) => $query
-                ->where('sender_id', $request->user()->id)
-                ->orWhere('recipient_id', $request->user()->id))
+                ->where('sender_id', $userId)
+                ->orWhere('recipient_id', $userId))
+            ->whereHas('sender')
+            ->whereHas('recipient')
             ->latest()
-            ->get();
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->toArray());
 
         return response()->json($messages);
     }
@@ -73,6 +83,7 @@ class MessageController extends Controller
             'sender_id' => $request->user()->id,
             'recipient_id' => $recipient->id,
         ]);
+        $this->invalidateMessagesCache($request->user()->id, $recipient->id);
 
         return response()->json($message->load(['sender:id,name,role,email', 'recipient:id,name,role,email']), 201);
     }
@@ -81,8 +92,9 @@ class MessageController extends Controller
     {
         abort_unless($message->recipient_id === $request->user()->id, 403, 'You cannot update this message.');
         $message->update(['read_at' => now()]);
+        $this->invalidateMessagesCache($request->user()->id);
 
-        return response()->json($message->fresh());
+        return response()->json($message->fresh(['sender:id,name,role,email', 'recipient:id,name,role,email']));
     }
 
     public function destroyConversation(Request $request, User $user): JsonResponse
@@ -94,7 +106,21 @@ class MessageController extends Controller
                 ->where(fn ($pair) => $pair->where('sender_id', $request->user()->id)->where('recipient_id', $user->id))
                 ->orWhere(fn ($pair) => $pair->where('sender_id', $user->id)->where('recipient_id', $request->user()->id)))
             ->delete();
+        $this->invalidateMessagesCache($request->user()->id, $user->id);
 
         return response()->json(status: 204);
+    }
+
+    private function messagesCacheVersion(int $userId): int
+    {
+        return (int) Cache::get("messages:version:{$userId}", 1);
+    }
+
+    private function invalidateMessagesCache(int ...$userIds): void
+    {
+        foreach (array_unique($userIds) as $userId) {
+            $key = "messages:version:{$userId}";
+            Cache::forever($key, $this->messagesCacheVersion($userId) + 1);
+        }
     }
 }

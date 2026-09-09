@@ -7,17 +7,23 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class BenefitReleaseController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(BenefitRelease::with([
+        $page = max(1, $request->integer('page', 1));
+        $perPage = min(50, max(10, $request->integer('per_page', 25)));
+        $cacheKey = "benefit-releases:{$request->user()->id}:{$page}:{$perPage}";
+        $releases = Cache::remember($cacheKey, now()->addSeconds(10), fn () => BenefitRelease::with([
             'benefit:id,benefit_name',
             'creator:id,name,role',
             'updater:id,name,role',
-        ])->latest('release_date')->get());
+        ])->latest('release_date')->paginate($perPage, ['*'], 'page', $page)->toArray());
+
+        return response()->json($releases);
     }
 
     public function store(Request $request): JsonResponse

@@ -25,6 +25,9 @@ function MessagesPage() {
   const isLeader = currentUser?.role === "leader";
   const canMessage = ["admin", "leader", "head"].includes(currentUser?.role ?? "");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [recipients, setRecipients] = useState<MessageRecipient[]>([]);
   const [recipientSearch, setRecipientSearch] = useState("");
   const [recipientSearching, setRecipientSearching] = useState(false);
@@ -45,8 +48,18 @@ function MessagesPage() {
       window.location.href = "/login";
       return;
     }
-    getMessages().then(setMessages).catch(() => setMessages([]));
-  }, []);
+    setMessagesLoading(true);
+    getMessages(currentPage)
+      .then((result) => {
+        setMessages(result.data.filter((item) => item.sender?.id && item.recipient?.id));
+        setLastPage(result.last_page);
+      })
+      .catch(() => {
+        setMessages([]);
+        if (!getToken()) window.location.href = "/login";
+      })
+      .finally(() => setMessagesLoading(false));
+  }, [currentPage]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -247,6 +260,7 @@ function MessagesPage() {
           ))}
         </div>
         <div className="mt-3 divide-y divide-border">
+          {messagesLoading && <p className="px-2 py-12 text-center text-sm text-muted-foreground">Loading conversations...</p>}
           {visibleMessages.map((item) => {
             const received = item.recipient.id === currentUser?.id;
             const other = received ? item.sender : item.recipient;
@@ -272,8 +286,17 @@ function MessagesPage() {
               </article>
             );
           })}
-          {!visibleMessages.length && <p className="px-2 py-12 text-center text-sm text-muted-foreground">No conversations found.</p>}
+          {!messagesLoading && !visibleMessages.length && <p className="px-2 py-12 text-center text-sm text-muted-foreground">No conversations found.</p>}
         </div>
+        {lastPage > 1 && (
+          <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground">Page {currentPage} of {lastPage}</p>
+            <div className="flex gap-2">
+              <button type="button" disabled={currentPage === 1 || messagesLoading} onClick={() => setCurrentPage((page) => page - 1)} className="rounded-full px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40">Previous</button>
+              <button type="button" disabled={currentPage === lastPage || messagesLoading} onClick={() => setCurrentPage((page) => page + 1)} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next</button>
+            </div>
+          </div>
+        )}
       </section>}
     </AppShell>
   );

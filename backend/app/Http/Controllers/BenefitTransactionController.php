@@ -5,12 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\BenefitTransaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 class BenefitTransactionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $page = max(1, $request->integer('page', 1));
+        $perPage = min(50, max(10, $request->integer('per_page', 25)));
+        $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}";
+        $transactions = Cache::remember($cacheKey, now()->addSeconds(10), function () use ($request, $page, $perPage) {
         $query = BenefitTransaction::with([
             'senior.barangay',
             'senior.encoder:id,name,role',
@@ -25,7 +30,10 @@ class BenefitTransactionController extends Controller
             $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $request->user()->barangay_id));
         }
 
-        return response()->json($query->get());
+        return $query->paginate($perPage, ['*'], 'page', $page)->toArray();
+        });
+
+        return response()->json($transactions);
     }
 
     public function store(Request $request): JsonResponse

@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 
 class SeniorCitizenController extends Controller
 {
@@ -35,11 +36,17 @@ class SeniorCitizenController extends Controller
             $query->where(fn ($q) => $q->where('osca_id_number', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%"));
         }
 
+        $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
+        $cacheTtl = $request->user()->role === 'head' ? 5 : 10;
+
         if ($request->boolean('count_only')) {
-            return response()->json(['data' => [], 'meta' => ['total' => $query->count()]]);
+            return response()->json(Cache::remember($cacheKey, now()->addSeconds($cacheTtl), fn () => [
+                'data' => [],
+                'meta' => ['total' => $query->count()],
+            ]));
         }
 
-        return response()->json($query->latest()->paginate(25));
+        return response()->json(Cache::remember($cacheKey, now()->addSeconds($cacheTtl), fn () => $query->latest()->paginate(25)->toArray()));
     }
 
     public function archive(Request $request): JsonResponse
