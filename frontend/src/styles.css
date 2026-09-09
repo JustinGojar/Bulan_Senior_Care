@@ -170,6 +170,26 @@
     font-family: var(--font-sans);
   }
 
+  button:not(:disabled) {
+    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+  }
+
+  button:not(:disabled):hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow: 0 6px 16px oklch(0.2 0.03 258 / 14%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled) {
+      transition: none;
+    }
+
+    button:not(:disabled):hover {
+      transform: none;
+    }
+  }
+
   h1,
   h2,
   h3,

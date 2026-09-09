@@ -13,6 +13,13 @@ function Notifications() {
   const navigate = useNavigate();
   const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
 
+  function notificationTitle(notification: ServerNotification) {
+    if (notification.source_type === "benefit_release") return "Benefit release schedule";
+    if (notification.source_type === "announcement") return "Announcement update";
+    if (notification.message.toLowerCase().includes("comment")) return "Announcement comment";
+    return "System notification";
+  }
+
   useEffect(() => {
     getServerNotifications()
       .then((notifications) => {
@@ -62,6 +69,8 @@ function Notifications() {
       : Promise.resolve();
     const destination = notification.source_type === "announcement" && notification.source_id
       ? { to: "/dashboard" as const, hash: `announcement-${notification.source_id}` }
+      : notification.source_type === "benefit_release" && notification.source_id
+        ? { to: "/benefits" as const, search: { release: String(notification.source_id) } }
       : { to: "/dashboard" as const };
     void markRead.then(() => navigate(destination));
   }
@@ -113,7 +122,7 @@ function Notifications() {
                 <Bell className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <strong className="block text-sm">New announcement comment</strong>
+                <strong className="block text-sm">{notificationTitle(notification)}</strong>
                 <span className="mt-1 block text-xs text-muted-foreground">{notification.message}</span>
                 <small className="mt-2 block text-xs text-muted-foreground">
                   {new Date(notification.created_at).toLocaleDateString()}

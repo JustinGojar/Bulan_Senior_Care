@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { API_URL, apiFetch, getStoredUser, type ArchivedSenior } from "@/lib/api";
+import { API_URL, apiFetch, getStoredUser, type ArchivedSenior, type BenefitTransaction } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
@@ -69,6 +69,10 @@ function avatarPath(senior: Senior) {
   return senior.idDocumentPath && /\.(jpe?g|png|webp)$/i.test(senior.idDocumentPath)
     ? senior.idDocumentPath
     : null;
+}
+
+function isImageDocument(path: string) {
+  return /\.(jpe?g|png|webp)$/i.test(path);
 }
 
 function parseCsvRow(row: string) {
@@ -121,11 +125,18 @@ function SeniorRecords() {
   const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [reviewingRequestId, setReviewingRequestId] = useState<number | null>(null);
+  const [benefitTransactions, setBenefitTransactions] = useState<BenefitTransaction[]>([]);
   const bulkFileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isHead) getSeniorEditRequests().then(setEditRequests).catch(() => setEditRequests([]));
   }, [isHead]);
+
+  useEffect(() => {
+    apiFetch<BenefitTransaction[]>('/benefit-transactions')
+      .then(setBenefitTransactions)
+      .catch(() => setBenefitTransactions([]));
+  }, []);
 
   async function reviewEditRequest(request: SeniorEditRequest, status: "approved" | "declined") {
     setReviewingRequestId(request.id);
@@ -539,12 +550,16 @@ function SeniorRecords() {
           isLeader={isLeader}
           leaderBarangay={isLeader ? BARANGAYS[(currentUser?.barangay_id ?? 0) - 1] : undefined}
           onSubmit={async (draft) => {
-            if (editing) {
-              await updateSenior(editing.id, draft);
-              toast.success(isLeader ? "Update request sent to the Head for approval." : `${draft.name}'s record was updated.`);
-            } else {
-              await createSenior(draft);
-              toast.success(`${draft.name} was registered and is pending review.`);
+            try {
+              if (editing) {
+                await updateSenior(editing.id, draft);
+                toast.success(isLeader ? "Update request sent to the Head for approval." : `${draft.name}'s record was updated.`);
+              } else {
+                await createSenior(draft);
+                toast.success(`${draft.name} was registered and is pending review.`);
+              }
+            } catch (reason) {
+              toast.error(reason instanceof Error ? reason.message : "Unable to register senior.");
             }
           }}
         />
@@ -570,10 +585,52 @@ function SeniorRecords() {
               </div>
             ))}
           </dl>
+          {(() => {
+            const history = benefitTransactions
+              .filter((transaction) => transaction.senior.osca_id_number === viewing?.id)
+              .sort((first, second) => {
+                const firstDate = first.date_distributed ?? first.created_at;
+                const secondDate = second.date_distributed ?? second.created_at;
+                return new Date(firstDate).getTime() - new Date(secondDate).getTime();
+              });
+            const latest = history.at(-1);
+            return (
+              <div className="mt-5 border-t border-border pt-5">
+                <p className="text-sm font-bold">Benefit release history</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Latest release: {latest?.date_distributed ? new Date(`${latest.date_distributed}T00:00:00`).toLocaleDateString() : "No release recorded"}
+                </p>
+                {history.length > 0 && (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[480px] text-xs">
+                      <thead>
+                        <tr className="border-b border-border text-left text-muted-foreground">
+                          <th className="px-2 py-2">Release period</th>
+                          <th className="px-2 py-2">Actual date</th>
+                          <th className="px-2 py-2">Amount</th>
+                          <th className="px-2 py-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((transaction) => (
+                          <tr key={transaction.id} className="border-b border-border last:border-0">
+                            <td className="px-2 py-2 font-semibold">{transaction.period_label ?? "-"}</td>
+                            <td className="px-2 py-2">{transaction.date_distributed ? new Date(`${transaction.date_distributed}T00:00:00`).toLocaleDateString() : "-"}</td>
+                            <td className="px-2 py-2">₱{Number(transaction.amount).toLocaleString()}</td>
+                            <td className="px-2 py-2 font-semibold">{transaction.status === "released" ? "Released" : transaction.status === "failed" ? "Not received" : "Pending"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {(viewing?.photoPath || viewing?.idDocumentPath || viewing?.validIdPath || viewing?.birthCertificatePath) && (
             <div className="mt-5 border-t border-border pt-5">
               <p className="text-sm font-bold">Submitted files</p>
-              <div className="mt-3 flex flex-wrap gap-3">
+              <div className="mt-3 flex flex-wrap items-start gap-4">
                 {viewing.photoPath && (
                   <a
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
@@ -588,14 +645,17 @@ function SeniorRecords() {
                     />
                   </a>
                 )}
-                {viewing.idDocumentPath && (
+                {viewing.idDocumentPath && !viewing.validIdPath && (
                   <a
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+                    className="flex flex-col gap-2 text-sm font-semibold"
                   >
-                    Open supporting document
+                    {isImageDocument(viewing.idDocumentPath) && (
+                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`} alt="Valid ID" className="h-24 w-24 rounded-xl border border-border object-cover" />
+                    )}
+                    <span>Valid ID</span>
                   </a>
                 )}
                 {viewing.validIdPath && (
@@ -603,9 +663,12 @@ function SeniorRecords() {
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+                    className="flex flex-col gap-2 text-sm font-semibold"
                   >
-                    Open valid ID
+                    {isImageDocument(viewing.validIdPath) && (
+                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`} alt="Valid ID" className="h-24 w-24 rounded-xl border border-border object-cover" />
+                    )}
+                    <span>Valid ID</span>
                   </a>
                 )}
                 {viewing.birthCertificatePath && (
@@ -613,10 +676,18 @@ function SeniorRecords() {
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold"
+                    className="flex flex-col gap-2 text-sm font-semibold"
                   >
-                    Open birth certificate
+                    {isImageDocument(viewing.birthCertificatePath) && (
+                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`} alt="Birth Certificate" className="h-24 w-24 rounded-xl border border-border object-cover" />
+                    )}
+                    <span>Birth Certificate</span>
                   </a>
+                )}
+                {!viewing.birthCertificatePath && (
+                  <span className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                    Birth Certificate not uploaded
+                  </span>
                 )}
               </div>
             </div>

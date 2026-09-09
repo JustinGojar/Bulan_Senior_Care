@@ -9,7 +9,8 @@ class BenefitTransaction extends Model
 {
     protected $fillable = [
         'senior_citizen_id', 'benefit_id', 'distributed_by', 'date_distributed',
-        'amount', 'period_label', 'status', 'remarks',
+        'amount', 'period_label', 'status', 'reference_number', 'remarks', 'attachment_path',
+        'created_by', 'updated_by',
     ];
 
     protected function casts(): array
@@ -30,5 +31,15 @@ class BenefitTransaction extends Model
     public function distributor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'distributed_by');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

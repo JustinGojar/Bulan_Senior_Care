@@ -62,9 +62,13 @@ export type Overview = {
 export type BenefitTransaction = {
   id: number;
   amount: string;
+  created_at?: string;
+  updated_at?: string;
   status: "pending" | "released" | "failed";
   period_label?: string | null;
   date_distributed?: string | null;
+  reference_number?: string | null;
+  remarks?: string | null;
   senior: {
     osca_id_number: string;
     first_name: string;
@@ -76,6 +80,21 @@ export type BenefitTransaction = {
   };
   benefit: { benefit_name: string; amount?: string | null };
   distributor?: { name: string; role: string } | null;
+  attachment_path?: string | null;
+  creator?: { name: string; role: string } | null;
+  updater?: { name: string; role: string } | null;
+};
+
+export type BenefitRelease = {
+  id: number;
+  period_label: string;
+  amount: string;
+  release_date: string;
+  status: "scheduled" | "released" | "cancelled";
+  remarks?: string | null;
+  benefit: { benefit_name: string };
+  creator?: { name: string; role: string } | null;
+  updater?: { name: string; role: string } | null;
 };
 
 export type SeniorEditRequest = {

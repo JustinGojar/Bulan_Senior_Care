@@ -7,13 +7,18 @@ use App\Models\Barangay;
 use App\Models\Benefit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 
 class SeniorCitizenController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = SeniorCitizen::with(['barangay', 'benefits', 'encoder:id,name,role']);
+        $query = SeniorCitizen::with([
+            'barangay:id,barangay_name',
+            'benefits:id,benefit_name',
+            'encoder:id,name,role',
+        ]);
         if ($request->user()->role === 'leader') {
             $query->where('barangay_id', $request->user()->barangay_id);
         }
@@ -28,6 +33,10 @@ class SeniorCitizenController extends Controller
         if ($request->filled('search')) {
             $search = $request->string('search');
             $query->where(fn ($q) => $q->where('osca_id_number', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%"));
+        }
+
+        if ($request->boolean('count_only')) {
+            return response()->json(['data' => [], 'meta' => ['total' => $query->count()]]);
         }
 
         return response()->json($query->latest()->paginate(25));
@@ -68,11 +77,18 @@ class SeniorCitizenController extends Controller
                 $data["{$documentField}_path"] = $documentPath;
             }
         }
+        if ($request->hasFile('profile_photo')) {
+            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
+        }
         if ($request->filled('barangay')) {
             $barangay = Barangay::firstOrCreate([
                 'barangay_name' => $request->string('barangay'),
             ]);
             $data['barangay_id'] = $barangay->id;
+        }
+        if ($request->user()->role === 'leader') {
+            abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
+            $data['barangay_id'] = $request->user()->barangay_id;
         }
         abort_if(! $data['barangay_id'], 422, 'A barangay is required.');
         $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
@@ -87,10 +103,20 @@ class SeniorCitizenController extends Controller
             ->first();
         abort_if(! $benefit, 422, 'A valid benefit is required.');
         $data['encoded_by'] = $request->user()->id;
-        $data['osca_id_number'] = $this->nextOscaId();
         $data['registration_date'] ??= today();
         $data['status'] = 'pending';
-        $senior = SeniorCitizen::create($data);
+        $senior = null;
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $data['osca_id_number'] = $this->nextOscaId();
+            try {
+                $senior = SeniorCitizen::create($data);
+                break;
+            } catch (QueryException $exception) {
+                if (($exception->errorInfo[1] ?? null) !== 1062 || $attempt === 2) {
+                    throw $exception;
+                }
+            }
+        }
         $senior->benefits()->attach($benefit->id, [
             'distributed_by' => $request->user()->id,
             'amount' => $benefit->amount ?? 0,
@@ -117,6 +143,14 @@ class SeniorCitizenController extends Controller
             $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
             unset($data['barangay']);
         }
+        foreach (['valid_id', 'birth_certificate'] as $documentField) {
+            if ($request->hasFile($documentField)) {
+                $data["{$documentField}_path"] = $request->file($documentField)->store('senior-documents', 'public');
+            }
+        }
+        if ($request->hasFile('profile_photo')) {
+            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
+        }
         $senior->update($data);
 
         return response()->json($senior->fresh()->load('barangay'));
@@ -140,6 +174,7 @@ class SeniorCitizenController extends Controller
             'benefit' => [...$optional('required'), 'string', 'max:100'],
             'valid_id' => [...($sometimes ? ['sometimes', 'nullable'] : ['required']), 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'birth_certificate' => [...($sometimes ? ['sometimes', 'nullable'] : ['required']), 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'profile_photo' => [...($sometimes ? ['sometimes', 'nullable'] : ['nullable']), 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'last_name' => [...$optional('string'), 'max:100'],
             'first_name' => [...$optional('string'), 'max:100'],
             'middle_name' => [...$optional('nullable'), 'string', 'max:100'],
@@ -163,7 +198,10 @@ class SeniorCitizenController extends Controller
     private function nextOscaId(): string
     {
         $year = now()->year;
-        $last = SeniorCitizen::where('osca_id_number', 'like', "BSC-{$year}-%")->latest('id')->value('osca_id_number');
+        $last = SeniorCitizen::withTrashed()
+            ->where('osca_id_number', 'like', "BSC-{$year}-%")
+            ->orderByDesc('id')
+            ->value('osca_id_number');
 
         return sprintf('BSC-%d-%04d', $year, $last ? ((int) substr($last, -4)) + 1 : 1);
     }

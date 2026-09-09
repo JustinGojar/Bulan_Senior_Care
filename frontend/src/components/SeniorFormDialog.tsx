@@ -9,13 +9,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { API_URL } from "@/lib/api";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
 
@@ -74,13 +75,17 @@ export function SeniorFormDialog({
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
   const [validId, setValidId] = useState<File | null>(null);
   const [birthCertificate, setBirthCertificate] = useState<File | null>(null);
+  const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
+  const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
     setValidId(null);
     setBirthCertificate(null);
+    setProfilePhoto(null);
     setDraft(
       senior
         ? {
@@ -96,10 +101,32 @@ export function SeniorFormDialog({
             benefit: senior.benefit,
             status: senior.status,
           }
-          : EMPTY,
+          : leaderBarangay
+            ? { ...EMPTY, barangay: leaderBarangay }
+            : EMPTY,
     );
         }, [open, senior, leaderBarangay]);
 
+  useEffect(() => {
+    if (!validId) {
+      setValidIdPreview(null);
+      return;
+    }
+    const preview = validId.type.startsWith("image/") ? URL.createObjectURL(validId) : null;
+    setValidIdPreview(preview);
+    return () => { if (preview) URL.revokeObjectURL(preview); };
+  }, [validId]);
+
+  useEffect(() => {
+    if (!birthCertificate) {
+      setBirthCertificatePreview(null);
+      return;
+    }
+    const preview = birthCertificate.type.startsWith("image/") ? URL.createObjectURL(birthCertificate) : null;
+    setBirthCertificatePreview(preview);
+    return () => { if (preview) URL.revokeObjectURL(preview); };
+  }, [birthCertificate]);
+  
   const set = <K extends keyof SeniorDraft>(key: K, value: SeniorDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
@@ -124,13 +151,14 @@ export function SeniorFormDialog({
       contact: draft.contact.trim(),
       validId,
       birthCertificate,
+      profilePhoto,
     });
     onOpenChange(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-display">
             {senior ? "Edit senior record" : "Register senior"}
@@ -218,7 +246,11 @@ export function SeniorFormDialog({
 
           <div>
             <Label>Barangay</Label>
-            <Select value={draft.barangay} onValueChange={(v) => set("barangay", v)}>
+            <Select
+              value={draft.barangay}
+              onValueChange={(v) => set("barangay", v)}
+              disabled={!!leaderBarangay}
+            >
               <SelectTrigger className="mt-1.5">
                 <SelectValue />
               </SelectTrigger>
@@ -251,30 +283,6 @@ export function SeniorFormDialog({
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="senior-valid-id">Valid ID{!senior && " *"}</Label>
-            <Input
-              id="senior-valid-id"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              required={!senior}
-              onChange={(event) => setValidId(event.target.files?.[0] ?? null)}
-              className="mt-1.5 cursor-pointer"
-            />
-          </div>
-          <div>
-            <Label htmlFor="senior-birth-certificate">Birth certificate{!senior && " *"}</Label>
-            <Input
-              id="senior-birth-certificate"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              required={!senior}
-              onChange={(event) => setBirthCertificate(event.target.files?.[0] ?? null)}
-              className="mt-1.5 cursor-pointer"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, or PNG up to 5 MB each.</p>
-          </div>
-
           {senior && !isLeader && (
             <div className="sm:col-span-2">
               <Label>Eligibility status</Label>
@@ -292,6 +300,63 @@ export function SeniorFormDialog({
               </Select>
             </div>
           )}
+
+          <p className="sm:col-span-2 text-lg font-bold">Supporting Documents</p>
+
+          <div>
+            <Label htmlFor="senior-profile-photo">Profile Picture</Label>
+            <Input
+              id="senior-profile-photo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture="user"
+              onChange={(event) => setProfilePhoto(event.target.files?.[0] ?? null)}
+              className="mt-1.5 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="senior-valid-id">Valid ID{!senior && " *"}</Label>
+            <Input
+              id="senior-valid-id"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              capture="environment"
+              required={!senior}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setValidId(file);
+              }}
+              className="mt-1.5 cursor-pointer"
+            />
+            {(validIdPreview || senior?.validIdPath) && (
+              <a href={validIdPreview ?? `${API_URL.replace(/\/api$/, "")}/storage/${senior?.validIdPath}`} target="_blank" rel="noreferrer" className="mt-2 block w-fit">
+                {validIdPreview ? <img src={validIdPreview} alt="Valid ID preview" className="h-24 w-24 rounded-xl border border-border object-cover" /> : <span className="text-xs text-muted-foreground">Current Valid ID</span>}
+              </a>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="senior-birth-certificate">Birth certificate{!senior && " *"}</Label>
+            <Input
+              id="senior-birth-certificate"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              capture="environment"
+              required={!senior}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setBirthCertificate(file);
+              }}
+              className="mt-1.5 cursor-pointer"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, or PNG up to 5 MB each.</p>
+            {(birthCertificatePreview || senior?.birthCertificatePath) && (
+              <a href={birthCertificatePreview ?? `${API_URL.replace(/\/api$/, "")}/storage/${senior?.birthCertificatePath}`} target="_blank" rel="noreferrer" className="mt-2 block w-fit">
+                {birthCertificatePreview ? <img src={birthCertificatePreview} alt="Birth Certificate preview" className="h-24 w-24 rounded-xl border border-border object-cover" /> : <span className="text-xs text-muted-foreground">Current Birth Certificate</span>}
+              </a>
+            )}
+          </div>
+
         </div>
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}

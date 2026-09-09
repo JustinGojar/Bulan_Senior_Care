@@ -13,6 +13,10 @@ export const Route = createFileRoute("/eligibility")({
   component: EligibilityReview,
 });
 
+function isImageDocument(path: string) {
+  return /\.(jpe?g|png|webp)$/i.test(path);
+}
+
 function EligibilityReview() {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
@@ -125,16 +129,43 @@ function EligibilityReview() {
               </div>
             ))}
           </dl>
-          {viewing?.idDocumentPath && (
-            <a
-              href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-xl bg-secondary px-4 py-3 text-center text-sm font-semibold"
-            >
-              Open supporting document
-            </a>
-          )}
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-bold">Supporting Documents</p>
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              {[
+                ["Valid ID", viewing?.validIdPath ?? viewing?.idDocumentPath],
+                ["Birth Certificate", viewing?.birthCertificatePath],
+              ].map(([label, path]) => (
+                <div key={label} className="min-w-0">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  {path ? (
+                    <a
+                      href={`${API_URL.replace(/\/api$/, "")}/storage/${path}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 block text-sm font-semibold"
+                    >
+                      {isImageDocument(path) ? (
+                        <img
+                          src={`${API_URL.replace(/\/api$/, "")}/storage/${path}`}
+                          alt={label}
+                          className="h-24 w-full rounded-xl border border-border object-cover"
+                        />
+                      ) : (
+                        <span className="block rounded-xl bg-secondary px-3 py-4 text-center">
+                          Open document
+                        </span>
+                      )}
+                    </a>
+                  ) : (
+                    <span className="mt-2 block rounded-xl border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+                      Not uploaded
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </AppShell>

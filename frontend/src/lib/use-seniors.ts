@@ -2,6 +2,25 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
 import type { Senior } from "./osca-data";
 
+type SeniorResponse = { data: ApiSenior[]; meta?: { total?: number } };
+type SeniorCacheEntry = { value: SeniorResponse; expiresAt: number };
+const seniorCache = new Map<string, SeniorCacheEntry>();
+const SENIOR_CACHE_TTL = 30_000;
+
+async function getCachedSeniors(path: string) {
+  const user = getStoredUser();
+  const cacheKey = `${user?.id ?? "guest"}:${user?.role ?? "guest"}:${path}`;
+  const cached = seniorCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const value = await apiFetch<SeniorResponse>(path);
+  seniorCache.set(cacheKey, { value, expiresAt: Date.now() + SENIOR_CACHE_TTL });
+  return value;
+}
+
+function clearSeniorCache() {
+  seniorCache.clear();
+}
+
 export type SeniorDraft = Omit<Senior, "id"> & {
   firstName?: string;
   middleName?: string;
@@ -9,6 +28,7 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   document?: File | null;
   validId?: File | null;
   birthCertificate?: File | null;
+  profilePhoto?: File | null;
 };
 
 function mapSenior(senior: ApiSenior): Senior {
@@ -36,7 +56,7 @@ function mapSenior(senior: ApiSenior): Senior {
     status: senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
     photoPath: senior.photo_path,
     idDocumentPath: senior.id_document_path,
-    validIdPath: senior.valid_id_path,
+    validIdPath: senior.valid_id_path ?? senior.id_document_path,
     birthCertificatePath: senior.birth_certificate_path,
   };
 }
@@ -57,9 +77,9 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
 
   useEffect(() => {
     Promise.allSettled([
-      apiFetch<{ data: ApiSenior[]; meta?: { total?: number } }>(listPath),
-      apiFetch<{ data: ApiSenior[]; meta?: { total?: number } }>("/seniors?status=active"),
-      apiFetch<{ data: ApiSenior[]; meta?: { total?: number } }>("/seniors?pending_only=1"),
+      getCachedSeniors(listPath),
+      getCachedSeniors("/seniors?status=active&count_only=1"),
+      getCachedSeniors("/seniors?pending_only=1&count_only=1"),
     ])
       .then(([result, activeResult, pendingResult]) => {
         if (result.status === "rejected") throw result.reason;
@@ -91,10 +111,12 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
     body.append("benefit", draft.benefit);
     if (draft.validId) body.append("valid_id", draft.validId);
     if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
+    if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
     const result = await apiFetch<ApiSenior>("/seniors", {
       method: "POST",
       body,
     });
+    clearSeniorCache();
     const mapped = mapSenior(result);
     if (!excludePending || mapped.status !== "Pending") {
       setSeniors((prev) => [mapped, ...prev]);
@@ -117,20 +139,25 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
       });
       return;
     }
+    const body = new FormData();
+    body.append("_method", "PUT");
+    if (draft.firstName?.trim()) body.append("first_name", draft.firstName.trim());
+    if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
+    if (draft.lastName?.trim()) body.append("last_name", draft.lastName.trim());
+    if (draft.birthdate) body.append("birthdate", draft.birthdate);
+    if (draft.address.trim()) body.append("address", draft.address.trim());
+    if (draft.contact.trim()) body.append("contact_number", draft.contact.trim());
+    if (draft.barangay) body.append("barangay", draft.barangay);
+    if (draft.benefit) body.append("benefit", draft.benefit);
+    body.append("status", draft.status.toLowerCase());
+    if (draft.validId) body.append("valid_id", draft.validId);
+    if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
+    if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
     const result = await apiFetch<ApiSenior>(`/seniors/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        first_name: draft.firstName?.trim(),
-        middle_name: draft.middleName?.trim() || null,
-        last_name: draft.lastName?.trim(),
-        birthdate: draft.birthdate ?? "",
-        address: draft.address.trim(),
-        contact_number: draft.contact.trim(),
-        barangay: draft.barangay,
-        benefit: draft.benefit,
-        status: draft.status.toLowerCase(),
-      }),
+      method: "POST",
+      body,
     });
+    clearSeniorCache();
     const mapped = mapSenior(result);
     setSeniors((prev) =>
       prev.flatMap((senior) => {
@@ -154,6 +181,7 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
 
   const deleteSenior = useCallback(async (id: string) => {
     await apiFetch<void>(`/seniors/${id}`, { method: "DELETE" });
+    clearSeniorCache();
     setSeniors((prev) => {
       const deleted = prev.find((senior) => senior.id === id);
       if (deleted?.status === "Active") {

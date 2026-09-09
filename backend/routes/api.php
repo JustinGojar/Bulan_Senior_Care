@@ -10,6 +10,7 @@ use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\BenefitReleaseController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -36,7 +37,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/senior-edit-requests', [SeniorEditRequestController::class, 'store']);
     Route::patch('/senior-edit-requests/{seniorEditRequest}', [SeniorEditRequestController::class, 'update']);
     Route::get('/benefits', [BenefitController::class, 'index']);
+    Route::get('/benefit-releases', [BenefitReleaseController::class, 'index']);
+    Route::post('/benefit-releases', [BenefitReleaseController::class, 'store']);
     Route::get('/benefit-transactions', [BenefitTransactionController::class, 'index']);
+    Route::post('/benefit-transactions', [BenefitTransactionController::class, 'store']);
     Route::patch('/benefit-transactions/{benefitTransaction}', [BenefitTransactionController::class, 'update']);
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::post('/announcements/{announcement}/comments', [AnnouncementController::class, 'comment']);

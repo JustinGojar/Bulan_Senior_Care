@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import {
   getMessageRecipients,
   getMessages,
+  getToken,
   getStoredUser,
   deleteConversation as deleteConversationApi,
   markMessageRead,
@@ -40,6 +41,10 @@ function MessagesPage() {
   const [contextConversation, setContextConversation] = useState<Message | null>(null);
 
   useEffect(() => {
+    if (!currentUser || !getToken()) {
+      window.location.href = "/login";
+      return;
+    }
     getMessages().then(setMessages).catch(() => setMessages([]));
   }, []);
 

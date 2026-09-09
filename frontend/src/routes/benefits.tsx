@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, CheckCircle2, Download, HandCoins, ShieldCheck, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Download, HandCoins, Plus, ShieldCheck, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { apiFetch, getStoredUser, type BenefitTransaction } from "@/lib/api";
+import { API_URL, apiFetch, getStoredUser, type BenefitRelease, type BenefitTransaction } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/benefits")({
   head: () => ({ meta: [{ title: "Benefit Tracking — Bulan SeniorCare" }] }),
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/benefits")({
 });
 
 type BenefitProgram = {
+  id: number;
   name: string;
   type: string;
   minAge: number;
@@ -23,38 +25,108 @@ type BenefitProgram = {
 function BenefitTracking() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
   const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
+  const [releaseSchedules, setReleaseSchedules] = useState<BenefitRelease[]>([]);
+  const [releaseFormOpen, setReleaseFormOpen] = useState(false);
+  const [selectedBenefitId, setSelectedBenefitId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [releaseDate, setReleaseDate] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [savingRelease, setSavingRelease] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isHead = getStoredUser()?.role === "head";
+  const currentUser = getStoredUser();
+  const isHead = currentUser?.role === "head";
+  const canManageReleases = currentUser?.role === "admin" || currentUser?.role === "head";
+  const canUpdateTransactions = currentUser?.role === "leader";
+
+  function formatDate(date: string) {
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? new Date(`${date}T00:00:00`)
+      : new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "No release date entered";
+    return parsed.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
 
   useEffect(() => {
-    Promise.all([
-      apiFetch<Array<{ benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits"),
-      apiFetch<BenefitTransaction[]>("/benefit-transactions"),
-    ])
-      .then(([benefitResult, transactionResult]) => {
-        setPrograms(benefitResult.map((program) => ({
-          name: program.benefit_name,
-          type: program.benefit_type,
-          minAge: program.min_age,
-          ...(program.max_age === null ? {} : { maxAge: program.max_age }),
-          amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
-          schedule: program.schedule === "one_time" ? "One-time" : program.schedule === "quarterly" ? "Quarterly" : "When funds are available",
-          funding: program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
-        })));
-        setTransactions(transactionResult);
-      })
+    apiFetch<Array<{ id: number; benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits")
+      .then((benefitResult) => setPrograms(benefitResult.map((program) => ({
+        id: program.id,
+        name: program.benefit_name,
+        type: program.benefit_type,
+        minAge: program.min_age,
+        ...(program.max_age === null ? {} : { maxAge: program.max_age }),
+        amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
+        schedule: program.schedule === "one_time" ? "One-time" : program.schedule === "quarterly" ? "Quarterly" : "When funds are available",
+        funding: program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
+      }))))
       .catch((reason: Error) => setError(reason.message));
+    apiFetch<BenefitTransaction[]>("/benefit-transactions")
+      .then(setTransactions)
+      .catch(() => setTransactions([]));
+    apiFetch<BenefitRelease[]>("/benefit-releases")
+      .then(setReleaseSchedules)
+      .catch(() => setReleaseSchedules([]));
   }, []);
 
+  function resetReleaseForm() {
+    setSelectedBenefitId("");
+    setAmount("");
+    setReleaseDate("");
+    setRemarks("");
+  }
+
+  function openAddRelease() {
+    resetReleaseForm();
+    setReleaseFormOpen(true);
+  }
+
   async function updateTransaction(transaction: BenefitTransaction, status: "released" | "failed") {
+    const date = status === "released"
+      ? window.prompt("Enter the actual release date (YYYY-MM-DD):", transaction.date_distributed ?? "")
+      : null;
+    if (status === "released" && !date) return;
     try {
       const updated = await apiFetch<BenefitTransaction>(`/benefit-transactions/${transaction.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          amount: transaction.amount,
+          period_label: transaction.period_label,
+          date_distributed: date,
+          remarks: transaction.remarks,
+        }),
       });
       setTransactions((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to update benefit status.");
+    }
+  }
+
+  async function saveRelease(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingRelease(true);
+    try {
+      const saved = await apiFetch<BenefitRelease>("/benefit-releases", {
+        method: "POST",
+        body: JSON.stringify({
+          benefit_id: selectedBenefitId,
+          amount,
+          period_label: new Date(`${releaseDate}T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+          release_date: releaseDate,
+          status: "scheduled",
+          remarks,
+        }),
+      });
+      setReleaseSchedules((current) => [saved, ...current]);
+      setReleaseFormOpen(false);
+      resetReleaseForm();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to save benefit release.");
+    } finally {
+      setSavingRelease(false);
     }
   }
 
@@ -113,20 +185,37 @@ function BenefitTracking() {
       title="Benefit Tracking"
       subtitle="Monitor program enrollment and releases"
       breadcrumb={["Dashboard", "Benefit Tracking"]}
-      actions={isHead ? (
-        <button type="button" onClick={exportBenefits} className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
-          <Download className="mr-2 inline h-4 w-4" /> Export PDF
-        </button>
-      ) : (
-        <button className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
-          <HandCoins className="mr-2 inline h-4 w-4" /> Record release
-        </button>
-      )}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          {isHead && (
+            <button type="button" onClick={exportBenefits} className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
+              <Download className="mr-2 inline h-4 w-4" /> Export PDF
+            </button>
+          )}
+          {canManageReleases && (
+            <button type="button" onClick={openAddRelease} className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
+              <Plus className="mr-2 inline h-4 w-4" /> Add Release
+            </button>
+          )}
+        </div>
+      }
     >
       {error && <p className="mb-4 text-sm font-medium text-destructive">{error}</p>}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {programs.map((program) => (
           <article key={program.type} className="surface-card p-6">
+            {(() => {
+              const programTransactions = transactions.filter((transaction) => transaction.benefit.benefit_name === program.name);
+              const received = programTransactions.filter((transaction) => transaction.status === "released").length;
+              const notReceived = programTransactions.filter((transaction) => transaction.status === "failed").length;
+              const pending = programTransactions.filter((transaction) => transaction.status === "pending").length;
+              const releaseDates = releaseSchedules
+                .filter((release) => release.benefit.benefit_name === program.name && release.status !== "cancelled")
+                .map((release) => release.release_date)
+                .sort()
+                .reverse();
+              return (
+                <>
             <div className="flex items-start justify-between">
               <div className="bg-gold grid h-11 w-11 place-items-center rounded-2xl text-gold-foreground">
                 <HandCoins className="h-5 w-5" />
@@ -144,6 +233,23 @@ function BenefitTracking() {
               Eligibility: age {program.minAge}
               {program.maxAge ? `-${program.maxAge}` : "+"}
             </p>
+            <div className="mt-5 border-t border-border pt-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Release status</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                <span className="rounded-full bg-success/15 px-3 py-1.5 text-success">Received: {received}</span>
+                <span className="rounded-full bg-gold/20 px-3 py-1.5 text-gold-foreground">Not yet: {pending}</span>
+                {notReceived > 0 && <span className="rounded-full bg-destructive/10 px-3 py-1.5 text-destructive">Not received: {notReceived}</span>}
+              </div>
+              <div className="mt-3 rounded-xl bg-secondary px-3 py-2">
+                <p className="text-xs text-muted-foreground">Release date for this benefit type</p>
+                <p className="mt-1 text-sm font-bold">
+                  {releaseDates[0] ? formatDate(releaseDates[0]) : "No release date entered"}
+                </p>
+              </div>
+            </div>
+                </>
+              );
+            })()}
           </article>
         ))}
         {!error && programs.length === 0 && (
@@ -166,7 +272,7 @@ function BenefitTracking() {
           <table className="w-full min-w-[940px] text-sm">
             <thead>
               <tr className="text-left">
-                {["Senior", "Program", "Barangay", "Source", "Status", ...(!isHead ? ["Action"] : [])].map((heading) => (
+                {["Senior", "Program", "Barangay", "Source", "Release date", "Status", "Audit", ...(canUpdateTransactions ? ["Action"] : [])].map((heading) => (
                   <th key={heading} className="px-4 py-3 font-bold">
                     {heading}
                   </th>
@@ -185,13 +291,23 @@ function BenefitTracking() {
                   <td className="px-4 py-4 text-muted-foreground">
                     {transaction.senior.encoder?.role === "leader" ? `Leader: ${transaction.senior.encoder.name}` : transaction.senior.encoder?.name ?? "Unknown"}
                   </td>
+                  <td className="px-4 py-4 text-muted-foreground">
+                    {transaction.date_distributed
+                      ? formatDate(transaction.date_distributed)
+                      : "-"}
+                  </td>
                   <td className={`px-4 py-4 font-bold ${transaction.status === "released" ? "text-success" : transaction.status === "failed" ? "text-destructive" : "text-gold-foreground"}`}>
                     {statusLabel}
-                    {transaction.date_distributed && <span className="ml-2 text-xs font-normal text-muted-foreground">{transaction.date_distributed}</span>}
                   </td>
-                  {!isHead && <td className="px-4 py-4">
-                    {transaction.status === "pending" && (
-                      <div className="flex gap-2">
+                  <td className="px-4 py-4 text-xs text-muted-foreground">
+                    <p>Created by {transaction.creator?.name ?? transaction.distributor?.name ?? "Unknown"}</p>
+                    {transaction.created_at && <p>{new Date(transaction.created_at).toLocaleString()}</p>}
+                    {transaction.updater && <p className="mt-1">Modified by {transaction.updater.name}</p>}
+                    {transaction.attachment_path && <a href={`${API_URL.replace(/\/api$/, "")}/storage/${transaction.attachment_path}`} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-foreground underline">Open proof</a>}
+                  </td>
+                  {canUpdateTransactions && <td className="px-4 py-4">
+                    {transaction.status === "pending" ? (
+                      <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => updateTransaction(transaction, "released")} className="inline-flex items-center gap-1 rounded-full bg-success/15 px-3 py-2 text-xs font-bold text-success">
                           <CheckCircle2 className="h-3.5 w-3.5" /> Received
                         </button>
@@ -199,6 +315,11 @@ function BenefitTracking() {
                           <XCircle className="h-3.5 w-3.5" /> Not received
                         </button>
                       </div>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-xs font-bold ${transaction.status === "released" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}>
+                        {transaction.status === "released" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                        {transaction.status === "released" ? "Received" : "Not received"}
+                      </span>
                     )}
                   </td>}
                 </tr>
@@ -206,7 +327,7 @@ function BenefitTracking() {
               })}
               {transactions.length === 0 && (
                 <tr>
-                  <td colSpan={isHead ? 5 : 6} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={canUpdateTransactions ? 8 : 7} className="px-4 py-8 text-center text-muted-foreground">
                     No benefit records available.
                   </td>
                 </tr>
@@ -215,6 +336,41 @@ function BenefitTracking() {
           </table>
         </div>
       </section>
+      <Dialog open={releaseFormOpen} onOpenChange={(open) => { setReleaseFormOpen(open); if (!open) resetReleaseForm(); }}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add Release</DialogTitle>
+            <DialogDescription>
+              Enter the actual release details. The release date is never assigned automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={saveRelease} className="grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="text-xs font-semibold text-muted-foreground">Benefit Type</span>
+              <select required value={selectedBenefitId} onChange={(event) => { setSelectedBenefitId(event.target.value); const selected = programs.find((program) => String(program.id) === event.target.value); setAmount(selected?.amount === "Variable" ? "" : selected?.amount.replace(/[^0-9.]/g, "") ?? ""); }} className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm">
+                <option value="">Select benefit</option>
+                {programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}
+              </select>
+            </label>
+            <label>
+              <span className="text-xs font-semibold text-muted-foreground">Amount</span>
+              <input required min="0" step="0.01" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm" />
+            </label>
+            <label>
+              <span className="text-xs font-semibold text-muted-foreground">Release Date</span>
+              <input required type="date" value={releaseDate} onChange={(event) => setReleaseDate(event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm" />
+            </label>
+            <label>
+              <span className="text-xs font-semibold text-muted-foreground">Remarks</span>
+              <input value={remarks} onChange={(event) => setRemarks(event.target.value)} placeholder="Optional remarks" className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm" />
+            </label>
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <button type="button" onClick={() => setReleaseFormOpen(false)} className="rounded-full bg-secondary px-5 py-3 text-sm font-semibold">Cancel</button>
+              <button type="submit" disabled={savingRelease} className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{savingRelease ? "Saving..." : "Save release"}</button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

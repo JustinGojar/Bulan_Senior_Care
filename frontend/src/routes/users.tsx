@@ -365,7 +365,7 @@ function UserManagement() {
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="Password (8+ characters)"
-                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30 [&::-ms-reveal]:hidden"
                     />
                     <button
                       type="button"
@@ -384,7 +384,7 @@ function UserManagement() {
                       value={passwordConfirmation}
                       onChange={(event) => setPasswordConfirmation(event.target.value)}
                       placeholder="Confirm new password"
-                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30 [&::-ms-reveal]:hidden"
                     />
                     <button
                       type="button"

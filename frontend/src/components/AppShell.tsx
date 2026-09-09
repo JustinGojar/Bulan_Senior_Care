@@ -131,7 +131,11 @@ export function AppShell({
     .toUpperCase();
   const roleLabel = user?.role?.toLowerCase() === "leader"
     ? `Leader${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
-    : user?.role ?? "Admin";
+    : user?.role?.toLowerCase() === "head"
+      ? "OSCA Head"
+      : user?.role?.toLowerCase() === "admin"
+        ? "OSCA Admin"
+        : user?.role ?? "Admin";
   const isAdmin = user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin");
   const photoUrl = user?.profile_photo_path
     ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
