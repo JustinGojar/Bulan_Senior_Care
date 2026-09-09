@@ -17,7 +17,7 @@ class BenefitReleaseController extends Controller
         $page = max(1, $request->integer('page', 1));
         $perPage = min(50, max(10, $request->integer('per_page', 25)));
         $cacheKey = "benefit-releases:{$request->user()->id}:{$page}:{$perPage}";
-        $releases = Cache::remember($cacheKey, now()->addSeconds(10), fn () => BenefitRelease::with([
+        $releases = Cache::remember($cacheKey, now()->addSeconds(3), fn () => BenefitRelease::with([
             'benefit:id,benefit_name',
             'creator:id,name,role',
             'updater:id,name,role',

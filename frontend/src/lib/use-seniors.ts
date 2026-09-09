@@ -5,11 +5,11 @@ import type { Senior } from "./osca-data";
 type SeniorResponse = { data: ApiSenior[]; meta?: { total?: number } };
 type SeniorCacheEntry = { value: SeniorResponse; expiresAt: number };
 const seniorCache = new Map<string, SeniorCacheEntry>();
-const SENIOR_CACHE_TTL = 10_000;
+const SENIOR_CACHE_TTL = 3_000;
 
 async function getCachedSeniors(path: string) {
   const user = getStoredUser();
-  const cacheTtl = user?.role === "head" ? 5_000 : SENIOR_CACHE_TTL;
+  const cacheTtl = SENIOR_CACHE_TTL;
   const cacheKey = `${user?.id ?? "guest"}:${user?.role ?? "guest"}:${path}`;
   const cached = seniorCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;

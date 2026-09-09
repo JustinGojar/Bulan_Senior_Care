@@ -29,7 +29,7 @@ class MessageController extends Controller
         $version = $this->messagesCacheVersion($userId);
         $cacheKey = "messages:{$userId}:v{$version}:page{$page}:per{$perPage}";
 
-        $messages = Cache::remember($cacheKey, now()->addSeconds(10), fn () => Message::query()
+        $messages = Cache::remember($cacheKey, now()->addSeconds(3), fn () => Message::query()
             ->with(['sender:id,name,role,email', 'recipient:id,name,role,email'])
             ->where(fn ($query) => $query
                 ->where('sender_id', $userId)

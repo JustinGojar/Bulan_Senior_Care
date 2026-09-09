@@ -37,7 +37,7 @@ class SeniorCitizenController extends Controller
         }
 
         $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
-        $cacheTtl = $request->user()->role === 'head' ? 5 : 10;
+        $cacheTtl = 3;
 
         if ($request->boolean('count_only')) {
             return response()->json(Cache::remember($cacheKey, now()->addSeconds($cacheTtl), fn () => [

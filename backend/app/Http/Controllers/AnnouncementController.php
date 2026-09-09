@@ -13,7 +13,7 @@ class AnnouncementController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Cache::remember('announcements:dashboard', now()->addSeconds(10), fn () => Announcement::query()->with(['comments' => fn ($query) => $query->whereNull('parent_comment_id')->with(['user:id,name,role', 'replies'])])->latest('published_at')->latest('id')->get()->toArray()));
+        return response()->json(Cache::remember('announcements:dashboard', now()->addSeconds(3), fn () => Announcement::query()->with(['comments' => fn ($query) => $query->whereNull('parent_comment_id')->with(['user:id,name,role', 'replies'])])->latest('published_at')->latest('id')->get()->toArray()));
     }
 
     public function store(Request $request): JsonResponse

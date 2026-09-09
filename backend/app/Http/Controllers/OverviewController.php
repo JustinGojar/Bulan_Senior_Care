@@ -14,7 +14,7 @@ class OverviewController extends Controller
     {
         $cacheKey = "overview:{$request->user()->id}:{$request->user()->role}:{$request->user()->barangay_id}";
 
-        return response()->json(Cache::remember($cacheKey, now()->addSeconds(10), function () use ($request) {
+        return response()->json(Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request) {
         $isLeader = $request->user()->role === 'leader';
         $leaderId = $request->user()->id;
         $barangayId = $request->user()->barangay_id;
