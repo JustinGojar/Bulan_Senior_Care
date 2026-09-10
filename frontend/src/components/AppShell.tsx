@@ -155,7 +155,8 @@ export function AppShell({
   );
 
   async function signOut() {
-    await logout().catch(() => undefined);
+    void logout().catch(() => undefined);
+    clearToken();
     navigate({ to: "/login" });
   }
 

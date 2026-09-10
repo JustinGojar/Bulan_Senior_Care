@@ -5,16 +5,18 @@ import type { Senior } from "./osca-data";
 type SeniorResponse = { data: ApiSenior[]; meta?: { total?: number } };
 type SeniorCacheEntry = { value: SeniorResponse; expiresAt: number };
 const seniorCache = new Map<string, SeniorCacheEntry>();
-const SENIOR_CACHE_TTL = 3_000;
+const SENIOR_CACHE_TTL = 2_000;
+const SENIOR_CACHE_ROLES = new Set(["admin", "head", "leader"]);
 
 async function getCachedSeniors(path: string) {
   const user = getStoredUser();
-  const cacheTtl = SENIOR_CACHE_TTL;
+  const role = user?.role?.toLowerCase();
+  if (!role || !SENIOR_CACHE_ROLES.has(role)) return apiFetch<SeniorResponse>(path);
   const cacheKey = `${user?.id ?? "guest"}:${user?.role ?? "guest"}:${path}`;
   const cached = seniorCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const value = await apiFetch<SeniorResponse>(path);
-  seniorCache.set(cacheKey, { value, expiresAt: Date.now() + cacheTtl });
+  seniorCache.set(cacheKey, { value, expiresAt: Date.now() + SENIOR_CACHE_TTL });
   return value;
 }
 

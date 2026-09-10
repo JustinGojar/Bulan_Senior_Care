@@ -112,7 +112,7 @@ function ProfilePage() {
   }
 
   async function signOut() {
-    await logout().catch(() => undefined);
+    void logout().catch(() => undefined);
     clearToken();
     window.location.href = "/login";
   }
