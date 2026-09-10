@@ -172,7 +172,8 @@ function SeniorRecords() {
           (s) =>
             s.name.toLowerCase().includes(query.toLowerCase()) ||
             s.id.toLowerCase().includes(query.toLowerCase()),
-        ),
+        )
+        .sort((first, second) => first.name.localeCompare(second.name, undefined, { sensitivity: "base" })),
     [seniors, filter, barangayFilter, query],
   );
 
