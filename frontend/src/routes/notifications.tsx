@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { clearServerNotifications, deleteServerNotification, getServerNotifications, markServerNotificationRead, type ServerNotification } from "@/lib/api";
+import { deleteServerNotification, getServerNotifications, markServerNotificationRead, type ServerNotification } from "@/lib/api";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({ meta: [{ title: "Notifications — Bulan SeniorCare" }] }),
@@ -12,6 +12,9 @@ export const Route = createFileRoute("/notifications")({
 function Notifications() {
   const navigate = useNavigate();
   const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
+  const [selectedNotificationIds, setSelectedNotificationIds] = useState<number[]>([]);
+
+  const allSelected = serverNotifications.length > 0 && selectedNotificationIds.length === serverNotifications.length;
 
   function notificationTitle(notification: ServerNotification) {
     if (notification.source_type === "benefit_release") return "Benefit release schedule";
@@ -24,6 +27,7 @@ function Notifications() {
     getServerNotifications()
       .then((notifications) => {
         setServerNotifications(notifications);
+        setSelectedNotificationIds([]);
         const unread = notifications.filter((notification) => notification.status === "unread");
         if (unread.length === 0) return;
         return Promise.all(unread.map((notification) => markServerNotificationRead(notification.id)));
@@ -51,13 +55,31 @@ function Notifications() {
 
   function deleteNotification(id: number) {
     deleteServerNotification(id)
-      .then(() => setServerNotifications((current) => current.filter((notification) => notification.id !== id)))
+      .then(() => {
+        setServerNotifications((current) => current.filter((notification) => notification.id !== id));
+        setSelectedNotificationIds((current) => current.filter((selectedId) => selectedId !== id));
+      })
       .catch(() => undefined);
   }
 
-  function clearAllNotifications() {
-    clearServerNotifications()
-      .then(() => setServerNotifications([]))
+  function toggleSelectAll() {
+    setSelectedNotificationIds(allSelected ? [] : serverNotifications.map((notification) => notification.id));
+  }
+
+  function toggleNotificationSelection(id: number) {
+    setSelectedNotificationIds((current) => current.includes(id)
+      ? current.filter((selectedId) => selectedId !== id)
+      : [...current, id]);
+  }
+
+  function clearSelectedNotifications() {
+    if (selectedNotificationIds.length === 0) return;
+    Promise.all(selectedNotificationIds.map((id) => deleteServerNotification(id)))
+      .then(() => {
+        const selectedIds = new Set(selectedNotificationIds);
+        setServerNotifications((current) => current.filter((notification) => !selectedIds.has(notification.id)));
+        setSelectedNotificationIds([]);
+      })
       .catch(() => undefined);
   }
 
@@ -93,7 +115,18 @@ function Notifications() {
             </p>
           </div>
         </div>
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <label className="inline-flex items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              disabled={serverNotifications.length === 0}
+              className="h-4 w-4 accent-[var(--navy)]"
+            />
+            Select all
+          </label>
+          <div className="flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={markAllServerNotificationsRead}
@@ -104,12 +137,13 @@ function Notifications() {
           </button>
           <button
             type="button"
-            onClick={clearAllNotifications}
-            disabled={serverNotifications.length === 0}
+            onClick={clearSelectedNotifications}
+            disabled={selectedNotificationIds.length === 0}
             className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold text-destructive disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Trash2 className="h-4 w-4" /> Clear all
+            <Trash2 className="h-4 w-4" /> Clear selected{selectedNotificationIds.length > 0 ? ` (${selectedNotificationIds.length})` : ""}
           </button>
+          </div>
         </div>
         <div className="mt-3 space-y-3">
           {serverNotifications.map((notification) => (
@@ -118,6 +152,14 @@ function Notifications() {
               onClick={() => handleOpenServerNotification(notification)}
               className={`flex items-start gap-4 rounded-2xl p-5 ${notification.status === "unread" ? "bg-secondary" : "bg-secondary/60"}`}
             >
+              <input
+                type="checkbox"
+                checked={selectedNotificationIds.includes(notification.id)}
+                onChange={() => toggleNotificationSelection(notification.id)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`Select ${notificationTitle(notification)}`}
+                className="mt-2 h-4 w-4 shrink-0 accent-[var(--navy)]"
+              />
               <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold text-gold-foreground">
                 <Bell className="h-4 w-4" />
               </span>
