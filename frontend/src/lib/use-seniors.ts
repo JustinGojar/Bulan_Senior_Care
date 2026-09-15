@@ -28,6 +28,16 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   firstName?: string;
   middleName?: string;
   lastName?: string;
+  placeOfBirth?: string;
+  sex?: "male" | "female";
+  civilStatus?: string;
+  educationalAttainment?: string;
+  otherSkills?: string;
+  familyComposition?: string;
+  associationName?: string;
+  associationAddress?: string;
+  associationMembershipDate?: string;
+  associationPosition?: string;
   document?: File | null;
   validId?: File | null;
   birthCertificate?: File | null;
@@ -51,6 +61,16 @@ function mapSenior(senior: ApiSenior): Senior {
     id: senior.osca_id_number,
     name: [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" "),
     birthdate: String(senior.birthdate).slice(0, 10),
+    placeOfBirth: senior.place_of_birth ?? "",
+    sex: senior.sex ?? "female",
+    civilStatus: senior.civil_status ?? "",
+    educationalAttainment: senior.educational_attainment ?? "",
+    otherSkills: senior.other_skills ?? "",
+    familyComposition: senior.family_composition ?? "",
+    associationName: senior.association_name ?? "",
+    associationAddress: senior.association_address ?? "",
+    associationMembershipDate: senior.association_membership_date ?? "",
+    associationPosition: senior.association_position ?? "",
     age,
     barangay: senior.barangay?.barangay_name ?? "Unassigned",
     address: senior.address ?? "",
@@ -107,7 +127,16 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
     body.append("last_name", draft.lastName?.trim() ?? draft.name.trim());
     if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
     body.append("birthdate", draft.birthdate ?? "");
-    body.append("sex", "female");
+    body.append("sex", draft.sex ?? "female");
+    body.append("place_of_birth", draft.placeOfBirth?.trim() ?? "");
+    body.append("civil_status", draft.civilStatus?.trim() ?? "");
+    body.append("educational_attainment", draft.educationalAttainment?.trim() ?? "");
+    body.append("other_skills", draft.otherSkills?.trim() ?? "");
+    body.append("family_composition", draft.familyComposition?.trim() ?? "");
+    body.append("association_name", draft.associationName?.trim() ?? "");
+    body.append("association_address", draft.associationAddress?.trim() ?? "");
+    body.append("association_membership_date", draft.associationMembershipDate ?? "");
+    body.append("association_position", draft.associationPosition?.trim() ?? "");
     body.append("contact_number", draft.contact);
     body.append("status", "pending");
     body.append("barangay", draft.barangay);
@@ -135,6 +164,16 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
         middle_name: draft.middleName?.trim() || null,
         last_name: draft.lastName?.trim() ?? draft.name.trim(),
         birthdate: draft.birthdate ?? "",
+        place_of_birth: draft.placeOfBirth?.trim() || null,
+        sex: draft.sex ?? "female",
+        civil_status: draft.civilStatus?.trim() || null,
+        educational_attainment: draft.educationalAttainment?.trim() || null,
+        other_skills: draft.otherSkills?.trim() || null,
+        family_composition: draft.familyComposition?.trim() || null,
+        association_name: draft.associationName?.trim() || null,
+        association_address: draft.associationAddress?.trim() || null,
+        association_membership_date: draft.associationMembershipDate || null,
+        association_position: draft.associationPosition?.trim() || null,
         address: draft.address.trim(),
         contact_number: draft.contact.trim() || null,
         barangay: draft.barangay,
@@ -148,6 +187,16 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
     if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
     if (draft.lastName?.trim()) body.append("last_name", draft.lastName.trim());
     if (draft.birthdate) body.append("birthdate", draft.birthdate);
+    if (draft.placeOfBirth?.trim()) body.append("place_of_birth", draft.placeOfBirth.trim());
+    if (draft.sex) body.append("sex", draft.sex);
+    if (draft.civilStatus?.trim()) body.append("civil_status", draft.civilStatus.trim());
+    if (draft.educationalAttainment?.trim()) body.append("educational_attainment", draft.educationalAttainment.trim());
+    if (draft.otherSkills?.trim()) body.append("other_skills", draft.otherSkills.trim());
+    if (draft.familyComposition?.trim()) body.append("family_composition", draft.familyComposition.trim());
+    if (draft.associationName?.trim()) body.append("association_name", draft.associationName.trim());
+    if (draft.associationAddress?.trim()) body.append("association_address", draft.associationAddress.trim());
+    if (draft.associationMembershipDate) body.append("association_membership_date", draft.associationMembershipDate);
+    if (draft.associationPosition?.trim()) body.append("association_position", draft.associationPosition.trim());
     if (draft.address.trim()) body.append("address", draft.address.trim());
     if (draft.contact.trim()) body.append("contact_number", draft.contact.trim());
     if (draft.barangay) body.append("barangay", draft.barangay);

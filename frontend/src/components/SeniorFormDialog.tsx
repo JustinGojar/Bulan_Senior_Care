@@ -37,6 +37,16 @@ const EMPTY: SeniorDraft = {
   barangay: BARANGAYS[0]!,
   address: "",
   contact: "",
+  placeOfBirth: "",
+  sex: "female",
+  civilStatus: "",
+  educationalAttainment: "",
+  otherSkills: "",
+  familyComposition: "",
+  associationName: "",
+  associationAddress: "",
+  associationMembershipDate: "",
+  associationPosition: "",
   benefit: "Social Pension",
   status: "Pending",
 };
@@ -98,6 +108,16 @@ export function SeniorFormDialog({
             barangay: senior.barangay,
             address: senior.address,
             contact: senior.contact,
+            placeOfBirth: senior.placeOfBirth ?? "",
+            sex: senior.sex ?? "female",
+            civilStatus: senior.civilStatus ?? "",
+            educationalAttainment: senior.educationalAttainment ?? "",
+            otherSkills: senior.otherSkills ?? "",
+            familyComposition: senior.familyComposition ?? "",
+            associationName: senior.associationName ?? "",
+            associationAddress: senior.associationAddress ?? "",
+            associationMembershipDate: senior.associationMembershipDate ?? "",
+            associationPosition: senior.associationPosition ?? "",
             benefit: senior.benefit,
             status: senior.status,
           }
@@ -158,7 +178,7 @@ export function SeniorFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-display">
             {senior ? "Edit senior record" : "Register senior"}
@@ -170,80 +190,62 @@ export function SeniorFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="senior-first-name">First name</Label>
-            <Input
-              id="senior-first-name"
-              value={draft.firstName ?? ""}
-              onChange={(e) => set("firstName", e.target.value)}
-              placeholder="Maria"
-              className="mt-1.5"
-            />
-          </div>
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-border p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Personal information</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="senior-last-name">Surname</Label>
+                <Input id="senior-last-name" value={draft.lastName ?? ""} onChange={(e) => set("lastName", e.target.value)} placeholder="Santos" className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-first-name">First name</Label>
+                <Input id="senior-first-name" value={draft.firstName ?? ""} onChange={(e) => set("firstName", e.target.value)} placeholder="Maria" className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-middle-name">Middle name</Label>
+                <Input id="senior-middle-name" value={draft.middleName ?? ""} onChange={(e) => set("middleName", e.target.value)} placeholder="Luz" className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-place-of-birth">Place of birth</Label>
+                <Input id="senior-place-of-birth" value={draft.placeOfBirth ?? ""} onChange={(e) => set("placeOfBirth", e.target.value)} placeholder="Municipality, province" className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-birthdate">Date of birth</Label>
+                <Input id="senior-birthdate" type="date" value={draft.birthdate ?? ""} onChange={(e) => { const birthdate = e.target.value; const age = ageFromBirthdate(birthdate); setDraft((d) => ({ ...d, birthdate, age, benefit: benefitForAge(age) })); }} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-age">Age</Label>
+                <Input id="senior-age" value={draft.birthdate ? draft.age : ""} placeholder="Calculated automatically" readOnly className="mt-1.5" />
+              </div>
+              <div>
+                <Label>Sex</Label>
+                <Select value={draft.sex ?? "female"} onValueChange={(value) => set("sex", value as "male" | "female")}><SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="female">Female</SelectItem><SelectItem value="male">Male</SelectItem></SelectContent></Select>
+              </div>
+              <div>
+                <Label htmlFor="senior-civil-status">Civil status</Label>
+                <Input id="senior-civil-status" value={draft.civilStatus ?? ""} onChange={(e) => set("civilStatus", e.target.value)} placeholder="Single, married, widowed" className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-contact">Contact number</Label>
+                <Input id="senior-contact" value={draft.contact} onChange={(e) => set("contact", e.target.value)} placeholder="0917-123-4567" className="mt-1.5" />
+              </div>
+            </div>
+          </section>
 
-          <div>
-            <Label htmlFor="senior-middle-name">Middle name</Label>
-            <Input
-              id="senior-middle-name"
-              value={draft.middleName ?? ""}
-              onChange={(e) => set("middleName", e.target.value)}
-              placeholder="Luz"
-              className="mt-1.5"
-            />
-          </div>
-
+          <section className="rounded-2xl border border-border p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Residence and eligibility</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Label htmlFor="senior-last-name">Last name</Label>
+            <Label htmlFor="senior-address">Complete address</Label>
             <Input
-              id="senior-last-name"
-              value={draft.lastName ?? ""}
-              onChange={(e) => set("lastName", e.target.value)}
-              placeholder="Santos"
+              id="senior-address"
+              value={draft.address}
+              onChange={(e) => set("address", e.target.value)}
+              placeholder="House number, street, barangay, Bulan, Sorsogon"
               className="mt-1.5"
             />
           </div>
-
-          <div>
-            <Label htmlFor="senior-age">Age</Label>
-            <Input
-              id="senior-age"
-              type="number"
-              value={draft.birthdate ? draft.age : ""}
-              placeholder="Calculated automatically"
-              readOnly
-              aria-readonly="true"
-              tabIndex={-1}
-              className="mt-1.5"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="senior-birthdate">Birthday</Label>
-            <Input
-              id="senior-birthdate"
-              type="date"
-              value={draft.birthdate ?? ""}
-              onChange={(e) => {
-                const birthdate = e.target.value;
-                const age = ageFromBirthdate(birthdate);
-                setDraft((d) => ({ ...d, birthdate, age, benefit: benefitForAge(age) }));
-              }}
-              className="mt-1.5"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="senior-contact">Contact number</Label>
-            <Input
-              id="senior-contact"
-              value={draft.contact}
-              onChange={(e) => set("contact", e.target.value)}
-              placeholder="0917-123-4567"
-              className="mt-1.5"
-            />
-          </div>
-
           <div>
             <Label>Barangay</Label>
             <Select
@@ -282,6 +284,45 @@ export function SeniorFormDialog({
               </SelectContent>
             </Select>
           </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-border p-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Education, skills, and family</p>
+            <div className="mt-4 space-y-4">
+              <div>
+                <Label htmlFor="senior-educational-attainment">Educational attainment</Label>
+                <Input
+                  id="senior-educational-attainment"
+                  value={draft.educationalAttainment ?? ""}
+                  onChange={(event) => set("educationalAttainment", event.target.value)}
+                  placeholder="Highest educational attainment"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="senior-other-skills">Other skills</Label>
+                <Input
+                  id="senior-other-skills"
+                  value={draft.otherSkills ?? ""}
+                  onChange={(event) => set("otherSkills", event.target.value)}
+                  placeholder="Livelihood, trade, or other skills"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label htmlFor="senior-family-composition">Family composition</Label>
+                <textarea
+                  id="senior-family-composition"
+                  value={draft.familyComposition ?? ""}
+                  onChange={(event) => set("familyComposition", event.target.value)}
+                  placeholder="Name | Relationship | Age | Status | Occupation"
+                  className="mt-1.5 min-h-28 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">You may enter one family member per line.</p>
+              </div>
+            </div>
+          </section>
 
           {senior && !isLeader && (
             <div className="sm:col-span-2">
@@ -301,7 +342,36 @@ export function SeniorFormDialog({
             </div>
           )}
 
-          <p className="sm:col-span-2 text-lg font-bold">Supporting Documents</p>
+          <section className="rounded-2xl border border-border p-4">
+            <div className="border-b border-border pb-3">
+              <p className="text-sm font-bold">Membership to Senior Citizen Association</p>
+              <p className="mt-1 text-xs text-muted-foreground">Complete the association details shown on the registration form.</p>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div>
+                <Label htmlFor="senior-association-name">Name of association</Label>
+                <Input id="senior-association-name" value={draft.associationName ?? ""} onChange={(e) => set("associationName", e.target.value)} placeholder="Senior Citizens Association of..." className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="senior-association-address">Address of association</Label>
+                <Input id="senior-association-address" value={draft.associationAddress ?? ""} onChange={(e) => set("associationAddress", e.target.value)} placeholder="Barangay, municipality, province" className="mt-1.5" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="senior-membership-date">Date of membership</Label>
+                  <Input id="senior-membership-date" type="date" value={draft.associationMembershipDate ?? ""} onChange={(e) => set("associationMembershipDate", e.target.value)} className="mt-1.5" />
+                </div>
+                <div>
+                  <Label htmlFor="senior-association-position">Position</Label>
+                  <Input id="senior-association-position" value={draft.associationPosition ?? ""} onChange={(e) => set("associationPosition", e.target.value)} placeholder="Member or officer" className="mt-1.5" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-border p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">Documents and photo</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
 
           <div>
             <Label htmlFor="senior-profile-photo">Profile Picture</Label>
@@ -357,6 +427,8 @@ export function SeniorFormDialog({
             )}
           </div>
 
+        </div>
+          </section>
         </div>
 
         {error && <p className="text-sm font-medium text-destructive">{error}</p>}

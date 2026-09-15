@@ -2,6 +2,16 @@ export type Senior = {
   id: string;
   name: string;
   birthdate?: string;
+  placeOfBirth?: string;
+  sex?: "male" | "female";
+  civilStatus?: string;
+  educationalAttainment?: string;
+  otherSkills?: string;
+  familyComposition?: string;
+  associationName?: string;
+  associationAddress?: string;
+  associationMembershipDate?: string;
+  associationPosition?: string;
   age: number;
   barangay: string;
   address: string;

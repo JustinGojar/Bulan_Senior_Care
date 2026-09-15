@@ -3,7 +3,7 @@ import { CalendarDays, CheckCircle2, Download, HandCoins, Plus, ShieldCheck, XCi
 import { AppShell } from "@/components/AppShell";
 import { API_URL, apiFetch, getStoredUser, type BenefitRelease, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/benefits")({
@@ -26,6 +26,7 @@ function BenefitTracking() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
   const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
   const [releaseSchedules, setReleaseSchedules] = useState<BenefitRelease[]>([]);
+  const [barangays, setBarangays] = useState<Array<{ id: number; barangay_name: string }>>([]);
   const [transactionPage, setTransactionPage] = useState(1);
   const [transactionLastPage, setTransactionLastPage] = useState(1);
   const [releaseFormOpen, setReleaseFormOpen] = useState(false);
@@ -34,9 +35,12 @@ function BenefitTracking() {
   const [releaseDate, setReleaseDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingRelease, setSavingRelease] = useState(false);
+  const [selectedBarangay, setSelectedBarangay] = useState("All");
+  const [selectedBenefit, setSelectedBenefit] = useState("All");
   const [error, setError] = useState<string | null>(null);
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
+  const isLeader = currentUser?.role === "leader";
   const canManageReleases = currentUser?.role === "admin" || currentUser?.role === "head";
   const canUpdateTransactions = currentUser?.role === "leader";
 
@@ -51,6 +55,25 @@ function BenefitTracking() {
       year: "numeric",
     });
   }
+
+  const barangayOptions = useMemo(
+    () => ["All", ...barangays.map((barangay) => barangay.barangay_name), "Unassigned"],
+    [barangays],
+  );
+
+  const benefitOptions = useMemo(
+    () => ["All", ...programs.map((program) => program.name)],
+    [programs],
+  );
+
+  const filteredTransactions = useMemo(
+    () => transactions.filter((transaction) => {
+      const barangayMatch = selectedBarangay === "All" || (transaction.senior.barangay?.barangay_name ?? "Unassigned") === selectedBarangay;
+      const benefitMatch = selectedBenefit === "All" || transaction.benefit.benefit_name === selectedBenefit;
+      return barangayMatch && benefitMatch;
+    }),
+    [selectedBarangay, selectedBenefit, transactions],
+  );
 
   useEffect(() => {
     apiFetch<Array<{ id: number; benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits")
@@ -71,10 +94,18 @@ function BenefitTracking() {
         setTransactionLastPage(result.last_page);
       })
       .catch(() => setTransactions([]));
+    apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+      .then((result) => {
+        setBarangays(result);
+        if (isLeader) {
+          setSelectedBarangay(result.find((barangay) => barangay.id === currentUser?.barangay_id)?.barangay_name ?? "Unassigned");
+        }
+      })
+      .catch(() => setBarangays([]));
     apiFetch<PaginatedResponse<BenefitRelease>>("/benefit-releases?page=1&per_page=50")
       .then((result) => setReleaseSchedules(result.data))
       .catch(() => setReleaseSchedules([]));
-  }, [transactionPage]);
+  }, [currentUser?.barangay_id, isLeader, transactionPage]);
 
   function resetReleaseForm() {
     setSelectedBenefitId("");
@@ -136,8 +167,8 @@ function BenefitTracking() {
   }
 
   async function exportBenefits() {
-    if (transactions.length === 0) {
-      setError("There are no benefit records to export.");
+    if (filteredTransactions.length === 0) {
+      setError("There are no matching benefit records to export.");
       return;
     }
     try {
@@ -152,7 +183,7 @@ function BenefitTracking() {
       document.text("Benefit Tracking Report", 14, 28);
       document.setFontSize(9);
       document.text(`Generated: ${generatedDate.toLocaleDateString()}`, 14, 36);
-      document.text(`Records: ${transactions.length}`, 14, 43);
+      document.text(`Records: ${filteredTransactions.length}`, 14, 43);
 
       let y = 56;
       document.setFont("helvetica", "bold");
@@ -163,7 +194,7 @@ function BenefitTracking() {
       document.text("Status", 260, y);
       document.setFont("helvetica", "normal");
       y += 7;
-      transactions.forEach((transaction) => {
+      filteredTransactions.forEach((transaction) => {
         if (y > 195) {
           document.addPage();
           y = 18;
@@ -191,7 +222,35 @@ function BenefitTracking() {
       subtitle="Monitor program enrollment and releases"
       breadcrumb={["Dashboard", "Benefit Tracking"]}
       actions={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {!isLeader && (
+            <div className="flex flex-wrap items-center gap-2 rounded-full bg-card p-1 shadow-[var(--shadow-soft)]">
+              <label className="relative">
+                <span className="sr-only">Filter by barangay</span>
+                <select
+                  value={selectedBarangay}
+                  onChange={(event) => setSelectedBarangay(event.target.value)}
+                  className="rounded-full border border-transparent bg-transparent px-4 py-2.5 text-sm font-semibold text-foreground outline-none"
+                >
+                  {barangayOptions.map((barangay) => (
+                    <option key={barangay} value={barangay}>{barangay === "All" ? "All barangay" : barangay}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+          {(!isLeader && selectedBarangay !== "All" || selectedBenefit !== "All") && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!isLeader) setSelectedBarangay("All");
+                setSelectedBenefit("All");
+              }}
+              className="rounded-full bg-secondary px-4 py-2.5 text-sm font-semibold"
+            >
+              Clear
+            </button>
+          )}
           {isHead && (
             <button type="button" onClick={exportBenefits} className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
               <Download className="mr-2 inline h-4 w-4" /> Export PDF
@@ -206,11 +265,32 @@ function BenefitTracking() {
       }
     >
       {error && <p className="mb-4 text-sm font-medium text-destructive">{error}</p>}
+      <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span>Selected benefit type:</span>
+        <span className="rounded-full bg-secondary px-3 py-1 font-semibold text-foreground">
+          {selectedBenefit === "All" ? "All benefit types" : selectedBenefit}
+        </span>
+      </div>
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {programs.map((program) => (
-          <article key={program.type} className="surface-card p-6">
+          <article
+            key={program.type}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selectedBenefit === program.name}
+            onClick={() => setSelectedBenefit(selectedBenefit === program.name ? "All" : program.name)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setSelectedBenefit(selectedBenefit === program.name ? "All" : program.name);
+              }
+            }}
+            className={`surface-card cursor-pointer p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] focus:outline-none focus:ring-2 focus:ring-navy/40 ${
+              selectedBenefit === program.name ? "ring-2 ring-navy/40" : ""
+            }`}
+          >
             {(() => {
-              const programTransactions = transactions.filter((transaction) => transaction.benefit.benefit_name === program.name);
+              const programTransactions = filteredTransactions.filter((transaction) => transaction.benefit.benefit_name === program.name);
               const received = programTransactions.filter((transaction) => transaction.status === "released").length;
               const notReceived = programTransactions.filter((transaction) => transaction.status === "failed").length;
               const pending = programTransactions.filter((transaction) => transaction.status === "pending").length;
@@ -285,7 +365,7 @@ function BenefitTracking() {
               </tr>
             </thead>
             <tbody>
-              {transactions.map((transaction) => {
+              {filteredTransactions.map((transaction) => {
                 const seniorName = [transaction.senior.first_name, transaction.senior.middle_name, transaction.senior.last_name].filter(Boolean).join(" ");
                 const statusLabel = transaction.status === "released" ? "Received" : transaction.status === "failed" ? "Not received" : "Pending";
                 return (
@@ -330,10 +410,10 @@ function BenefitTracking() {
                 </tr>
                 );
               })}
-              {transactions.length === 0 && (
+              {filteredTransactions.length === 0 && (
                 <tr>
                   <td colSpan={canUpdateTransactions ? 8 : 7} className="px-4 py-8 text-center text-muted-foreground">
-                    No benefit records available.
+                    No benefit records available for the selected barangay and benefit type.
                   </td>
                 </tr>
               )}

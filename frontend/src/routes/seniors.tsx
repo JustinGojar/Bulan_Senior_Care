@@ -27,7 +27,7 @@ import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import { API_URL, apiFetch, getStoredUser, type ArchivedSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
-import { useSeniors } from "@/lib/use-seniors";
+import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
   head: () => ({
@@ -107,6 +107,166 @@ async function readBulkRecords(file: File) {
   return rows.slice(1)
     .filter((row) => row.some((value) => String(value ?? "").trim()))
     .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+}
+
+async function imageDataUrl(source: File | string) {
+  const response = typeof source === "string" ? await fetch(source) : null;
+  if (response && !response.ok) throw new Error("Profile photo could not be loaded.");
+  const blob = response ? await response.blob() : source;
+  const objectUrl = URL.createObjectURL(blob);
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      const size = Math.min(image.naturalWidth || 600, image.naturalHeight || 600);
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Unable to prepare profile photo."));
+        return;
+      }
+      const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
+      const offsetX = (image.naturalWidth - cropSize) / 2;
+      const offsetY = (image.naturalHeight - cropSize) / 2;
+      context.drawImage(image, offsetX, offsetY, cropSize, cropSize, 0, 0, size, size);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/jpeg", 0.92));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to read profile photo."));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function downloadRegistrationForm(draft: SeniorDraft) {
+  const { jsPDF } = await import("jspdf");
+  const document = new jsPDF();
+  const pageWidth = document.internal.pageSize.getWidth();
+  const left = 18;
+  const right = pageWidth - 18;
+
+  document.setDrawColor(35, 45, 55);
+  document.setLineWidth(0.4);
+  document.rect(left, 12, 40, 45);
+  document.setFont("helvetica", "bold");
+  document.setFontSize(7);
+  document.text("AN KAUPOD PO SANI NA", left + 3, 18);
+  document.text("DOKUMENTO:", left + 3, 23);
+  document.setFont("helvetica", "normal");
+  ["1x1 PICTURE - 2pcs", "Birth Certificate", "Baptismal", "GSIS ID", "SSS ID", "Voter's ID", "National ID", "Brgy. ID", "Driver's License", "Passport ID"].forEach((item, index) => document.text(`> ${item}`, left + 3, 29 + index * 3.8));
+
+  document.setFont("helvetica", "bold");
+  document.setFontSize(10);
+  document.text("OFFICE OF THE SENIOR CITIZEN'S AFFAIRS", 112, 19, { align: "center" });
+  document.setFontSize(8);
+  document.text("Municipality of Bulan, Sorsogon", 112, 25, { align: "center" });
+  document.setFontSize(16);
+  document.setTextColor(33, 91, 125);
+  document.text("REGISTRATION FORM", 112, 39, { align: "center" });
+  document.setTextColor(0, 0, 0);
+  document.setDrawColor(35, 45, 55);
+  document.rect(166, 13, 25, 25);
+  const photoSource = draft.profilePhoto ?? (draft.photoPath ? `${API_URL.replace(/\/api$/, "")}/storage/${draft.photoPath}` : null);
+  if (photoSource) {
+    try {
+      const photoDataUrl = await imageDataUrl(photoSource);
+      document.addImage(photoDataUrl, "JPEG", 167, 14, 23, 23);
+    } catch {
+      document.setFontSize(13);
+      document.text("1x1", 178.5, 24, { align: "center" });
+      document.setFontSize(6);
+      document.text("Picture", 178.5, 31, { align: "center" });
+    }
+  } else {
+    document.setFontSize(13);
+    document.text("1x1", 178.5, 24, { align: "center" });
+    document.setFontSize(6);
+    document.text("Picture", 178.5, 31, { align: "center" });
+  }
+
+  let y = 68;
+  const line = (label: string, value: string, x: number, endX: number, lineY = y) => {
+    document.setFont("helvetica", "bold");
+    document.setFontSize(7.5);
+    document.text(`${label}:`, x, lineY);
+    document.setFont("helvetica", "normal");
+    const startX = x + Math.max(25, document.getTextWidth(`${label}:`) + 2);
+    document.line(startX, lineY + 1, endX, lineY + 1);
+    if (value) document.text(document.splitTextToSize(value, Math.max(8, endX - startX - 2))[0] ?? value, startX + 2, lineY - 1);
+  };
+  document.setFont("helvetica", "bold");
+  document.setFontSize(7.5);
+  line("NAME", "", left, right);
+  document.setFont("helvetica", "normal");
+  document.setFontSize(7);
+  document.text(draft.lastName ?? "", 43, y - 1, { align: "center" });
+  document.text(draft.firstName ?? "", 101, y - 1, { align: "center" });
+  document.text(draft.middleName ?? "", 157, y - 1, { align: "center" });
+  document.setFontSize(6.5);
+  document.text("(Surname)", 43, y + 5, { align: "center" });
+  document.text("(First Name)", 101, y + 5, { align: "center" });
+  document.text("(Middle Name)", 157, y + 5, { align: "center" });
+  y += 15;
+  line("PLACE OF BIRTH", draft.placeOfBirth ?? "", left, 104);
+  line("AGE", String(draft.age || ""), 109, 143);
+  line("CIVIL STATUS", draft.civilStatus ?? "", 146, right);
+  y += 8;
+  line("DATE OF BIRTH", draft.birthdate ?? "", left, 111);
+  line("SEX", draft.sex ?? "", 115, right);
+  y += 8;
+  line("ADDRESS", draft.address, left, right);
+  y += 8;
+  line("EDUCATIONAL ATTAINMENT", draft.educationalAttainment ?? "", left, right);
+  y += 8;
+  line("OTHER SKILLS", draft.otherSkills ?? "", left, right);
+
+  y += 10;
+  document.setFont("helvetica", "bold");
+  document.setFontSize(10);
+  document.text("FAMILY COMPOSITION", pageWidth / 2, y, { align: "center" });
+  y += 4;
+  const tableTop = y;
+  const tableHeight = 31;
+  document.rect(left, tableTop, right - left, tableHeight);
+  [64, 112, 139, 166].forEach((x) => document.line(x, tableTop, x, tableTop + tableHeight));
+  [tableTop + 7, tableTop + 13, tableTop + 19, tableTop + 25].forEach((rowY) => document.line(left, rowY, right, rowY));
+  document.setFontSize(7);
+  document.text("NAME", 42, tableTop + 5, { align: "center" });
+  document.text("RELATIONSHIP", 88, tableTop + 5, { align: "center" });
+  document.text("AGE", 125, tableTop + 5, { align: "center" });
+  document.text("STATUS", 152, tableTop + 5, { align: "center" });
+  document.text("OCCUPATION", 178, tableTop + 5, { align: "center" });
+  document.setFont("helvetica", "normal");
+  document.text(document.splitTextToSize(draft.familyComposition ?? "", 170)[0] ?? "", left + 2, tableTop + 11);
+
+  y = tableTop + tableHeight + 13;
+  document.setFont("helvetica", "bold");
+  document.setFontSize(10);
+  document.text("MEMBERSHIP TO SENIOR CITIZEN ASSOCIATION", pageWidth / 2, y, { align: "center" });
+  y += 9;
+  line("NAME OF ASSOCIATION", draft.associationName ?? "", left, right);
+  y += 8;
+  line("ADDRESS OF ASSOCIATION", draft.associationAddress ?? "", left, right);
+  y += 8;
+  line("DATE OF MEMBERSHIP", draft.associationMembershipDate ?? "", left, 111);
+  line("POSITION", draft.associationPosition ?? "", 115, right);
+  y += 17;
+  document.setFont("helvetica", "normal");
+  document.setFontSize(8);
+  document.text("Signature of Ass. Pres. / Representative", 139, y, { align: "center" });
+  y += 14;
+  document.setFont("helvetica", "bold");
+  document.text("I certify that the above information are true and correct in the best of my", pageWidth / 2, y, { align: "center" });
+  document.text("knowledge and belief.", pageWidth / 2, y + 5, { align: "center" });
+  y += 25;
+  document.line(125, y, right, y);
+  document.setFont("helvetica", "normal");
+  document.text("Signature or thumb mark of Senior Citizen", 158, y + 6, { align: "center" });
+  document.save(`osca-registration-${(draft.lastName || "senior").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
 }
 
 function changedFields(request: SeniorEditRequest) {
@@ -585,6 +745,7 @@ function SeniorRecords() {
                 toast.success(isLeader ? "Update request sent to the Head for approval." : `${draft.name}'s record was updated.`);
               } else {
                 await createSenior(draft);
+                await downloadRegistrationForm(draft);
                 toast.success(`${draft.name} was registered and is pending review.`);
               }
             } catch (reason) {
@@ -595,12 +756,12 @@ function SeniorRecords() {
       )}
 
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto bg-slate-50 sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display">{viewing?.name}</DialogTitle>
-            <DialogDescription>OSCA ID {viewing?.id}</DialogDescription>
+            <DialogTitle className="font-display text-lg">{viewing?.name}</DialogTitle>
+            <DialogDescription className="text-xs">OSCA ID {viewing?.id}</DialogDescription>
           </DialogHeader>
-          <dl className="grid grid-cols-2 gap-4 text-sm">
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             {[
               ["Age", viewing?.age],
               ["Barangay", viewing?.barangay],
@@ -614,6 +775,47 @@ function SeniorRecords() {
               </div>
             ))}
           </dl>
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-bold">Registration information</p>
+            <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+              {[
+                ["Place of birth", viewing?.placeOfBirth || "Not provided"],
+                ["Date of birth", viewing?.birthdate || "Not provided"],
+                ["Sex", viewing?.sex ? viewing.sex.charAt(0).toUpperCase() + viewing.sex.slice(1) : "Not provided"],
+                ["Civil status", viewing?.civilStatus || "Not provided"],
+                ["Address", viewing?.address || "Not provided"],
+                ["Educational attainment", viewing?.educationalAttainment || "Not provided"],
+                ["Other skills", viewing?.otherSkills || "Not provided"],
+              ].map(([label, value]) => (
+                <div key={String(label)} className={label === "Address" || label === "Educational attainment" || label === "Other skills" ? "col-span-2" : ""}>
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5 font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-bold">Family composition</p>
+            <p className="mt-2 whitespace-pre-line rounded-xl bg-secondary px-3 py-3 text-sm">
+              {viewing?.familyComposition || "Not provided"}
+            </p>
+          </div>
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-bold">Senior citizen association</p>
+            <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+              {[
+                ["Name of association", viewing?.associationName || "Not provided"],
+                ["Address of association", viewing?.associationAddress || "Not provided"],
+                ["Date of membership", viewing?.associationMembershipDate || "Not provided"],
+                ["Position", viewing?.associationPosition || "Not provided"],
+              ].map(([label, value]) => (
+                <div key={String(label)} className={label === "Name of association" || label === "Address of association" ? "col-span-2" : ""}>
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5 font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
           {(() => {
             const history = benefitTransactions
               .filter((transaction) => transaction.senior.osca_id_number === viewing?.id)
@@ -631,22 +833,22 @@ function SeniorRecords() {
                 </p>
                 {history.length > 0 && (
                   <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[480px] text-xs">
+                    <table className="w-full table-fixed text-xs">
                       <thead>
                         <tr className="border-b border-border text-left text-muted-foreground">
-                          <th className="px-2 py-2">Release period</th>
-                          <th className="px-2 py-2">Actual date</th>
-                          <th className="px-2 py-2">Amount</th>
-                          <th className="px-2 py-2">Status</th>
+                          <th className="w-[34%] px-1 py-2">Release period</th>
+                          <th className="w-[22%] px-1 py-2">Actual date</th>
+                          <th className="w-[20%] px-1 py-2">Amount</th>
+                          <th className="w-[24%] px-1 py-2">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {history.map((transaction) => (
                           <tr key={transaction.id} className="border-b border-border last:border-0">
-                            <td className="px-2 py-2 font-semibold">{transaction.period_label ?? "-"}</td>
-                            <td className="px-2 py-2">{transaction.date_distributed ? new Date(`${transaction.date_distributed}T00:00:00`).toLocaleDateString() : "-"}</td>
-                            <td className="px-2 py-2">₱{Number(transaction.amount).toLocaleString()}</td>
-                            <td className="px-2 py-2 font-semibold">{transaction.status === "released" ? "Released" : transaction.status === "failed" ? "Not received" : "Pending"}</td>
+                            <td className="truncate px-1 py-2 font-semibold">{transaction.period_label ?? "-"}</td>
+                            <td className="truncate px-1 py-2">{transaction.date_distributed ? new Date(`${transaction.date_distributed}T00:00:00`).toLocaleDateString() : "-"}</td>
+                            <td className="truncate px-1 py-2">₱{Number(transaction.amount).toLocaleString()}</td>
+                            <td className="truncate px-1 py-2 font-semibold">{transaction.status === "released" ? "Released" : transaction.status === "failed" ? "Not received" : "Pending"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -656,22 +858,23 @@ function SeniorRecords() {
               </div>
             );
           })()}
-          {(viewing?.photoPath || viewing?.idDocumentPath || viewing?.validIdPath || viewing?.birthCertificatePath) && (
+          {viewing && (
             <div className="mt-5 border-t border-border pt-5">
               <p className="text-sm font-bold">Submitted files</p>
-              <div className="mt-3 flex flex-wrap items-start gap-4">
+              <div className="mt-3 flex flex-wrap items-start gap-3">
                 {viewing.photoPath && (
                   <a
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="overflow-hidden rounded-xl border border-border"
+                    className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     <img
                       src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
                       alt={`${viewing.name} profile`}
-                      className="h-24 w-24 object-cover"
+                      className="h-20 w-20 rounded-xl border border-border object-cover"
                     />
+                    <span>Profile photo</span>
                   </a>
                 )}
                 {viewing.idDocumentPath && !viewing.validIdPath && (
@@ -679,10 +882,10 @@ function SeniorRecords() {
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex flex-col gap-2 text-sm font-semibold"
+                    className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.idDocumentPath) && (
-                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`} alt="Valid ID" className="h-24 w-24 rounded-xl border border-border object-cover" />
+                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`} alt="Valid ID" className="h-20 w-20 rounded-xl border border-border object-cover" />
                     )}
                     <span>Valid ID</span>
                   </a>
@@ -692,10 +895,10 @@ function SeniorRecords() {
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex flex-col gap-2 text-sm font-semibold"
+                    className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.validIdPath) && (
-                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`} alt="Valid ID" className="h-24 w-24 rounded-xl border border-border object-cover" />
+                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`} alt="Valid ID" className="h-20 w-20 rounded-xl border border-border object-cover" />
                     )}
                     <span>Valid ID</span>
                   </a>
@@ -705,21 +908,44 @@ function SeniorRecords() {
                     href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex flex-col gap-2 text-sm font-semibold"
+                    className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.birthCertificatePath) && (
-                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`} alt="Birth Certificate" className="h-24 w-24 rounded-xl border border-border object-cover" />
+                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`} alt="Birth Certificate" className="h-20 w-20 rounded-xl border border-border object-cover" />
                     )}
                     <span>Birth Certificate</span>
                   </a>
                 )}
                 {!viewing.birthCertificatePath && (
-                  <span className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                    <span className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
                     Birth Certificate not uploaded
                   </span>
                 )}
               </div>
             </div>
+          )}
+          {viewing && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const nameParts = viewing.name.split(" ");
+                  await downloadRegistrationForm({
+                    ...viewing,
+                    firstName: nameParts[0] ?? "",
+                    middleName: nameParts.slice(1, -1).join(" "),
+                    lastName: nameParts.at(-1) ?? "",
+                    status: viewing.status,
+                  });
+                  toast.success("Registration form downloaded.");
+                } catch {
+                  toast.error("Unable to download the registration form.");
+                }
+              }}
+              className="mt-5 flex w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
+            >
+              <Download className="mr-2 h-4 w-4" /> Download Registration Form
+            </button>
           )}
         </DialogContent>
       </Dialog>
