@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Barangay;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
@@ -46,7 +45,7 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ($accounts as $account) {
-            $user = User::updateOrCreate(['email' => $account['email']], [...$account, 'password' => Hash::make('password')]);
+            $user = User::updateOrCreate(['email' => $account['email']], [...$account, 'password' => 'password']);
             $user->syncRoles([$account['role']]);
         }
 

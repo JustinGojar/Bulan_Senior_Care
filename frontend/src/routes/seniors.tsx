@@ -3,6 +3,7 @@ import { Archive, Download, Eye, Pencil, Plus, Search, Trash2, Undo2, Upload } f
 import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 import { AppShell } from "@/components/AppShell";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
@@ -75,19 +76,37 @@ function isImageDocument(path: string) {
   return /\.(jpe?g|png|webp)$/i.test(path);
 }
 
-function parseCsvRow(row: string) {
-  const values: string[] = [];
-  let value = "";
-  let quoted = false;
-  for (const character of row) {
-    if (character === '"') quoted = !quoted;
-    else if (character === "," && !quoted) {
-      values.push(value.trim());
-      value = "";
-    } else value += character;
+function normalizeBulkHeader(header: unknown) {
+  return String(header ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function normalizeBulkDate(value: unknown) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
   }
-  values.push(value.trim());
-  return values;
+  if (typeof value === "number") {
+    const date = XLSX.SSF.parse_date_code(value);
+    if (date) return `${date.y}-${String(date.m).padStart(2, "0")}-${String(date.d).padStart(2, "0")}`;
+  }
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? text : parsed.toISOString().slice(0, 10);
+}
+
+async function readBulkRecords(file: File) {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]!];
+  if (!sheet) return [] as Record<string, unknown>[];
+  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
+  const headers = (rows[0] ?? []).map(normalizeBulkHeader);
+  return rows.slice(1)
+    .filter((row) => row.some((value) => String(value ?? "").trim()))
+    .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
 }
 
 function changedFields(request: SeniorEditRequest) {
@@ -205,31 +224,38 @@ function SeniorRecords() {
     event.target.value = "";
     if (!file) return;
 
-    const lines = (await file.text()).split(/\r?\n/).filter((line) => line.trim());
-    if (lines.length < 2) {
-      toast.error("The CSV must contain a header row and at least one senior record.");
+    let records: Record<string, unknown>[];
+    try {
+      records = await readBulkRecords(file);
+    } catch {
+      toast.error("Unable to read the file. Please upload a valid CSV or Excel file.");
       return;
     }
-    const headers = parseCsvRow(lines[0]!).map((header) => header.toLowerCase().replace(/\s+/g, "_"));
-    const records = lines.slice(1).map((line) => {
-      const values = parseCsvRow(line);
-      return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
-    });
+    if (records.length === 0) {
+      toast.error("The file must contain a header row and at least one senior record.");
+      return;
+    }
     let created = 0;
     let failed = 0;
     for (const record of records) {
-      const birthdate = new Date(`${record.birthdate}T00:00:00`);
+      const firstName = String(record["first_name"] ?? "").trim();
+      const middleName = String(record["middle_name"] ?? "").trim();
+      const lastName = String(record["last_name"] ?? "").trim();
+      const birthdateValue = normalizeBulkDate(record["birthdate"] ?? record["date_of_birth"] ?? record["dob"]);
+      const birthdate = new Date(`${birthdateValue}T00:00:00`);
       const age = Number.isNaN(birthdate.getTime()) ? 60 : new Date().getFullYear() - birthdate.getFullYear();
       try {
         await createSenior({
-          name: [record.first_name, record.middle_name, record.last_name].filter(Boolean).join(" "),
-          firstName: record.first_name,
-          middleName: record.middle_name,
-          lastName: record.last_name,
+          name: [firstName, middleName, lastName].filter(Boolean).join(" "),
+          firstName,
+          middleName,
+          lastName,
+          birthdate: birthdateValue,
           age,
-          barangay: record.barangay,
-          contact: record.contact_number,
-          benefit: record.benefit || "Social Pension",
+          barangay: String(record["barangay"] ?? "").trim(),
+          address: String(record["address"] ?? "").trim(),
+          contact: String(record["contact_number"] ?? record["contact"] ?? "").trim(),
+          benefit: String(record["benefit"] ?? "Social Pension").trim() || "Social Pension",
           status: "Pending",
         });
         created += 1;
@@ -312,7 +338,7 @@ function SeniorRecords() {
                   >
                     <Upload className="h-4 w-4" /> Bulk record
                   </button>
-                  <input ref={bulkFileInput} type="file" accept=".csv,text/csv" onChange={handleBulkFile} className="hidden" />
+                  <input ref={bulkFileInput} type="file" accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleBulkFile} className="hidden" />
                   <button
                     onClick={() => {
                       setEditing(null);

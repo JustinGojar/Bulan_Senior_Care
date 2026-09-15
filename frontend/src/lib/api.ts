@@ -210,6 +210,15 @@ export function clearToken() {
   sessionStorage.removeItem(USER_KEY);
 }
 
+export function broadcastAuthChange() {
+  window.dispatchEvent(new CustomEvent("bulan-auth-changed"));
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel("bulan-auth");
+    channel.postMessage({ type: "logout" });
+    channel.close();
+  }
+}
+
 export function getStoredUser(): ApiUser | null {
   try {
     const value = localStorage.getItem(USER_KEY) ?? sessionStorage.getItem(USER_KEY);
@@ -223,6 +232,12 @@ export function setStoredUser(user: ApiUser) {
   const storage = localStorage.getItem(TOKEN_KEY) ? localStorage : sessionStorage;
   storage.setItem(USER_KEY, JSON.stringify(user));
   window.dispatchEvent(new CustomEvent("bulan-user-updated", { detail: user }));
+}
+
+export async function getCurrentUser() {
+  const user = await apiFetch<ApiUser>("/user");
+  setStoredUser(user);
+  return user;
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -246,6 +261,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   if (!response.ok) {
     if (response.status === 401 && path !== "/login") {
       clearToken();
+      broadcastAuthChange();
       throw new Error("Your session has expired. Please log in again before saving your profile.");
     }
     const errorBody = body as { message?: string; errors?: Record<string, string[]> } | null;
@@ -315,7 +331,10 @@ export async function createBarangayLeader(
 }
 
 export function logout() {
-  return apiFetch<void>("/logout", { method: "POST" }).finally(clearToken);
+  return apiFetch<void>("/logout", { method: "POST" }).finally(() => {
+    clearToken();
+    broadcastAuthChange();
+  });
 }
 
 export function getManagedUsers() {

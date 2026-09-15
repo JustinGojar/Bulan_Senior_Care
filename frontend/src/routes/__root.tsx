@@ -2,12 +2,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
+  redirect,
   createRootRouteWithContext,
   useRouter,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { broadcastAuthChange, clearToken, getCurrentUser, getToken, type ApiUser } from "@/lib/api";
 
 import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
@@ -71,6 +73,44 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+
+    const publicPaths = new Set(["/login", "/forgot-password", "/reset-password"]);
+    const roleRequirements: Record<string, string[]> = {
+      "/users": ["admin"],
+      "/eligibility": ["admin", "head"],
+      "/reports": ["admin", "head"],
+      "/analytics": ["admin", "head"],
+      "/age-threshold": ["admin", "head"],
+    };
+    const isPublic = publicPaths.has(location.pathname);
+    const token = getToken();
+
+    if (!token) {
+      if (!isPublic) throw redirect({ to: "/login" });
+      return;
+    }
+
+    let user: ApiUser;
+    try {
+      user = await getCurrentUser();
+    } catch {
+      clearToken();
+      broadcastAuthChange();
+      throw redirect({ to: "/login" });
+    }
+
+    if (location.pathname === "/login") {
+      throw redirect({ to: "/dashboard" });
+    }
+
+    const allowedRoles = roleRequirements[location.pathname];
+    const role = user.role.toLowerCase();
+    if (allowedRoles && !allowedRoles.includes(role)) {
+      throw redirect({ to: "/unauthorized" });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -119,6 +159,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      clearToken();
+      void router.navigate({ to: "/login", replace: true });
+    };
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "bulan-api-token" && event.newValue === null) handleAuthChange();
+    };
+    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;
+    channel?.addEventListener("message", handleAuthChange);
+    window.addEventListener("bulan-auth-changed", handleAuthChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      channel?.close();
+      window.removeEventListener("bulan-auth-changed", handleAuthChange);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>
