@@ -266,7 +266,7 @@ function BenefitTracking() {
     >
       {error && <p className="mb-4 text-sm font-medium text-destructive">{error}</p>}
       <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <span>Selected benefit type:</span>
+            <span>Expanded Centenarian:</span>
         <span className="rounded-full bg-secondary px-3 py-1 font-semibold text-foreground">
           {selectedBenefit === "All" ? "All benefit types" : selectedBenefit}
         </span>

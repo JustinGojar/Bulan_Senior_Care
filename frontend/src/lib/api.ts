@@ -320,6 +320,17 @@ export function resetPassword(token: string, email: string, password: string, pa
   });
 }
 
+export function bulkCreateSeniors(records: Array<Record<string, string>>) {
+  return apiFetch<{
+    created: Array<{ row: number; osca_id_number: string }>;
+    failed: Array<{ row: number; message: string }>;
+    message: string;
+  }>('/seniors/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ records }),
+  });
+}
+
 export async function createBarangayLeader(
   data: {
     firstName: string;

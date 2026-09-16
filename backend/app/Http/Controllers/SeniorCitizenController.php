@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class SeniorCitizenController extends Controller
 {
@@ -46,7 +48,9 @@ class SeniorCitizenController extends Controller
             ]));
         }
 
-        return response()->json(Cache::remember($cacheKey, now()->addSeconds($cacheTtl), fn () => $query->latest()->paginate(25)->toArray()));
+        $perPage = min(1000, max(10, $request->integer('per_page', 25)));
+
+        return response()->json(Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), fn () => $query->latest()->paginate($perPage)->toArray()));
     }
 
     public function archive(Request $request): JsonResponse
@@ -132,6 +136,81 @@ class SeniorCitizenController extends Controller
         ]);
 
         return response()->json($senior->load(['barangay', 'benefits']), 201);
+    }
+
+    public function bulkStore(Request $request): JsonResponse
+    {
+        abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
+        $rows = $request->input('records');
+        abort_if(! is_array($rows) || count($rows) === 0, 422, 'At least one senior record is required.');
+
+        $created = [];
+        $failed = [];
+        foreach ($rows as $index => $row) {
+            $data = is_array($row) ? $row : [];
+            $validator = Validator::make($data, [
+                'first_name' => ['required', 'string', 'max:100'],
+                'last_name' => ['required', 'string', 'max:100'],
+                'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
+                'sex' => ['required', Rule::in(['male', 'female'])],
+                'contact_number' => ['required', 'string', 'max:30'],
+                'barangay' => ['required', 'string', 'max:100'],
+                'benefit' => ['required', 'string', 'max:100'],
+            ]);
+            if ($validator->fails()) {
+                $failed[] = ['row' => $index + 2, 'message' => $validator->errors()->first()];
+                continue;
+            }
+
+            try {
+                $senior = DB::transaction(function () use ($data, $request) {
+                    $barangayId = Barangay::firstOrCreate(['barangay_name' => $data['barangay']])->id;
+                    if ($request->user()->role === 'leader') {
+                        abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
+                        $barangayId = $request->user()->barangay_id;
+                    }
+                    $benefitName = [
+                        'Octogenarian' => 'Octogenarian Grant',
+                        'Nonagenarian' => 'Nonagenarian Grant',
+                        'Centenarian' => 'Centenarian Award',
+                    ][$data['benefit']] ?? $data['benefit'];
+                    $benefit = Benefit::where('benefit_name', $benefitName)->where('status', 'active')->first();
+                    abort_if(! $benefit, 422, 'A valid benefit is required.');
+                    $senior = SeniorCitizen::create([
+                        'osca_id_number' => $this->nextOscaId(),
+                        'first_name' => $data['first_name'],
+                        'middle_name' => $data['middle_name'] ?? null,
+                        'last_name' => $data['last_name'],
+                        'birthdate' => $data['birthdate'],
+                        'sex' => $data['sex'],
+                        'contact_number' => $data['contact_number'],
+                        'address' => $data['address'] ?? null,
+                        'barangay_id' => $barangayId,
+                        'benefit' => $data['benefit'],
+                        'encoded_by' => $request->user()->id,
+                        'registration_date' => today(),
+                        'status' => 'pending',
+                    ]);
+                    $senior->benefits()->attach($benefit->id, [
+                        'distributed_by' => $request->user()->id,
+                        'amount' => $benefit->amount ?? 0,
+                        'status' => 'pending',
+                        'period_label' => 'Registration '.today()->toDateString(),
+                    ]);
+
+                    return $senior;
+                });
+                $created[] = ['row' => $index + 2, 'osca_id_number' => $senior->osca_id_number];
+            } catch (\Throwable $exception) {
+                $failed[] = ['row' => $index + 2, 'message' => $exception->getMessage()];
+            }
+        }
+
+        return response()->json([
+            'created' => $created,
+            'failed' => $failed,
+            'message' => count($created).' records imported, '.count($failed).' records failed.',
+        ], count($created) > 0 ? 201 : 422);
     }
 
     public function show(SeniorCitizen $senior): JsonResponse

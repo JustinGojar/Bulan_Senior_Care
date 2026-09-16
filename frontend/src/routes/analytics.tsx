@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { MapPin, PieChart as PieIcon, Users } from "lucide-react";
+import { MapPin, PieChart as PieIcon, TrendingUp, Users } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -8,6 +8,8 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -16,9 +18,8 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
-import { getStoredUser } from "@/lib/api";
-import { useSeniors } from "@/lib/use-seniors";
-import { useEffect } from "react";
+import { apiFetch, getStoredUser, type ApiSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -62,30 +63,62 @@ function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string })
 function Analytics() {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
-  const { seniors, loading } = useSeniors({ excludePending: true });
+  const [seniors, setSeniors] = useState<ApiSenior[]>([]);
+  const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
+    if (currentUser?.role !== "leader") {
+      Promise.all([
+        apiFetch<PaginatedResponse<ApiSenior>>("/seniors?exclude_pending=1&per_page=1000"),
+        apiFetch<PaginatedResponse<BenefitTransaction>>("/benefit-transactions?per_page=1000"),
+      ])
+        .then(([seniorResult, transactionResult]) => {
+          setSeniors(seniorResult.data);
+          setTransactions(transactionResult.data);
+        })
+        .catch((reason: Error) => setError(reason.message))
+        .finally(() => setLoading(false));
+    }
   }, [currentUser?.role, navigate]);
   if (currentUser?.role === "leader") return null;
   const barangayTotals = seniors.reduce<Record<string, number>>((totals, senior) => {
-    totals[senior.barangay] = (totals[senior.barangay] ?? 0) + 1;
+    const barangay = senior.barangay?.barangay_name ?? "Unassigned";
+    totals[barangay] = (totals[barangay] ?? 0) + 1;
     return totals;
   }, {});
-  const zoneParticipants = Object.entries(barangayTotals).map(([zone, total]) => ({ zone, total }));
-  const ageDistribution = [60, 70, 80, 90, 100].map((age) => ({
-    age: `${age}${age === 100 ? "+" : "-" + (age + 9)}`,
-    count: seniors.filter((senior) => senior.age >= age && senior.age < age + 10).length,
-  }));
-  const benefitRecords = Object.entries(
-    seniors.reduce<Record<string, number>>((totals, senior) => {
-      totals[senior.benefit] = (totals[senior.benefit] ?? 0) + 1;
-      return totals;
-    }, {}),
-  ).map(([name, value]) => ({ name, value }));
+  const releasedByBarangay = transactions.reduce<Record<string, number>>((totals, transaction) => {
+    if (transaction.status !== "released") return totals;
+    const barangay = transaction.senior.barangay?.barangay_name ?? "Unassigned";
+    totals[barangay] = (totals[barangay] ?? 0) + 1;
+    return totals;
+  }, {});
   const barangaySummary = Object.entries(barangayTotals).map(([barangay, registered]) => ({
     barangay,
     registered,
-    released: seniors.filter((senior) => senior.barangay === barangay && senior.status === "Active").length,
+    released: releasedByBarangay[barangay] ?? 0,
+  }));
+  const zoneParticipants = barangaySummary.map(({ barangay: zone, registered: total }) => ({ zone, total }));
+  const ageDistribution = [60, 70, 80, 90, 100].map((age) => ({
+    age: `${age}${age === 100 ? "+" : "-" + (age + 9)}`,
+    count: seniors.filter((senior) => {
+      const birthYear = Number(String(senior.birthdate).slice(0, 4));
+      const seniorAge = new Date().getFullYear() - birthYear;
+      return seniorAge >= age && (age === 100 || seniorAge < age + 10);
+    }).length,
+  }));
+  const benefitRecords = Object.entries(transactions.reduce<Record<string, number>>((totals, transaction) => {
+    const name = transaction.benefit.benefit_name;
+    totals[name] = (totals[name] ?? 0) + 1;
+    return totals;
+  }, {})).map(([name, value]) => ({ name, value }));
+  const municipalTotal = barangaySummary.reduce((total, row) => total + row.registered, 0);
+  const trendData = barangaySummary.map((row, index) => ({
+    barangay: row.barangay,
+    registered: row.registered,
+    released: row.released,
+    municipal: barangaySummary.slice(0, index + 1).reduce((total, item) => total + item.registered, 0),
   }));
 
   return (
@@ -94,6 +127,8 @@ function Analytics() {
       subtitle="Descriptive analytics across barangays, age groups, and benefits"
       breadcrumb={["Dashboard", "Analytics"]}
     >
+      {error && <p className="mb-6 rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p>}
+      {loading && <p className="mb-6 text-sm text-muted-foreground">Loading analytics data...</p>}
       <section className="surface-card p-7">
         <CardHead icon={MapPin} title="Total Participants per Zone / Barangay" />
         <div className="mt-6 h-72">
@@ -107,7 +142,7 @@ function Analytics() {
               </defs>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} domain={[0, 1000]} ticks={[0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
               <Tooltip />
               <Area
                 type="monotone"
@@ -134,7 +169,7 @@ function Analytics() {
               <BarChart data={ageDistribution}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="age" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={12} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} domain={[0, 1000]} ticks={[0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="count" name="Seniors" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
@@ -170,6 +205,26 @@ function Analytics() {
           )}
         </section>
       </div>
+
+      <section className="surface-card mt-6 p-7">
+        <CardHead icon={TrendingUp} title="Trend and Analytics by Barangay and Municipality" />
+        <p className="mt-2 text-sm text-muted-foreground">Registered seniors, released benefits, and cumulative municipal registrations.</p>
+        <div className="mt-6 h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendData}>
+              <CartesianGrid stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="barangay" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="registered" name="Barangay registered" stroke="var(--chart-1)" strokeWidth={2} />
+              <Line type="monotone" dataKey="released" name="Benefits released" stroke="var(--chart-2)" strokeWidth={2} />
+              <Line type="monotone" dataKey="municipal" name="Municipal cumulative" stroke="var(--chart-3)" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">Municipal registered total: {municipalTotal.toLocaleString()}</p>
+      </section>
 
       <section className="surface-card mt-6 p-7">
         <CardHead icon={MapPin} title="Barangay-Level Summary" />

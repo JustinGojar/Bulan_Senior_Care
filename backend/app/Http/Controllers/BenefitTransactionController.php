@@ -13,7 +13,7 @@ class BenefitTransactionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $page = max(1, $request->integer('page', 1));
-        $perPage = min(50, max(10, $request->integer('per_page', 25)));
+        $perPage = min(1000, max(10, $request->integer('per_page', 25)));
         $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}";
         $transactions = Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request, $page, $perPage) {
         $query = BenefitTransaction::with([

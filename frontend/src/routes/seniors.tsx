@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, Download, Eye, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
+import { Archive, Clipboard, Download, Eye, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { API_URL, apiFetch, getStoredUser, type ArchivedSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
+import { API_URL, apiFetch, bulkCreateSeniors, getStoredUser, type ArchivedSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
@@ -167,6 +167,12 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.setFontSize(16);
   document.setTextColor(33, 91, 125);
   document.text("REGISTRATION FORM", 112, 39, { align: "center" });
+  const oscaId = draft.id ?? draft.oscaIdNumber;
+  if (oscaId) {
+    document.setFontSize(9);
+    document.setTextColor(0, 0, 0);
+    document.text(`OSCA ID: ${oscaId}`, 112, 46, { align: "center" });
+  }
   document.setTextColor(0, 0, 0);
   document.setDrawColor(35, 45, 55);
   document.rect(166, 13, 25, 25);
@@ -395,36 +401,31 @@ function SeniorRecords() {
       toast.error("The file must contain a header row and at least one senior record.");
       return;
     }
-    let created = 0;
-    let failed = 0;
-    for (const record of records) {
-      const firstName = String(record["first_name"] ?? "").trim();
-      const middleName = String(record["middle_name"] ?? "").trim();
-      const lastName = String(record["last_name"] ?? "").trim();
-      const birthdateValue = normalizeBulkDate(record["birthdate"] ?? record["date_of_birth"] ?? record["dob"]);
-      const birthdate = new Date(`${birthdateValue}T00:00:00`);
-      const age = Number.isNaN(birthdate.getTime()) ? 60 : new Date().getFullYear() - birthdate.getFullYear();
-      try {
-        await createSenior({
-          name: [firstName, middleName, lastName].filter(Boolean).join(" "),
-          firstName,
-          middleName,
-          lastName,
-          birthdate: birthdateValue,
-          age,
-          barangay: String(record["barangay"] ?? "").trim(),
-          address: String(record["address"] ?? "").trim(),
-          contact: String(record["contact_number"] ?? record["contact"] ?? "").trim(),
-          benefit: String(record["benefit"] ?? "Social Pension").trim() || "Social Pension",
-          status: "Pending",
-        });
-        created += 1;
-      } catch {
-        failed += 1;
-      }
+    const normalizedRecords = records.map((record) => {
+      const birthdate = normalizeBulkDate(record["birthdate"] ?? record["date_of_birth"] ?? record["dob"]);
+      const age = new Date().getFullYear() - Number(birthdate.slice(0, 4));
+      const benefit = String(record["benefit"] ?? (age >= 100 ? "Centenarian Award" : age >= 90 ? "Nonagenarian Grant" : age >= 80 ? "Octogenarian Grant" : "Social Pension")).trim();
+      return {
+        first_name: String(record["first_name"] ?? "").trim(),
+        middle_name: String(record["middle_name"] ?? "").trim(),
+        last_name: String(record["last_name"] ?? "").trim(),
+        birthdate,
+        sex: String(record["sex"] ?? "female").toLowerCase() === "male" ? "male" : "female",
+        contact_number: String(record["contact_number"] ?? record["contact"] ?? "").trim(),
+        barangay: String(record["barangay"] ?? "").trim(),
+        address: String(record["address"] ?? "").trim(),
+        benefit,
+      };
+    });
+    try {
+      const result = await bulkCreateSeniors(normalizedRecords);
+      const failed = result.failed.length;
+      if (failed) toast.error(`${result.created.length} records added, ${failed} failed. ${result.failed[0]?.message ?? "Check the uploaded data."}`);
+      else toast.success(`${result.created.length} senior records added and are pending review.`);
+      window.location.reload();
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Bulk upload failed.");
     }
-    if (failed) toast.error(`${created} records added, ${failed} records failed.`);
-    else toast.success(`${created} senior records added and are pending review.`);
   }
 
   async function exportRecords() {
@@ -744,8 +745,8 @@ function SeniorRecords() {
                 await updateSenior(editing.id, draft);
                 toast.success(isLeader ? "Update request sent to the Head for approval." : `${draft.name}'s record was updated.`);
               } else {
-                await createSenior(draft);
-                await downloadRegistrationForm(draft);
+                const created = await createSenior(draft);
+                await downloadRegistrationForm({ ...draft, id: created.id });
                 toast.success(`${draft.name} was registered and is pending review.`);
               }
             } catch (reason) {
@@ -759,7 +760,14 @@ function SeniorRecords() {
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto bg-slate-50 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display text-lg">{viewing?.name}</DialogTitle>
-            <DialogDescription className="text-xs">OSCA ID {viewing?.id}</DialogDescription>
+            <DialogDescription className="flex items-center gap-2 text-xs">
+              OSCA ID {viewing?.id}
+              {viewing?.id && (
+                <button type="button" className="inline-flex items-center gap-1 font-semibold text-foreground" onClick={() => navigator.clipboard.writeText(viewing.id).then(() => toast.success("OSCA ID copied."))}>
+                  <Clipboard className="h-3 w-3" /> Copy
+                </button>
+              )}
+            </DialogDescription>
           </DialogHeader>
           <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
             {[

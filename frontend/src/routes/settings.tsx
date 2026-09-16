@@ -42,7 +42,7 @@ export const Route = createFileRoute("/settings")({
 const ROLES = [
   ["OSCA Administrator", "Full access to records, benefits, analytics, and user management."],
   ["OSCA Head", "Reviews eligibility, approves releases, and views all analytics."],
-  ["Barangay Leader", "Encodes and views records for their own barangay only."],
+  ["BSCA / Barangay Senior Citizen Affairs", "Encodes and views records for their own barangay only."],
 ];
 
 const NOTIFS = [

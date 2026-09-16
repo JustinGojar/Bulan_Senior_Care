@@ -25,6 +25,7 @@ function clearSeniorCache() {
 }
 
 export type SeniorDraft = Omit<Senior, "id"> & {
+  id?: string;
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -93,10 +94,10 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const listPath = pendingOnly
-    ? "/seniors?pending_only=1"
+    ? "/seniors?pending_only=1&per_page=1000"
     : excludePending
-      ? "/seniors?exclude_pending=1"
-      : "/seniors";
+      ? "/seniors?exclude_pending=1&per_page=1000"
+      : "/seniors?per_page=1000";
 
   useEffect(() => {
     Promise.allSettled([
@@ -155,6 +156,7 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
       setTotalCount((count) => count + 1);
     }
     if (mapped.status === "Pending") setPendingCount((count) => count + 1);
+    return mapped;
   }, [excludePending]);
 
   const updateSenior = useCallback(async (id: string, draft: SeniorDraft) => {

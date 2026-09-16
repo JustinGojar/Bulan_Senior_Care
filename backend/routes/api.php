@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/seniors/archive', [SeniorCitizenController::class, 'archive']);
     Route::post('/seniors/archive/{oscaId}/restore', [SeniorCitizenController::class, 'restore']);
     Route::post('/seniors/{senior}/archive', [SeniorCitizenController::class, 'archiveRecord']);
+    Route::post('/seniors/bulk', [SeniorCitizenController::class, 'bulkStore']);
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::put('/admin/users/{user}', [UserController::class, 'update']);
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);

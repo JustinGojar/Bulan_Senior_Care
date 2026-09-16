@@ -166,7 +166,7 @@ function UserManagement() {
           passwordConfirmation,
         });
         setUsers((current) => [...current, leader]);
-        toast.success("Barangay Leader account created.");
+        toast.success("BSCA / Barangay Senior Citizen Affairs account created.");
       }
       resetForm();
       setShowCreateForm(false);
@@ -199,7 +199,7 @@ function UserManagement() {
             onClick={() => setShowCreateForm(true)}
             className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground"
           >
-            <UserPlus className="mr-2 inline h-4 w-4" /> Create Barangay Leader
+            <UserPlus className="mr-2 inline h-4 w-4" /> Create BSCA / Barangay Senior Citizen Affairs
           </button>
         ) : undefined
       }
@@ -295,7 +295,7 @@ function UserManagement() {
           <form className="surface-card w-full max-w-lg p-7" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold">{editingUser ? "Edit user account" : "Create Barangay Leader"}</h2>
+                <h2 className="text-xl font-bold">{editingUser ? "Edit user account" : "Create BSCA / Barangay Senior Citizen Affairs account"}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Only Admin can manage these accounts.
                 </p>

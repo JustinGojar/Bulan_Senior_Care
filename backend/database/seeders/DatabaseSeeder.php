@@ -38,8 +38,6 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Maribel Dela Cruz', 'email' => 'head@osca-bulan.gov.ph', 'role' => 'head', 'barangay_id' => null],
         ];
 
-        User::whereNotIn('email', collect($accounts)->pluck('email'))->each(fn (User $user) => $user->delete());
-
         foreach (['admin', 'head', 'leader'] as $role) {
             Role::findOrCreate($role, 'web');
         }
@@ -50,5 +48,6 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(BenefitSeeder::class);
+        $this->call(SampleDataSeeder::class);
     }
 }
