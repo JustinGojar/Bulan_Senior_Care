@@ -50,7 +50,12 @@ class SeniorCitizenController extends Controller
 
         $perPage = min(1000, max(10, $request->integer('per_page', 25)));
 
-        return response()->json(Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), fn () => $query->latest()->paginate($perPage)->toArray()));
+        $loadSeniors = fn () => $query->latest()->paginate($perPage)->toArray();
+        $result = $perPage >= 500
+            ? $loadSeniors()
+            : Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), $loadSeniors);
+
+        return response()->json($result);
     }
 
     public function archive(Request $request): JsonResponse

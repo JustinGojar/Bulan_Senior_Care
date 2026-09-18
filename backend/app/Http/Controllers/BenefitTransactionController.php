@@ -15,7 +15,7 @@ class BenefitTransactionController extends Controller
         $page = max(1, $request->integer('page', 1));
         $perPage = min(1000, max(10, $request->integer('per_page', 25)));
         $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}";
-        $transactions = Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request, $page, $perPage) {
+        $loadTransactions = function () use ($request, $page, $perPage) {
         $query = BenefitTransaction::with([
             'senior.barangay',
             'senior.encoder:id,name,role',
@@ -31,7 +31,10 @@ class BenefitTransactionController extends Controller
         }
 
         return $query->paginate($perPage, ['*'], 'page', $page)->toArray();
-        });
+        };
+        $transactions = $perPage >= 500
+            ? $loadTransactions()
+            : Cache::remember($cacheKey, now()->addSeconds(3), $loadTransactions);
 
         return response()->json($transactions);
     }
