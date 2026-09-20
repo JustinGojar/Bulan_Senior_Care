@@ -76,7 +76,7 @@ class SeniorCitizenController extends Controller
 
     public function archiveRecord(Request $request, SeniorCitizen $senior): JsonResponse
     {
-        abort_if($request->user()->role === 'admin', 403, 'Admin accounts should use permanent delete.');
+        abort_if(in_array($request->user()->role, ['admin', 'head'], true), 403, 'This account cannot archive senior records.');
         $this->authorizeScope($request, $senior);
         $senior->delete();
 
@@ -148,18 +148,20 @@ class SeniorCitizenController extends Controller
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
         $rows = $request->input('records');
         abort_if(! is_array($rows) || count($rows) === 0, 422, 'At least one senior record is required.');
+        abort_if(count($rows) > 500, 422, 'You can import a maximum of 500 records at a time.');
 
         $created = [];
         $failed = [];
         foreach ($rows as $index => $row) {
             $data = is_array($row) ? $row : [];
             $validator = Validator::make($data, [
+                'osca_id_number' => ['nullable', 'string', 'max:50'],
                 'first_name' => ['required', 'string', 'max:100'],
                 'last_name' => ['required', 'string', 'max:100'],
                 'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
                 'sex' => ['required', Rule::in(['male', 'female'])],
-                'contact_number' => ['required', 'string', 'max:30'],
-                'barangay' => ['required', 'string', 'max:100'],
+                'contact_number' => ['required', 'regex:/^[0-9+()\-\s]{7,30}$/'],
+                'barangay' => ['required', 'string', 'max:100', Rule::exists('barangays', 'barangay_name')],
                 'benefit' => ['required', 'string', 'max:100'],
             ]);
             if ($validator->fails()) {
@@ -169,9 +171,10 @@ class SeniorCitizenController extends Controller
 
             try {
                 $senior = DB::transaction(function () use ($data, $request) {
-                    $barangayId = Barangay::firstOrCreate(['barangay_name' => $data['barangay']])->id;
+                    $barangayId = Barangay::where('barangay_name', $data['barangay'])->value('id');
                     if ($request->user()->role === 'leader') {
                         abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
+                        abort_if((int) $barangayId !== (int) $request->user()->barangay_id, 403, 'You can only import records for your assigned barangay.');
                         $barangayId = $request->user()->barangay_id;
                     }
                     $benefitName = [
@@ -181,8 +184,21 @@ class SeniorCitizenController extends Controller
                     ][$data['benefit']] ?? $data['benefit'];
                     $benefit = Benefit::where('benefit_name', $benefitName)->where('status', 'active')->first();
                     abort_if(! $benefit, 422, 'A valid benefit is required.');
+                    $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])
+                        ->where('last_name', $data['last_name'])
+                        ->where('first_name', $data['first_name'])
+                        ->exists();
+                    abort_if($duplicate, 422, 'A senior with the same name and birthdate already exists.');
+
+                    $oscaId = $data['osca_id_number'] ?? null;
+                    if ($oscaId) {
+                        abort_if(SeniorCitizen::withTrashed()->where('osca_id_number', $oscaId)->exists(), 422, 'The Senior Citizen ID already exists.');
+                    } else {
+                        $oscaId = $this->nextOscaId();
+                    }
+
                     $senior = SeniorCitizen::create([
-                        'osca_id_number' => $this->nextOscaId(),
+                        'osca_id_number' => $oscaId,
                         'first_name' => $data['first_name'],
                         'middle_name' => $data['middle_name'] ?? null,
                         'last_name' => $data['last_name'],

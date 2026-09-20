@@ -37,6 +37,10 @@ class UserController extends Controller
             'password' => ['nullable', 'confirmed', Password::min(8)],
         ]);
 
+        if ($request->user()->is($user) && ($data['role'] !== 'admin' || $data['status'] !== 'active')) {
+            abort(422, 'You cannot remove access from your own administrator account.');
+        }
+
         if ($data['role'] === 'leader' && ! $data['barangay_id']) {
             abort(422, 'A barangay is required for a Barangay Leader.');
         }

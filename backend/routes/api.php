@@ -12,6 +12,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\BenefitReleaseController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AnalyticsController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -22,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/overview', OverviewController::class);
+    Route::get('/analytics', AnalyticsController::class);
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/barangays', [AuthController::class, 'barangays']);

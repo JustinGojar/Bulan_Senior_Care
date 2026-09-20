@@ -18,7 +18,7 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
-import { apiFetch, getStoredUser, type ApiSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
+import { apiFetch, getStoredUser } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/analytics")({
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/analytics")({
       {
         name: "description",
         content:
-          "Descriptive analytics across barangays, age groups, and benefit types for senior citizens of Bulan, Sorsogon.",
+          "Descriptive analytics across barangays, age groups, and Expanded Centenarian programs for senior citizens of Bulan, Sorsogon.",
       },
       { property: "og:title", content: "Descriptive Analytics — Bulan SeniorCare" },
       {
@@ -49,6 +49,14 @@ const PIE_COLORS = [
   "var(--chart-4)",
 ];
 
+type AnalyticsResponse = {
+  municipal: { total_registered: number; active: number; male: number; female: number };
+  barangay_summary: Array<{ barangay: string; registered: number; active: number; released: number }>;
+  age_distribution: Array<{ age: string; count: number }>;
+  benefit_records: Array<{ name: string; value: number }>;
+  trend: Array<{ barangay: string; registered: number; released: number; municipal: number }>;
+};
+
 function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -63,63 +71,25 @@ function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string })
 function Analytics() {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
-  const [seniors, setSeniors] = useState<ApiSenior[]>([]);
-  const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
     if (currentUser?.role !== "leader") {
-      Promise.all([
-        apiFetch<PaginatedResponse<ApiSenior>>("/seniors?exclude_pending=1&per_page=1000"),
-        apiFetch<PaginatedResponse<BenefitTransaction>>("/benefit-transactions?per_page=1000"),
-      ])
-        .then(([seniorResult, transactionResult]) => {
-          setSeniors(seniorResult.data);
-          setTransactions(transactionResult.data);
-        })
+      apiFetch<AnalyticsResponse>("/analytics")
+        .then(setAnalytics)
         .catch((reason: Error) => setError(reason.message))
         .finally(() => setLoading(false));
     }
   }, [currentUser?.role, navigate]);
   if (currentUser?.role === "leader") return null;
-  const barangayTotals = seniors.reduce<Record<string, number>>((totals, senior) => {
-    const barangay = senior.barangay?.barangay_name ?? "Unassigned";
-    totals[barangay] = (totals[barangay] ?? 0) + 1;
-    return totals;
-  }, {});
-  const releasedByBarangay = transactions.reduce<Record<string, number>>((totals, transaction) => {
-    if (transaction.status !== "released") return totals;
-    const barangay = transaction.senior.barangay?.barangay_name ?? "Unassigned";
-    totals[barangay] = (totals[barangay] ?? 0) + 1;
-    return totals;
-  }, {});
-  const barangaySummary = Object.entries(barangayTotals).map(([barangay, registered]) => ({
-    barangay,
-    registered,
-    released: releasedByBarangay[barangay] ?? 0,
-  }));
+  const barangaySummary = analytics?.barangay_summary ?? [];
   const zoneParticipants = barangaySummary.map(({ barangay: zone, registered: total }) => ({ zone, total }));
-  const ageDistribution = [60, 70, 80, 90, 100].map((age) => ({
-    age: `${age}${age === 100 ? "+" : "-" + (age + 9)}`,
-    count: seniors.filter((senior) => {
-      const birthYear = Number(String(senior.birthdate).slice(0, 4));
-      const seniorAge = new Date().getFullYear() - birthYear;
-      return seniorAge >= age && (age === 100 || seniorAge < age + 10);
-    }).length,
-  }));
-  const benefitRecords = Object.entries(transactions.reduce<Record<string, number>>((totals, transaction) => {
-    const name = transaction.benefit.benefit_name;
-    totals[name] = (totals[name] ?? 0) + 1;
-    return totals;
-  }, {})).map(([name, value]) => ({ name, value }));
-  const municipalTotal = barangaySummary.reduce((total, row) => total + row.registered, 0);
-  const trendData = barangaySummary.map((row, index) => ({
-    barangay: row.barangay,
-    registered: row.registered,
-    released: row.released,
-    municipal: barangaySummary.slice(0, index + 1).reduce((total, item) => total + item.registered, 0),
-  }));
+  const ageDistribution = analytics?.age_distribution ?? [];
+  const benefitRecords = analytics?.benefit_records ?? [];
+  const municipalTotal = analytics?.municipal.total_registered ?? 0;
+  const trendData = analytics?.trend ?? [];
 
   return (
     <AppShell

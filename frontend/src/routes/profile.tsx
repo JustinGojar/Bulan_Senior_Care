@@ -64,7 +64,7 @@ function ProfilePage() {
       ? oscaAdminImage
       : null);
   const roleLabel = user?.role?.toLowerCase() === "leader"
-    ? `Leader${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+    ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
     : user?.role ?? "user";
   const initials = (name || "User").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 

@@ -293,7 +293,7 @@ function changedFields(request: SeniorEditRequest) {
 }
 
 function SeniorRecords() {
-  const { seniors, totalCount, activeCount, pendingCount, createSenior, updateSenior, deleteSenior } = useSeniors();
+  const { seniors, totalCount, activeCount, pendingCount, loading, error, createSenior, updateSenior, deleteSenior } = useSeniors();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
@@ -311,6 +311,7 @@ function SeniorRecords() {
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [reviewingRequestId, setReviewingRequestId] = useState<number | null>(null);
   const [benefitTransactions, setBenefitTransactions] = useState<BenefitTransaction[]>([]);
+  const [bulkPreview, setBulkPreview] = useState<Array<Record<string, string>> | null>(null);
   const bulkFileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -410,18 +411,24 @@ function SeniorRecords() {
         middle_name: String(record["middle_name"] ?? "").trim(),
         last_name: String(record["last_name"] ?? "").trim(),
         birthdate,
-        sex: String(record["sex"] ?? "female").toLowerCase() === "male" ? "male" : "female",
+        sex: String(record["sex"] ?? "").toLowerCase(),
         contact_number: String(record["contact_number"] ?? record["contact"] ?? "").trim(),
         barangay: String(record["barangay"] ?? "").trim(),
         address: String(record["address"] ?? "").trim(),
         benefit,
       };
     });
+    setBulkPreview(normalizedRecords);
+  }
+
+  async function confirmBulkImport() {
+    if (!bulkPreview) return;
     try {
-      const result = await bulkCreateSeniors(normalizedRecords);
+      const result = await bulkCreateSeniors(bulkPreview);
       const failed = result.failed.length;
       if (failed) toast.error(`${result.created.length} records added, ${failed} failed. ${result.failed[0]?.message ?? "Check the uploaded data."}`);
       else toast.success(`${result.created.length} senior records added and are pending review.`);
+      setBulkPreview(null);
       window.location.reload();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : "Bulk upload failed.");
@@ -573,7 +580,7 @@ function SeniorRecords() {
         <section className="surface-card mt-6 p-6">
           <div>
             <h2 className="text-lg font-bold">Senior record edit requests</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Review changes submitted by Barangay Leaders before they update the official record.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Review changes submitted by BSCA before they update the official record.</p>
           </div>
           <div className="mt-5 space-y-3">
             {editRequests.map((request) => (
@@ -612,7 +619,19 @@ function SeniorRecords() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((s) => (
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
+                  Loading senior records...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={8} className="px-5 py-12 text-center text-destructive">
+                  Unable to load senior records. Please refresh and try again.
+                </td>
+              </tr>
+            ) : rows.map((s) => (
               <tr key={s.id} className="border-t border-border">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -687,7 +706,7 @@ function SeniorRecords() {
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {!loading && !error && rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
                   No records match this filter.
@@ -697,6 +716,38 @@ function SeniorRecords() {
           </tbody>
         </table>
       </div>
+
+      <Dialog open={!!bulkPreview} onOpenChange={(open) => !open && setBulkPreview(null)}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Preview bulk import</DialogTitle>
+            <DialogDescription>
+              Review {bulkPreview?.length ?? 0} records before importing. Invalid rows will be rejected by the server.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 overflow-auto rounded-xl border border-border">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-secondary">
+                <tr><th className="px-3 py-2">Name</th><th className="px-3 py-2">Birthdate</th><th className="px-3 py-2">Sex</th><th className="px-3 py-2">Barangay</th></tr>
+              </thead>
+              <tbody>
+                {(bulkPreview ?? []).slice(0, 50).map((record, index) => (
+                  <tr key={`${record.first_name}-${record.last_name}-${index}`} className="border-t border-border">
+                    <td className="px-3 py-2">{record.first_name} {record.last_name}</td>
+                    <td className="px-3 py-2">{record.birthdate}</td>
+                    <td className="px-3 py-2">{record.sex || "Missing"}</td>
+                    <td className="px-3 py-2">{record.barangay || "Missing"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setBulkPreview(null)} className="rounded-full bg-secondary px-5 py-3 text-sm font-semibold">Cancel</button>
+            <button type="button" onClick={confirmBulkImport} className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground">Import records</button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
         <DialogContent className="sm:max-w-lg">

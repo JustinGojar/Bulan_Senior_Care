@@ -268,7 +268,7 @@ function BenefitTracking() {
       <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>Expanded Centenarian:</span>
         <span className="rounded-full bg-secondary px-3 py-1 font-semibold text-foreground">
-          {selectedBenefit === "All" ? "All benefit types" : selectedBenefit}
+              {selectedBenefit === "All" ? "All Expanded Centenarian programs" : selectedBenefit}
         </span>
       </div>
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -326,7 +326,7 @@ function BenefitTracking() {
                 {notReceived > 0 && <span className="rounded-full bg-destructive/10 px-3 py-1.5 text-destructive">Not received: {notReceived}</span>}
               </div>
               <div className="mt-3 rounded-xl bg-secondary px-3 py-2">
-                <p className="text-xs text-muted-foreground">Release date for this benefit type</p>
+                <p className="text-xs text-muted-foreground">Release date for this Expanded Centenarian program</p>
                 <p className="mt-1 text-sm font-bold">
                   {releaseDates[0] ? formatDate(releaseDates[0]) : "No release date entered"}
                 </p>
@@ -374,7 +374,7 @@ function BenefitTracking() {
                   <td className="px-4 py-4">{transaction.benefit.benefit_name}</td>
                   <td className="px-4 py-4 text-muted-foreground">{transaction.senior.barangay?.barangay_name ?? "Unassigned"}</td>
                   <td className="px-4 py-4 text-muted-foreground">
-                    {transaction.senior.encoder?.role === "leader" ? `Leader: ${transaction.senior.encoder.name}` : transaction.senior.encoder?.name ?? "Unknown"}
+                    {transaction.senior.encoder?.role === "leader" ? `BSCA: ${transaction.senior.encoder.name}` : transaction.senior.encoder?.name ?? "Unknown"}
                   </td>
                   <td className="px-4 py-4 text-muted-foreground">
                     {transaction.date_distributed
@@ -413,7 +413,7 @@ function BenefitTracking() {
               {filteredTransactions.length === 0 && (
                 <tr>
                   <td colSpan={canUpdateTransactions ? 8 : 7} className="px-4 py-8 text-center text-muted-foreground">
-                    No benefit records available for the selected barangay and benefit type.
+                    No records available for the selected barangay and Expanded Centenarian program.
                   </td>
                 </tr>
               )}
@@ -440,7 +440,7 @@ function BenefitTracking() {
           </DialogHeader>
           <form onSubmit={saveRelease} className="grid gap-4 sm:grid-cols-2">
             <label>
-              <span className="text-xs font-semibold text-muted-foreground">Benefit Type</span>
+              <span className="text-xs font-semibold text-muted-foreground">Expanded Centenarian</span>
               <select required value={selectedBenefitId} onChange={(event) => { setSelectedBenefitId(event.target.value); const selected = programs.find((program) => String(program.id) === event.target.value); setAmount(selected?.amount === "Variable" ? "" : selected?.amount.replace(/[^0-9.]/g, "") ?? ""); }} className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm">
                 <option value="">Select benefit</option>
                 {programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}

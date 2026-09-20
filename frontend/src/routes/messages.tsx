@@ -186,7 +186,7 @@ function MessagesPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">New message</h2>
-              <p className="text-sm text-muted-foreground">Search leaders and heads by name or email.</p>
+              <p className="text-sm text-muted-foreground">Search BSCA and OSCA Head accounts by name or email.</p>
             </div>
             <button type="button" onClick={() => setComposerOpen(false)} aria-label="Close new message" className="grid h-9 w-9 place-items-center rounded-full bg-secondary"><ChevronLeft className="h-4 w-4 rotate-90" /></button>
           </div>
@@ -199,7 +199,7 @@ function MessagesPage() {
                   setRecipient(null);
                   setRecipientSearch(event.target.value);
                 }}
-                placeholder="Search leader or head by name or email"
+                placeholder="Search BSCA or OSCA Head by name or email"
                 className="h-12 w-full rounded-xl border border-border bg-transparent pr-4 pl-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
               />
               {!recipient && recipientSearch && recipients.length > 0 && (

@@ -82,11 +82,9 @@ class AuthController extends Controller
     {
         $data = $request->validate(['email' => ['required', 'email']]);
         $status = PasswordBroker::sendResetLink(['email' => $data['email']]);
-        if ($status !== PasswordBroker::RESET_LINK_SENT) {
-            return response()->json(['message' => __($status)], 422);
-        }
+        $message = 'If an account exists for that email address, a password reset link has been sent.';
 
-        return response()->json(['message' => 'A password reset link has been sent to your Gmail address.']);
+        return response()->json(['message' => $message], $status === PasswordBroker::RESET_LINK_SENT ? 200 : 200);
     }
 
     public function resetPassword(Request $request): JsonResponse

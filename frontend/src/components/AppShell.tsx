@@ -3,7 +3,6 @@ import {
   BarChart3,
   Bell,
   ClipboardCheck,
-  FileText,
   HandCoins,
   LayoutGrid,
   Mail,
@@ -30,7 +29,6 @@ const NAV = [
   { to: "/age-threshold", label: "Age Threshold", icon: ClipboardCheck },
   { to: "/benefits", label: "Benefit Tracking", icon: HandCoins },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/reports", label: "Reports", icon: FileText },
   { to: "/users", label: "User Management", icon: UserCog },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -135,7 +133,7 @@ export function AppShell({
     .slice(0, 2)
     .toUpperCase();
   const roleLabel = user?.role?.toLowerCase() === "leader"
-    ? `Leader${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+    ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
     : user?.role?.toLowerCase() === "head"
       ? "OSCA Head"
       : user?.role?.toLowerCase() === "admin"
@@ -150,7 +148,6 @@ export function AppShell({
   const visibleNav = NAV.filter(({ to }) =>
     (to !== "/users" || user?.role === "admin") &&
     (to !== "/eligibility" || user?.role !== "leader") &&
-    (to !== "/reports" || user?.role !== "leader") &&
     (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
   );
 

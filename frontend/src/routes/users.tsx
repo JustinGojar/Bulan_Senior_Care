@@ -340,7 +340,7 @@ function UserManagement() {
                   <select required value={role} onChange={(event) => setRole(event.target.value as typeof role)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
                     <option value="admin">Admin</option>
                     <option value="head">Head</option>
-                    <option value="leader">Leader</option>
+                    <option value="leader">BSCA</option>
                   </select>
                   <select required value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
                     <option value="active">Active</option>
