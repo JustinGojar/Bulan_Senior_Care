@@ -76,7 +76,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
 
-    const publicPaths = new Set(["/login", "/forgot-password", "/reset-password"]);
+    const publicPaths = new Set(["/", "/login", "/forgot-password", "/reset-password"]);
     const roleRequirements: Record<string, string[]> = {
       "/users": ["admin"],
       "/eligibility": ["admin", "head"],
