@@ -19,7 +19,7 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::get('/announcements', [AnnouncementController::class, 'index']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['token.idle', 'auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/overview', OverviewController::class);

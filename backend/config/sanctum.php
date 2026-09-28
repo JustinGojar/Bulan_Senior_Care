@@ -52,6 +52,8 @@ return [
 
     'expiration' => null,
 
+    'idle_timeout' => env('SANCTUM_IDLE_TIMEOUT', 120),
+
     /*
     |--------------------------------------------------------------------------
     | Token Prefix

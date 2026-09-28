@@ -7,7 +7,9 @@ use App\Models\Barangay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
@@ -64,12 +66,23 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
             'remember_me' => ['sometimes', 'boolean'],
         ]);
+        $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return response()->json([
+                'message' => 'Too many login attempts. Please try again in '.RateLimiter::availableIn($throttleKey).' seconds.',
+            ], 429);
+        }
+
         $user = User::where('email', $credentials['email'])->where('status', 'active')->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, 60);
+
             return response()->json(['message' => 'The provided credentials are incorrect.'], 422);
         }
 
+        RateLimiter::clear($throttleKey);
         $user->update(['last_login' => now()]);
         $user->tokens()->delete();
         $expiresAt = ($credentials['remember_me'] ?? false) ? now()->addDays(30) : null;

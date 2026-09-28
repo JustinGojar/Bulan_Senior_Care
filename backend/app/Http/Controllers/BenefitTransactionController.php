@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BenefitTransaction;
+use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -69,6 +70,13 @@ class BenefitTransactionController extends Controller
         unset($data['attachment']);
 
         $transaction = BenefitTransaction::create($data);
+        $action = $transaction->status === 'released' ? 'released' : 'created';
+        AuditLog::record($request->user(), $action, $transaction, afterValue: [
+            'benefit_id' => $transaction->benefit_id,
+            'status' => $transaction->status,
+            'amount' => $transaction->amount,
+            'period_label' => $transaction->period_label,
+        ]);
 
         return response()->json($transaction->load($this->relations()), 201);
     }
@@ -78,6 +86,7 @@ class BenefitTransactionController extends Controller
         $senior = $benefitTransaction->senior;
         $this->authorizeTransactionEditor($request);
         $this->authorizeScope($request, $senior);
+        $beforeValue = $benefitTransaction->only(['benefit_id', 'status', 'amount', 'period_label']);
 
         $data = $request->validate([
             'status' => ['required', 'in:released,failed,pending'],
@@ -102,6 +111,10 @@ class BenefitTransactionController extends Controller
             'distributed_by' => $data['status'] === 'released' ? $request->user()->id : $benefitTransaction->distributed_by,
             'updated_by' => $request->user()->id,
         ]);
+        $action = $beforeValue['status'] !== 'released' && $benefitTransaction->status === 'released'
+            ? 'released'
+            : 'updated';
+        AuditLog::record($request->user(), $action, $benefitTransaction, $beforeValue, $benefitTransaction->only(['benefit_id', 'status', 'amount', 'period_label']));
 
         return response()->json($benefitTransaction->fresh()->load($this->relations()));
     }

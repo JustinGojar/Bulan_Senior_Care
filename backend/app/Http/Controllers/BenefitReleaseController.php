@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BenefitRelease;
+use App\Models\AuditLog;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +44,13 @@ class BenefitReleaseController extends Controller
         $data['created_by'] = $request->user()->id;
         $data['updated_by'] = $request->user()->id;
         $release = BenefitRelease::create($data);
+        $action = $release->status === 'released' ? 'released' : 'created';
+        AuditLog::record($request->user(), $action, $release, afterValue: [
+            'benefit_id' => $release->benefit_id,
+            'status' => $release->status,
+            'amount' => $release->amount,
+            'period_label' => $release->period_label,
+        ]);
 
         $benefitName = $release->load('benefit:id,benefit_name')->benefit->benefit_name;
         User::query()->where('role', 'leader')->where('status', 'active')->each(function (User $leader) use ($release, $benefitName, $request) {
