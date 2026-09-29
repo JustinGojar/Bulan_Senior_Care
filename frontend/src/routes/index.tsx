@@ -8,6 +8,7 @@ import {
   HandCoins,
   ShieldCheck,
 } from "lucide-react";
+import { useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import seniorCitizensPhoto from "@/images/img.png";
@@ -77,6 +78,68 @@ const ANALYTICS = [
 ];
 
 function Landing() {
+  useEffect(() => {
+    let fallbackTimer: number | undefined;
+    let waitingForScroll = false;
+
+    const cardsBySection: Record<string, string> = {
+      about: "#about",
+      features: "#features .surface-card",
+      benefits: "#benefits > .surface-card:first-child",
+      analytics: "#analytics",
+      faq: "#faq .surface-card",
+    };
+
+    const popTargetCards = () => {
+      if (!waitingForScroll) return;
+
+      window.clearTimeout(fallbackTimer);
+      document.querySelectorAll(".landing-scroll-pop").forEach((card) => {
+        card.classList.remove("landing-scroll-pop");
+      });
+
+      const selector = cardsBySection[window.location.hash.slice(1)];
+      if (selector) {
+        document.querySelectorAll(selector).forEach((card) => {
+          void (card as HTMLElement).offsetWidth;
+          card.classList.add("landing-scroll-pop");
+        });
+      }
+
+      waitingForScroll = false;
+    };
+
+    const scheduleFallback = () => {
+      if (!waitingForScroll) return;
+      window.clearTimeout(fallbackTimer);
+      fallbackTimer = window.setTimeout(popTargetCards, 120);
+    };
+
+    const beginNavigation = () => {
+      waitingForScroll = true;
+      scheduleFallback();
+    };
+
+    const handleAnchorClick = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest('a[href^="#"]')) {
+        beginNavigation();
+      }
+    };
+
+    window.addEventListener("hashchange", beginNavigation);
+    window.addEventListener("scroll", scheduleFallback, { passive: true });
+    window.addEventListener("scrollend", popTargetCards);
+    document.addEventListener("click", handleAnchorClick);
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      window.removeEventListener("hashchange", beginNavigation);
+      window.removeEventListener("scroll", scheduleFallback);
+      window.removeEventListener("scrollend", popTargetCards);
+      document.removeEventListener("click", handleAnchorClick);
+    };
+  }, []);
+
   return (
     <div className="bg-app landing-page-bg min-h-screen">
       <div className="mx-auto max-w-screen-2xl px-10 py-6">
@@ -201,8 +264,8 @@ function Landing() {
           </div>
         </section>
 
-        <section id="benefits" className="surface-card scroll-mt-24 grid gap-10 p-10 lg:grid-cols-2">
-          <div>
+        <section id="benefits" className="scroll-mt-24 grid gap-6 lg:grid-cols-2">
+          <div className="surface-card p-10">
             <h2 className="text-3xl font-extrabold">Who benefits</h2>
             <ul className="mt-6 space-y-5 text-sm">
               {[
@@ -220,7 +283,7 @@ function Landing() {
               ))}
             </ul>
           </div>
-          <div id="analytics" className="scroll-mt-24">
+          <div id="analytics" className="surface-card scroll-mt-24 p-10">
             <h2 className="text-3xl font-extrabold">Descriptive analytics</h2>
             <div className="mt-6 grid gap-3">
               {ANALYTICS.map((item) => (
