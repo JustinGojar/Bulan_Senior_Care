@@ -279,7 +279,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
   const body = (await response.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | T | null;
   if (!response.ok) {
-    if (response.status === 401 && path !== "/login") {
+    if (response.status === 401 && path !== "/login" && token) {
       clearToken();
       broadcastAuthChange();
       throw new Error("Your session has expired. Please log in again before saving your profile.");

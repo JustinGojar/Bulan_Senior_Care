@@ -213,6 +213,16 @@
   background-size: cover;
 }
 
+.landing-page-bg {
+  background-image: linear-gradient(rgb(0 0 0 / 22%), rgb(0 0 0 / 22%)),
+    var(--app-background-image);
+}
+
+.dark .landing-page-bg {
+  background-image: linear-gradient(rgb(0 0 0 / 48%), rgb(0 0 0 / 48%)),
+    var(--app-background-image);
+}
+
 @utility bg-navy {
   background-image: var(--gradient-navy);
 }
