@@ -95,6 +95,7 @@ class AuthController extends Controller
     {
         $data = $request->validate(['email' => ['required', 'email']]);
         $status = PasswordBroker::sendResetLink(['email' => $data['email']]);
+        logger()->info('Password reset link request processed.', ['status' => $status]);
         $message = 'If an account exists for that email address, a password reset link has been sent.';
 
         return response()->json(['message' => $message], $status === PasswordBroker::RESET_LINK_SENT ? 200 : 200);
