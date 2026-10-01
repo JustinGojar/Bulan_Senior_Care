@@ -56,4 +56,37 @@ class SeniorBulkUploadTest extends TestCase
             'status' => 'pending',
         ]);
     }
+
+    public function test_bulk_import_creates_a_missing_barangay(): void
+    {
+        $user = User::factory()->create(['role' => 'admin']);
+
+        Benefit::create([
+            'benefit_name' => 'Social Pension',
+            'benefit_type' => 'social_pension',
+            'min_age' => 60,
+            'max_age' => null,
+            'amount' => 3000,
+            'funding_source' => 'national',
+            'schedule' => 'quarterly',
+            'description' => 'Social pension',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors/bulk', [
+            'records' => [[
+                'first_name' => 'Maria',
+                'last_name' => 'Santos',
+                'birthdate' => '1960-01-01',
+                'sex' => 'female',
+                'contact_number' => '09123456789',
+                'barangay' => 'Zone 8 (Loyo)',
+                'benefit' => 'Social Pension',
+            ]],
+        ]);
+
+        $response->assertCreated()->assertJsonCount(1, 'created');
+        $this->assertDatabaseHas('barangays', ['barangay_name' => 'Zone 8 (Loyo)']);
+        $this->assertDatabaseHas('senior_citizens', ['first_name' => 'Maria', 'last_name' => 'Santos']);
+    }
 }

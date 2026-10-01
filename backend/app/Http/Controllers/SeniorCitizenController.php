@@ -161,7 +161,7 @@ class SeniorCitizenController extends Controller
                 'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
                 'sex' => ['required', Rule::in(['male', 'female'])],
                 'contact_number' => ['required', 'regex:/^[0-9+()\-\s]{7,30}$/'],
-                'barangay' => ['required', 'string', 'max:100', Rule::exists('barangays', 'barangay_name')],
+                'barangay' => ['required', 'string', 'max:100'],
                 'benefit' => ['required', 'string', 'max:100'],
             ]);
             if ($validator->fails()) {
@@ -171,7 +171,10 @@ class SeniorCitizenController extends Controller
 
             try {
                 $senior = DB::transaction(function () use ($data, $request) {
-                    $barangayId = Barangay::where('barangay_name', $data['barangay'])->value('id');
+                    $barangay = Barangay::firstOrCreate([
+                        'barangay_name' => $data['barangay'],
+                    ]);
+                    $barangayId = $barangay->id;
                     if ($request->user()->role === 'leader') {
                         abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
                         abort_if((int) $barangayId !== (int) $request->user()->barangay_id, 403, 'You can only import records for your assigned barangay.');
