@@ -293,7 +293,6 @@ function changedFields(request: SeniorEditRequest) {
 }
 
 function SeniorRecords() {
-  const { seniors, totalCount, activeCount, pendingCount, loading, error, createSenior, updateSenior, deleteSenior } = useSeniors();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
@@ -301,6 +300,14 @@ function SeniorRecords() {
   const [filter, setFilter] = useState<string>("All");
   const [barangayFilter, setBarangayFilter] = useState("All");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const { seniors, totalCount, activeCount, pendingCount, inactiveCount, lastPage, loading, error, loadAllSeniors, createSenior, updateSenior, deleteSenior } = useSeniors({
+    page,
+    status: filter === "All" ? undefined : filter.toLowerCase(),
+    search: query,
+    barangay: barangayFilter === "All" ? "" : barangayFilter,
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
@@ -344,24 +351,12 @@ function SeniorRecords() {
       { key: "All", count: totalCount },
       { key: "Active", count: activeCount },
       { key: "Pending", count: pendingCount },
-      { key: "Inactive", count: seniors.filter((s) => s.status === "Inactive").length },
+      { key: "Inactive", count: inactiveCount },
     ],
-    [seniors, totalCount, activeCount, pendingCount],
+    [totalCount, activeCount, pendingCount, inactiveCount],
   );
 
-  const rows = useMemo(
-    () =>
-      seniors
-        .filter((s) => (filter === "All" ? true : s.status === filter))
-        .filter((s) => (barangayFilter === "All" ? true : s.barangay === barangayFilter))
-        .filter(
-          (s) =>
-            s.name.toLowerCase().includes(query.toLowerCase()) ||
-            s.id.toLowerCase().includes(query.toLowerCase()),
-        )
-        .sort((first, second) => first.name.localeCompare(second.name, undefined, { sensitivity: "base" })),
-    [seniors, filter, barangayFilter, query],
-  );
+  const rows = seniors;
 
   async function openArchive() {
     setArchiveOpen(true);
@@ -436,12 +431,13 @@ function SeniorRecords() {
   }
 
   async function exportRecords() {
-    if (rows.length === 0) {
-      toast.error("There are no senior records to export.");
-      return;
-    }
-
+    setExporting(true);
     try {
+      const exportRows = await loadAllSeniors();
+      if (exportRows.length === 0) {
+        toast.error("There are no senior records to export.");
+        return;
+      }
       const { jsPDF } = await import("jspdf");
       const document = new jsPDF({ orientation: "landscape" });
       const generatedDate = new Date();
@@ -454,7 +450,7 @@ function SeniorRecords() {
       document.text("Senior Citizen Records", 14, 28);
       document.setFontSize(9);
       document.text(`Generated: ${generatedDate.toLocaleDateString()}`, 14, 36);
-      document.text(`Records: ${rows.length}`, 14, 43);
+      document.text(`Records: ${exportRows.length}`, 14, 43);
 
       let y = 56;
       document.setFontSize(9);
@@ -469,7 +465,7 @@ function SeniorRecords() {
       document.setFont("helvetica", "normal");
       y += 7;
 
-      rows.forEach((senior) => {
+      exportRows.forEach((senior) => {
         if (y > 195) {
           document.addPage();
           y = 18;
@@ -488,6 +484,8 @@ function SeniorRecords() {
       toast.success("Senior records exported as PDF.");
     } catch {
       toast.error("Unable to export senior records.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -529,9 +527,10 @@ function SeniorRecords() {
           <button
             type="button"
             onClick={exportRecords}
+            disabled={exporting}
             className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
           >
-            <Download className="h-4 w-4" /> Export
+            <Download className="h-4 w-4" /> {exporting ? "Preparing..." : "Export"}
           </button>
         </div>
       }
@@ -540,7 +539,10 @@ function SeniorRecords() {
         {filters.map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => {
+              setFilter(f.key);
+              setPage(1);
+            }}
             className={
               filter === f.key
                 ? "bg-navy rounded-full px-6 py-3 text-sm font-bold text-primary-foreground shadow-[var(--shadow-soft)]"
@@ -553,7 +555,10 @@ function SeniorRecords() {
         {!isLeader && (
           <select
             value={barangayFilter}
-            onChange={(event) => setBarangayFilter(event.target.value)}
+            onChange={(event) => {
+              setBarangayFilter(event.target.value);
+              setPage(1);
+            }}
             aria-label="Filter by barangay"
             className="h-12 min-w-[240px] rounded-full bg-card px-5 text-sm font-semibold text-foreground shadow-[var(--shadow-soft)] outline-none focus:ring-2 focus:ring-ring/30"
           >
@@ -569,7 +574,10 @@ function SeniorRecords() {
           <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search by name or OSCA ID..."
             className="h-12 w-full rounded-full bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none focus:ring-2 focus:ring-ring/30"
           />
@@ -641,6 +649,8 @@ function SeniorRecords() {
                           src={`${API_URL.replace(/\/api$/, "")}/storage/${avatarPath(s)}`}
                           alt={`${s.name} profile`}
                           className="h-full w-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         initials(s.name)
@@ -715,6 +725,14 @@ function SeniorRecords() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>Page {page} of {lastPage}</span>
+        <div className="flex gap-2">
+          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)} className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50">Previous</button>
+          <button type="button" disabled={page >= lastPage || loading} onClick={() => setPage((current) => current + 1)} className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50">Next</button>
+        </div>
       </div>
 
       <Dialog open={!!bulkPreview} onOpenChange={(open) => !open && setBulkPreview(null)}>

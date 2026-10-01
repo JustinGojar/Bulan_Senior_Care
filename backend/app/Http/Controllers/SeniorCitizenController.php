@@ -38,9 +38,29 @@ class SeniorCitizenController extends Controller
             $search = $request->string('search');
             $query->where(fn ($q) => $q->where('osca_id_number', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%"));
         }
+        if ($request->filled('barangay')) {
+            $barangay = $request->string('barangay')->toString();
+            $query->whereHas('barangay', fn ($q) => $q->where('barangay_name', $barangay));
+        }
 
         $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
         $cacheTtl = 3;
+
+        if ($request->boolean('summary_only')) {
+            return response()->json(Cache::remember($cacheKey, now()->addSeconds($cacheTtl), function () use ($query) {
+                $counts = (clone $query)
+                    ->selectRaw('status, COUNT(*) as aggregate')
+                    ->groupBy('status')
+                    ->pluck('aggregate', 'status');
+
+                return [
+                    'total' => (int) $counts->sum(),
+                    'active' => (int) $counts->get('active', 0),
+                    'pending' => (int) $counts->get('pending', 0),
+                    'inactive' => (int) $counts->get('inactive', 0),
+                ];
+            }));
+        }
 
         if ($request->boolean('count_only')) {
             return response()->json(Cache::remember($cacheKey, now()->addSeconds($cacheTtl), fn () => [
@@ -49,12 +69,10 @@ class SeniorCitizenController extends Controller
             ]));
         }
 
-        $perPage = min(1000, max(10, $request->integer('per_page', 25)));
+        $perPage = min(100, max(10, $request->integer('per_page', 50)));
 
-        $loadSeniors = fn () => $query->latest()->paginate($perPage)->toArray();
-        $result = $perPage >= 500
-            ? $loadSeniors()
-            : Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), $loadSeniors);
+        $loadSeniors = fn () => $query->orderBy('last_name')->orderBy('first_name')->orderBy('id')->paginate($perPage)->toArray();
+        $result = Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), $loadSeniors);
 
         return response()->json($result);
     }

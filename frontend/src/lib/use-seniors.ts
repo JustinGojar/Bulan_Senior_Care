@@ -3,6 +3,8 @@ import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from
 import type { Senior } from "./osca-data";
 
 type SeniorResponse = { data: ApiSenior[]; meta?: { total?: number } };
+type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
+type SeniorSummaryResponse = { total: number; active: number; pending: number; inactive: number };
 type SeniorCacheEntry = { value: SeniorResponse; expiresAt: number };
 const seniorCache = new Map<string, SeniorCacheEntry>();
 const SENIOR_CACHE_TTL = 2_000;
@@ -85,42 +87,92 @@ function mapSenior(senior: ApiSenior): Senior {
   };
 }
 
-export function useSeniors(options: { pendingOnly?: boolean; excludePending?: boolean } = {}) {
-  const { pendingOnly = false, excludePending = false } = options;
+export function useSeniors(options: {
+  pendingOnly?: boolean;
+  excludePending?: boolean;
+  page?: number;
+  status?: string;
+  search?: string;
+  barangay?: string;
+} = {}) {
+  const { pendingOnly = false, excludePending = false, page = 1, status, search = "", barangay = "" } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [inactiveCount, setInactiveCount] = useState(0);
+  const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const listPath = pendingOnly
-    ? "/seniors?pending_only=1&per_page=1000"
-    : excludePending
-      ? "/seniors?exclude_pending=1&per_page=1000"
-      : "/seniors?per_page=1000";
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  const makeListPath = useCallback((requestedPage: number) => {
+    const params = new URLSearchParams({ per_page: "50", page: String(requestedPage) });
+    if (pendingOnly) params.set("pending_only", "1");
+    else if (excludePending) params.set("exclude_pending", "1");
+    if (status) params.set("status", status);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (barangay) params.set("barangay", barangay);
+    return `/seniors?${params.toString()}`;
+  }, [pendingOnly, excludePending, status, debouncedSearch, barangay]);
+  const listPath = makeListPath(page);
+
+  useEffect(() => {
+    let current = true;
+    setLoading(true);
+    setError(null);
     Promise.allSettled([
-      getCachedSeniors(listPath),
-      getCachedSeniors("/seniors?status=active&count_only=1"),
-      getCachedSeniors("/seniors?pending_only=1&count_only=1"),
+      getCachedSeniors(listPath) as Promise<PaginatedSeniorsResponse>,
+      getCachedSeniors("/seniors?summary_only=1") as Promise<SeniorSummaryResponse>,
     ])
-      .then(([result, activeResult, pendingResult]) => {
+      .then(([result, summaryResult]) => {
         if (result.status === "rejected") throw result.reason;
         const seniorData = result.value;
-        const activeData = activeResult.status === "fulfilled" ? activeResult.value : null;
-        const pendingData = pendingResult.status === "fulfilled" ? pendingResult.value : null;
+        const summary = summaryResult.status === "fulfilled" ? summaryResult.value : null;
+        if (!current) return;
         setSeniors(seniorData.data.map(mapSenior));
-        setTotalCount(seniorData.meta?.total ?? seniorData.data.length);
-        setActiveCount(activeData?.meta?.total ?? activeData?.data.length ?? 0);
-        setPendingCount(pendingData?.meta?.total ?? pendingData?.data.length ?? 0);
+        setLastPage(seniorData.last_page ?? 1);
+        if (summary) {
+          setTotalCount(summary.total);
+          setActiveCount(summary.active);
+          setPendingCount(summary.pending);
+          setInactiveCount(summary.inactive);
+        }
       })
       .catch((reason: Error) => {
+        if (!current) return;
         setError(reason.message);
         setSeniors([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (current) setLoading(false);
+      });
+    return () => {
+      current = false;
+    };
   }, [listPath]);
+
+  const loadAllSeniors = useCallback(async () => {
+    const firstPage = await apiFetch<PaginatedSeniorsResponse>(makeListPath(1));
+    const remainingPages: PaginatedSeniorsResponse[] = [];
+    for (let firstPageNumber = 2; firstPageNumber <= firstPage.last_page; firstPageNumber += 4) {
+      const pageNumbers = Array.from(
+        { length: Math.min(4, firstPage.last_page - firstPageNumber + 1) },
+        (_, index) => firstPageNumber + index,
+      );
+      remainingPages.push(
+        ...(await Promise.all(pageNumbers.map((pageNumber) =>
+          apiFetch<PaginatedSeniorsResponse>(makeListPath(pageNumber)),
+        ))),
+      );
+    }
+    return [firstPage, ...remainingPages].flatMap((result) => result.data.map(mapSenior));
+  }, [makeListPath]);
 
   const createSenior = useCallback(async (draft: SeniorDraft) => {
     const body = new FormData();
@@ -254,8 +306,11 @@ export function useSeniors(options: { pendingOnly?: boolean; excludePending?: bo
     totalCount,
     activeCount,
     pendingCount,
+    inactiveCount,
+    lastPage,
     loading,
     error,
+    loadAllSeniors,
     createSenior,
     updateSenior,
     deleteSenior,
