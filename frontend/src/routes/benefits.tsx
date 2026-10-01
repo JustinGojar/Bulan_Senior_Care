@@ -37,6 +37,8 @@ function BenefitTracking() {
   const [savingRelease, setSavingRelease] = useState(false);
   const [selectedBarangay, setSelectedBarangay] = useState("All");
   const [selectedBenefit, setSelectedBenefit] = useState("All");
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<number[]>([]);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -74,6 +76,8 @@ function BenefitTracking() {
     }),
     [selectedBarangay, selectedBenefit, transactions],
   );
+  const pendingTransactions = filteredTransactions.filter((transaction) => transaction.status === "pending");
+  const allPendingSelected = pendingTransactions.length > 0 && pendingTransactions.every((transaction) => selectedTransactionIds.includes(transaction.id));
 
   useEffect(() => {
     apiFetch<Array<{ id: number; benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits")
@@ -119,26 +123,63 @@ function BenefitTracking() {
     setReleaseFormOpen(true);
   }
 
+  async function saveTransactionStatus(transaction: BenefitTransaction, status: "released" | "failed", date: string | null) {
+    return apiFetch<BenefitTransaction>(`/benefit-transactions/${transaction.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        status,
+        amount: transaction.amount,
+        period_label: transaction.period_label,
+        date_distributed: date,
+        remarks: transaction.remarks,
+      }),
+    });
+  }
+
   async function updateTransaction(transaction: BenefitTransaction, status: "released" | "failed") {
     const date = status === "released"
       ? window.prompt("Enter the actual release date (YYYY-MM-DD):", transaction.date_distributed ?? "")
       : null;
     if (status === "released" && !date) return;
     try {
-      const updated = await apiFetch<BenefitTransaction>(`/benefit-transactions/${transaction.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          status,
-          amount: transaction.amount,
-          period_label: transaction.period_label,
-          date_distributed: date,
-          remarks: transaction.remarks,
-        }),
-      });
+      const updated = await saveTransactionStatus(transaction, status, date);
       setTransactions((current) => current.map((item) => item.id === updated.id ? updated : item));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to update benefit status.");
     }
+  }
+
+  function toggleAllPendingTransactions() {
+    const pendingIds = new Set(pendingTransactions.map((transaction) => transaction.id));
+    setSelectedTransactionIds((current) => allPendingSelected
+      ? current.filter((id) => !pendingIds.has(id))
+      : [...new Set([...current, ...pendingIds])]);
+  }
+
+  async function updateSelectedTransactions(status: "released" | "failed") {
+    const selected = filteredTransactions.filter((transaction) =>
+      selectedTransactionIds.includes(transaction.id) && transaction.status === "pending",
+    );
+    if (!selected.length) return;
+
+    const date = status === "released"
+      ? window.prompt(`Enter the actual release date (YYYY-MM-DD) for all ${selected.length} selected transactions:`, new Date().toISOString().slice(0, 10))
+      : null;
+    if (status === "released" && !date) return;
+    const statusLabel = status === "released" ? "Received" : "Not received";
+    if (!window.confirm(`Mark ${selected.length} selected transactions as ${statusLabel}?`)) return;
+
+    setBulkUpdating(true);
+    const results = await Promise.allSettled(selected.map((transaction) => saveTransactionStatus(transaction, status, date)));
+    const updated = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+    const updatedIds = new Set(updated.map((transaction) => transaction.id));
+    setTransactions((current) => current.map((transaction) => updatedIds.has(transaction.id)
+      ? updated.find((item) => item.id === transaction.id)!
+      : transaction));
+    setSelectedTransactionIds((current) => current.filter((id) => !updatedIds.has(id)));
+    const failedCount = results.length - updated.length;
+    if (failedCount > 0) setError(`${updated.length} updated; ${failedCount} failed. Refresh and retry the remaining transactions.`);
+    setBulkUpdating(false);
   }
 
   async function saveRelease(event: React.FormEvent<HTMLFormElement>) {
@@ -353,12 +394,48 @@ function BenefitTracking() {
             </p>
           </div>
         </div>
+        {canUpdateTransactions && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+            <label className="inline-flex items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={allPendingSelected}
+                onChange={toggleAllPendingTransactions}
+                disabled={pendingTransactions.length === 0 || bulkUpdating}
+                className="h-4 w-4 accent-[var(--navy)]"
+              />
+              Select all pending on this page
+            </label>
+            <span className="text-xs text-muted-foreground">
+              {filteredTransactions.filter((transaction) => selectedTransactionIds.includes(transaction.id) && transaction.status === "pending").length} selected
+            </span>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => updateSelectedTransactions("released")}
+                disabled={bulkUpdating || !filteredTransactions.some((transaction) => selectedTransactionIds.includes(transaction.id) && transaction.status === "pending")}
+                className="inline-flex items-center gap-1 rounded-full bg-success/15 px-3 py-2 text-xs font-bold text-success disabled:opacity-40"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> Received
+              </button>
+              <button
+                type="button"
+                onClick={() => updateSelectedTransactions("failed")}
+                disabled={bulkUpdating || !filteredTransactions.some((transaction) => selectedTransactionIds.includes(transaction.id) && transaction.status === "pending")}
+                className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive disabled:opacity-40"
+              >
+                <XCircle className="h-3.5 w-3.5" /> Not received
+              </button>
+            </div>
+          </div>
+        )}
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[940px] text-sm">
             <thead>
               <tr className="text-left">
+                {canUpdateTransactions && <th className="px-3 py-3 font-bold">Select</th>}
                 {["Senior", "Program", "Barangay", "Source", "Release date", "Status", "Audit", ...(canUpdateTransactions ? ["Action"] : [])].map((heading) => (
-                  <th key={heading} className="px-4 py-3 font-bold">
+                  <th key={heading} className={`px-4 py-3 font-bold ${heading === "Action" ? "w-[190px]" : ""}`}>
                     {heading}
                   </th>
                 ))}
@@ -370,6 +447,20 @@ function BenefitTracking() {
                 const statusLabel = transaction.status === "released" ? "Received" : transaction.status === "failed" ? "Not received" : "Pending";
                 return (
                 <tr key={transaction.id} className="border-t border-border">
+                  {canUpdateTransactions && <td className="px-3 py-4">
+                    {transaction.status === "pending" && (
+                      <input
+                        type="checkbox"
+                        checked={selectedTransactionIds.includes(transaction.id)}
+                        onChange={() => setSelectedTransactionIds((current) => current.includes(transaction.id)
+                          ? current.filter((id) => id !== transaction.id)
+                          : [...current, transaction.id])}
+                        disabled={bulkUpdating}
+                        aria-label={`Select ${seniorName}`}
+                        className="h-4 w-4 accent-[var(--navy)]"
+                      />
+                    )}
+                  </td>}
                   <td className="px-4 py-4 font-semibold">{seniorName}</td>
                   <td className="px-4 py-4">{transaction.benefit.benefit_name}</td>
                   <td className="px-4 py-4 text-muted-foreground">{transaction.senior.barangay?.barangay_name ?? "Unassigned"}</td>
@@ -392,11 +483,11 @@ function BenefitTracking() {
                   </td>
                   {canUpdateTransactions && <td className="px-4 py-4">
                     {transaction.status === "pending" ? (
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => updateTransaction(transaction, "released")} className="inline-flex items-center gap-1 rounded-full bg-success/15 px-3 py-2 text-xs font-bold text-success">
+                      <div className="flex flex-nowrap gap-2">
+                        <button type="button" onClick={() => updateTransaction(transaction, "released")} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success/15 px-2.5 py-1.5 text-xs font-bold text-success">
                           <CheckCircle2 className="h-3.5 w-3.5" /> Received
                         </button>
-                        <button type="button" onClick={() => updateTransaction(transaction, "failed")} className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive">
+                        <button type="button" onClick={() => updateTransaction(transaction, "failed")} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-destructive/10 px-2.5 py-1.5 text-xs font-bold text-destructive">
                           <XCircle className="h-3.5 w-3.5" /> Not received
                         </button>
                       </div>
@@ -412,7 +503,7 @@ function BenefitTracking() {
               })}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={canUpdateTransactions ? 8 : 7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={canUpdateTransactions ? 9 : 7} className="px-4 py-8 text-center text-muted-foreground">
                     No records available for the selected barangay and Expanded Centenarian program.
                   </td>
                 </tr>

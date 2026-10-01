@@ -11,7 +11,8 @@ class AnalyticsController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        abort_if($request->user()->role === 'leader', 403, 'BSCA accounts cannot view municipal analytics.');
+        $isLeader = $request->user()->role === 'leader';
+        abort_if($isLeader && ! $request->user()->barangay_id, 403, 'Leader account does not have an assigned barangay.');
 
         $data = $request->validate([
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
@@ -22,7 +23,11 @@ class AnalyticsController extends Controller
         ]);
 
         $query = SeniorCitizen::query()->with('barangay:id,barangay_name')->where('status', '!=', 'pending');
-        $this->applyFilters($query, $data);
+        if ($isLeader) {
+            $query->where('barangay_id', $request->user()->barangay_id);
+        } else {
+            $this->applyFilters($query, $data);
+        }
         $seniors = $query->get(['id', 'barangay_id', 'birthdate', 'sex', 'status', 'registration_date']);
         $seniorIds = $seniors->pluck('id');
         $transactions = BenefitTransaction::query()
