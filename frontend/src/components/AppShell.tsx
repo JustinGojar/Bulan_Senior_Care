@@ -171,7 +171,7 @@ export function AppShell({
   const visibleNav = NAV.filter(({ to }) =>
     (to !== "/users" || user?.role === "admin") &&
     (to !== "/eligibility" || user?.role !== "leader") &&
-    (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
+    (to !== "/age-threshold" || user?.role !== "leader"),
   );
   const normalizedSearch = globalSearch.trim().toLowerCase();
   const matchingPages = normalizedSearch.length >= 2

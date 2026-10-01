@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { MapPin, PieChart as PieIcon, TrendingUp, Users } from "lucide-react";
 import {
   Area,
@@ -10,6 +10,7 @@ import {
   Legend,
   Line,
   LineChart,
+  LabelList,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -69,21 +70,17 @@ function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string })
 }
 
 function Analytics() {
-  const navigate = useNavigate();
   const currentUser = getStoredUser();
+  const isLeader = currentUser?.role === "leader";
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
-    if (currentUser?.role !== "leader") {
-      apiFetch<AnalyticsResponse>("/analytics")
-        .then(setAnalytics)
-        .catch((reason: Error) => setError(reason.message))
-        .finally(() => setLoading(false));
-    }
-  }, [currentUser?.role, navigate]);
-  if (currentUser?.role === "leader") return null;
+    apiFetch<AnalyticsResponse>("/analytics")
+      .then(setAnalytics)
+      .catch((reason: Error) => setError(reason.message))
+      .finally(() => setLoading(false));
+  }, []);
   const barangaySummary = analytics?.barangay_summary ?? [];
   const zoneParticipants = barangaySummary.map(({ barangay: zone, registered: total }) => ({ zone, total }));
   const ageDistribution = analytics?.age_distribution ?? [];
@@ -94,13 +91,13 @@ function Analytics() {
   return (
     <AppShell
       title="Analytics"
-      subtitle="Descriptive analytics across barangays, age groups, and benefits"
+      subtitle={isLeader ? "Barangay-level analytics for your assigned seniors" : "Descriptive analytics across barangays, age groups, and benefits"}
       breadcrumb={["Dashboard", "Analytics"]}
     >
       {error && <p className="mb-6 rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p>}
       {loading && <p className="mb-6 text-sm text-muted-foreground">Loading analytics data...</p>}
       <section className="surface-card p-7">
-        <CardHead icon={MapPin} title="Total Participants per Zone / Barangay" />
+        <CardHead icon={MapPin} title={isLeader ? `Participants in ${barangaySummary[0]?.barangay ?? "Your Barangay"}` : "Total Participants per Zone / Barangay"} />
         <div className="mt-6 h-72">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={zoneParticipants}>
@@ -112,7 +109,7 @@ function Analytics() {
               </defs>
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} domain={[0, 1000]} ticks={[0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
+              <YAxis tickLine={false} axisLine={false} fontSize={12} domain={isLeader ? [0, "auto"] : [0, 1000]} ticks={isLeader ? undefined : [0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
               <Tooltip />
               <Area
                 type="monotone"
@@ -139,7 +136,7 @@ function Analytics() {
               <BarChart data={ageDistribution}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="age" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={12} domain={[0, 1000]} ticks={[0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} domain={isLeader ? [0, "auto"] : [0, 1000]} ticks={isLeader ? undefined : [0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
                 <Tooltip />
                 <Legend />
                 <Bar dataKey="count" name="Seniors" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
@@ -164,10 +161,11 @@ function Analytics() {
                   {benefitRecords.map((entry, i) => (
                     <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
+                  <LabelList dataKey="value" position="inside" fill="white" fontSize={14} fontWeight={700} />
                 </Pie>
                 <Tooltip />
                 <Legend
-                  formatter={(value) => `${value}: ${benefitRecords.find((record) => record.name === value)?.value ?? 0}`}
+                  formatter={(value) => String(value)}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -179,8 +177,8 @@ function Analytics() {
       </div>
 
       <section className="surface-card mt-6 p-7">
-        <CardHead icon={TrendingUp} title="Trend and Analytics by Barangay and Municipality" />
-        <p className="mt-2 text-sm text-muted-foreground">Registered seniors, released benefits, and cumulative municipal registrations.</p>
+        <CardHead icon={TrendingUp} title={isLeader ? "Barangay Trends" : "Trend and Analytics by Barangay and Municipality"} />
+        <p className="mt-2 text-sm text-muted-foreground">{isLeader ? "Registered seniors and released benefits in your assigned barangay." : "Registered seniors, released benefits, and cumulative municipal registrations."}</p>
         <div className="mt-6 h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={trendData}>
@@ -191,15 +189,15 @@ function Analytics() {
               <Legend />
               <Line type="monotone" dataKey="registered" name="Barangay registered" stroke="var(--chart-1)" strokeWidth={2} />
               <Line type="monotone" dataKey="released" name="Benefits released" stroke="var(--chart-2)" strokeWidth={2} />
-              <Line type="monotone" dataKey="municipal" name="Municipal cumulative" stroke="var(--chart-3)" strokeWidth={2} />
+              {!isLeader && <Line type="monotone" dataKey="municipal" name="Municipal cumulative" stroke="var(--chart-3)" strokeWidth={2} />}
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">Municipal registered total: {municipalTotal.toLocaleString()}</p>
+        <p className="mt-3 text-xs text-muted-foreground">{isLeader ? "Barangay" : "Municipal"} registered total: {municipalTotal.toLocaleString()}</p>
       </section>
 
       <section className="surface-card mt-6 p-7">
-        <CardHead icon={MapPin} title="Barangay-Level Summary" />
+        <CardHead icon={MapPin} title={isLeader ? "Your Barangay Summary" : "Barangay-Level Summary"} />
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>

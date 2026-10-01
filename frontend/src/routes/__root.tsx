@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/users": ["admin"],
       "/eligibility": ["admin", "head"],
       "/reports": ["admin", "head"],
-      "/analytics": ["admin", "head"],
+      "/analytics": ["admin", "head", "leader"],
       "/age-threshold": ["admin", "head"],
     };
     const isPublic = PUBLIC_PATHS.has(location.pathname);
