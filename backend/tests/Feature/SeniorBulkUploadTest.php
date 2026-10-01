@@ -21,6 +21,7 @@ class SeniorBulkUploadTest extends TestCase
             'province' => 'Sorsogon',
         ]);
 
+        /** @var User $user */
         $user = User::factory()->create([
             'role' => 'leader',
             'barangay_id' => $barangay->id,
@@ -65,6 +66,7 @@ class SeniorBulkUploadTest extends TestCase
 
     public function test_bulk_import_creates_a_missing_barangay(): void
     {
+        /** @var User $user */
         $user = User::factory()->create(['role' => 'admin']);
 
         Benefit::create([
@@ -113,7 +115,9 @@ class SeniorBulkUploadTest extends TestCase
 
     public function test_bulk_import_returns_row_error_for_underage_record(): void
     {
+        /** @var User $user */
         $user = User::factory()->create(['role' => 'admin']);
+        $cutoffDate = now()->subYears(60)->toDateString();
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors/bulk', [
             'records' => [[
@@ -128,6 +132,6 @@ class SeniorBulkUploadTest extends TestCase
         ]);
 
         $response->assertOk()->assertJsonPath('failed.0.row', 2);
-        $response->assertJsonPath('failed.0.message', 'The birthdate field must be a date before or equal to 1966-09-25.');
+        $response->assertJsonPath('failed.0.message', "The birthdate field must be a date before or equal to {$cutoffDate}.");
     }
 }

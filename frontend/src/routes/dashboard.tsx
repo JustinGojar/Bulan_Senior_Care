@@ -60,7 +60,7 @@ function Dashboard() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const eligibilityFlags = findNewEligibilityFlags(
-    seniors.filter((senior) => senior.status !== "Pending"),
+    seniors.filter((senior) => senior.status === "Active"),
   );
   useEffect(() => {
     getAnnouncements().then((loadedAnnouncements) => {
@@ -72,6 +72,20 @@ function Dashboard() {
       if (announcement) setSelectedAnnouncement(announcement);
     }).catch(() => setAnnouncements([]));
   }, []);
+
+  useEffect(() => {
+    const openAnnouncementFromHash = () => {
+      const match = window.location.hash.match(/^#announcement-(\d+)$/);
+      const announcement = match
+        ? announcements.find((item) => item.id === Number(match[1]))
+        : undefined;
+      if (announcement) setSelectedAnnouncement(announcement);
+    };
+
+    openAnnouncementFromHash();
+    window.addEventListener("hashchange", openAnnouncementFromHash);
+    return () => window.removeEventListener("hashchange", openAnnouncementFromHash);
+  }, [announcements]);
 
   useEffect(() => {
     apiFetch<Overview>("/overview").then(setOverview).catch(() => setOverview(null));
@@ -141,93 +155,67 @@ function Dashboard() {
         <button
           type="button"
           onClick={() => setShowAnnouncementForm(true)}
-          className="surface-card mb-6 flex w-full items-center gap-4 p-4 text-left transition-shadow hover:shadow-[var(--shadow-soft)]"
+          className="surface-card mb-4 flex w-full items-center gap-3 p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] sm:mb-6 sm:gap-4 sm:p-4"
         >
-          <div className="bg-navy grid h-11 w-11 shrink-0 place-items-center rounded-full text-primary-foreground">
-            <Megaphone className="h-5 w-5" />
+          <div className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground sm:h-11 sm:w-11">
+            <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <span className="flex-1 text-sm text-muted-foreground">What is the announcement?</span>
         </button>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="surface-card p-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
+        <article className="surface-card p-4 sm:p-6">
           <div className="flex items-start justify-between">
-            <div className="bg-navy grid h-12 w-12 place-items-center rounded-2xl text-primary-foreground">
+            <div className="bg-navy grid h-10 w-10 place-items-center rounded-2xl text-primary-foreground sm:h-12 sm:w-12">
               <Users className="h-5 w-5" />
             </div>
             <span className="rounded-full bg-secondary px-3 py-1 text-[10px] font-bold tracking-wider text-muted-foreground">
               LIVE
             </span>
           </div>
-          <p className="mt-6 text-sm font-semibold text-muted-foreground">Total Registered</p>
-          <p className="font-display text-4xl font-extrabold">
+          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">Total Registered</p>
+          <p className="font-display text-3xl font-extrabold sm:text-4xl">
             {loading ? "..." : totalCount.toLocaleString()}
           </p>
-          <p className="mt-4 text-xs text-muted-foreground">Current senior records</p>
+          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Current senior records</p>
         </article>
 
-        <article className="surface-card p-6">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gold text-gold-foreground">
+        <article className="surface-card p-4 sm:p-6">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gold text-gold-foreground sm:h-12 sm:w-12">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <p className="mt-6 text-sm font-semibold text-muted-foreground">
+          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">
             Total Benefits Distributed
           </p>
-          <p className="font-display text-4xl font-extrabold">{overview ? overview.benefits_distributed_count.toLocaleString() : "..."}</p>
-          <p className="mt-4 text-xs text-muted-foreground">Released benefit transactions</p>
+          <p className="font-display text-3xl font-extrabold sm:text-4xl">{overview ? overview.benefits_distributed_count.toLocaleString() : "..."}</p>
+          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Released benefit transactions</p>
         </article>
 
-        <article className="surface-card p-6">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-success text-success-foreground">
+        <article className="surface-card p-4 sm:p-6">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-success text-success-foreground sm:h-12 sm:w-12">
             <UserCheck className="h-5 w-5" />
           </div>
-          <p className="mt-6 text-sm font-semibold text-muted-foreground">Active Seniors</p>
-          <p className="font-display text-4xl font-extrabold">
+          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">Active Seniors</p>
+          <p className="font-display text-3xl font-extrabold sm:text-4xl">
             {loading ? "..." : activeCount.toLocaleString()}
           </p>
-          <p className="mt-4 text-xs text-muted-foreground">Verified and receiving benefits</p>
+          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Verified and receiving benefits</p>
         </article>
 
-        <article className="surface-card p-6">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-coral text-coral-foreground">
+        <article className="surface-card p-4 sm:p-6">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-coral text-coral-foreground sm:h-12 sm:w-12">
             <Clock className="h-5 w-5" />
           </div>
-          <p className="mt-6 text-sm font-semibold text-muted-foreground">Pending Applications</p>
-          <p className="font-display text-4xl font-extrabold">
+          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">Pending Applications</p>
+          <p className="font-display text-3xl font-extrabold sm:text-4xl">
             {loading ? "..." : pendingCount.toLocaleString()}
           </p>
-          <p className="mt-4 text-xs text-muted-foreground">Awaiting eligibility verification</p>
+          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Awaiting eligibility verification</p>
         </article>
       </div>
 
       <div className={currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"}>
-        {currentUser?.role === "head" && (
-          <section className="surface-card p-7">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold">Benefits received by age</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Live count of seniors who received each age-based benefit.</p>
-              </div>
-              <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-bold text-success">
-                {overview?.distribution_percentage ?? 0}% released
-              </span>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {(overview?.received_by_benefit ?? []).map((item) => (
-                <div key={item.benefit} className="rounded-2xl bg-secondary p-4">
-                  <p className="text-sm font-bold">{item.benefit}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Age {item.age_range}</p>
-                  <p className="mt-3 text-2xl font-extrabold">{item.received_count}</p>
-                  <p className="text-xs text-muted-foreground">seniors received</p>
-                </div>
-              ))}
-              {overview && overview.received_by_benefit.length === 0 && (
-                <p className="text-sm text-muted-foreground">No released benefits yet.</p>
-              )}
-            </div>
-          </section>
-        )}
         <section className="surface-card flex h-[430px] flex-col overflow-hidden p-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -262,7 +250,7 @@ function Dashboard() {
                   <img
                     src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`}
                     alt=""
-                    className="mb-3 max-h-96 w-full rounded-xl bg-card object-contain"
+                    className="mb-3 h-auto w-full rounded-xl bg-card object-cover"
                   />
                 )}
                 <p className="text-sm font-bold">{announcement.title}</p>
@@ -277,6 +265,32 @@ function Dashboard() {
             )}
           </div>
         </section>
+        {currentUser?.role === "head" && (
+          <section className="surface-card p-7">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold">Benefits received by age</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Live count of seniors who received each age-based benefit.</p>
+              </div>
+              <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-bold text-success">
+                {overview?.distribution_percentage ?? 0}% released
+              </span>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {(overview?.received_by_benefit ?? []).map((item) => (
+                <div key={item.benefit} className="rounded-2xl bg-secondary p-4">
+                  <p className="text-sm font-bold">{item.benefit}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Age {item.age_range}</p>
+                  <p className="mt-3 text-2xl font-extrabold">{item.received_count}</p>
+                  <p className="text-xs text-muted-foreground">seniors received</p>
+                </div>
+              ))}
+              {overview && overview.received_by_benefit.length === 0 && (
+                <p className="text-sm text-muted-foreground">No released benefits yet.</p>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="surface-card h-[430px] overflow-hidden p-7">
           <div className="flex items-center justify-between">
@@ -318,8 +332,7 @@ function Dashboard() {
         </section>
       </div>
 
-      {currentUser?.role !== "leader" && (
-        <section className="surface-card mt-6 p-7">
+      <section className="surface-card mt-6 p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
@@ -354,8 +367,7 @@ function Dashboard() {
               <p className="text-sm text-muted-foreground">No age threshold flags.</p>
             )}
           </div>
-        </section>
-      )}
+      </section>
 
       {showAnnouncementForm && currentUser?.role === "head" && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4">

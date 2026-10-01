@@ -30,6 +30,9 @@ import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: typeof search["q"] === "string" ? search["q"] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Senior Records — Bulan SeniorCare" },
@@ -333,13 +336,14 @@ function changedFields(request: SeniorEditRequest) {
 
 function SeniorRecords() {
   const { seniors, totalCount, activeCount, pendingCount, loading, error, createSenior, updateSenior, deleteSenior } = useSeniors();
+  const { q } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
   const isAdmin = currentUser?.role === "admin";
   const [filter, setFilter] = useState<string>("All");
   const [barangayFilter, setBarangayFilter] = useState("All");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(q ?? "");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
@@ -356,6 +360,10 @@ function SeniorRecords() {
   useEffect(() => {
     if (isHead) getSeniorEditRequests().then(setEditRequests).catch(() => setEditRequests([]));
   }, [isHead]);
+
+  useEffect(() => {
+    setQuery(q ?? "");
+  }, [q]);
 
   useEffect(() => {
     if (!viewing) return;

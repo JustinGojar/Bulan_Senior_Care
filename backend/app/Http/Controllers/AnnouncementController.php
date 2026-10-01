@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Announcement;
 use App\Models\AnnouncementComment;
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -37,6 +38,19 @@ class AnnouncementController extends Controller
             'published_at' => now(),
         ]);
         Cache::forget('announcements:dashboard');
+
+        User::query()->where('role', 'leader')->where('status', 'active')->each(function (User $leader) use ($announcement, $request) {
+            Notification::create([
+                'sender_account_id' => $request->user()->id,
+                'recipient_account_id' => $leader->id,
+                'message' => 'New announcement: '.$announcement->title,
+                'source_type' => 'announcement',
+                'source_id' => $announcement->id,
+                'channel' => 'in_app',
+                'date_sent' => now(),
+                'status' => 'unread',
+            ]);
+        });
 
         return response()->json($announcement->load('creator'), 201);
     }

@@ -5,7 +5,6 @@ import {
   Check,
   ChevronRight,
   ClipboardList,
-  Database,
   FileText,
   Gift,
   KeyRound,
@@ -62,20 +61,36 @@ function SettingIcon({ icon: Icon }: { icon: typeof ShieldCheck }) {
   );
 }
 
-function SettingRow({ icon, title, description, to }: { icon: typeof ShieldCheck; title: string; description: string; to?: "/users" | "/age-threshold" | "/benefits" }) {
+function SettingRow({ icon, title, description, to }: { icon: typeof ShieldCheck; title: string; description: string; to?: "/users" | "/age-threshold" | "/benefits" | "/profile" | "/audit-logs" | "/seniors" }) {
+  const destination = to ?? (title === "Security settings"
+    ? "/profile"
+    : title === "Audit logs"
+      ? "/audit-logs"
+      : title === "Barangay management"
+          ? "/users"
+          : title === "Senior record settings"
+            ? "/seniors"
+        : undefined);
+  const rowDescription = title === "Security settings"
+    ? "Change your password and manage account security"
+    : title === "Barangay management"
+        ? "Manage barangay leader accounts and their assigned scopes"
+        : title === "Senior record settings"
+          ? "Search, register, and manage senior citizen records"
+      : description;
   const content = (
     <>
       <SettingIcon icon={icon} />
       <div className="min-w-0 flex-1">
         <p className="font-semibold">{title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{rowDescription}</p>
       </div>
       <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </>
   );
-  if (!to) return <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">{content}</div>;
+  if (!destination) return <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">{content}</div>;
   return (
-    <Link to={to} className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:bg-secondary">
+    <Link to={destination} className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:bg-secondary">
       {content}
     </Link>
   );
@@ -93,6 +108,7 @@ function SettingsPage() {
         setNotificationSettings((current) => ({ ...current, ...stored }));
       }
     } catch {
+      localStorage.removeItem(NOTIFICATION_SETTINGS_KEY);
     }
   }, []);
 
@@ -137,7 +153,7 @@ function SettingsPage() {
 
           <section>
             <div className="mb-3 flex items-center gap-3"><SettingIcon icon={LockKeyhole} /><div><h2 className="text-lg font-bold">Privacy & security</h2><p className="text-sm text-muted-foreground">Account protection and system activity</p></div></div>
-            <div className="space-y-2"><SettingRow icon={KeyRound} title="Security settings" description="Change password, two-factor authentication, and session timeout" /><SettingRow icon={ClipboardList} title="Audit logs" description="Recent account, senior record, and benefit activities" /><SettingRow icon={Database} title="Data & backup" description="Backup status and recovery settings" /></div>
+            <div className="space-y-2"><SettingRow icon={KeyRound} title="Security settings" description="Change password, two-factor authentication, and session timeout" /><SettingRow icon={ClipboardList} title="Audit logs" description="Recent account, senior record, and benefit activities" /></div>
           </section>
         </main>
       </div>

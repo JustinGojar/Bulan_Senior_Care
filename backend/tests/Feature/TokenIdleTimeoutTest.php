@@ -12,6 +12,7 @@ class TokenIdleTimeoutTest extends TestCase
 
     public function test_stale_bearer_token_remains_valid_by_default(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('test')->plainTextToken;
         $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(121)])->save();
@@ -25,6 +26,7 @@ class TokenIdleTimeoutTest extends TestCase
 
     public function test_active_bearer_token_remains_valid(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('test')->plainTextToken;
 

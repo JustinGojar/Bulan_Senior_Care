@@ -180,6 +180,17 @@ export type PaginatedResponse<T> = {
   total: number;
 };
 
+export type AuditLog = {
+  id: number;
+  action: string;
+  target_type: string;
+  target_id: number;
+  before_value: Record<string, unknown> | null;
+  after_value: Record<string, unknown> | null;
+  created_at: string;
+  actor: { id: number; name: string; role: string } | null;
+};
+
 export type PaginatedMessages = PaginatedResponse<Message>;
 
 export type ServerNotification = {
@@ -270,6 +281,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new Error(validation ?? errorBody?.message ?? `Request failed (${response.status})`);
   }
   return body as T;
+}
+
+export function getAuditLogs(page = 1) {
+  return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?page=${page}&per_page=25`);
 }
 
 export async function login(email: string, password: string) {
