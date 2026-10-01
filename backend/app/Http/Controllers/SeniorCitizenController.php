@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SeniorCitizen;
 use App\Models\Barangay;
 use App\Models\Benefit;
+use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
@@ -70,6 +71,7 @@ class SeniorCitizenController extends Controller
         abort_if($request->user()->role !== 'admin', 403, 'Only Admin can restore records.');
         $senior = SeniorCitizen::onlyTrashed()->where('osca_id_number', $oscaId)->firstOrFail();
         $senior->restore();
+        AuditLog::record($request->user(), 'restored', $senior, ['deleted' => true], ['deleted' => false]);
 
         return response()->json($senior->fresh()->load(['barangay', 'benefits']));
     }
@@ -79,6 +81,7 @@ class SeniorCitizenController extends Controller
         abort_if(in_array($request->user()->role, ['admin', 'head'], true), 403, 'This account cannot archive senior records.');
         $this->authorizeScope($request, $senior);
         $senior->delete();
+        AuditLog::record($request->user(), 'deleted', $senior, ['status' => $senior->status]);
 
         return response()->json(status: 204);
     }
@@ -139,6 +142,7 @@ class SeniorCitizenController extends Controller
             'status' => 'pending',
             'period_label' => 'Registration '.today()->toDateString(),
         ]);
+        AuditLog::record($request->user(), 'created', $senior, afterValue: ['status' => $senior->status]);
 
         return response()->json($senior->load(['barangay', 'benefits']), 201);
     }
@@ -242,6 +246,7 @@ class SeniorCitizenController extends Controller
                         'status' => 'pending',
                         'period_label' => 'Registration '.today()->toDateString(),
                     ]);
+                    AuditLog::record($request->user(), 'created', $senior, afterValue: ['status' => $senior->status]);
 
                     return $senior;
                 });
@@ -283,6 +288,13 @@ class SeniorCitizenController extends Controller
             $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
         }
         $senior->update($data);
+        AuditLog::record(
+            $request->user(),
+            'updated',
+            $senior,
+            ['fields' => array_keys($data)],
+            ['fields' => array_keys($senior->getChanges())],
+        );
 
         return response()->json($senior->fresh()->load('barangay'));
     }
@@ -291,6 +303,7 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role !== 'admin', 403, 'Only Admin can delete records.');
         $senior->delete();
+        AuditLog::record($request->user(), 'deleted', $senior, ['status' => $senior->status]);
 
         return response()->json(status: 204);
     }

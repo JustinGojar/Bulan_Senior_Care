@@ -7,12 +7,11 @@ import {
   ClipboardList,
   HandCoins,
   ShieldCheck,
-  Users,
 } from "lucide-react";
+import { useEffect } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { apiFetch } from "@/lib/api";
-import { useEffect, useState } from "react";
+import seniorCitizensPhoto from "@/images/img.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -78,46 +77,92 @@ const ANALYTICS = [
   "Municipal-level summary",
 ];
 
-type Overview = {
-  total_registered: number;
-  active_seniors: number;
-  pending_applications: number;
-  benefits_distributed_amount: number;
-  benefits_distributed_count: number;
-  distribution_percentage: number;
-};
-
 function Landing() {
-  const [overview, setOverview] = useState<Overview | null>(null);
-
   useEffect(() => {
-    apiFetch<Overview>("/overview").then(setOverview).catch(() => setOverview(null));
+    let fallbackTimer: number | undefined;
+    let waitingForScroll = false;
+
+    const cardsBySection: Record<string, string> = {
+      about: "#about",
+      features: "#features .surface-card",
+      benefits: "#benefits > .surface-card:first-child",
+      analytics: "#analytics",
+      faq: "#faq .surface-card",
+    };
+
+    const popTargetCards = () => {
+      if (!waitingForScroll) return;
+
+      window.clearTimeout(fallbackTimer);
+      document.querySelectorAll(".landing-scroll-pop").forEach((card) => {
+        card.classList.remove("landing-scroll-pop");
+      });
+
+      const selector = cardsBySection[window.location.hash.slice(1)];
+      if (selector) {
+        document.querySelectorAll(selector).forEach((card) => {
+          void (card as HTMLElement).offsetWidth;
+          card.classList.add("landing-scroll-pop");
+        });
+      }
+
+      waitingForScroll = false;
+    };
+
+    const scheduleFallback = () => {
+      if (!waitingForScroll) return;
+      window.clearTimeout(fallbackTimer);
+      fallbackTimer = window.setTimeout(popTargetCards, 120);
+    };
+
+    const beginNavigation = () => {
+      waitingForScroll = true;
+      scheduleFallback();
+    };
+
+    const handleAnchorClick = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest('a[href^="#"]')) {
+        beginNavigation();
+      }
+    };
+
+    window.addEventListener("hashchange", beginNavigation);
+    window.addEventListener("scroll", scheduleFallback, { passive: true });
+    window.addEventListener("scrollend", popTargetCards);
+    document.addEventListener("click", handleAnchorClick);
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      window.removeEventListener("hashchange", beginNavigation);
+      window.removeEventListener("scroll", scheduleFallback);
+      window.removeEventListener("scrollend", popTargetCards);
+      document.removeEventListener("click", handleAnchorClick);
+    };
   }, []);
 
-  const distributionAmount = overview?.benefits_distributed_amount ?? 0;
-  const formattedAmount = distributionAmount >= 1_000_000
-    ? `₱${(distributionAmount / 1_000_000).toFixed(1)}M`
-    : `₱${distributionAmount.toLocaleString()}`;
-
   return (
-    <div className="bg-app min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <header className="surface-card flex items-center justify-between gap-6 px-6 py-3">
-          <div className="flex items-center gap-3">
+    <div className="bg-app landing-page-bg min-h-screen">
+      <div className="mx-auto max-w-screen-2xl px-10 py-6">
+        <header className="surface-card sticky top-3 z-50 flex items-center justify-between gap-6 border border-border/70 bg-secondary/78 px-6 py-3 backdrop-blur-xl">
+          <div className="flex shrink-0 items-center gap-3">
             <BrandLogo className="h-10 w-10 ring-2 ring-gold/60" />
             <div>
               <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
-              <p className="text-xs text-muted-foreground">OSCA · Bulan, Sorsogon</p>
+              <p className="text-xs text-muted-foreground">Bulan, Sorsogon</p>
             </div>
           </div>
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-muted-foreground lg:flex">
+          <nav className="hidden flex-1 items-center justify-center gap-20 text-sm font-semibold text-muted-foreground lg:flex">
             {NAV.map((item) => (
-              <a key={item} href={`#${item.toLowerCase()}`} className="hover:text-foreground">
+              <a
+                key={item}
+                href={`#${item.toLowerCase()}`}
+                className="relative isolate rounded-xl px-3 py-2 transition-colors hover:text-foreground before:absolute before:inset-y-0 before:-inset-x-3 before:-z-10 before:rounded-xl before:bg-black/10 before:opacity-0 before:transition-opacity before:content-[''] hover:before:opacity-100 focus-visible:before:opacity-100"
+              >
                 {item}
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-8">
             <ThemeToggle />
             <Link
               to="/login"
@@ -130,18 +175,17 @@ function Landing() {
 
         <section className="grid items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)]">
-              <span className="h-4 w-4 rounded-full bg-gold" />
-              Municipality of Bulan, Sorsogon
+            <span className="inline-flex items-center rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)]">
+              Office for Senior Citizens Affairs
             </span>
             <h1 className="mt-6 text-6xl leading-[1.03] font-extrabold">
               Caring for every <span className="text-coral">Lolo</span> and{" "}
               <span className="text-coral">Lola</span> in Bulan
             </h1>
-            <p className="font-display mt-5 text-xl text-muted-foreground">
+            <p className="font-display mt-5 text-xl text-foreground/85 dark:text-white">
               Profile. Monitor. Serve better.
             </p>
-            <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-5 max-w-xl text-sm leading-relaxed text-foreground/80 dark:text-white">
               The Bulan SeniorCare Portal replaces paper-based OSCA records with a single, secure
               system for registration, eligibility, benefits, and reporting — built for the Office
               of Senior Citizen Affairs and every barangay leader in the municipality.
@@ -149,63 +193,32 @@ function Landing() {
             <div className="mt-9 flex flex-wrap gap-4">
               <Link
                 to="/login"
-                className="bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
+                className="bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)] dark:text-white"
               >
                 Get Started <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="mt-9 flex flex-wrap gap-7 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-2">
-                <Users className="h-4 w-4" /> {overview ? `${overview.total_registered.toLocaleString()}+` : "..."} seniors
-                registered
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" /> Role-based secured
-              </span>
-            </div>
           </div>
-
-          <div className="surface-card p-7">
-            <div className="flex items-center justify-between">
-              <p className="font-display text-sm font-bold text-muted-foreground">
-                System Dashboard
-              </p>
-              <span className="rounded-full bg-secondary px-3 py-1 text-[10px] font-bold tracking-wider text-muted-foreground">
-                LIVE
-              </span>
-            </div>
-            <div className="mt-8 grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-xs text-muted-foreground">Total Registered</p>
-                <p className="font-display mt-1 text-3xl font-bold">
-                  {overview ? overview.total_registered.toLocaleString() : "..."}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Benefits Distributed</p>
-                <p className="font-display mt-1 text-3xl font-bold">
-                  {overview ? formattedAmount : "..."}
-                </p>
-              </div>
-            </div>
-            <div className="mt-9">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Distribution status</span>
-                <span className="font-bold text-success">
-                  {overview ? `${overview.distribution_percentage}% complete` : "Loading..."}
-                </span>
-              </div>
-              <div className="mt-3 h-2 rounded-full bg-secondary">
-                <div
-                  className="bg-navy h-2 rounded-full transition-all"
-                  style={{ width: `${overview?.distribution_percentage ?? 0}%` }}
-                />
-              </div>
-            </div>
+          <div className="relative mx-auto w-full max-w-xl px-2 py-4">
+            <div
+              aria-hidden="true"
+              className="absolute inset-4 rotate-[-6deg] border-[10px] border-white bg-white shadow-[var(--shadow-card)]"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-4 rotate-[5deg] border-[10px] border-white bg-white shadow-[var(--shadow-card)]"
+            />
+            <figure className="relative z-10 rotate-[-1deg] border-[10px] border-white bg-white shadow-[var(--shadow-card)]">
+              <img
+                src={seniorCitizensPhoto}
+                alt="Senior citizens gathered outdoors in Bulan"
+                className="block aspect-[1.7] w-full object-cover"
+              />
+            </figure>
           </div>
         </section>
 
-        <section id="about" className="surface-card p-10">
+        <section id="about" className="surface-card scroll-mt-24 p-10">
           <span className="rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold">
             About OSCA Bulan
           </span>
@@ -226,14 +239,14 @@ function Landing() {
               ["Objective 3", "Integrate descriptive analytics at both barangay and municipal level."],
             ].map(([tag, body]) => (
               <div key={tag} className="rounded-3xl bg-secondary p-6">
-                <p className="text-xs font-bold text-gold-foreground">{tag}</p>
+                <p className="text-xs font-bold text-gold-foreground dark:text-white">{tag}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{body}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="features" className="py-20">
+        <section id="features" className="scroll-mt-24 py-20">
           <h2 className="text-3xl font-extrabold">System features</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             The seven modules defined in the study objectives.
@@ -251,8 +264,8 @@ function Landing() {
           </div>
         </section>
 
-        <section id="benefits" className="surface-card grid gap-10 p-10 lg:grid-cols-2">
-          <div>
+        <section id="benefits" className="scroll-mt-24 grid gap-6 lg:grid-cols-2">
+          <div className="surface-card p-10">
             <h2 className="text-3xl font-extrabold">Who benefits</h2>
             <ul className="mt-6 space-y-5 text-sm">
               {[
@@ -270,7 +283,7 @@ function Landing() {
               ))}
             </ul>
           </div>
-          <div id="analytics">
+          <div id="analytics" className="surface-card scroll-mt-24 p-10">
             <h2 className="text-3xl font-extrabold">Descriptive analytics</h2>
             <div className="mt-6 grid gap-3">
               {ANALYTICS.map((item) => (
@@ -285,7 +298,7 @@ function Landing() {
           </div>
         </section>
 
-        <section id="faq" className="py-20">
+        <section id="faq" className="scroll-mt-24 py-20">
           <h2 className="text-3xl font-extrabold">Frequently asked</h2>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             {[

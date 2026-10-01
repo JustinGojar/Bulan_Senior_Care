@@ -15,6 +15,8 @@ import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
 import appCss from "../styles.css?url";
 
+const PUBLIC_PATHS = new Set(["/", "/login", "/forgot-password", "/reset-password"]);
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -76,7 +78,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
 
-    const publicPaths = new Set(["/login", "/forgot-password", "/reset-password"]);
     const roleRequirements: Record<string, string[]> = {
       "/users": ["admin"],
       "/eligibility": ["admin", "head"],
@@ -84,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/analytics": ["admin", "head"],
       "/age-threshold": ["admin", "head"],
     };
-    const isPublic = publicPaths.has(location.pathname);
+    const isPublic = PUBLIC_PATHS.has(location.pathname);
     const token = getToken();
 
     if (!token) {
@@ -97,6 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       user = await getCurrentUser();
     } catch {
       clearToken();
+      if (isPublic) return;
       broadcastAuthChange();
       throw redirect({ to: "/login" });
     }
@@ -164,6 +166,7 @@ function RootComponent() {
   useEffect(() => {
     const handleAuthChange = () => {
       clearToken();
+      if (PUBLIC_PATHS.has(router.state.location.pathname)) return;
       void router.navigate({ to: "/login", replace: true });
     };
     const handleStorageChange = (event: StorageEvent) => {

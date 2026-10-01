@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Barangay;
 use App\Models\Benefit;
+use App\Models\SeniorCitizen;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -54,6 +55,11 @@ class SeniorBulkUploadTest extends TestCase
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
             'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $user->id,
+            'action' => 'created',
+            'target_type' => SeniorCitizen::class,
         ]);
     }
 
