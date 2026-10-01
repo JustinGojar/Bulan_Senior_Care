@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Mail,
   LogOut,
+  Megaphone,
   Menu,
   Search,
   Settings,
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, apiFetch, clearToken, getRememberedUntil, getServerNotifications, getStoredUser, getUnreadMessageSummary, logout, type ApiUser } from "@/lib/api";
+import { API_URL, apiFetch, clearToken, getAnnouncements, getServerNotifications, getStoredUser, getUnreadMessageSummary, logout, type Announcement, type ApiSenior, type ApiUser, type PaginatedResponse } from "@/lib/api";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
@@ -54,6 +55,11 @@ export function AppShell({
   const [assignedBarangay, setAssignedBarangay] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [seniorMatches, setSeniorMatches] = useState<ApiSenior[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => {
     setUser(getStoredUser());
     const handleUserUpdated = (event: Event) => {
@@ -63,19 +69,8 @@ export function AppShell({
     return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
   }, []);
   useEffect(() => {
-    const rememberedUntil = getRememberedUntil();
-    if (!rememberedUntil) return;
-
-    const checkExpiry = () => {
-      if (Number(rememberedUntil) <= Date.now()) {
-        clearToken();
-        navigate({ to: "/login" });
-      }
-    };
-    checkExpiry();
-    const expiryTimer = window.setInterval(checkExpiry, 60_000);
-    return () => window.clearInterval(expiryTimer);
-  }, [navigate]);
+    getAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]));
+  }, []);
   useEffect(() => {
     if (user?.role?.toLowerCase() !== "leader" || !user.barangay_id) {
       setAssignedBarangay("");
@@ -126,6 +121,34 @@ export function AppShell({
       window.removeEventListener("bulan-unread-updated", handleUnreadUpdated);
     };
   }, []);
+  useEffect(() => {
+    const term = globalSearch.trim();
+    if (term.length < 2) {
+      setSeniorMatches([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      setSearchLoading(true);
+      const seniorRequest = apiFetch<PaginatedResponse<ApiSenior>>(
+        `/seniors?search=${encodeURIComponent(term)}&per_page=5`,
+      ).then((result) => result.data).catch(() => [] as ApiSenior[]);
+
+      seniorRequest.then((seniors) => {
+        if (!active) return;
+        setSeniorMatches(seniors);
+      }).finally(() => {
+        if (active) setSearchLoading(false);
+      });
+    }, 200);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [globalSearch]);
   const initials = (user?.name ?? "User")
     .split(" ")
     .map((part) => part[0])
@@ -150,6 +173,31 @@ export function AppShell({
     (to !== "/eligibility" || user?.role !== "leader") &&
     (!["/analytics", "/age-threshold"].includes(to) || user?.role !== "leader"),
   );
+  const normalizedSearch = globalSearch.trim().toLowerCase();
+  const matchingPages = normalizedSearch.length >= 2
+    ? visibleNav.filter((item) => item.label.toLowerCase().includes(normalizedSearch))
+    : [];
+  const announcementMatches = normalizedSearch.length >= 2
+    ? announcements.filter((announcement) =>
+      `${announcement.title} ${announcement.message}`.toLowerCase().includes(normalizedSearch),
+    ).slice(0, 5)
+    : [];
+
+  function clearGlobalSearch() {
+    setGlobalSearch("");
+    setSearchOpen(false);
+  }
+
+  function openAnnouncement(announcement: Announcement) {
+    clearGlobalSearch();
+    navigate({ to: "/dashboard", hash: `announcement-${announcement.id}` });
+  }
+
+  function openSenior(senior: ApiSenior) {
+    const query = senior.osca_id_number;
+    clearGlobalSearch();
+    navigate({ to: "/seniors", search: { q: query } });
+  }
 
   async function signOut() {
     void logout().catch(() => undefined);
@@ -271,12 +319,97 @@ export function AppShell({
                 </span>
               ))}
             </nav>
-            <div className="relative min-w-0 flex-1">
+            <div
+              className="relative min-w-0 flex-1"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setSearchOpen(false);
+                }
+              }}
+            >
               <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
+                value={globalSearch}
+                onChange={(event) => setGlobalSearch(event.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setSearchOpen(false);
+                }}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={searchOpen && globalSearch.trim().length >= 2}
+                aria-controls="global-search-results"
                 placeholder="Search citizens, records..."
                 className="h-12 w-full rounded-full bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
               />
+              {searchOpen && normalizedSearch.length >= 2 && (
+                <div
+                  id="global-search-results"
+                  className="surface-card absolute top-14 right-0 left-0 z-30 max-h-[min(70vh,28rem)] overflow-y-auto p-2 shadow-xl"
+                >
+                  {matchingPages.length > 0 && (
+                    <div>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pages</p>
+                      {matchingPages.map(({ to, label, icon: Icon }) => (
+                        <button
+                          key={to}
+                          type="button"
+                          onClick={() => {
+                            clearGlobalSearch();
+                            navigate({ to });
+                          }}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold hover:bg-secondary"
+                        >
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {announcementMatches.length > 0 && (
+                    <div>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Announcements</p>
+                      {announcementMatches.map((announcement) => (
+                        <button
+                          key={announcement.id}
+                          type="button"
+                          onClick={() => openAnnouncement(announcement)}
+                          className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary"
+                        >
+                          <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold">{announcement.title}</span>
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{announcement.message}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {seniorMatches.length > 0 && (
+                    <div>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Senior records</p>
+                      {seniorMatches.map((senior) => (
+                        <button
+                          key={senior.id}
+                          type="button"
+                          onClick={() => openSenior(senior)}
+                          className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary"
+                        >
+                          <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold">{[senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" ")}</span>
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{senior.osca_id_number}{senior.barangay?.barangay_name ? ` · ${senior.barangay.barangay_name}` : ""}</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchLoading && <p className="px-3 py-3 text-sm text-muted-foreground">Searching...</p>}
+                  {!searchLoading && matchingPages.length === 0 && announcementMatches.length === 0 && seniorMatches.length === 0 && (
+                    <p className="px-3 py-3 text-sm text-muted-foreground">No matching pages, announcements, or senior records.</p>
+                  )}
+                </div>
+              )}
             </div>
             <div className="relative flex items-center gap-3">
               {!isAdmin && (

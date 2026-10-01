@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\BenefitReleaseController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\SystemDataController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -24,6 +25,7 @@ Route::middleware(['token.idle', 'auth:sanctum'])->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/overview', OverviewController::class);
     Route::get('/analytics', AnalyticsController::class);
+    Route::get('/audit-logs', [SystemDataController::class, 'auditLogs']);
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/barangays', [AuthController::class, 'barangays']);

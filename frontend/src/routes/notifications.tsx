@@ -19,6 +19,7 @@ function Notifications() {
   function notificationTitle(notification: ServerNotification) {
     if (notification.source_type === "benefit_release") return "Benefit release schedule";
     if (notification.source_type === "announcement") return "Announcement update";
+    if (notification.source_type === "age_threshold") return "Age threshold alert";
     if (notification.message.toLowerCase().includes("comment")) return "Announcement comment";
     return "System notification";
   }

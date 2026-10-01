@@ -166,7 +166,9 @@ function Analytics() {
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend />
+                <Legend
+                  formatter={(value) => `${value}: ${benefitRecords.find((record) => record.name === value)?.value ?? 0}`}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>

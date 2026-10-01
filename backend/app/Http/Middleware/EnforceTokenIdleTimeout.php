@@ -19,9 +19,9 @@ class EnforceTokenIdleTimeout
 
         $accessToken = PersonalAccessToken::findToken($plainTextToken);
         $lastActivity = $accessToken?->last_used_at ?? $accessToken?->created_at;
-        $idleTimeout = (int) config('sanctum.idle_timeout', 120);
+        $idleTimeout = (int) config('sanctum.idle_timeout', 0);
 
-        if ($accessToken && $lastActivity?->lte(now()->subMinutes($idleTimeout))) {
+        if ($idleTimeout > 0 && $accessToken && $lastActivity?->lte(now()->subMinutes($idleTimeout))) {
             $accessToken->delete();
 
             return response()->json(['message' => 'Your session expired due to inactivity. Please log in again.'], 401);

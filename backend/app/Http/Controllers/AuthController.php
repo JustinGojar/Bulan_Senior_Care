@@ -64,7 +64,6 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
-            'remember_me' => ['sometimes', 'boolean'],
         ]);
         $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
@@ -85,8 +84,7 @@ class AuthController extends Controller
         RateLimiter::clear($throttleKey);
         $user->update(['last_login' => now()]);
         $user->tokens()->delete();
-        $expiresAt = ($credentials['remember_me'] ?? false) ? now()->addDays(30) : null;
-        $token = $user->createToken('bulan-seniorcare', ['*'], $expiresAt)->plainTextToken;
+        $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 
         return response()->json(['token' => $token, 'user' => $user->load('roles')]);
     }
