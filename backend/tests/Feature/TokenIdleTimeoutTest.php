@@ -10,7 +10,7 @@ class TokenIdleTimeoutTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_stale_bearer_token_is_revoked(): void
+    public function test_stale_bearer_token_remains_valid_by_default(): void
     {
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('test')->plainTextToken;
@@ -18,10 +18,9 @@ class TokenIdleTimeoutTest extends TestCase
 
         $this->withToken($plainTextToken)
             ->getJson('/api/user')
-            ->assertUnauthorized()
-            ->assertJsonPath('message', 'Your session expired due to inactivity. Please log in again.');
+            ->assertOk();
 
-        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $user->id]);
+        $this->assertDatabaseHas('personal_access_tokens', ['tokenable_id' => $user->id]);
     }
 
     public function test_active_bearer_token_remains_valid(): void

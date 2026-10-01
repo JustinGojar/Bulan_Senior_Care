@@ -52,7 +52,7 @@ return [
 
     'expiration' => null,
 
-    'idle_timeout' => env('SANCTUM_IDLE_TIMEOUT', 120),
+    'idle_timeout' => 0,
 
     /*
     |--------------------------------------------------------------------------

@@ -30,7 +30,6 @@ function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,7 +67,7 @@ function LoginPage() {
             e.preventDefault();
             setSubmitting(true);
             setError(null);
-            login(email, password, rememberMe)
+            login(email, password)
               .then(() => navigate({ to: "/dashboard" }))
               .catch((reason: Error) => setError(reason.message))
               .finally(() => setSubmitting(false));
@@ -106,16 +105,7 @@ function LoginPage() {
             </button>
           </label>
 
-          <div className="mt-6 flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(event) => setRememberMe(event.target.checked)}
-                className="h-4 w-4 accent-primary"
-              />
-              Remember Me
-            </label>
+          <div className="mt-6 flex justify-end text-sm">
             <Link to="/forgot-password" className="font-bold">
               Forgot Password?
             </Link>
