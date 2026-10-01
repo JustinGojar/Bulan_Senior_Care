@@ -86,7 +86,7 @@ function normalizeBulkHeader(header: unknown) {
 
 function normalizeBulkDate(value: unknown) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
   }
   if (typeof value === "number") {
     const date = XLSX.SSF.parse_date_code(value);
@@ -94,8 +94,30 @@ function normalizeBulkDate(value: unknown) {
   }
   const text = String(value ?? "").trim();
   if (!text) return "";
+  const monthFirst = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (monthFirst) return `${monthFirst[3]}-${monthFirst[1].padStart(2, "0")}-${monthFirst[2].padStart(2, "0")}`;
   const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? text : parsed.toISOString().slice(0, 10);
+  return Number.isNaN(parsed.getTime())
+    ? text
+    : `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+}
+
+function familyCompositionRows(value: string) {
+  return value
+    .split(/\r?\n|;(?=\s*[^|;]+\s*\|)/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => entry.split("|").map((cell) => cell.trim()));
+}
+
+function splitBulkName(value: unknown) {
+  const parts = String(value ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { firstName: parts[0] ?? "", middleName: "", lastName: "" };
+  return {
+    firstName: parts[0]!,
+    middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+    lastName: parts.at(-1)!,
+  };
 }
 
 async function readBulkRecords(file: File) {
@@ -151,13 +173,13 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
 
   document.setDrawColor(35, 45, 55);
   document.setLineWidth(0.4);
-  document.rect(left, 12, 40, 45);
+  document.rect(left, 12, 40, 58);
   document.setFont("helvetica", "bold");
-  document.setFontSize(7);
+  document.setFontSize(6.7);
   document.text("AN KAUPOD PO SANI NA", left + 3, 18);
   document.text("DOKUMENTO:", left + 3, 23);
   document.setFont("helvetica", "normal");
-  ["1x1 PICTURE - 2pcs", "Birth Certificate", "Baptismal", "GSIS ID", "SSS ID", "Voter's ID", "National ID", "Brgy. ID", "Driver's License", "Passport ID"].forEach((item, index) => document.text(`> ${item}`, left + 3, 29 + index * 3.8));
+  ["1x1 PICTURE - 2pcs", "Birth Certificate", "Baptismal", "GSIS ID", "SSS ID", "Voter's ID", "National ID", "Brgy. ID", "Driver's License", "Passport ID"].forEach((item, index) => document.text(`> ${item}`, left + 3, 28 + index * 3.35));
 
   document.setFont("helvetica", "bold");
   document.setFontSize(10);
@@ -194,7 +216,7 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
     document.text("Picture", 178.5, 31, { align: "center" });
   }
 
-  let y = 68;
+  let y = 75;
   const line = (label: string, value: string, x: number, endX: number, lineY = y) => {
     document.setFont("helvetica", "bold");
     document.setFontSize(7.5);
@@ -206,16 +228,22 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   };
   document.setFont("helvetica", "bold");
   document.setFontSize(7.5);
-  line("NAME", "", left, right);
+  document.text("NAME:", left, y);
+  const nameFields = [
+    { value: draft.lastName ?? "", start: 43, end: 78, label: "(Surname)" },
+    { value: draft.firstName ?? "", start: 83, end: 130, label: "(First Name)" },
+    { value: draft.middleName ?? "", start: 135, end: 192, label: "(Middle Name)" },
+  ];
   document.setFont("helvetica", "normal");
   document.setFontSize(7);
-  document.text(draft.lastName ?? "", 43, y - 1, { align: "center" });
-  document.text(draft.firstName ?? "", 101, y - 1, { align: "center" });
-  document.text(draft.middleName ?? "", 157, y - 1, { align: "center" });
-  document.setFontSize(6.5);
-  document.text("(Surname)", 43, y + 5, { align: "center" });
-  document.text("(First Name)", 101, y + 5, { align: "center" });
-  document.text("(Middle Name)", 157, y + 5, { align: "center" });
+  nameFields.forEach(({ value, start, end, label }) => {
+    const center = (start + end) / 2;
+    document.text(value, center, y - 1, { align: "center" });
+    document.line(start, y + 1, end, y + 1);
+    document.setFontSize(6.5);
+    document.text(label, center, y + 5, { align: "center" });
+    document.setFontSize(7);
+  });
   y += 15;
   line("PLACE OF BIRTH", draft.placeOfBirth ?? "", left, 104);
   line("AGE", String(draft.age || ""), 109, 143);
@@ -247,7 +275,13 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.text("STATUS", 152, tableTop + 5, { align: "center" });
   document.text("OCCUPATION", 178, tableTop + 5, { align: "center" });
   document.setFont("helvetica", "normal");
-  document.text(document.splitTextToSize(draft.familyComposition ?? "", 170)[0] ?? "", left + 2, tableTop + 11);
+  familyCompositionRows(draft.familyComposition ?? "").slice(0, 4).forEach((row, rowIndex) => {
+    const rowY = tableTop + 11 + rowIndex * 6;
+    const columns = [left + 2, 66, 114, 141, 168];
+    row.slice(0, 5).forEach((cell, columnIndex) => {
+      document.text(document.splitTextToSize(cell, columnIndex === 0 ? 45 : columnIndex === 4 ? 25 : 24)[0] ?? "", columns[columnIndex]!, rowY);
+    });
+  });
 
   y = tableTop + tableHeight + 13;
   document.setFont("helvetica", "bold");
@@ -263,7 +297,8 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   y += 17;
   document.setFont("helvetica", "normal");
   document.setFontSize(8);
-  document.text("Signature of Ass. Pres. / Representative", 139, y, { align: "center" });
+  document.line(122, y, right, y);
+  document.text("Signature of Ass. Pres. / Representative", 157, y + 5, { align: "center" });
   y += 14;
   document.setFont("helvetica", "bold");
   document.text("I certify that the above information are true and correct in the best of my", pageWidth / 2, y, { align: "center" });
@@ -272,7 +307,11 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.line(125, y, right, y);
   document.setFont("helvetica", "normal");
   document.text("Signature or thumb mark of Senior Citizen", 158, y + 6, { align: "center" });
-  document.save(`osca-registration-${(draft.lastName || "senior").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
+  const seniorName = [draft.firstName, draft.middleName, draft.lastName]
+    .filter((part) => part?.trim())
+    .join(" ") || draft.name || "senior";
+  const fileName = seniorName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  document.save(`osca-registration-${fileName || "senior"}.pdf`);
 }
 
 function changedFields(request: SeniorEditRequest) {
@@ -403,18 +442,31 @@ function SeniorRecords() {
       return;
     }
     const normalizedRecords = records.map((record) => {
+      const fullName = splitBulkName(record["name"] ?? record["full_name"]);
       const birthdate = normalizeBulkDate(record["birthdate"] ?? record["date_of_birth"] ?? record["dob"]);
       const age = new Date().getFullYear() - Number(birthdate.slice(0, 4));
-      const benefit = String(record["benefit"] ?? (age >= 100 ? "Centenarian Award" : age >= 90 ? "Nonagenarian Grant" : age >= 80 ? "Octogenarian Grant" : "Social Pension")).trim();
+      const rawBenefit = String(record["benefit"] ?? "").trim();
+      const benefit = /^(not provided|n\/a|na|none|-)?$/i.test(rawBenefit)
+        ? age >= 100 ? "Centenarian Award" : age >= 90 ? "Nonagenarian Grant" : age >= 80 ? "Octogenarian Grant" : "Social Pension"
+        : rawBenefit;
       return {
-        first_name: String(record["first_name"] ?? "").trim(),
-        middle_name: String(record["middle_name"] ?? "").trim(),
-        last_name: String(record["last_name"] ?? "").trim(),
+        first_name: String(record["first_name"] ?? record["given_name"] ?? fullName.firstName).trim(),
+        middle_name: String(record["middle_name"] ?? fullName.middleName).trim(),
+        last_name: String(record["last_name"] ?? record["surname"] ?? record["family_name"] ?? fullName.lastName).trim(),
         birthdate,
+        place_of_birth: String(record["place_of_birth"] ?? record["birthplace"] ?? "").trim(),
         sex: String(record["sex"] ?? "").toLowerCase(),
-        contact_number: String(record["contact_number"] ?? record["contact"] ?? "").trim(),
+        contact_number: String(record["contact_number"] ?? record["contact_numb"] ?? record["contact"] ?? record["phone_number"] ?? "").trim(),
         barangay: String(record["barangay"] ?? "").trim(),
-        address: String(record["address"] ?? "").trim(),
+        address: String(record["address"] ?? record["complete_address"] ?? "").trim(),
+        civil_status: String(record["civil_status"] ?? "").trim(),
+        educational_attainment: String(record["educational_attainment"] ?? "").trim(),
+        other_skills: String(record["other_skills"] ?? "").trim(),
+        family_composition: String(record["family_composition"] ?? "").trim(),
+        association_name: String(record["association_name"] ?? "").trim(),
+        association_address: String(record["association_address"] ?? "").trim(),
+        association_membership_date: normalizeBulkDate(record["date_of_membership"] ?? record["association_membership_date"]),
+        association_position: String(record["association_position"] ?? "").trim(),
         benefit,
       };
     });
@@ -426,10 +478,10 @@ function SeniorRecords() {
     try {
       const result = await bulkCreateSeniors(bulkPreview);
       const failed = result.failed.length;
-      if (failed) toast.error(`${result.created.length} records added, ${failed} failed. ${result.failed[0]?.message ?? "Check the uploaded data."}`);
+      if (failed) toast.error(`${result.created.length} records added, ${failed} failed. Row ${result.failed[0]?.row ?? "?"}: ${result.failed[0]?.message ?? "Check the uploaded data."}`);
       else toast.success(`${result.created.length} senior records added and are pending review.`);
       setBulkPreview(null);
-      window.location.reload();
+      if (result.created.length > 0) window.location.reload();
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : "Bulk upload failed.");
     }

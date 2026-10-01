@@ -159,9 +159,18 @@ class SeniorCitizenController extends Controller
                 'first_name' => ['required', 'string', 'max:100'],
                 'last_name' => ['required', 'string', 'max:100'],
                 'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
+                'place_of_birth' => ['nullable', 'string', 'max:150'],
                 'sex' => ['required', Rule::in(['male', 'female'])],
                 'contact_number' => ['required', 'regex:/^[0-9+()\-\s]{7,30}$/'],
                 'barangay' => ['required', 'string', 'max:100'],
+                'civil_status' => ['nullable', 'string', 'max:50'],
+                'educational_attainment' => ['nullable', 'string', 'max:255'],
+                'other_skills' => ['nullable', 'string', 'max:255'],
+                'family_composition' => ['nullable', 'string'],
+                'association_name' => ['nullable', 'string', 'max:150'],
+                'association_address' => ['nullable', 'string', 'max:255'],
+                'association_membership_date' => ['nullable', 'date'],
+                'association_position' => ['nullable', 'string', 'max:100'],
                 'benefit' => ['required', 'string', 'max:100'],
             ]);
             if ($validator->fails()) {
@@ -171,9 +180,12 @@ class SeniorCitizenController extends Controller
 
             try {
                 $senior = DB::transaction(function () use ($data, $request) {
-                    $barangay = Barangay::firstOrCreate([
-                        'barangay_name' => $data['barangay'],
-                    ]);
+                    $barangay = Barangay::where('barangay_name', $data['barangay'])
+                        ->orWhere(function ($query) use ($data) {
+                            $query->where('barangay_name', 'like', $data['barangay'].' (%)');
+                        })
+                        ->first();
+                    $barangay ??= Barangay::create(['barangay_name' => $data['barangay']]);
                     $barangayId = $barangay->id;
                     if ($request->user()->role === 'leader') {
                         abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
@@ -206,9 +218,18 @@ class SeniorCitizenController extends Controller
                         'middle_name' => $data['middle_name'] ?? null,
                         'last_name' => $data['last_name'],
                         'birthdate' => $data['birthdate'],
+                        'place_of_birth' => $data['place_of_birth'] ?? null,
                         'sex' => $data['sex'],
                         'contact_number' => $data['contact_number'],
                         'address' => $data['address'] ?? null,
+                        'civil_status' => $data['civil_status'] ?? null,
+                        'educational_attainment' => $data['educational_attainment'] ?? null,
+                        'other_skills' => $data['other_skills'] ?? null,
+                        'family_composition' => $data['family_composition'] ?? null,
+                        'association_name' => $data['association_name'] ?? null,
+                        'association_address' => $data['association_address'] ?? null,
+                        'association_membership_date' => $data['association_membership_date'] ?? null,
+                        'association_position' => $data['association_position'] ?? null,
                         'barangay_id' => $barangayId,
                         'benefit' => $data['benefit'],
                         'encoded_by' => $request->user()->id,
@@ -234,7 +255,7 @@ class SeniorCitizenController extends Controller
             'created' => $created,
             'failed' => $failed,
             'message' => count($created).' records imported, '.count($failed).' records failed.',
-        ], count($created) > 0 ? 201 : 422);
+        ], count($created) > 0 ? 201 : 200);
     }
 
     public function show(SeniorCitizen $senior): JsonResponse

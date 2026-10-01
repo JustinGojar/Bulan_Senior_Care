@@ -78,9 +78,18 @@ class SeniorBulkUploadTest extends TestCase
                 'first_name' => 'Maria',
                 'last_name' => 'Santos',
                 'birthdate' => '1960-01-01',
+                'place_of_birth' => 'Bulan, Sorsogon',
                 'sex' => 'female',
                 'contact_number' => '09123456789',
                 'barangay' => 'Zone 8 (Loyo)',
+                'civil_status' => 'Married',
+                'educational_attainment' => 'College graduate',
+                'other_skills' => 'Singer',
+                'family_composition' => 'Ana Garbin | Daughter | 38',
+                'association_name' => 'Senior Citizens Association of Zone 8',
+                'association_address' => 'Zone 8, Bulan, Sorsogon',
+                'association_membership_date' => '2019-06-10',
+                'association_position' => 'Member',
                 'benefit' => 'Social Pension',
             ]],
         ]);
@@ -88,5 +97,31 @@ class SeniorBulkUploadTest extends TestCase
         $response->assertCreated()->assertJsonCount(1, 'created');
         $this->assertDatabaseHas('barangays', ['barangay_name' => 'Zone 8 (Loyo)']);
         $this->assertDatabaseHas('senior_citizens', ['first_name' => 'Maria', 'last_name' => 'Santos']);
+        $this->assertDatabaseHas('senior_citizens', [
+            'first_name' => 'Maria',
+            'place_of_birth' => 'Bulan, Sorsogon',
+            'association_name' => 'Senior Citizens Association of Zone 8',
+            'association_position' => 'Member',
+        ]);
+    }
+
+    public function test_bulk_import_returns_row_error_for_underage_record(): void
+    {
+        $user = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors/bulk', [
+            'records' => [[
+                'first_name' => 'Antonio Miguel',
+                'last_name' => 'Reyes',
+                'birthdate' => '1967-03-24',
+                'sex' => 'male',
+                'contact_number' => '09000000000',
+                'barangay' => 'Zone 8',
+                'benefit' => 'Social Pension',
+            ]],
+        ]);
+
+        $response->assertOk()->assertJsonPath('failed.0.row', 2);
+        $response->assertJsonPath('failed.0.message', 'The birthdate field must be a date before or equal to 1966-09-25.');
     }
 }
