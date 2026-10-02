@@ -6,7 +6,13 @@ import { AppShell } from "@/components/AppShell";
 import { API_URL, getStoredUser } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/eligibility")({
   head: () => ({ meta: [{ title: "Eligibility Review — Bulan SeniorCare" }] }),
@@ -40,7 +46,7 @@ function EligibilityReview() {
   const [viewing, setViewing] = useState<Senior | null>(null);
 
   useEffect(() => {
-    if (!( ["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
+    if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
       navigate({ to: "/dashboard", replace: true });
     }
   }, [currentUser?.role, navigate]);
@@ -51,7 +57,7 @@ function EligibilityReview() {
     }
   }, [error, loading, page, pendingSeniors.length]);
 
-  if (!( ["admin", "head"] as string[]).includes(currentUser?.role ?? "")) return null;
+  if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) return null;
 
   async function reviewSenior(senior: (typeof seniors)[number], status: "Active" | "Inactive") {
     try {
@@ -110,7 +116,9 @@ function EligibilityReview() {
             >
               <option value="">All barangays</option>
               {BARANGAYS.map((name) => (
-                <option key={name} value={name}>{name}</option>
+                <option key={name} value={name}>
+                  {name}
+                </option>
               ))}
             </select>
           </label>
@@ -130,8 +138,14 @@ function EligibilityReview() {
           )}
         </div>
         <div className="mt-6 space-y-3">
-          {loading && <p className="text-sm text-muted-foreground">Loading pending registrations...</p>}
-          {error && <p className="text-sm text-destructive">Unable to load pending registrations. Please refresh and try again.</p>}
+          {loading && (
+            <p className="text-sm text-muted-foreground">Loading pending registrations...</p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive">
+              Unable to load pending registrations. Please refresh and try again.
+            </p>
+          )}
           {pendingSeniors.map((senior) => {
             return (
               <article
@@ -145,8 +159,12 @@ function EligibilityReview() {
                       {senior.id}
                     </span>
                   </p>
-                  <p className="mt-1 text-sm text-coral">Age {senior.age} · {senior.barangay}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Review this registration before it becomes an active record.</p>
+                  <p className="mt-1 text-sm text-coral">
+                    Age {senior.age} · {senior.barangay}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Review this registration before it becomes an active record.
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -185,7 +203,8 @@ function EligibilityReview() {
         {matchingCount > 0 && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <span className="text-xs text-muted-foreground">
-              Showing {(page - 1) * 10 + 1}-{Math.min(page * 10, matchingCount)} of {matchingCount} pending registrations
+              Showing {(page - 1) * 10 + 1}-{Math.min(page * 10, matchingCount)} of {matchingCount}{" "}
+              pending registrations
             </span>
             <div className="flex items-center gap-3">
               <button
@@ -197,7 +216,9 @@ function EligibilityReview() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-xs font-semibold text-muted-foreground">Page {page} of {lastPage}</span>
+              <span className="text-xs font-semibold text-muted-foreground">
+                Page {page} of {lastPage}
+              </span>
               <button
                 type="button"
                 onClick={() => setPage((current) => Math.min(lastPage, current + 1))}

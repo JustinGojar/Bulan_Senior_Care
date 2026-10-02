@@ -152,7 +152,9 @@ function Landing() {
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/60 sm:h-10 sm:w-10" />
             <div className="min-w-0">
               <p className="font-display truncate text-xs font-bold sm:text-sm">Bulan SeniorCare</p>
-              <p className="truncate text-[11px] text-muted-foreground sm:text-xs">Bulan, Sorsogon</p>
+              <p className="truncate text-[11px] text-muted-foreground sm:text-xs">
+                Bulan, Sorsogon
+              </p>
             </div>
           </div>
           <nav className="hidden flex-1 items-center justify-center gap-1 text-xs font-semibold text-muted-foreground lg:flex xl:gap-4 xl:text-sm">
@@ -254,7 +256,10 @@ function Landing() {
           </div>
         </section>
 
-        <section id="about" className="surface-card scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10">
+        <section
+          id="about"
+          className="surface-card scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10"
+        >
           <span className="rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold">
             About OSCA Bulan
           </span>
@@ -270,9 +275,18 @@ function Landing() {
           </p>
           <div className="mt-8 grid gap-5 sm:grid-cols-3">
             {[
-              ["Objective 1", "Determine the information requirements: profiling, beneficiary qualification, and the existing OSCA workflow."],
-              ["Objective 2", "Implement registration, eligibility, benefit tracking, reports, access control, notifications, and age thresholds."],
-              ["Objective 3", "Integrate descriptive analytics at both barangay and municipal level."],
+              [
+                "Objective 1",
+                "Determine the information requirements: profiling, beneficiary qualification, and the existing OSCA workflow.",
+              ],
+              [
+                "Objective 2",
+                "Implement registration, eligibility, benefit tracking, reports, access control, notifications, and age thresholds.",
+              ],
+              [
+                "Objective 3",
+                "Integrate descriptive analytics at both barangay and municipal level.",
+              ],
             ].map(([tag, body]) => (
               <div key={tag} className="rounded-2xl bg-secondary p-5 sm:rounded-3xl sm:p-6">
                 <p className="text-xs font-bold text-gold-foreground dark:text-white">{tag}</p>
@@ -300,14 +314,26 @@ function Landing() {
           </div>
         </section>
 
-        <section id="benefits" className="scroll-mt-20 grid gap-5 sm:scroll-mt-24 sm:gap-6 lg:grid-cols-2">
+        <section
+          id="benefits"
+          className="scroll-mt-20 grid gap-5 sm:scroll-mt-24 sm:gap-6 lg:grid-cols-2"
+        >
           <div className="surface-card p-5 sm:p-8 lg:p-10">
             <h2 className="text-2xl font-extrabold sm:text-3xl">Who benefits</h2>
             <ul className="mt-6 space-y-5 text-sm">
               {[
-                ["OSCA Staff", "Register seniors, update details, track distribution, and generate accurate reports."],
-                ["Senior Citizens", "Receive the right benefits on time, with a clear view of their own status."],
-                ["LGU-Bulan", "Better data for planning and decision-making on senior welfare programs."],
+                [
+                  "OSCA Staff",
+                  "Register seniors, update details, track distribution, and generate accurate reports.",
+                ],
+                [
+                  "Senior Citizens",
+                  "Receive the right benefits on time, with a clear view of their own status.",
+                ],
+                [
+                  "LGU-Bulan",
+                  "Better data for planning and decision-making on senior welfare programs.",
+                ],
               ].map(([who, why]) => (
                 <li key={who} className="flex gap-4">
                   <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
@@ -319,7 +345,10 @@ function Landing() {
               ))}
             </ul>
           </div>
-          <div id="analytics" className="surface-card scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10">
+          <div
+            id="analytics"
+            className="surface-card scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10"
+          >
             <h2 className="text-2xl font-extrabold sm:text-3xl">Descriptive analytics</h2>
             <div className="mt-6 grid gap-3">
               {ANALYTICS.map((item) => (
@@ -338,10 +367,22 @@ function Landing() {
           <h2 className="text-2xl font-extrabold sm:text-3xl">Frequently asked</h2>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             {[
-              ["Can reports be printed or downloaded?", "Reports are viewable on screen. Printing and export are outside the current scope of the study."],
-              ["Does it work offline?", "No. The portal is server-based and needs a stable internet connection."],
-              ["Which devices are supported?", "Desktop browsers on Windows 10/11 and Android 7+ phones and tablets."],
-              ["How is access controlled?", "Three role levels — seniors see only their own record, OSCA staff and admins manage all records."],
+              [
+                "Can reports be printed or downloaded?",
+                "Reports are viewable on screen. Printing and export are outside the current scope of the study.",
+              ],
+              [
+                "Does it work offline?",
+                "No. The portal is server-based and needs a stable internet connection.",
+              ],
+              [
+                "Which devices are supported?",
+                "Desktop browsers on Windows 10/11 and Android 7+ phones and tablets.",
+              ],
+              [
+                "How is access controlled?",
+                "Three role levels — seniors see only their own record, OSCA staff and admins manage all records.",
+              ],
             ].map(([q, a]) => (
               <div key={q} className="surface-card p-5 sm:p-7">
                 <h3 className="text-base font-bold">{q}</h3>

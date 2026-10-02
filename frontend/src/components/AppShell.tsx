@@ -17,7 +17,20 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, apiFetch, clearToken, getAnnouncements, getServerNotifications, getStoredUser, getUnreadMessageSummary, logout, type Announcement, type ApiSenior, type ApiUser, type PaginatedResponse } from "@/lib/api";
+import {
+  API_URL,
+  apiFetch,
+  clearToken,
+  getAnnouncements,
+  getServerNotifications,
+  getStoredUser,
+  getUnreadMessageSummary,
+  logout,
+  type Announcement,
+  type ApiSenior,
+  type ApiUser,
+  type PaginatedResponse,
+} from "@/lib/api";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
@@ -69,7 +82,9 @@ export function AppShell({
     return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
   }, []);
   useEffect(() => {
-    getAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]));
+    getAnnouncements()
+      .then(setAnnouncements)
+      .catch(() => setAnnouncements([]));
   }, []);
   useEffect(() => {
     if (user?.role?.toLowerCase() !== "leader" || !user.barangay_id) {
@@ -77,9 +92,11 @@ export function AppShell({
       return;
     }
     apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
-      .then((barangays) => setAssignedBarangay(
-        barangays.find((barangay) => barangay.id === user.barangay_id)?.barangay_name ?? "",
-      ))
+      .then((barangays) =>
+        setAssignedBarangay(
+          barangays.find((barangay) => barangay.id === user.barangay_id)?.barangay_name ?? "",
+        ),
+      )
       .catch(() => setAssignedBarangay(""));
   }, [user?.barangay_id, user?.role]);
   useEffect(() => {
@@ -134,14 +151,18 @@ export function AppShell({
       setSearchLoading(true);
       const seniorRequest = apiFetch<PaginatedResponse<ApiSenior>>(
         `/seniors?search=${encodeURIComponent(term)}&per_page=5`,
-      ).then((result) => result.data).catch(() => [] as ApiSenior[]);
+      )
+        .then((result) => result.data)
+        .catch(() => [] as ApiSenior[]);
 
-      seniorRequest.then((seniors) => {
-        if (!active) return;
-        setSeniorMatches(seniors);
-      }).finally(() => {
-        if (active) setSearchLoading(false);
-      });
+      seniorRequest
+        .then((seniors) => {
+          if (!active) return;
+          setSeniorMatches(seniors);
+        })
+        .finally(() => {
+          if (active) setSearchLoading(false);
+        });
     }, 200);
 
     return () => {
@@ -155,33 +176,43 @@ export function AppShell({
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const roleLabel = user?.role?.toLowerCase() === "leader"
-    ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
-    : user?.role?.toLowerCase() === "head"
-      ? "OSCA Head"
-      : user?.role?.toLowerCase() === "admin"
-        ? "OSCA Admin"
-        : user?.role ?? "Admin";
-  const isAdmin = user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin");
+  const roleLabel =
+    user?.role?.toLowerCase() === "leader"
+      ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+      : user?.role?.toLowerCase() === "head"
+        ? "OSCA Head"
+        : user?.role?.toLowerCase() === "admin"
+          ? "OSCA Admin"
+          : (user?.role ?? "Admin");
+  const isAdmin =
+    user?.role?.toLowerCase() === "admin" ||
+    user?.roles?.some((role) => role.name.toLowerCase() === "admin");
   const photoUrl = user?.profile_photo_path
     ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
     : isAdmin
       ? oscaAdminImage
       : null;
-  const visibleNav = NAV.filter(({ to }) =>
-    (to !== "/users" || user?.role === "admin") &&
-    (to !== "/eligibility" || user?.role !== "leader") &&
-    (to !== "/age-threshold" || user?.role !== "leader"),
+  const visibleNav = NAV.filter(
+    ({ to }) =>
+      (to !== "/users" || user?.role === "admin") &&
+      (to !== "/eligibility" || user?.role !== "leader") &&
+      (to !== "/age-threshold" || user?.role !== "leader"),
   );
   const normalizedSearch = globalSearch.trim().toLowerCase();
-  const matchingPages = normalizedSearch.length >= 2
-    ? visibleNav.filter((item) => item.label.toLowerCase().includes(normalizedSearch))
-    : [];
-  const announcementMatches = normalizedSearch.length >= 2
-    ? announcements.filter((announcement) =>
-      `${announcement.title} ${announcement.message}`.toLowerCase().includes(normalizedSearch),
-    ).slice(0, 5)
-    : [];
+  const matchingPages =
+    normalizedSearch.length >= 2
+      ? visibleNav.filter((item) => item.label.toLowerCase().includes(normalizedSearch))
+      : [];
+  const announcementMatches =
+    normalizedSearch.length >= 2
+      ? announcements
+          .filter((announcement) =>
+            `${announcement.title} ${announcement.message}`
+              .toLowerCase()
+              .includes(normalizedSearch),
+          )
+          .slice(0, 5)
+      : [];
 
   function clearGlobalSearch() {
     setGlobalSearch("");
@@ -238,9 +269,23 @@ export function AppShell({
           </nav>
 
           <div className="mt-auto border-t border-border pt-4">
-            <Link to="/profile" className="flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-secondary">
+            <Link
+              to="/profile"
+              className="flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-secondary"
+            >
               <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
-                {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (isAdmin) event.currentTarget.src = oscaAdminImage; }} /> : initials}
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    onError={(event) => {
+                      if (isAdmin) event.currentTarget.src = oscaAdminImage;
+                    }}
+                  />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
@@ -290,7 +335,18 @@ export function AppShell({
                 className="mt-auto flex items-center gap-3 rounded-2xl border-t border-border p-2 pt-4 transition-colors hover:bg-secondary"
               >
                 <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
-                  {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (isAdmin) event.currentTarget.src = oscaAdminImage; }} /> : initials}
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        if (isAdmin) event.currentTarget.src = oscaAdminImage;
+                      }}
+                    />
+                  ) : (
+                    initials
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
@@ -349,7 +405,9 @@ export function AppShell({
                 >
                   {matchingPages.length > 0 && (
                     <div>
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pages</p>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Pages
+                      </p>
                       {matchingPages.map(({ to, label, icon: Icon }) => (
                         <button
                           key={to}
@@ -368,7 +426,9 @@ export function AppShell({
                   )}
                   {announcementMatches.length > 0 && (
                     <div>
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Announcements</p>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Announcements
+                      </p>
                       {announcementMatches.map((announcement) => (
                         <button
                           key={announcement.id}
@@ -378,8 +438,12 @@ export function AppShell({
                         >
                           <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">{announcement.title}</span>
-                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{announcement.message}</span>
+                            <span className="block truncate text-sm font-semibold">
+                              {announcement.title}
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                              {announcement.message}
+                            </span>
                           </span>
                         </button>
                       ))}
@@ -387,7 +451,9 @@ export function AppShell({
                   )}
                   {seniorMatches.length > 0 && (
                     <div>
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Senior records</p>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Senior records
+                      </p>
                       {seniorMatches.map((senior) => (
                         <button
                           key={senior.id}
@@ -397,17 +463,33 @@ export function AppShell({
                         >
                           <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">{[senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" ")}</span>
-                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{senior.osca_id_number}{senior.barangay?.barangay_name ? ` · ${senior.barangay.barangay_name}` : ""}</span>
+                            <span className="block truncate text-sm font-semibold">
+                              {[senior.first_name, senior.middle_name, senior.last_name]
+                                .filter(Boolean)
+                                .join(" ")}
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                              {senior.osca_id_number}
+                              {senior.barangay?.barangay_name
+                                ? ` · ${senior.barangay.barangay_name}`
+                                : ""}
+                            </span>
                           </span>
                         </button>
                       ))}
                     </div>
                   )}
-                  {searchLoading && <p className="px-3 py-3 text-sm text-muted-foreground">Searching...</p>}
-                  {!searchLoading && matchingPages.length === 0 && announcementMatches.length === 0 && seniorMatches.length === 0 && (
-                    <p className="px-3 py-3 text-sm text-muted-foreground">No matching pages, announcements, or senior records.</p>
+                  {searchLoading && (
+                    <p className="px-3 py-3 text-sm text-muted-foreground">Searching...</p>
                   )}
+                  {!searchLoading &&
+                    matchingPages.length === 0 &&
+                    announcementMatches.length === 0 &&
+                    seniorMatches.length === 0 && (
+                      <p className="px-3 py-3 text-sm text-muted-foreground">
+                        No matching pages, announcements, or senior records.
+                      </p>
+                    )}
                 </div>
               )}
             </div>
@@ -444,20 +526,49 @@ export function AppShell({
                 aria-label="Open profile menu"
                 className="bg-navy grid h-11 w-11 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground"
               >
-                      {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (isAdmin) event.currentTarget.src = oscaAdminImage; }} /> : initials}
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    onError={(event) => {
+                      if (isAdmin) event.currentTarget.src = oscaAdminImage;
+                    }}
+                  />
+                ) : (
+                  initials
+                )}
               </button>
               {profileOpen && (
                 <div className="surface-card absolute top-14 right-0 z-20 w-64 p-3">
                   <div className="flex items-center gap-3 border-b border-border px-2 pb-3">
                     <UserCircle className="h-8 w-8 text-muted-foreground" />
-                    <div className="min-w-0"><p className="truncate text-sm font-bold">{user?.name ?? "User"}</p><p className="truncate text-xs text-muted-foreground">{user?.email ?? "Admin"}</p></div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{user?.name ?? "User"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {user?.email ?? "Admin"}
+                      </p>
+                    </div>
                   </div>
-                  <Link to="/profile" onClick={() => setProfileOpen(false)} className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"><UserCircle className="h-4 w-4" /> My profile</Link>
+                  <Link
+                    to="/profile"
+                    onClick={() => setProfileOpen(false)}
+                    className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"
+                  >
+                    <UserCircle className="h-4 w-4" /> My profile
+                  </Link>
                   <div className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold">
-                    <span className="flex items-center gap-3"><Settings className="h-4 w-4" /> Appearance</span>
+                    <span className="flex items-center gap-3">
+                      <Settings className="h-4 w-4" /> Appearance
+                    </span>
                     <ThemeToggle className="h-9 w-9 shadow-none" />
                   </div>
-                  <button onClick={signOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"><LogOut className="h-4 w-4" /> Log out</button>
+                  <button
+                    onClick={signOut}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"
+                  >
+                    <LogOut className="h-4 w-4" /> Log out
+                  </button>
                 </div>
               )}
             </div>

@@ -37,7 +37,12 @@ function getAge(birthdate: string) {
 }
 
 function initials(name: string) {
-  return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 function UserManagement() {
@@ -64,7 +69,9 @@ function UserManagement() {
   const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
-    getManagedUsers().then(setUsers).catch(() => setUsers([]));
+    getManagedUsers()
+      .then(setUsers)
+      .catch(() => setUsers([]));
     apiFetch<BarangayOption[]>("/barangays")
       .then(setBarangays)
       .catch(() => setBarangays([]));
@@ -199,7 +206,8 @@ function UserManagement() {
             onClick={() => setShowCreateForm(true)}
             className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground"
           >
-            <UserPlus className="mr-2 inline h-4 w-4" /> Create BSCA / Barangay Senior Citizen Affairs
+            <UserPlus className="mr-2 inline h-4 w-4" /> Create BSCA / Barangay Senior Citizen
+            Affairs
           </button>
         ) : undefined
       }
@@ -243,7 +251,11 @@ function UserManagement() {
                             }}
                           />
                         ) : user.role === "admin" ? (
-                          <img src={oscaAdminImage} alt={`${user.name} profile`} className="h-full w-full object-cover" />
+                          <img
+                            src={oscaAdminImage}
+                            alt={`${user.name} profile`}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           initials(user.name)
                         )}
@@ -259,10 +271,13 @@ function UserManagement() {
                   </td>
                   <td className="px-4 py-4 text-muted-foreground">
                     {user.role === "leader"
-                      ? barangays.find((item) => item.id === user.barangay_id)?.barangay_name ?? "Unassigned"
+                      ? (barangays.find((item) => item.id === user.barangay_id)?.barangay_name ??
+                        "Unassigned")
                       : "All barangays"}
                   </td>
-                  <td className={`px-4 py-4 font-bold ${user.status === "active" ? "text-success" : "text-destructive"}`}>
+                  <td
+                    className={`px-4 py-4 font-bold ${user.status === "active" ? "text-success" : "text-destructive"}`}
+                  >
                     {user.status}
                   </td>
                   <td className="px-4 py-4">
@@ -295,7 +310,11 @@ function UserManagement() {
           <form className="surface-card w-full max-w-lg p-7" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold">{editingUser ? "Edit user account" : "Create BSCA / Barangay Senior Citizen Affairs account"}</h2>
+                <h2 className="text-xl font-bold">
+                  {editingUser
+                    ? "Edit user account"
+                    : "Create BSCA / Barangay Senior Citizen Affairs account"}
+                </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Only Admin can manage these accounts.
                 </p>
@@ -312,9 +331,26 @@ function UserManagement() {
 
             <div className="mt-6 grid gap-4">
               <div className="grid gap-4 sm:grid-cols-3">
-                <input required value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="First name" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
-                <input value={middleName} onChange={(event) => setMiddleName(event.target.value)} placeholder="Middle name" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
-                <input required value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Last name" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
+                <input
+                  required
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  placeholder="First name"
+                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                />
+                <input
+                  value={middleName}
+                  onChange={(event) => setMiddleName(event.target.value)}
+                  placeholder="Middle name"
+                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                />
+                <input
+                  required
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  placeholder="Last name"
+                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                />
               </div>
               <input
                 required
@@ -324,25 +360,55 @@ function UserManagement() {
                 placeholder="Email address"
                 className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
               />
-              <input required={!editingUser} type="tel" value={contactNumber} onChange={(event) => setContactNumber(event.target.value)} placeholder="Phone / mobile number" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
+              <input
+                required={!editingUser}
+                type="tel"
+                value={contactNumber}
+                onChange={(event) => setContactNumber(event.target.value)}
+                placeholder="Phone / mobile number"
+                className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="rounded-xl border border-border px-4 py-3">
-                  <span className="block text-xs font-semibold text-muted-foreground">Birthday</span>
-                  <input required={!editingUser} type="date" value={birthdate} onChange={(event) => setBirthdate(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none" />
+                  <span className="block text-xs font-semibold text-muted-foreground">
+                    Birthday
+                  </span>
+                  <input
+                    required={!editingUser}
+                    type="date"
+                    value={birthdate}
+                    onChange={(event) => setBirthdate(event.target.value)}
+                    className="mt-1 w-full bg-transparent text-sm outline-none"
+                  />
                 </label>
                 <label className="rounded-xl border border-border px-4 py-3">
                   <span className="block text-xs font-semibold text-muted-foreground">Age</span>
-                  <input value={getAge(birthdate)} readOnly placeholder="Calculated automatically" className="mt-1 w-full bg-transparent text-sm outline-none" />
+                  <input
+                    value={getAge(birthdate)}
+                    readOnly
+                    placeholder="Calculated automatically"
+                    className="mt-1 w-full bg-transparent text-sm outline-none"
+                  />
                 </label>
               </div>
               {editingUser && (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <select required value={role} onChange={(event) => setRole(event.target.value as typeof role)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                  <select
+                    required
+                    value={role}
+                    onChange={(event) => setRole(event.target.value as typeof role)}
+                    className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                  >
                     <option value="admin">Admin</option>
                     <option value="head">Head</option>
                     <option value="leader">BSCA</option>
                   </select>
-                  <select required value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                  <select
+                    required
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value as typeof status)}
+                    className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                  >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
@@ -350,9 +416,18 @@ function UserManagement() {
               )}
               <label className="rounded-xl border border-border px-4 py-3">
                 <span className="block text-xs font-semibold text-muted-foreground">Barangay</span>
-                <select required={!editingUser || role === "leader"} value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none">
+                <select
+                  required={!editingUser || role === "leader"}
+                  value={barangayId}
+                  onChange={(event) => setBarangayId(event.target.value)}
+                  className="mt-1 w-full bg-transparent text-sm outline-none"
+                >
                   <option value="">No barangay assignment</option>
-                  {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.barangay_name}</option>)}
+                  {barangays.map((barangay) => (
+                    <option key={barangay.id} value={barangay.id}>
+                      {barangay.barangay_name}
+                    </option>
+                  ))}
                 </select>
               </label>
               {!editingUser && (
@@ -389,10 +464,18 @@ function UserManagement() {
                     <button
                       type="button"
                       onClick={() => setShowPasswordConfirmation((visible) => !visible)}
-                      aria-label={showPasswordConfirmation ? "Hide confirmation password" : "Show confirmation password"}
+                      aria-label={
+                        showPasswordConfirmation
+                          ? "Hide confirmation password"
+                          : "Show confirmation password"
+                      }
                       className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showPasswordConfirmation ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPasswordConfirmation ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </>

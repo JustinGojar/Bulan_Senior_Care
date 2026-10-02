@@ -2,9 +2,20 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getStoredUser } from "@/lib/api";
-import { BENEFIT_PROGRAMS, findNewEligibilityFlags, type BenefitProgram, type Senior } from "@/lib/osca-data";
+import {
+  BENEFIT_PROGRAMS,
+  findNewEligibilityFlags,
+  type BenefitProgram,
+  type Senior,
+} from "@/lib/osca-data";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/age-threshold")({
@@ -44,11 +55,12 @@ function AgeThresholdPage() {
   const programs = BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension");
   const selectedSeniors = selectedProgram
     ? seniors
-      .filter((senior) =>
-        senior.age >= selectedProgram.minAge &&
-        (selectedProgram.maxAge === undefined || senior.age <= selectedProgram.maxAge),
-      )
-      .sort((first, second) => first.age - second.age || first.name.localeCompare(second.name))
+        .filter(
+          (senior) =>
+            senior.age >= selectedProgram.minAge &&
+            (selectedProgram.maxAge === undefined || senior.age <= selectedProgram.maxAge),
+        )
+        .sort((first, second) => first.age - second.age || first.name.localeCompare(second.name))
     : [];
 
   return (
@@ -81,7 +93,9 @@ function AgeThresholdPage() {
               <p className="font-display text-3xl font-extrabold">{program.minAge}+</p>
               <p className="mt-2 text-sm font-bold">{program.name}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {program.maxAge ? `Eligible ages ${program.minAge}-${program.maxAge}` : "No upper age limit"}
+                {program.maxAge
+                  ? `Eligible ages ${program.minAge}-${program.maxAge}`
+                  : "No upper age limit"}
               </p>
               <p className="mt-3 text-sm font-semibold text-coral">{program.amount}</p>
             </button>
@@ -111,7 +125,9 @@ function AgeThresholdPage() {
             <article key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold">{senior.name}</p>
-                <span className="shrink-0 text-xs font-bold text-gold-foreground">Age {senior.age}</span>
+                <span className="shrink-0 text-xs font-bold text-gold-foreground">
+                  Age {senior.age}
+                </span>
               </div>
               <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
               <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
@@ -124,16 +140,22 @@ function AgeThresholdPage() {
         </div>
       </section>
 
-      <Dialog open={selectedProgram !== null} onOpenChange={(open) => !open && setSelectedProgram(null)}>
+      <Dialog
+        open={selectedProgram !== null}
+        onOpenChange={(open) => !open && setSelectedProgram(null)}
+      >
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">{selectedProgram?.name}</DialogTitle>
             <DialogDescription>
-              {selectedProgram && `Senior records aged ${selectedProgram.minAge}${selectedProgram.maxAge ? `-${selectedProgram.maxAge}` : " and older"}.`}
+              {selectedProgram &&
+                `Senior records aged ${selectedProgram.minAge}${selectedProgram.maxAge ? `-${selectedProgram.maxAge}` : " and older"}.`}
             </DialogDescription>
           </DialogHeader>
           {loading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Loading senior records...</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Loading senior records...
+            </p>
           ) : loadError ? (
             <p className="py-6 text-center text-sm text-destructive">
               Could not load senior records. Please try again.
