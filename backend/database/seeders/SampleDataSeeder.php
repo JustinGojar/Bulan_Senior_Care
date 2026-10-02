@@ -13,6 +13,8 @@ use Spatie\Permission\Models\Role;
 
 class SampleDataSeeder extends Seeder
 {
+    private const SAMPLE_ID_STRIDE = 10;
+
     public function run(): void
     {
         Role::findOrCreate('leader', 'web');
@@ -26,11 +28,6 @@ class SampleDataSeeder extends Seeder
             ['first' => 'Pedro', 'last' => 'Reyes', 'age' => 70, 'sex' => 'male'],
             ['first' => 'Elena', 'last' => 'Garcia', 'age' => 79, 'sex' => 'female'],
             ['first' => 'Ramon', 'last' => 'Mendoza', 'age' => 82, 'sex' => 'male'],
-            ['first' => 'Teresa', 'last' => 'Bautista', 'age' => 88, 'sex' => 'female'],
-            ['first' => 'Jose', 'last' => 'Navarro', 'age' => 92, 'sex' => 'male'],
-            ['first' => 'Carmen', 'last' => 'Flores', 'age' => 96, 'sex' => 'female'],
-            ['first' => 'Antonio', 'last' => 'Aquino', 'age' => 100, 'sex' => 'male'],
-            ['first' => 'Rosario', 'last' => 'Villanueva', 'age' => 67, 'sex' => 'female'],
         ];
 
         foreach ($barangays as $barangayIndex => $barangay) {
@@ -51,11 +48,11 @@ class SampleDataSeeder extends Seeder
             $leader->syncRoles(['leader']);
 
             foreach ($profiles as $profileIndex => $profile) {
-                $serial = ($barangayIndex * count($profiles)) + $profileIndex + 1;
+                $serial = ($barangayIndex * self::SAMPLE_ID_STRIDE) + $profileIndex + 1;
                 $birthdate = today()->subYears($profile['age'])->subDays($profileIndex * 17 + 4)->toDateString();
                 $status = match ($profileIndex) {
                     0 => 'pending',
-                    9 => 'inactive',
+                    2 => 'inactive',
                     default => 'active',
                 };
                 $benefitType = match (true) {
@@ -100,10 +97,9 @@ class SampleDataSeeder extends Seeder
                     continue;
                 }
 
-                $transactionStatus = match ($profileIndex) {
-                    0 => 'pending',
-                    9 => 'failed',
-                    4, 6, 8 => 'released',
+                $transactionStatus = match (true) {
+                    $status === 'inactive' => 'failed',
+                    $profileIndex === 4 => 'released',
                     default => 'pending',
                 };
                 $period = 'Sample 2026';
@@ -125,6 +121,17 @@ class SampleDataSeeder extends Seeder
                     ],
                 );
             }
+
+            $obsoleteSampleIds = collect(range(count($profiles) + 1, self::SAMPLE_ID_STRIDE))
+                ->map(fn (int $profileNumber) => sprintf(
+                    'DEMO-%d-%04d',
+                    today()->year,
+                    ($barangayIndex * self::SAMPLE_ID_STRIDE) + $profileNumber,
+                ));
+
+            SeniorCitizen::where('barangay_id', $barangay->id)
+                ->whereIn('osca_id_number', $obsoleteSampleIds)
+                ->delete();
         }
     }
 }

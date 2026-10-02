@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('osca:detect-age-thresholds')->dailyAt('00:05');
+Schedule::command('announcements:sync-facebook')->everyFifteenMinutes()->withoutOverlapping();

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, Image, MoreHorizontal, PenLine, Plus, Search, Send, Smile } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/messages")({
 
 function MessagesPage() {
   const currentUser = getStoredUser();
+  const currentUserId = currentUser?.id;
   const isLeader = currentUser?.role === "leader";
   const canMessage = ["admin", "leader", "head"].includes(currentUser?.role ?? "");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,7 +45,7 @@ function MessagesPage() {
   const [contextConversation, setContextConversation] = useState<Message | null>(null);
 
   useEffect(() => {
-    if (!currentUser || !getToken()) {
+    if (!currentUserId || !getToken()) {
       window.location.href = "/login";
       return;
     }
@@ -59,7 +60,7 @@ function MessagesPage() {
         if (!getToken()) window.location.href = "/login";
       })
       .finally(() => setMessagesLoading(false));
-  }, [currentPage]);
+  }, [currentPage, currentUserId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -140,26 +141,36 @@ function MessagesPage() {
     }
   }
 
-  const conversations = Array.from(
-    messages.reduce((grouped, item) => {
-      const other = item.sender.id === currentUser?.id ? item.recipient : item.sender;
-      if (!grouped.has(other.id)) grouped.set(other.id, []);
-      grouped.get(other.id)?.push(item);
-      return grouped;
-    }, new Map<number, Message[]>()),
-  ).map(([, items]) => items);
+  const conversations = useMemo(() => {
+    const grouped = messages.reduce((itemsByRecipient, item) => {
+      const other = item.sender.id === currentUserId ? item.recipient : item.sender;
+      const items = itemsByRecipient.get(other.id) ?? [];
+      items.push(item);
+      itemsByRecipient.set(other.id, items);
+      return itemsByRecipient;
+    }, new Map<number, Message[]>());
 
-  const visibleMessages = conversations.map((items) => items[0]!).filter((item) => {
-    const other = item.sender.id === currentUser?.id ? item.recipient : item.sender;
-    const matchesSearch = [other.name, item.subject, item.message].some((value) =>
-      value.toLowerCase().includes(search.toLowerCase()),
-    );
-    if (filter === "Unread") {
-      const conversation = conversations.find((items) => items.includes(item)) ?? [];
-      return matchesSearch && conversation.some((messageItem) => messageItem.recipient.id === currentUser?.id && !messageItem.read_at);
-    }
-    return matchesSearch;
-  });
+    return [...grouped.values()];
+  }, [currentUserId, messages]);
+
+  const visibleMessages = useMemo(() => {
+    const searchTerm = search.toLowerCase();
+
+    return conversations
+      .filter((items) => {
+        const item = items[0]!;
+        const other = item.sender.id === currentUserId ? item.recipient : item.sender;
+        const matchesSearch = [other.name, item.subject, item.message].some((value) =>
+          value.toLowerCase().includes(searchTerm),
+        );
+        const hasUnread = items.some(
+          (messageItem) => messageItem.recipient.id === currentUserId && !messageItem.read_at,
+        );
+
+        return matchesSearch && (filter !== "Unread" || hasUnread);
+      })
+      .map((items) => items[0]!);
+  }, [conversations, currentUserId, filter, search]);
 
   function avatarLabel(name: string) {
     return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();

@@ -11,7 +11,16 @@ class Announcement extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['created_by', 'title', 'message', 'image_path', 'published_at'];
+    protected $fillable = [
+        'created_by',
+        'title',
+        'message',
+        'image_path',
+        'published_at',
+        'facebook_post_id',
+        'source_url',
+        'source_image_url',
+    ];
 
     protected function casts(): array
     {

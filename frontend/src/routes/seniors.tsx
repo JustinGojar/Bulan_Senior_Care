@@ -32,6 +32,9 @@ import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 export const Route = createFileRoute("/seniors")({
   validateSearch: (search: Record<string, unknown>) => ({
     q: typeof search["q"] === "string" ? search["q"] : undefined,
+    status: ["active", "pending", "inactive"].includes(String(search["status"]))
+      ? String(search["status"]) as "active" | "pending" | "inactive"
+      : undefined,
   }),
   head: () => ({
     meta: [
@@ -335,18 +338,21 @@ function changedFields(request: SeniorEditRequest) {
 }
 
 function SeniorRecords() {
-  const { q } = Route.useSearch();
+  const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
   const isAdmin = currentUser?.role === "admin";
-  const [filter, setFilter] = useState<string>("All");
+  const [filter, setFilter] = useState<string>(() =>
+    status ? `${status.charAt(0).toUpperCase()}${status.slice(1)}` : "All",
+  );
   const [barangayFilter, setBarangayFilter] = useState("All");
   const [query, setQuery] = useState(q ?? "");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const { seniors, totalCount, activeCount, pendingCount, inactiveCount, lastPage, loading, error, loadAllSeniors, createSenior, updateSenior, deleteSenior } = useSeniors({
     page,
+    perPage: 10,
     ...(filter === "All" ? {} : { status: filter.toLowerCase() }),
     search: query,
     barangay: barangayFilter === "All" ? "" : barangayFilter,
