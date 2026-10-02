@@ -602,6 +602,18 @@ function SeniorRecords() {
       }
     >
       <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by name or OSCA ID..."
+            className="h-12 w-full rounded-full bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none focus:ring-2 focus:ring-ring/30"
+          />
+        </div>
         {filters.map((f) => (
           <button
             key={f.key}
@@ -636,18 +648,6 @@ function SeniorRecords() {
             ))}
           </select>
         )}
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search by name or OSCA ID..."
-            className="h-12 w-full rounded-full bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none focus:ring-2 focus:ring-ring/30"
-          />
-        </div>
       </div>
 
       {isHead && editRequests.length > 0 && (

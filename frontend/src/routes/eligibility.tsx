@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ClipboardCheck, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardCheck, Eye, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { API_URL, getStoredUser } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
-import type { Senior } from "@/lib/osca-data";
+import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/eligibility")({
@@ -21,10 +21,21 @@ function EligibilityReview() {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
   const [page, setPage] = useState(1);
-  const { seniors: pendingSeniors, pendingCount, lastPage, loading, error, updateSenior } = useSeniors({
+  const [search, setSearch] = useState("");
+  const [barangay, setBarangay] = useState("");
+  const {
+    seniors: pendingSeniors,
+    matchingCount,
+    lastPage,
+    loading,
+    error,
+    updateSenior,
+  } = useSeniors({
     pendingOnly: true,
     page,
     perPage: 10,
+    search,
+    barangay,
   });
   const [viewing, setViewing] = useState<Senior | null>(null);
 
@@ -57,17 +68,66 @@ function EligibilityReview() {
       subtitle="Verify age-threshold flags before enrollment"
       breadcrumb={["Dashboard", "Eligibility Review"]}
     >
-      <section className="surface-card p-7">
-        <div className="flex items-center gap-3">
+      <section className="surface-card p-4 sm:p-7">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
             <ClipboardCheck className="h-4 w-4" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold">Pending senior registrations</h2>
             <p className="text-sm text-muted-foreground">
               Admin review is required before a one-time grant is recorded.
             </p>
           </div>
+        </div>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <label className="relative block min-w-0 sm:flex-1">
+            <span className="sr-only">Search pending registrations</span>
+            <Search
+              aria-hidden="true"
+              className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search name or OSCA ID"
+              className="h-12 w-full rounded-full border border-border bg-card pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+            />
+          </label>
+          <label className="block min-w-0 sm:w-60">
+            <span className="sr-only">Filter by barangay</span>
+            <select
+              value={barangay}
+              onChange={(event) => {
+                setBarangay(event.target.value);
+                setPage(1);
+              }}
+              className="h-12 w-full rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-ring/30"
+            >
+              <option value="">All barangays</option>
+              {BARANGAYS.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </label>
+          {(search || barangay) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setBarangay("");
+                setPage(1);
+              }}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-secondary px-4 text-sm font-semibold"
+            >
+              <X aria-hidden="true" className="h-4 w-4" />
+              Clear filters
+            </button>
+          )}
         </div>
         <div className="mt-6 space-y-3">
           {loading && <p className="text-sm text-muted-foreground">Loading pending registrations...</p>}
@@ -115,13 +175,17 @@ function EligibilityReview() {
             );
           })}
           {!loading && !error && pendingSeniors.length === 0 && (
-            <p className="text-sm text-muted-foreground">No pending registrations to review.</p>
+            <p className="text-sm text-muted-foreground">
+              {search || barangay
+                ? "No pending registrations match these filters."
+                : "No pending registrations to review."}
+            </p>
           )}
         </div>
-        {pendingCount > 0 && (
+        {matchingCount > 0 && (
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <span className="text-xs text-muted-foreground">
-              Showing {(page - 1) * 10 + 1}-{Math.min(page * 10, pendingCount)} of {pendingCount} pending registrations
+              Showing {(page - 1) * 10 + 1}-{Math.min(page * 10, matchingCount)} of {matchingCount} pending registrations
             </span>
             <div className="flex items-center gap-3">
               <button
