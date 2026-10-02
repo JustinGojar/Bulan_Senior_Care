@@ -1,1 +1,5 @@
-{}
+{
+  "dependencies": {
+    "@tanstack/react-start": "^1.168.60"
+  }
+}
