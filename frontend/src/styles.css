@@ -215,10 +215,41 @@
 
 @utility bg-app {
   background-image: var(--app-background-image);
-  background-attachment: fixed;
+  background-attachment: scroll;
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
+}
+
+.app-shell {
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: max(0.75rem, env(safe-area-inset-top))
+    max(0.75rem, env(safe-area-inset-right))
+    max(0.75rem, env(safe-area-inset-bottom))
+    max(0.75rem, env(safe-area-inset-left));
+}
+
+@media (min-width: 640px) {
+  .app-shell {
+    padding: max(1rem, env(safe-area-inset-top))
+      max(1rem, env(safe-area-inset-right))
+      max(1rem, env(safe-area-inset-bottom))
+      max(1rem, env(safe-area-inset-left));
+  }
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  .bg-app {
+    background-attachment: fixed;
+  }
+
+  .app-shell {
+    padding: max(1.5rem, env(safe-area-inset-top))
+      max(1.5rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom))
+      max(1.5rem, env(safe-area-inset-left));
+  }
 }
 
 .landing-page-bg {
