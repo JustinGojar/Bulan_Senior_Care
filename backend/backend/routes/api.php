@@ -35,6 +35,7 @@ Route::middleware(['token.idle', 'auth:sanctum'])->group(function () {
     Route::post('/seniors/{senior}/archive', [SeniorCitizenController::class, 'archiveRecord']);
     Route::post('/seniors/bulk', [SeniorCitizenController::class, 'bulkStore']);
     Route::get('/admin/users', [UserController::class, 'index']);
+    Route::post('/admin/users', [UserController::class, 'store']);
     Route::put('/admin/users/{user}', [UserController::class, 'update']);
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
     Route::apiResource('seniors', SeniorCitizenController::class);

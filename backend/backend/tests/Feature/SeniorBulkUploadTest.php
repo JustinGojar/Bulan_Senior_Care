@@ -134,4 +134,31 @@ class SeniorBulkUploadTest extends TestCase
         $response->assertOk()->assertJsonPath('failed.0.row', 2);
         $response->assertJsonPath('failed.0.message', "The birthdate field must be a date before or equal to {$cutoffDate}.");
     }
+
+    public function test_admin_can_create_non_leader_accounts_without_barangay_assignment(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
+            'first_name' => 'Mina',
+            'middle_name' => 'A.',
+            'last_name' => 'Talag',
+            'email' => 'head.ops@example.com',
+            'contact_number' => '09112223344',
+            'birthdate' => '1984-06-04',
+            'role' => 'head',
+            'status' => 'inactive',
+            'password' => 'Password!23',
+            'password_confirmation' => 'Password!23',
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('users', [
+            'email' => 'head.ops@example.com',
+            'role' => 'head',
+            'barangay_id' => null,
+            'status' => 'inactive',
+        ]);
+    }
 }
