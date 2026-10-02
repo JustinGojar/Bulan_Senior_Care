@@ -41,7 +41,10 @@ export const Route = createFileRoute("/settings")({
 const ROLES = [
   ["OSCA Administrator", "Full access to records, benefits, analytics, and user management."],
   ["OSCA Head", "Reviews eligibility, approves releases, and views all analytics."],
-  ["BSCA / Barangay Senior Citizen Affairs", "Encodes and views records for their own barangay only."],
+  [
+    "BSCA / Barangay Senior Citizen Affairs",
+    "Encodes and views records for their own barangay only.",
+  ],
 ];
 
 const NOTIFS = [
@@ -61,23 +64,36 @@ function SettingIcon({ icon: Icon }: { icon: typeof ShieldCheck }) {
   );
 }
 
-function SettingRow({ icon, title, description, to }: { icon: typeof ShieldCheck; title: string; description: string; to?: "/users" | "/age-threshold" | "/benefits" | "/profile" | "/audit-logs" | "/seniors" }) {
-  const destination = to ?? (title === "Security settings"
-    ? "/profile"
-    : title === "Audit logs"
-      ? "/audit-logs"
-      : title === "Barangay management"
+function SettingRow({
+  icon,
+  title,
+  description,
+  to,
+}: {
+  icon: typeof ShieldCheck;
+  title: string;
+  description: string;
+  to?: "/users" | "/age-threshold" | "/benefits" | "/profile" | "/audit-logs" | "/seniors";
+}) {
+  const destination =
+    to ??
+    (title === "Security settings"
+      ? "/profile"
+      : title === "Audit logs"
+        ? "/audit-logs"
+        : title === "Barangay management"
           ? "/users"
           : title === "Senior record settings"
             ? "/seniors"
-        : undefined);
-  const rowDescription = title === "Security settings"
-    ? "Change your password and manage account security"
-    : title === "Barangay management"
+            : undefined);
+  const rowDescription =
+    title === "Security settings"
+      ? "Change your password and manage account security"
+      : title === "Barangay management"
         ? "Manage barangay leader accounts and their assigned scopes"
         : title === "Senior record settings"
           ? "Search, register, and manage senior citizen records"
-      : description;
+          : description;
   const content = (
     <>
       <SettingIcon icon={icon} />
@@ -88,9 +104,17 @@ function SettingRow({ icon, title, description, to }: { icon: typeof ShieldCheck
       <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
     </>
   );
-  if (!destination) return <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">{content}</div>;
+  if (!destination)
+    return (
+      <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">
+        {content}
+      </div>
+    );
   return (
-    <Link to={destination} className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:bg-secondary">
+    <Link
+      to={destination}
+      className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:bg-secondary"
+    >
       {content}
     </Link>
   );
@@ -129,31 +153,121 @@ function SettingsPage() {
       <div className="space-y-5">
         <main className="min-w-0 space-y-5">
           <section>
-            <div className="mb-3 flex items-center gap-3"><SettingIcon icon={ShieldCheck} /><div><h2 className="text-lg font-bold">System</h2><p className="text-sm text-muted-foreground">Core access and registry configuration</p></div></div>
+            <div className="mb-3 flex items-center gap-3">
+              <SettingIcon icon={ShieldCheck} />
+              <div>
+                <h2 className="text-lg font-bold">System</h2>
+                <p className="text-sm text-muted-foreground">
+                  Core access and registry configuration
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
-              <SettingRow icon={ShieldCheck} title="User roles & access control" description={ROLES.map(([role]) => role).join(" · ")} to="/users" />
-              <SettingRow icon={Building2} title="Barangay management" description="Manage barangay scopes and registered senior coverage" />
-              <SettingRow icon={FileText} title="Senior record settings" description="Required fields, documents, and validation rules" />
+              <SettingRow
+                icon={ShieldCheck}
+                title="User roles & access control"
+                description={ROLES.map(([role]) => role).join(" · ")}
+                to="/users"
+              />
+              <SettingRow
+                icon={Building2}
+                title="Barangay management"
+                description="Manage barangay scopes and registered senior coverage"
+              />
+              <SettingRow
+                icon={FileText}
+                title="Senior record settings"
+                description="Required fields, documents, and validation rules"
+              />
             </div>
           </section>
 
           <section>
-            <div className="mb-3 flex items-center gap-3"><SettingIcon icon={Bell} /><div><h2 className="text-lg font-bold">Notifications</h2><p className="text-sm text-muted-foreground">Choose which advisories appear for your account</p></div></div>
+            <div className="mb-3 flex items-center gap-3">
+              <SettingIcon icon={Bell} />
+              <div>
+                <h2 className="text-lg font-bold">Notifications</h2>
+                <p className="text-sm text-muted-foreground">
+                  Choose which advisories appear for your account
+                </p>
+              </div>
+            </div>
             <div className="surface-card divide-y divide-border px-5">
               {NOTIFS.map(([label, desc]) => (
-                <div key={label} className="flex items-center gap-4 py-4"><div className="min-w-0 flex-1"><p className="font-semibold">{label}</p><p className="text-xs text-muted-foreground">{desc}</p></div><button type="button" role="switch" aria-checked={notificationSettings[label]} aria-label={`Toggle ${label}`} onClick={() => toggleNotification(label)} className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 ${notificationSettings[label] ? "bg-navy" : "bg-secondary"}`}><span className={`grid h-4 w-4 place-items-center rounded-full bg-card ${notificationSettings[label] ? "translate-x-5" : ""}`}>{notificationSettings[label] && <Check className="h-3 w-3 text-primary" />}</span></button></div>
+                <div key={label} className="flex items-center gap-4 py-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={notificationSettings[label]}
+                    aria-label={`Toggle ${label}`}
+                    onClick={() => toggleNotification(label)}
+                    className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 ${notificationSettings[label] ? "bg-navy" : "bg-secondary"}`}
+                  >
+                    <span
+                      className={`grid h-4 w-4 place-items-center rounded-full bg-card ${notificationSettings[label] ? "translate-x-5" : ""}`}
+                    >
+                      {notificationSettings[label] && <Check className="h-3 w-3 text-primary" />}
+                    </span>
+                  </button>
+                </div>
               ))}
             </div>
           </section>
 
           <section>
-            <div className="mb-3 flex items-center gap-3"><SettingIcon icon={SlidersHorizontal} /><div><h2 className="text-lg font-bold">Registry & benefits</h2><p className="text-sm text-muted-foreground">Eligibility rules and benefit program settings</p></div></div>
-            <div className="space-y-2"><SettingRow icon={SlidersHorizontal} title="Age threshold rules" description={BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension").map((program) => `${program.name}: ${program.minAge}+`).join(" · ")} to="/age-threshold" /><SettingRow icon={Gift} title="Benefit & assistance settings" description="Programs, amounts, eligibility, and release frequency" to="/benefits" /></div>
+            <div className="mb-3 flex items-center gap-3">
+              <SettingIcon icon={SlidersHorizontal} />
+              <div>
+                <h2 className="text-lg font-bold">Registry & benefits</h2>
+                <p className="text-sm text-muted-foreground">
+                  Eligibility rules and benefit program settings
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <SettingRow
+                icon={SlidersHorizontal}
+                title="Age threshold rules"
+                description={BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension")
+                  .map((program) => `${program.name}: ${program.minAge}+`)
+                  .join(" · ")}
+                to="/age-threshold"
+              />
+              <SettingRow
+                icon={Gift}
+                title="Benefit & assistance settings"
+                description="Programs, amounts, eligibility, and release frequency"
+                to="/benefits"
+              />
+            </div>
           </section>
 
           <section>
-            <div className="mb-3 flex items-center gap-3"><SettingIcon icon={LockKeyhole} /><div><h2 className="text-lg font-bold">Privacy & security</h2><p className="text-sm text-muted-foreground">Account protection and system activity</p></div></div>
-            <div className="space-y-2"><SettingRow icon={KeyRound} title="Security settings" description="Change password, two-factor authentication, and session timeout" /><SettingRow icon={ClipboardList} title="Audit logs" description="Recent account, senior record, and benefit activities" /></div>
+            <div className="mb-3 flex items-center gap-3">
+              <SettingIcon icon={LockKeyhole} />
+              <div>
+                <h2 className="text-lg font-bold">Privacy & security</h2>
+                <p className="text-sm text-muted-foreground">
+                  Account protection and system activity
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <SettingRow
+                icon={KeyRound}
+                title="Security settings"
+                description="Change password, two-factor authentication, and session timeout"
+              />
+              <SettingRow
+                icon={ClipboardList}
+                title="Audit logs"
+                description="Recent account, senior record, and benefit activities"
+              />
+            </div>
           </section>
         </main>
       </div>

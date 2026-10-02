@@ -18,7 +18,9 @@ function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(token ? null : "This reset link is missing its token.");
+  const [error, setError] = useState<string | null>(
+    token ? null : "This reset link is missing its token.",
+  );
   const [submitting, setSubmitting] = useState(false);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -43,7 +45,9 @@ function ResetPasswordPage() {
           </div>
         </div>
         <h1 className="mt-12 text-4xl font-extrabold">Create new password</h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Use at least 8 characters for your new password.</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          Use at least 8 characters for your new password.
+        </p>
         <form className="mt-8" onSubmit={handleSubmit}>
           <label className="flex items-center gap-3 border-b border-border pb-3">
             <input
@@ -66,7 +70,12 @@ function ResetPasswordPage() {
               placeholder="New password"
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
-            <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"} className="text-muted-foreground transition-colors hover:text-foreground">
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </label>
@@ -91,7 +100,9 @@ function ResetPasswordPage() {
           </button>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          <Link to="/login" className="font-bold text-foreground">Back to Log In</Link>
+          <Link to="/login" className="font-bold text-foreground">
+            Back to Log In
+          </Link>
         </p>
       </div>
     </div>

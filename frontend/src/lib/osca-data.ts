@@ -110,11 +110,15 @@ export function findNewEligibilityFlags(seniors: Senior[]): EligibilityFlag[] {
         (program.maxAge === undefined || senior.age <= program.maxAge) &&
         program.type !== "social_pension",
     );
-    return program ? [{
-      senior,
-      program,
-      reason: `${senior.name} is ${senior.age}, within the ${program.name} age bracket.`,
-    }] : [];
+    return program
+      ? [
+          {
+            senior,
+            program,
+            reason: `${senior.name} is ${senior.age}, within the ${program.name} age bracket.`,
+          },
+        ]
+      : [];
   });
 }
 

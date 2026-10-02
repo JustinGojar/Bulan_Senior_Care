@@ -6,10 +6,5 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [
-    tanstackStart({ server: { entry: "server" } }),
-    nitro(),
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [tanstackStart({ server: { entry: "server" } }), nitro(), react(), tailwindcss()],
 });

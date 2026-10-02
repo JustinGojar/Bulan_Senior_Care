@@ -175,7 +175,10 @@
   }
 
   button:not(:disabled) {
-    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      filter 160ms ease;
   }
 
   button:not(:disabled):hover {
@@ -224,18 +227,14 @@
 .app-shell {
   min-height: 100vh;
   min-height: 100svh;
-  padding: max(0.75rem, env(safe-area-inset-top))
-    max(0.75rem, env(safe-area-inset-right))
-    max(0.75rem, env(safe-area-inset-bottom))
-    max(0.75rem, env(safe-area-inset-left));
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+    max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
 }
 
 @media (min-width: 640px) {
   .app-shell {
-    padding: max(1rem, env(safe-area-inset-top))
-      max(1rem, env(safe-area-inset-right))
-      max(1rem, env(safe-area-inset-bottom))
-      max(1rem, env(safe-area-inset-left));
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+      max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   }
 }
 
@@ -245,21 +244,19 @@
   }
 
   .app-shell {
-    padding: max(1.5rem, env(safe-area-inset-top))
-      max(1.5rem, env(safe-area-inset-right))
-      max(1.5rem, env(safe-area-inset-bottom))
-      max(1.5rem, env(safe-area-inset-left));
+    padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+      max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
   }
 }
 
 .landing-page-bg {
-  background-image: linear-gradient(rgb(0 0 0 / 22%), rgb(0 0 0 / 22%)),
-    var(--app-background-image);
+  background-image:
+    linear-gradient(rgb(0 0 0 / 22%), rgb(0 0 0 / 22%)), var(--app-background-image);
 }
 
 .dark .landing-page-bg {
-  background-image: linear-gradient(rgb(0 0 0 / 48%), rgb(0 0 0 / 48%)),
-    var(--app-background-image);
+  background-image:
+    linear-gradient(rgb(0 0 0 / 48%), rgb(0 0 0 / 48%)), var(--app-background-image);
 }
 
 @keyframes landing-card-pop {

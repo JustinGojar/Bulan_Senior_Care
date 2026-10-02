@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { broadcastAuthChange, clearToken, getCurrentUser, getToken, type ApiUser } from "@/lib/api";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
@@ -154,6 +155,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Scripts />
+        <SpeedInsights />
       </body>
     </html>
   );
@@ -172,7 +174,8 @@ function RootComponent() {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === "bulan-api-token" && event.newValue === null) handleAuthChange();
     };
-    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;
+    const channel =
+      typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;
     channel?.addEventListener("message", handleAuthChange);
     window.addEventListener("bulan-auth-changed", handleAuthChange);
     window.addEventListener("storage", handleStorageChange);

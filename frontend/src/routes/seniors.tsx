@@ -1,5 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Archive, Clipboard, Download, Eye, Pencil, Plus, Search, Trash2, Undo2, Upload } from "lucide-react";
+import {
+  Archive,
+  Clipboard,
+  Download,
+  Eye,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Undo2,
+  Upload,
+} from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -24,7 +35,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
-import { API_URL, apiFetch, bulkCreateSeniors, getStoredUser, type ArchivedSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
+import {
+  API_URL,
+  apiFetch,
+  bulkCreateSeniors,
+  getStoredUser,
+  type ArchivedSenior,
+  type BenefitTransaction,
+  type PaginatedResponse,
+} from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
@@ -33,7 +52,7 @@ export const Route = createFileRoute("/seniors")({
   validateSearch: (search: Record<string, unknown>) => ({
     q: typeof search["q"] === "string" ? search["q"] : undefined,
     status: ["active", "pending", "inactive"].includes(String(search["status"]))
-      ? String(search["status"]) as "active" | "pending" | "inactive"
+      ? (String(search["status"]) as "active" | "pending" | "inactive")
       : undefined,
   }),
   head: () => ({
@@ -96,12 +115,14 @@ function normalizeBulkDate(value: unknown) {
   }
   if (typeof value === "number") {
     const date = XLSX.SSF.parse_date_code(value);
-    if (date) return `${date.y}-${String(date.m).padStart(2, "0")}-${String(date.d).padStart(2, "0")}`;
+    if (date)
+      return `${date.y}-${String(date.m).padStart(2, "0")}-${String(date.d).padStart(2, "0")}`;
   }
   const text = String(value ?? "").trim();
   if (!text) return "";
   const monthFirst = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (monthFirst) return `${monthFirst[3]}-${monthFirst[1].padStart(2, "0")}-${monthFirst[2].padStart(2, "0")}`;
+  if (monthFirst)
+    return `${monthFirst[3]}-${monthFirst[1].padStart(2, "0")}-${monthFirst[2].padStart(2, "0")}`;
   const parsed = new Date(text);
   return Number.isNaN(parsed.getTime())
     ? text
@@ -117,7 +138,10 @@ function familyCompositionRows(value: string) {
 }
 
 function splitBulkName(value: unknown) {
-  const parts = String(value ?? "").trim().split(/\s+/).filter(Boolean);
+  const parts = String(value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
   if (parts.length <= 1) return { firstName: parts[0] ?? "", middleName: "", lastName: "" };
   return {
     firstName: parts[0]!,
@@ -132,7 +156,8 @@ async function readBulkRecords(file: File) {
   if (!sheet) return [] as Record<string, unknown>[];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
   const headers = (rows[0] ?? []).map(normalizeBulkHeader);
-  return rows.slice(1)
+  return rows
+    .slice(1)
     .filter((row) => row.some((value) => String(value ?? "").trim()))
     .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
 }
@@ -185,7 +210,18 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.text("AN KAUPOD PO SANI NA", left + 3, 18);
   document.text("DOKUMENTO:", left + 3, 23);
   document.setFont("helvetica", "normal");
-  ["1x1 PICTURE - 2pcs", "Birth Certificate", "Baptismal", "GSIS ID", "SSS ID", "Voter's ID", "National ID", "Brgy. ID", "Driver's License", "Passport ID"].forEach((item, index) => document.text(`> ${item}`, left + 3, 28 + index * 3.35));
+  [
+    "1x1 PICTURE - 2pcs",
+    "Birth Certificate",
+    "Baptismal",
+    "GSIS ID",
+    "SSS ID",
+    "Voter's ID",
+    "National ID",
+    "Brgy. ID",
+    "Driver's License",
+    "Passport ID",
+  ].forEach((item, index) => document.text(`> ${item}`, left + 3, 28 + index * 3.35));
 
   document.setFont("helvetica", "bold");
   document.setFontSize(10);
@@ -204,7 +240,9 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.setTextColor(0, 0, 0);
   document.setDrawColor(35, 45, 55);
   document.rect(166, 13, 25, 25);
-  const photoSource = draft.profilePhoto ?? (draft.photoPath ? `${API_URL.replace(/\/api$/, "")}/storage/${draft.photoPath}` : null);
+  const photoSource =
+    draft.profilePhoto ??
+    (draft.photoPath ? `${API_URL.replace(/\/api$/, "")}/storage/${draft.photoPath}` : null);
   if (photoSource) {
     try {
       const photoDataUrl = await imageDataUrl(photoSource);
@@ -230,7 +268,12 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
     document.setFont("helvetica", "normal");
     const startX = x + Math.max(25, document.getTextWidth(`${label}:`) + 2);
     document.line(startX, lineY + 1, endX, lineY + 1);
-    if (value) document.text(document.splitTextToSize(value, Math.max(8, endX - startX - 2))[0] ?? value, startX + 2, lineY - 1);
+    if (value)
+      document.text(
+        document.splitTextToSize(value, Math.max(8, endX - startX - 2))[0] ?? value,
+        startX + 2,
+        lineY - 1,
+      );
   };
   document.setFont("helvetica", "bold");
   document.setFontSize(7.5);
@@ -273,7 +316,9 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   const tableHeight = 31;
   document.rect(left, tableTop, right - left, tableHeight);
   [64, 112, 139, 166].forEach((x) => document.line(x, tableTop, x, tableTop + tableHeight));
-  [tableTop + 7, tableTop + 13, tableTop + 19, tableTop + 25].forEach((rowY) => document.line(left, rowY, right, rowY));
+  [tableTop + 7, tableTop + 13, tableTop + 19, tableTop + 25].forEach((rowY) =>
+    document.line(left, rowY, right, rowY),
+  );
   document.setFontSize(7);
   document.text("NAME", 42, tableTop + 5, { align: "center" });
   document.text("RELATIONSHIP", 88, tableTop + 5, { align: "center" });
@@ -281,13 +326,20 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.text("STATUS", 152, tableTop + 5, { align: "center" });
   document.text("OCCUPATION", 178, tableTop + 5, { align: "center" });
   document.setFont("helvetica", "normal");
-  familyCompositionRows(draft.familyComposition ?? "").slice(0, 4).forEach((row, rowIndex) => {
-    const rowY = tableTop + 11 + rowIndex * 6;
-    const columns = [left + 2, 66, 114, 141, 168];
-    row.slice(0, 5).forEach((cell, columnIndex) => {
-      document.text(document.splitTextToSize(cell, columnIndex === 0 ? 45 : columnIndex === 4 ? 25 : 24)[0] ?? "", columns[columnIndex]!, rowY);
+  familyCompositionRows(draft.familyComposition ?? "")
+    .slice(0, 4)
+    .forEach((row, rowIndex) => {
+      const rowY = tableTop + 11 + rowIndex * 6;
+      const columns = [left + 2, 66, 114, 141, 168];
+      row.slice(0, 5).forEach((cell, columnIndex) => {
+        document.text(
+          document.splitTextToSize(cell, columnIndex === 0 ? 45 : columnIndex === 4 ? 25 : 24)[0] ??
+            "",
+          columns[columnIndex]!,
+          rowY,
+        );
+      });
     });
-  });
 
   y = tableTop + tableHeight + 13;
   document.setFont("helvetica", "bold");
@@ -307,33 +359,55 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.text("Signature of Ass. Pres. / Representative", 157, y + 5, { align: "center" });
   y += 14;
   document.setFont("helvetica", "bold");
-  document.text("I certify that the above information are true and correct in the best of my", pageWidth / 2, y, { align: "center" });
+  document.text(
+    "I certify that the above information are true and correct in the best of my",
+    pageWidth / 2,
+    y,
+    { align: "center" },
+  );
   document.text("knowledge and belief.", pageWidth / 2, y + 5, { align: "center" });
   y += 25;
   document.line(125, y, right, y);
   document.setFont("helvetica", "normal");
   document.text("Signature or thumb mark of Senior Citizen", 158, y + 6, { align: "center" });
-  const seniorName = [draft.firstName, draft.middleName, draft.lastName]
-    .filter((part) => part?.trim())
-    .join(" ") || draft.name || "senior";
-  const fileName = seniorName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const seniorName =
+    [draft.firstName, draft.middleName, draft.lastName].filter((part) => part?.trim()).join(" ") ||
+    draft.name ||
+    "senior";
+  const fileName = seniorName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
   document.save(`osca-registration-${fileName || "senior"}.pdf`);
 }
 
 function changedFields(request: SeniorEditRequest) {
   const changes = request.changes;
   const senior = request.senior;
-  const currentName = senior ? [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" ") : "";
-  const nextName = [changes.first_name, changes.middle_name, changes.last_name].filter(Boolean).join(" ");
-  const currentAge = senior?.birthdate ? new Date().getFullYear() - Number(String(senior.birthdate).slice(0, 4)) : null;
-  const nextAge = changes.birthdate ? new Date().getFullYear() - Number(changes.birthdate.slice(0, 4)) : null;
+  const currentName = senior
+    ? [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" ")
+    : "";
+  const nextName = [changes.first_name, changes.middle_name, changes.last_name]
+    .filter(Boolean)
+    .join(" ");
+  const currentAge = senior?.birthdate
+    ? new Date().getFullYear() - Number(String(senior.birthdate).slice(0, 4))
+    : null;
+  const nextAge = changes.birthdate
+    ? new Date().getFullYear() - Number(changes.birthdate.slice(0, 4))
+    : null;
   const fields: Array<[string, string | number, string | number]> = [];
   if (senior && currentName !== nextName) fields.push(["Name", currentName, nextName]);
-  if (senior && currentAge !== nextAge) fields.push(["Age", currentAge ?? "None", nextAge ?? "None"]);
-  if (senior && (senior.contact_number ?? "") !== (changes.contact_number ?? "")) fields.push(["Contact", senior.contact_number || "None", changes.contact_number || "None"]);
-  if (senior && senior.barangay?.barangay_name !== changes.barangay) fields.push(["Barangay", senior.barangay?.barangay_name || "None", changes.barangay]);
-  if (senior && senior.benefits?.[0]?.benefit_name !== changes.benefit) fields.push(["Benefit", senior.benefits[0]?.benefit_name || "None", changes.benefit]);
-  if (senior && (senior.address ?? "") !== (changes.address ?? "")) fields.push(["Address", senior.address || "None", changes.address || "None"]);
+  if (senior && currentAge !== nextAge)
+    fields.push(["Age", currentAge ?? "None", nextAge ?? "None"]);
+  if (senior && (senior.contact_number ?? "") !== (changes.contact_number ?? ""))
+    fields.push(["Contact", senior.contact_number || "None", changes.contact_number || "None"]);
+  if (senior && senior.barangay?.barangay_name !== changes.barangay)
+    fields.push(["Barangay", senior.barangay?.barangay_name || "None", changes.barangay]);
+  if (senior && senior.benefits?.[0]?.benefit_name !== changes.benefit)
+    fields.push(["Benefit", senior.benefits[0]?.benefit_name || "None", changes.benefit]);
+  if (senior && (senior.address ?? "") !== (changes.address ?? ""))
+    fields.push(["Address", senior.address || "None", changes.address || "None"]);
   return fields;
 }
 
@@ -350,7 +424,20 @@ function SeniorRecords() {
   const [query, setQuery] = useState(q ?? "");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
-  const { seniors, totalCount, activeCount, pendingCount, inactiveCount, lastPage, loading, error, loadAllSeniors, createSenior, updateSenior, deleteSenior } = useSeniors({
+  const {
+    seniors,
+    totalCount,
+    activeCount,
+    pendingCount,
+    inactiveCount,
+    lastPage,
+    loading,
+    error,
+    loadAllSeniors,
+    createSenior,
+    updateSenior,
+    deleteSenior,
+  } = useSeniors({
     page,
     perPage: 10,
     ...(filter === "All" ? {} : { status: filter.toLowerCase() }),
@@ -371,7 +458,10 @@ function SeniorRecords() {
   const bulkFileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isHead) getSeniorEditRequests().then(setEditRequests).catch(() => setEditRequests([]));
+    if (isHead)
+      getSeniorEditRequests()
+        .then(setEditRequests)
+        .catch(() => setEditRequests([]));
   }, [isHead]);
 
   useEffect(() => {
@@ -391,7 +481,9 @@ function SeniorRecords() {
     try {
       await reviewSeniorEditRequest(request.id, status);
       setEditRequests((current) => current.filter((item) => item.id !== request.id));
-      toast.success(status === "approved" ? "Senior record update approved." : "Senior record update declined.");
+      toast.success(
+        status === "approved" ? "Senior record update approved." : "Senior record update declined.",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to review edit request.");
     } finally {
@@ -416,7 +508,9 @@ function SeniorRecords() {
     setArchiveLoading(true);
     try {
       const result = await apiFetch<{ data: ArchivedSenior[] }>("/seniors/archive");
-      setArchivedRecords(result.data.filter((record): record is ArchivedSenior => Boolean(record?.osca_id_number)));
+      setArchivedRecords(
+        result.data.filter((record): record is ArchivedSenior => Boolean(record?.osca_id_number)),
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to load the archive.");
     } finally {
@@ -452,20 +546,38 @@ function SeniorRecords() {
     }
     const normalizedRecords = records.map((record) => {
       const fullName = splitBulkName(record["name"] ?? record["full_name"]);
-      const birthdate = normalizeBulkDate(record["birthdate"] ?? record["date_of_birth"] ?? record["dob"]);
+      const birthdate = normalizeBulkDate(
+        record["birthdate"] ?? record["date_of_birth"] ?? record["dob"],
+      );
       const age = new Date().getFullYear() - Number(birthdate.slice(0, 4));
       const rawBenefit = String(record["benefit"] ?? "").trim();
       const benefit = /^(not provided|n\/a|na|none|-)?$/i.test(rawBenefit)
-        ? age >= 100 ? "Centenarian Award" : age >= 90 ? "Nonagenarian Grant" : age >= 80 ? "Octogenarian Grant" : "Social Pension"
+        ? age >= 100
+          ? "Centenarian Award"
+          : age >= 90
+            ? "Nonagenarian Grant"
+            : age >= 80
+              ? "Octogenarian Grant"
+              : "Social Pension"
         : rawBenefit;
       return {
-        first_name: String(record["first_name"] ?? record["given_name"] ?? fullName.firstName).trim(),
+        first_name: String(
+          record["first_name"] ?? record["given_name"] ?? fullName.firstName,
+        ).trim(),
         middle_name: String(record["middle_name"] ?? fullName.middleName).trim(),
-        last_name: String(record["last_name"] ?? record["surname"] ?? record["family_name"] ?? fullName.lastName).trim(),
+        last_name: String(
+          record["last_name"] ?? record["surname"] ?? record["family_name"] ?? fullName.lastName,
+        ).trim(),
         birthdate,
         place_of_birth: String(record["place_of_birth"] ?? record["birthplace"] ?? "").trim(),
         sex: String(record["sex"] ?? "").toLowerCase(),
-        contact_number: String(record["contact_number"] ?? record["contact_numb"] ?? record["contact"] ?? record["phone_number"] ?? "").trim(),
+        contact_number: String(
+          record["contact_number"] ??
+            record["contact_numb"] ??
+            record["contact"] ??
+            record["phone_number"] ??
+            "",
+        ).trim(),
         barangay: String(record["barangay"] ?? "").trim(),
         address: String(record["address"] ?? record["complete_address"] ?? "").trim(),
         civil_status: String(record["civil_status"] ?? "").trim(),
@@ -474,7 +586,9 @@ function SeniorRecords() {
         family_composition: String(record["family_composition"] ?? "").trim(),
         association_name: String(record["association_name"] ?? "").trim(),
         association_address: String(record["association_address"] ?? "").trim(),
-        association_membership_date: normalizeBulkDate(record["date_of_membership"] ?? record["association_membership_date"]),
+        association_membership_date: normalizeBulkDate(
+          record["date_of_membership"] ?? record["association_membership_date"],
+        ),
         association_position: String(record["association_position"] ?? "").trim(),
         benefit,
       };
@@ -487,7 +601,10 @@ function SeniorRecords() {
     try {
       const result = await bulkCreateSeniors(bulkPreview);
       const failed = result.failed.length;
-      if (failed) toast.error(`${result.created.length} records added, ${failed} failed. Row ${result.failed[0]?.row ?? "?"}: ${result.failed[0]?.message ?? "Check the uploaded data."}`);
+      if (failed)
+        toast.error(
+          `${result.created.length} records added, ${failed} failed. Row ${result.failed[0]?.row ?? "?"}: ${result.failed[0]?.message ?? "Check the uploaded data."}`,
+        );
       else toast.success(`${result.created.length} senior records added and are pending review.`);
       setBulkPreview(null);
       if (result.created.length > 0) window.location.reload();
@@ -563,24 +680,30 @@ function SeniorRecords() {
       actions={
         <div className="flex gap-3">
           {(isLeader || isAdmin) && (
-                <>
-                  <button
-                    onClick={() => bulkFileInput.current?.click()}
-                    className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
-                  >
-                    <Upload className="h-4 w-4" /> Bulk record
-                  </button>
-                  <input ref={bulkFileInput} type="file" accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleBulkFile} className="hidden" />
-                  <button
-                    onClick={() => {
-                      setEditing(null);
-                      setFormOpen(true);
-                    }}
-                    className="bg-navy inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
-                  >
-                    <Plus className="h-4 w-4" /> Register Senior
-                  </button>
-                </>
+            <>
+              <button
+                onClick={() => bulkFileInput.current?.click()}
+                className="inline-flex items-center gap-2 rounded-full bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+              >
+                <Upload className="h-4 w-4" /> Bulk record
+              </button>
+              <input
+                ref={bulkFileInput}
+                type="file"
+                accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={handleBulkFile}
+                className="hidden"
+              />
+              <button
+                onClick={() => {
+                  setEditing(null);
+                  setFormOpen(true);
+                }}
+                className="bg-navy inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
+              >
+                <Plus className="h-4 w-4" /> Register Senior
+              </button>
+            </>
           )}
           {isAdmin && (
             <button
@@ -654,24 +777,65 @@ function SeniorRecords() {
         <section className="surface-card mt-6 p-6">
           <div>
             <h2 className="text-lg font-bold">Senior record edit requests</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Review changes submitted by BSCA before they update the official record.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Review changes submitted by BSCA before they update the official record.
+            </p>
           </div>
           <div className="mt-5 space-y-3">
             {editRequests.map((request) => (
-              <div key={request.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary p-4">
+              <div
+                key={request.id}
+                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary p-4"
+              >
                 <div className="text-sm">
-                  <p className="font-bold">{request.senior ? [request.senior.first_name, request.senior.middle_name, request.senior.last_name].filter(Boolean).join(" ") : [request.changes?.first_name, request.changes?.middle_name, request.changes?.last_name].filter(Boolean).join(" ") || "Senior record"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{request.senior?.osca_id_number ?? "Senior record"} · Requested by {request.requester?.name ?? "Unknown user"}</p>
+                  <p className="font-bold">
+                    {request.senior
+                      ? [
+                          request.senior.first_name,
+                          request.senior.middle_name,
+                          request.senior.last_name,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")
+                      : [
+                          request.changes?.first_name,
+                          request.changes?.middle_name,
+                          request.changes?.last_name,
+                        ]
+                          .filter(Boolean)
+                          .join(" ") || "Senior record"}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {request.senior?.osca_id_number ?? "Senior record"} · Requested by{" "}
+                    {request.requester?.name ?? "Unknown user"}
+                  </p>
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {changedFields(request).map(([field, current, next]) => (
-                      <p key={field}><span className="font-semibold text-foreground">{field}:</span> {current} to {next}</p>
+                      <p key={field}>
+                        <span className="font-semibold text-foreground">{field}:</span> {current} to{" "}
+                        {next}
+                      </p>
                     ))}
                     {changedFields(request).length === 0 && <p>No changed values found.</p>}
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" disabled={reviewingRequestId === request.id} onClick={() => reviewEditRequest(request, "declined")} className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive disabled:opacity-50">{reviewingRequestId === request.id ? "Saving..." : "Decline"}</button>
-                  <button type="button" disabled={reviewingRequestId === request.id} onClick={() => reviewEditRequest(request, "approved")} className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50">{reviewingRequestId === request.id ? "Saving..." : "Approve"}</button>
+                  <button
+                    type="button"
+                    disabled={reviewingRequestId === request.id}
+                    onClick={() => reviewEditRequest(request, "declined")}
+                    className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive disabled:opacity-50"
+                  >
+                    {reviewingRequestId === request.id ? "Saving..." : "Decline"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reviewingRequestId === request.id}
+                    onClick={() => reviewEditRequest(request, "approved")}
+                    className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    {reviewingRequestId === request.id ? "Saving..." : "Approve"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -683,13 +847,20 @@ function SeniorRecords() {
         <table className="w-full min-w-[880px] border-collapse text-sm">
           <thead>
             <tr className="text-left text-muted-foreground">
-              {["Name", "Senior ID", "Age", "Barangay", "Contact", "Benefit", "Status", "Actions"].map(
-                (h) => (
-                  <th key={h} className="px-5 py-5 font-bold text-foreground">
-                    {h}
-                  </th>
-                ),
-              )}
+              {[
+                "Name",
+                "Senior ID",
+                "Age",
+                "Barangay",
+                "Contact",
+                "Benefit",
+                "Status",
+                "Actions",
+              ].map((h) => (
+                <th key={h} className="px-5 py-5 font-bold text-foreground">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -705,52 +876,53 @@ function SeniorRecords() {
                   Unable to load senior records. Please refresh and try again.
                 </td>
               </tr>
-            ) : rows.map((s) => (
-              <tr key={s.id} className="border-t border-border">
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-primary-foreground">
-                      {avatarPath(s) ? (
-                        <img
-                          src={`${API_URL.replace(/\/api$/, "")}/storage/${avatarPath(s)}`}
-                          alt={`${s.name} profile`}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        initials(s.name)
-                      )}
-                    </span>
-                    <span className="font-medium">{s.name}</span>
-                  </div>
-                </td>
-                <td className="px-5 py-4 text-muted-foreground">{s.id}</td>
-                <td className="px-5 py-4">{s.age}</td>
-                <td className="px-5 py-4 text-muted-foreground">{s.barangay}</td>
-                <td className="px-5 py-4 text-muted-foreground">{s.contact}</td>
-                <td className="px-5 py-4">{s.benefit}</td>
-                <td className={`px-5 py-4 font-bold ${STATUS_CLASS[s.status]}`}>{s.status}</td>
-                <td className="px-5 py-4">
-                  <div className="flex gap-2">
-                    <button
-                      aria-label={`View record of ${s.name}`}
-                      onClick={() => setViewing(s)}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      aria-label={`Edit record of ${s.name}`}
-                      onClick={() => {
-                        setEditing(s);
-                        setFormOpen(true);
-                      }}
-                      className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    {isAdmin && (
+            ) : (
+              rows.map((s) => (
+                <tr key={s.id} className="border-t border-border">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-primary-foreground">
+                        {avatarPath(s) ? (
+                          <img
+                            src={`${API_URL.replace(/\/api$/, "")}/storage/${avatarPath(s)}`}
+                            alt={`${s.name} profile`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          initials(s.name)
+                        )}
+                      </span>
+                      <span className="font-medium">{s.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-muted-foreground">{s.id}</td>
+                  <td className="px-5 py-4">{s.age}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{s.barangay}</td>
+                  <td className="px-5 py-4 text-muted-foreground">{s.contact}</td>
+                  <td className="px-5 py-4">{s.benefit}</td>
+                  <td className={`px-5 py-4 font-bold ${STATUS_CLASS[s.status]}`}>{s.status}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex gap-2">
+                      <button
+                        aria-label={`View record of ${s.name}`}
+                        onClick={() => setViewing(s)}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        aria-label={`Edit record of ${s.name}`}
+                        onClick={() => {
+                          setEditing(s);
+                          setFormOpen(true);
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      {isAdmin && (
                         <button
                           aria-label={`Delete record of ${s.name}`}
                           onClick={() => setDeleting(s)}
@@ -758,30 +930,37 @@ function SeniorRecords() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                    )}
-                    {!isAdmin && (
-                      <button
-                        aria-label={`Archive record of ${s.name}`}
-                        title="Archive record"
-                        onClick={async () => {
-                          if (!window.confirm(`Archive the record of ${s.name}?`)) return;
-                          try {
-                            await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, { method: "POST" });
-                            toast.success(`${s.name}'s record was archived.`);
-                            window.location.reload();
-                          } catch (error) {
-                            toast.error(error instanceof Error ? error.message : "Unable to archive the record.");
-                          }
-                        }}
-                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-muted"
-                      >
-                        <Archive className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      )}
+                      {!isAdmin && (
+                        <button
+                          aria-label={`Archive record of ${s.name}`}
+                          title="Archive record"
+                          onClick={async () => {
+                            if (!window.confirm(`Archive the record of ${s.name}?`)) return;
+                            try {
+                              await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, {
+                                method: "POST",
+                              });
+                              toast.success(`${s.name}'s record was archived.`);
+                              window.location.reload();
+                            } catch (error) {
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Unable to archive the record.",
+                              );
+                            }
+                          }}
+                          className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-muted"
+                        >
+                          <Archive className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
             {!loading && !error && rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
@@ -794,10 +973,26 @@ function SeniorRecords() {
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>Page {page} of {lastPage}</span>
+        <span>
+          Page {page} of {lastPage}
+        </span>
         <div className="flex gap-2">
-          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)} className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50">Previous</button>
-          <button type="button" disabled={page >= lastPage || loading} onClick={() => setPage((current) => current + 1)} className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50">Next</button>
+          <button
+            type="button"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((current) => current - 1)}
+            className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            disabled={page >= lastPage || loading}
+            onClick={() => setPage((current) => current + 1)}
+            className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       </div>
 
@@ -806,18 +1001,29 @@ function SeniorRecords() {
           <DialogHeader>
             <DialogTitle className="font-display">Preview bulk import</DialogTitle>
             <DialogDescription>
-              Review {bulkPreview?.length ?? 0} records before importing. Invalid rows will be rejected by the server.
+              Review {bulkPreview?.length ?? 0} records before importing. Invalid rows will be
+              rejected by the server.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-80 overflow-auto rounded-xl border border-border">
             <table className="w-full text-left text-xs">
               <thead className="bg-secondary">
-                <tr><th className="px-3 py-2">Name</th><th className="px-3 py-2">Birthdate</th><th className="px-3 py-2">Sex</th><th className="px-3 py-2">Barangay</th></tr>
+                <tr>
+                  <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Birthdate</th>
+                  <th className="px-3 py-2">Sex</th>
+                  <th className="px-3 py-2">Barangay</th>
+                </tr>
               </thead>
               <tbody>
                 {(bulkPreview ?? []).slice(0, 50).map((record, index) => (
-                  <tr key={`${record.first_name}-${record.last_name}-${index}`} className="border-t border-border">
-                    <td className="px-3 py-2">{record.first_name} {record.last_name}</td>
+                  <tr
+                    key={`${record.first_name}-${record.last_name}-${index}`}
+                    className="border-t border-border"
+                  >
+                    <td className="px-3 py-2">
+                      {record.first_name} {record.last_name}
+                    </td>
                     <td className="px-3 py-2">{record.birthdate}</td>
                     <td className="px-3 py-2">{record.sex || "Missing"}</td>
                     <td className="px-3 py-2">{record.barangay || "Missing"}</td>
@@ -827,8 +1033,20 @@ function SeniorRecords() {
             </table>
           </div>
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setBulkPreview(null)} className="rounded-full bg-secondary px-5 py-3 text-sm font-semibold">Cancel</button>
-            <button type="button" onClick={confirmBulkImport} className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground">Import records</button>
+            <button
+              type="button"
+              onClick={() => setBulkPreview(null)}
+              className="rounded-full bg-secondary px-5 py-3 text-sm font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmBulkImport}
+              className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground"
+            >
+              Import records
+            </button>
           </div>
         </DialogContent>
       </Dialog>
@@ -846,11 +1064,15 @@ function SeniorRecords() {
           ) : (
             <div className="max-h-80 divide-y divide-border overflow-y-auto">
               {archivedRecords.map((record) => (
-                <div key={record.osca_id_number} className="flex items-center justify-between gap-4 py-3">
+                <div
+                  key={record.osca_id_number}
+                  className="flex items-center justify-between gap-4 py-3"
+                >
                   <div>
                     <p className="font-semibold">{record.osca_id_number}</p>
                     <p className="text-sm text-muted-foreground">
-                      {[record.first_name, record.last_name].filter(Boolean).join(" ")} · Deleted {new Date(record.deleted_at).toLocaleDateString()}
+                      {[record.first_name, record.last_name].filter(Boolean).join(" ")} · Deleted{" "}
+                      {new Date(record.deleted_at).toLocaleDateString()}
                     </p>
                   </div>
                   <button
@@ -878,7 +1100,11 @@ function SeniorRecords() {
             try {
               if (editing) {
                 await updateSenior(editing.id, draft);
-                toast.success(isLeader ? "Update request sent to the Head for approval." : `${draft.name}'s record was updated.`);
+                toast.success(
+                  isLeader
+                    ? "Update request sent to the Head for approval."
+                    : `${draft.name}'s record was updated.`,
+                );
               } else {
                 const created = await createSenior(draft);
                 await downloadRegistrationForm({ ...draft, id: created.id });
@@ -898,7 +1124,15 @@ function SeniorRecords() {
             <DialogDescription className="flex items-center gap-2 text-xs">
               OSCA ID {viewing?.id}
               {viewing?.id && (
-                <button type="button" className="inline-flex items-center gap-1 font-semibold text-foreground" onClick={() => navigator.clipboard.writeText(viewing.id).then(() => toast.success("OSCA ID copied."))}>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 font-semibold text-foreground"
+                  onClick={() =>
+                    navigator.clipboard
+                      .writeText(viewing.id)
+                      .then(() => toast.success("OSCA ID copied."))
+                  }
+                >
                   <Clipboard className="h-3 w-3" /> Copy
                 </button>
               )}
@@ -924,13 +1158,27 @@ function SeniorRecords() {
               {[
                 ["Place of birth", viewing?.placeOfBirth || "Not provided"],
                 ["Date of birth", viewing?.birthdate || "Not provided"],
-                ["Sex", viewing?.sex ? viewing.sex.charAt(0).toUpperCase() + viewing.sex.slice(1) : "Not provided"],
+                [
+                  "Sex",
+                  viewing?.sex
+                    ? viewing.sex.charAt(0).toUpperCase() + viewing.sex.slice(1)
+                    : "Not provided",
+                ],
                 ["Civil status", viewing?.civilStatus || "Not provided"],
                 ["Address", viewing?.address || "Not provided"],
                 ["Educational attainment", viewing?.educationalAttainment || "Not provided"],
                 ["Other skills", viewing?.otherSkills || "Not provided"],
               ].map(([label, value]) => (
-                <div key={String(label)} className={label === "Address" || label === "Educational attainment" || label === "Other skills" ? "col-span-2" : ""}>
+                <div
+                  key={String(label)}
+                  className={
+                    label === "Address" ||
+                    label === "Educational attainment" ||
+                    label === "Other skills"
+                      ? "col-span-2"
+                      : ""
+                  }
+                >
                   <dt className="text-muted-foreground">{label}</dt>
                   <dd className="mt-0.5 font-semibold">{value}</dd>
                 </div>
@@ -952,7 +1200,14 @@ function SeniorRecords() {
                 ["Date of membership", viewing?.associationMembershipDate || "Not provided"],
                 ["Position", viewing?.associationPosition || "Not provided"],
               ].map(([label, value]) => (
-                <div key={String(label)} className={label === "Name of association" || label === "Address of association" ? "col-span-2" : ""}>
+                <div
+                  key={String(label)}
+                  className={
+                    label === "Name of association" || label === "Address of association"
+                      ? "col-span-2"
+                      : ""
+                  }
+                >
                   <dt className="text-muted-foreground">{label}</dt>
                   <dd className="mt-0.5 font-semibold">{value}</dd>
                 </div>
@@ -972,7 +1227,10 @@ function SeniorRecords() {
               <div className="mt-5 border-t border-border pt-5">
                 <p className="text-sm font-bold">Benefit release history</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Latest release: {latest?.date_distributed ? new Date(`${latest.date_distributed}T00:00:00`).toLocaleDateString() : "No release recorded"}
+                  Latest release:{" "}
+                  {latest?.date_distributed
+                    ? new Date(`${latest.date_distributed}T00:00:00`).toLocaleDateString()
+                    : "No release recorded"}
                 </p>
                 {history.length > 0 && (
                   <div className="mt-3 overflow-x-auto">
@@ -988,10 +1246,26 @@ function SeniorRecords() {
                       <tbody>
                         {history.map((transaction) => (
                           <tr key={transaction.id} className="border-b border-border last:border-0">
-                            <td className="truncate px-1 py-2 font-semibold">{transaction.period_label ?? "-"}</td>
-                            <td className="truncate px-1 py-2">{transaction.date_distributed ? new Date(`${transaction.date_distributed}T00:00:00`).toLocaleDateString() : "-"}</td>
-                            <td className="truncate px-1 py-2">₱{Number(transaction.amount).toLocaleString()}</td>
-                            <td className="truncate px-1 py-2 font-semibold">{transaction.status === "released" ? "Released" : transaction.status === "failed" ? "Not received" : "Pending"}</td>
+                            <td className="truncate px-1 py-2 font-semibold">
+                              {transaction.period_label ?? "-"}
+                            </td>
+                            <td className="truncate px-1 py-2">
+                              {transaction.date_distributed
+                                ? new Date(
+                                    `${transaction.date_distributed}T00:00:00`,
+                                  ).toLocaleDateString()
+                                : "-"}
+                            </td>
+                            <td className="truncate px-1 py-2">
+                              ₱{Number(transaction.amount).toLocaleString()}
+                            </td>
+                            <td className="truncate px-1 py-2 font-semibold">
+                              {transaction.status === "released"
+                                ? "Released"
+                                : transaction.status === "failed"
+                                  ? "Not received"
+                                  : "Pending"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1028,7 +1302,11 @@ function SeniorRecords() {
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.idDocumentPath) && (
-                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`} alt="Valid ID" className="h-20 w-20 rounded-xl border border-border object-cover" />
+                      <img
+                        src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
+                        alt="Valid ID"
+                        className="h-20 w-20 rounded-xl border border-border object-cover"
+                      />
                     )}
                     <span>Valid ID</span>
                   </a>
@@ -1041,7 +1319,11 @@ function SeniorRecords() {
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.validIdPath) && (
-                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`} alt="Valid ID" className="h-20 w-20 rounded-xl border border-border object-cover" />
+                      <img
+                        src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`}
+                        alt="Valid ID"
+                        className="h-20 w-20 rounded-xl border border-border object-cover"
+                      />
                     )}
                     <span>Valid ID</span>
                   </a>
@@ -1054,13 +1336,17 @@ function SeniorRecords() {
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.birthCertificatePath) && (
-                      <img src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`} alt="Birth Certificate" className="h-20 w-20 rounded-xl border border-border object-cover" />
+                      <img
+                        src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`}
+                        alt="Birth Certificate"
+                        className="h-20 w-20 rounded-xl border border-border object-cover"
+                      />
                     )}
                     <span>Birth Certificate</span>
                   </a>
                 )}
                 {!viewing.birthCertificatePath && (
-                    <span className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+                  <span className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
                     Birth Certificate not uploaded
                   </span>
                 )}
