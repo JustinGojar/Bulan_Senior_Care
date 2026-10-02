@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, Clock, CornerUpLeft, ImagePlus, Megaphone, ShieldCheck, UserCheck, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -164,55 +164,56 @@ function Dashboard() {
         </button>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
-        <article className="surface-card p-4 sm:p-6">
-          <div className="flex items-start justify-between">
-            <div className="bg-navy grid h-10 w-10 place-items-center rounded-2xl text-primary-foreground sm:h-12 sm:w-12">
-              <Users className="h-5 w-5" />
-            </div>
-            <span className="rounded-full bg-secondary px-3 py-1 text-[10px] font-bold tracking-wider text-muted-foreground">
-              LIVE
-            </span>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+        <Link to="/seniors" className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
+          <div className="bg-navy grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-primary-foreground sm:h-16 sm:w-16">
+            <Users className="h-7 w-7 sm:h-8 sm:w-8" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">Total Registered</p>
-          <p className="font-display text-3xl font-extrabold sm:text-4xl">
-            {loading ? "..." : totalCount.toLocaleString()}
-          </p>
-          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Current senior records</p>
-        </article>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-muted-foreground">Total Registered</p>
+            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">
+              {loading ? "..." : totalCount.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Current senior records</p>
+          </div>
+        </Link>
 
-        <article className="surface-card p-4 sm:p-6">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gold text-gold-foreground sm:h-12 sm:w-12">
-            <ShieldCheck className="h-5 w-5" />
+        <Link to="/benefits" className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gold text-gold-foreground sm:h-16 sm:w-16">
+            <ShieldCheck className="h-7 w-7 sm:h-8 sm:w-8" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">
-            Total Benefits Distributed
-          </p>
-          <p className="font-display text-3xl font-extrabold sm:text-4xl">{overview ? overview.benefits_distributed_count.toLocaleString() : "..."}</p>
-          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Released benefit transactions</p>
-        </article>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-muted-foreground">Total Benefits Distributed</p>
+            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">{overview ? overview.benefits_distributed_count.toLocaleString() : "..."}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Released benefit transactions</p>
+          </div>
+        </Link>
 
-        <article className="surface-card p-4 sm:p-6">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-success text-success-foreground sm:h-12 sm:w-12">
-            <UserCheck className="h-5 w-5" />
+        <Link to="/seniors" search={{ status: "active" }} className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-success text-success-foreground sm:h-16 sm:w-16">
+            <UserCheck className="h-7 w-7 sm:h-8 sm:w-8" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">Active Seniors</p>
-          <p className="font-display text-3xl font-extrabold sm:text-4xl">
-            {loading ? "..." : activeCount.toLocaleString()}
-          </p>
-          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Verified and receiving benefits</p>
-        </article>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-muted-foreground">Active Seniors</p>
+            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">
+              {loading ? "..." : activeCount.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Verified and receiving benefits</p>
+          </div>
+        </Link>
 
-        <article className="surface-card p-4 sm:p-6">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-coral text-coral-foreground sm:h-12 sm:w-12">
-            <Clock className="h-5 w-5" />
+        <Link to="/seniors" search={{ status: "pending" }} className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-coral text-coral-foreground sm:h-16 sm:w-16">
+            <Clock className="h-7 w-7 sm:h-8 sm:w-8" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-muted-foreground sm:mt-6">Pending Applications</p>
-          <p className="font-display text-3xl font-extrabold sm:text-4xl">
-            {loading ? "..." : pendingCount.toLocaleString()}
-          </p>
-          <p className="mt-3 text-xs text-muted-foreground sm:mt-4">Awaiting eligibility verification</p>
-        </article>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-muted-foreground">Pending Applications</p>
+            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">
+              {loading ? "..." : pendingCount.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Awaiting eligibility verification</p>
+          </div>
+        </Link>
       </div>
 
       <div className={currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"}>
@@ -246,9 +247,11 @@ function Dashboard() {
                 tabIndex={0}
                 className="cursor-pointer rounded-2xl bg-secondary p-4 transition-shadow hover:shadow-[var(--shadow-soft)]"
               >
-                {announcement.image_path && (
+                {(announcement.image_path || announcement.source_image_url) && (
                   <img
-                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`}
+                    src={announcement.image_path
+                      ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`
+                      : announcement.source_image_url!}
                     alt=""
                     className="mb-3 h-auto w-full rounded-xl bg-card object-cover"
                   />
@@ -474,9 +477,11 @@ function Dashboard() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {selectedAnnouncement.image_path && (
+            {(selectedAnnouncement.image_path || selectedAnnouncement.source_image_url) && (
               <img
-                    src={`${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`}
+                src={selectedAnnouncement.image_path
+                  ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`
+                  : selectedAnnouncement.source_image_url!}
                 alt=""
                 className="max-h-[65vh] w-full object-contain"
               />
@@ -491,6 +496,16 @@ function Dashboard() {
               <p className="mt-5 text-sm text-muted-foreground">
                 {new Date(selectedAnnouncement.published_at).toLocaleDateString()}
               </p>
+              {selectedAnnouncement.source_url && (
+                <a
+                  href={selectedAnnouncement.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex text-sm font-semibold text-foreground underline underline-offset-4"
+                >
+                  View original Facebook post
+                </a>
+              )}
               <div className="mt-6 border-t border-border pt-5">
                 <h3 className="text-lg font-bold">Comments</h3>
                 <div className="mt-3 space-y-3">

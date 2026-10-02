@@ -142,6 +142,8 @@ export type Announcement = {
   title: string;
   message: string;
   image_path?: string | null;
+  source_url?: string | null;
+  source_image_url?: string | null;
   published_at: string;
   creator?: { name: string };
   comments?: AnnouncementComment[];

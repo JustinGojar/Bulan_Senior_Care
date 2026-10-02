@@ -17,6 +17,12 @@ Set `DB_DATABASE=osca`, `DB_USERNAME`, and `DB_PASSWORD` in `.env` for the XAMPP
 
 Copy the mail settings from `.env.example` into `.env` and replace the Gmail address and app password. Gmail requires 2-Step Verification and a 16-character App Password; use that App Password as `MAIL_PASSWORD`, not the normal Gmail password. Set `FRONTEND_URL` to the URL where the frontend is running so the email button opens the reset-password page. After changing `.env`, run `php artisan config:clear`.
 
+### Facebook Page announcements
+
+Recent Page posts can be imported into the system announcements feed. Configure `FACEBOOK_PAGE_ID` and a server-side `FACEBOOK_PAGE_ACCESS_TOKEN` in the backend environment; never put the token in frontend variables or commit it. The configured account must be a Facebook Page accessible to the Meta app with permission to read Page content. Personal profile posts cannot be imported through the Page posts endpoint.
+
+Run `php artisan migrate`, then test with `php artisan announcements:sync-facebook`. Laravel schedules the sync every 15 minutes; production must run `php artisan schedule:run` every minute (or use its platform's Laravel scheduler integration). The sync updates existing imported posts by Facebook post ID instead of creating duplicates.
+
 ## API Surface
 
 - `POST /api/login` with `email` and `password`

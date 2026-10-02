@@ -91,11 +91,12 @@ export function useSeniors(options: {
   pendingOnly?: boolean;
   excludePending?: boolean;
   page?: number;
+  perPage?: number;
   status?: string;
   search?: string;
   barangay?: string;
 } = {}) {
-  const { pendingOnly = false, excludePending = false, page = 1, status, search = "", barangay = "" } = options;
+  const { pendingOnly = false, excludePending = false, page = 1, perPage = 50, status, search = "", barangay = "" } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
@@ -112,14 +113,14 @@ export function useSeniors(options: {
   }, [search]);
 
   const makeListPath = useCallback((requestedPage: number) => {
-    const params = new URLSearchParams({ per_page: "50", page: String(requestedPage) });
+    const params = new URLSearchParams({ per_page: String(perPage), page: String(requestedPage) });
     if (pendingOnly) params.set("pending_only", "1");
     else if (excludePending) params.set("exclude_pending", "1");
     if (status) params.set("status", status);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (barangay) params.set("barangay", barangay);
     return `/seniors?${params.toString()}`;
-  }, [pendingOnly, excludePending, status, debouncedSearch, barangay]);
+  }, [pendingOnly, excludePending, perPage, status, debouncedSearch, barangay]);
   const listPath = makeListPath(page);
 
   useEffect(() => {

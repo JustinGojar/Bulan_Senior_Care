@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ClipboardCheck, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardCheck, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -20,17 +20,27 @@ function isImageDocument(path: string) {
 function EligibilityReview() {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
-  const { seniors, updateSenior } = useSeniors({ pendingOnly: true });
-  const pendingSeniors = seniors;
+  const [page, setPage] = useState(1);
+  const { seniors: pendingSeniors, pendingCount, lastPage, loading, error, updateSenior } = useSeniors({
+    pendingOnly: true,
+    page,
+    perPage: 10,
+  });
   const [viewing, setViewing] = useState<Senior | null>(null);
 
   useEffect(() => {
-    if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
+    if (!( ["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
       navigate({ to: "/dashboard", replace: true });
     }
   }, [currentUser?.role, navigate]);
 
-  if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) return null;
+  useEffect(() => {
+    if (!loading && !error && pendingSeniors.length === 0 && page > 1) {
+      setPage((current) => current - 1);
+    }
+  }, [error, loading, page, pendingSeniors.length]);
+
+  if (!( ["admin", "head"] as string[]).includes(currentUser?.role ?? "")) return null;
 
   async function reviewSenior(senior: (typeof seniors)[number], status: "Active" | "Inactive") {
     try {
@@ -60,6 +70,8 @@ function EligibilityReview() {
           </div>
         </div>
         <div className="mt-6 space-y-3">
+          {loading && <p className="text-sm text-muted-foreground">Loading pending registrations...</p>}
+          {error && <p className="text-sm text-destructive">Unable to load pending registrations. Please refresh and try again.</p>}
           {pendingSeniors.map((senior) => {
             return (
               <article
@@ -102,10 +114,38 @@ function EligibilityReview() {
               </article>
             );
           })}
-          {pendingSeniors.length === 0 && (
+          {!loading && !error && pendingSeniors.length === 0 && (
             <p className="text-sm text-muted-foreground">No pending registrations to review.</p>
           )}
         </div>
+        {pendingCount > 0 && (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+            <span className="text-xs text-muted-foreground">
+              Showing {(page - 1) * 10 + 1}-{Math.min(page * 10, pendingCount)} of {pendingCount} pending registrations
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page <= 1 || loading}
+                aria-label="Previous page"
+                className="grid h-9 w-9 place-items-center rounded-full bg-secondary disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs font-semibold text-muted-foreground">Page {page} of {lastPage}</span>
+              <button
+                type="button"
+                onClick={() => setPage((current) => Math.min(lastPage, current + 1))}
+                disabled={page >= lastPage || loading}
+                aria-label="Next page"
+                className="grid h-9 w-9 place-items-center rounded-full bg-secondary disabled:opacity-40"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </section>
       <Dialog open={!!viewing} onOpenChange={(open) => !open && setViewing(null)}>
         <DialogContent className="sm:max-w-lg">
