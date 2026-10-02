@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "private": true,
     "type": "module",
     "scripts": {
@@ -10,4 +11,10 @@
         "laravel-vite-plugin": "^1.0",
         "vite": "^5.0"
     }
+=======
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0"
+  }
+>>>>>>> 83335333bfc8ca496d647dacdbd1a1bdc19d6926
 }

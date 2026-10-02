@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Bulan SeniorCare API
 
 Laravel 11 API for the OSCA Bulan frontend. It uses Sanctum bearer tokens, Spatie roles (`admin`, `head`, `leader`), MySQL/MariaDB-compatible migrations, and a daily age-threshold command.
@@ -6,11 +7,33 @@ Laravel 11 API for the OSCA Bulan frontend. It uses Sanctum bearer tokens, Spati
 
 ```powershell
 cd api
+=======
+# Bulan SeniorCare
+
+Bulan SeniorCare is split into two independent applications:
+
+- `frontend/` - React, Vite, TanStack Router, TailwindCSS, and Recharts
+- `backend/` - Laravel 11 API, Sanctum, Spatie permissions, and MySQL
+
+## Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+## Backend
+
+```powershell
+cd backend
+>>>>>>> 83335333bfc8ca496d647dacdbd1a1bdc19d6926
 composer install
 php artisan migrate --seed
 php artisan serve --port=8000
 ```
 
+<<<<<<< HEAD
 Set `DB_DATABASE=osca`, `DB_USERNAME`, and `DB_PASSWORD` in `.env` for the XAMPP MySQL instance. Seeded demo accounts use the frontend emails and the password `password` for local development only.
 
 ### Gmail password reset emails
@@ -101,3 +124,6 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+=======
+Configure the MySQL database in `backend/.env`. The API is available under `/api` and is documented in [backend/README.md](backend/README.md).
+>>>>>>> 83335333bfc8ca496d647dacdbd1a1bdc19d6926

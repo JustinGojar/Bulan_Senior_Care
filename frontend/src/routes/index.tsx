@@ -6,9 +6,11 @@ import {
   Bell,
   ClipboardList,
   HandCoins,
+  Menu,
   ShieldCheck,
+  X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import seniorCitizensPhoto from "@/images/img.png";
@@ -78,6 +80,8 @@ const ANALYTICS = [
 ];
 
 function Landing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     let fallbackTimer: number | undefined;
     let waitingForScroll = false;
@@ -143,7 +147,7 @@ function Landing() {
   return (
     <div className="bg-app landing-page-bg min-h-screen">
       <div className="mx-auto max-w-screen-2xl px-4 py-4 sm:px-6 sm:py-5 lg:px-10 lg:py-6">
-        <header className="surface-card sticky top-2 z-50 flex items-center justify-between gap-3 border border-border/70 bg-secondary/78 px-3 py-2.5 backdrop-blur-xl sm:top-3 sm:gap-6 sm:px-6 sm:py-3">
+        <header className="surface-card sticky top-2 z-50 flex items-center justify-between gap-2 border border-border/70 bg-secondary/78 px-2 py-2.5 backdrop-blur-xl sm:top-3 sm:gap-6 sm:px-6 sm:py-3">
           <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/60 sm:h-10 sm:w-10" />
             <div>
@@ -163,14 +167,46 @@ function Landing() {
             ))}
           </nav>
           <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-            <ThemeToggle />
+            <ThemeToggle className="max-[359px]:hidden" />
             <Link
               to="/login"
               className="rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)] sm:px-5 sm:py-2.5 sm:text-sm"
             >
               Login
             </Link>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-landing-navigation"
+              className="grid h-9 w-9 place-items-center rounded-full bg-card lg:hidden"
+            >
+              {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
           </div>
+          {mobileMenuOpen && (
+            <nav
+              id="mobile-landing-navigation"
+              aria-label="Main navigation"
+              className="absolute top-full right-0 left-0 mt-2 grid gap-1 rounded-xl border border-border bg-card p-2 shadow-xl lg:hidden"
+            >
+              {NAV.map((item) => (
+                <a
+                  key={item}
+                  href={`#${item.toLowerCase()}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-secondary"
+                >
+                  {item}
+                </a>
+              ))}
+              <div className="flex items-center justify-between border-t border-border px-3 pt-2">
+                <span className="text-sm font-semibold">Appearance</span>
+                <ThemeToggle />
+              </div>
+            </nav>
+          )}
         </header>
 
         <section className="grid items-center gap-8 py-12 sm:gap-10 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12 lg:py-20">
@@ -178,11 +214,11 @@ function Landing() {
             <span className="inline-flex items-center rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)]">
               Office for Senior Citizens Affairs
             </span>
-            <h1 className="mt-6 text-4xl leading-tight font-extrabold sm:text-5xl lg:text-5xl xl:text-6xl xl:leading-[1.03]">
+            <h1 className="mt-6 text-3xl leading-tight font-extrabold sm:text-4xl lg:text-5xl xl:text-6xl xl:leading-[1.03]">
               Caring for every <span className="text-coral">Lolo</span> and{" "}
               <span className="text-coral">Lola</span> in Bulan
             </h1>
-            <p className="font-display mt-5 text-xl text-foreground/85 dark:text-white">
+            <p className="font-display mt-5 text-lg text-foreground/85 dark:text-white sm:text-xl">
               Profile. Monitor. Serve better.
             </p>
             <p className="mt-5 max-w-xl text-sm leading-relaxed text-foreground/80 dark:text-white">
@@ -222,7 +258,7 @@ function Landing() {
           <span className="rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold">
             About OSCA Bulan
           </span>
-          <h2 className="mt-5 max-w-3xl text-3xl font-extrabold">
+          <h2 className="mt-5 max-w-3xl text-2xl font-extrabold sm:text-3xl">
             A centralized record for a growing senior population
           </h2>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">

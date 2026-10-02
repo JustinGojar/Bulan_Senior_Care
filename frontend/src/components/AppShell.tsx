@@ -206,8 +206,8 @@ export function AppShell({
   }
 
   return (
-    <div className="bg-app min-h-screen w-full p-3 sm:p-4 lg:p-6">
-      <div className="flex w-full gap-4 lg:gap-6">
+    <div className="bg-app app-shell w-full">
+      <div className="flex min-w-0 w-full gap-3 sm:gap-4 lg:gap-6">
         <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex print:hidden">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
@@ -302,7 +302,7 @@ export function AppShell({
         </Sheet>
 
         <main className="min-w-0 flex-1">
-          <header className="flex flex-wrap items-center gap-4 print:hidden">
+          <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
             <button
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open navigation menu"
@@ -411,7 +411,7 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <div className="relative flex items-center gap-3">
+            <div className="relative flex items-center gap-1.5 sm:gap-3">
               {!isAdmin && (
                 <button
                   onClick={() => navigate({ to: "/messages" })}
