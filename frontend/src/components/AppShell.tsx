@@ -302,7 +302,7 @@ export function AppShell({
         </Sheet>
 
         <main className="min-w-0 flex-1">
-          <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
+          <header className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
             <button
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open navigation menu"
@@ -320,7 +320,7 @@ export function AppShell({
               ))}
             </nav>
             <div
-              className="relative min-w-0 flex-1"
+              className="relative col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:row-auto sm:flex-1"
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                   setSearchOpen(false);
@@ -463,9 +463,9 @@ export function AppShell({
             </div>
           </header>
 
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-4 print:hidden">
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-3 print:hidden sm:mt-6 sm:gap-4">
             <div className="min-w-0">
-              <h1 className="text-3xl font-extrabold sm:text-4xl">{title}</h1>
+              <h1 className="text-2xl font-extrabold sm:text-4xl">{title}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
             </div>
             {actions}
