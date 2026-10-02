@@ -142,43 +142,43 @@ function Landing() {
 
   return (
     <div className="bg-app landing-page-bg min-h-screen">
-      <div className="mx-auto max-w-screen-2xl px-10 py-6">
-        <header className="surface-card sticky top-3 z-50 flex items-center justify-between gap-6 border border-border/70 bg-secondary/78 px-6 py-3 backdrop-blur-xl">
-          <div className="flex shrink-0 items-center gap-3">
-            <BrandLogo className="h-10 w-10 ring-2 ring-gold/60" />
+      <div className="mx-auto max-w-screen-2xl px-4 py-4 sm:px-6 sm:py-5 lg:px-10 lg:py-6">
+        <header className="surface-card sticky top-2 z-50 flex items-center justify-between gap-3 border border-border/70 bg-secondary/78 px-3 py-2.5 backdrop-blur-xl sm:top-3 sm:gap-6 sm:px-6 sm:py-3">
+          <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
+            <BrandLogo className="h-9 w-9 ring-2 ring-gold/60 sm:h-10 sm:w-10" />
             <div>
-              <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
-              <p className="text-xs text-muted-foreground">Bulan, Sorsogon</p>
+              <p className="font-display text-xs font-bold sm:text-sm">Bulan SeniorCare</p>
+              <p className="text-[11px] text-muted-foreground sm:text-xs">Bulan, Sorsogon</p>
             </div>
           </div>
-          <nav className="hidden flex-1 items-center justify-center gap-20 text-sm font-semibold text-muted-foreground lg:flex">
+          <nav className="hidden flex-1 items-center justify-center gap-1 text-xs font-semibold text-muted-foreground lg:flex xl:gap-4 xl:text-sm">
             {NAV.map((item) => (
               <a
                 key={item}
                 href={`#${item.toLowerCase()}`}
-                className="relative isolate rounded-xl px-3 py-2 transition-colors hover:text-foreground before:absolute before:inset-y-0 before:-inset-x-3 before:-z-10 before:rounded-xl before:bg-black/10 before:opacity-0 before:transition-opacity before:content-[''] hover:before:opacity-100 focus-visible:before:opacity-100"
+                className="relative isolate rounded-xl px-2 py-2 transition-colors hover:text-foreground before:absolute before:inset-y-0 before:-inset-x-2 before:-z-10 before:rounded-xl before:bg-black/10 before:opacity-0 before:transition-opacity before:content-[''] hover:before:opacity-100 focus-visible:before:opacity-100"
               >
                 {item}
               </a>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center gap-8">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             <ThemeToggle />
             <Link
               to="/login"
-              className="rounded-full bg-card px-5 py-2.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+              className="rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)] sm:px-5 sm:py-2.5 sm:text-sm"
             >
               Login
             </Link>
           </div>
         </header>
 
-        <section className="grid items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid items-center gap-8 py-12 sm:gap-10 sm:py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12 lg:py-20">
           <div>
             <span className="inline-flex items-center rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)]">
               Office for Senior Citizens Affairs
             </span>
-            <h1 className="mt-6 text-6xl leading-[1.03] font-extrabold">
+            <h1 className="mt-6 text-4xl leading-tight font-extrabold sm:text-5xl lg:text-5xl xl:text-6xl xl:leading-[1.03]">
               Caring for every <span className="text-coral">Lolo</span> and{" "}
               <span className="text-coral">Lola</span> in Bulan
             </h1>
@@ -199,16 +199,16 @@ function Landing() {
               </Link>
             </div>
           </div>
-          <div className="relative mx-auto w-full max-w-xl px-2 py-4">
+          <div className="relative mx-auto w-full max-w-xl px-1 py-3 sm:px-2 sm:py-4">
             <div
               aria-hidden="true"
-              className="absolute inset-4 rotate-[-6deg] border-[10px] border-white bg-white shadow-[var(--shadow-card)]"
+              className="absolute inset-2 rotate-[-6deg] border-8 border-white bg-white shadow-[var(--shadow-card)] sm:inset-4 sm:border-[10px]"
             />
             <div
               aria-hidden="true"
-              className="absolute inset-4 rotate-[5deg] border-[10px] border-white bg-white shadow-[var(--shadow-card)]"
+              className="absolute inset-2 rotate-[5deg] border-8 border-white bg-white shadow-[var(--shadow-card)] sm:inset-4 sm:border-[10px]"
             />
-            <figure className="relative z-10 rotate-[-1deg] border-[10px] border-white bg-white shadow-[var(--shadow-card)]">
+            <figure className="relative z-10 rotate-[-1deg] border-8 border-white bg-white shadow-[var(--shadow-card)] sm:border-[10px]">
               <img
                 src={seniorCitizensPhoto}
                 alt="Senior citizens gathered outdoors in Bulan"
@@ -218,7 +218,7 @@ function Landing() {
           </div>
         </section>
 
-        <section id="about" className="surface-card scroll-mt-24 p-10">
+        <section id="about" className="surface-card scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10">
           <span className="rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold">
             About OSCA Bulan
           </span>
@@ -238,7 +238,7 @@ function Landing() {
               ["Objective 2", "Implement registration, eligibility, benefit tracking, reports, access control, notifications, and age thresholds."],
               ["Objective 3", "Integrate descriptive analytics at both barangay and municipal level."],
             ].map(([tag, body]) => (
-              <div key={tag} className="rounded-3xl bg-secondary p-6">
+              <div key={tag} className="rounded-2xl bg-secondary p-5 sm:rounded-3xl sm:p-6">
                 <p className="text-xs font-bold text-gold-foreground dark:text-white">{tag}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{body}</p>
               </div>
@@ -246,14 +246,14 @@ function Landing() {
           </div>
         </section>
 
-        <section id="features" className="scroll-mt-24 py-20">
-          <h2 className="text-3xl font-extrabold">System features</h2>
+        <section id="features" className="scroll-mt-20 py-14 sm:scroll-mt-24 sm:py-20">
+          <h2 className="text-2xl font-extrabold sm:text-3xl">System features</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             The seven modules defined in the study objectives.
           </p>
           <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, body }) => (
-              <article key={title} className="surface-card p-7">
+              <article key={title} className="surface-card p-5 sm:p-7">
                 <div className="bg-navy grid h-11 w-11 place-items-center rounded-2xl text-primary-foreground">
                   <Icon className="h-5 w-5" />
                 </div>
@@ -264,9 +264,9 @@ function Landing() {
           </div>
         </section>
 
-        <section id="benefits" className="scroll-mt-24 grid gap-6 lg:grid-cols-2">
-          <div className="surface-card p-10">
-            <h2 className="text-3xl font-extrabold">Who benefits</h2>
+        <section id="benefits" className="scroll-mt-20 grid gap-5 sm:scroll-mt-24 sm:gap-6 lg:grid-cols-2">
+          <div className="surface-card p-5 sm:p-8 lg:p-10">
+            <h2 className="text-2xl font-extrabold sm:text-3xl">Who benefits</h2>
             <ul className="mt-6 space-y-5 text-sm">
               {[
                 ["OSCA Staff", "Register seniors, update details, track distribution, and generate accurate reports."],
@@ -283,8 +283,8 @@ function Landing() {
               ))}
             </ul>
           </div>
-          <div id="analytics" className="surface-card scroll-mt-24 p-10">
-            <h2 className="text-3xl font-extrabold">Descriptive analytics</h2>
+          <div id="analytics" className="surface-card scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10">
+            <h2 className="text-2xl font-extrabold sm:text-3xl">Descriptive analytics</h2>
             <div className="mt-6 grid gap-3">
               {ANALYTICS.map((item) => (
                 <div
@@ -298,8 +298,8 @@ function Landing() {
           </div>
         </section>
 
-        <section id="faq" className="scroll-mt-24 py-20">
-          <h2 className="text-3xl font-extrabold">Frequently asked</h2>
+        <section id="faq" className="scroll-mt-20 py-14 sm:scroll-mt-24 sm:py-20">
+          <h2 className="text-2xl font-extrabold sm:text-3xl">Frequently asked</h2>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
             {[
               ["Can reports be printed or downloaded?", "Reports are viewable on screen. Printing and export are outside the current scope of the study."],
@@ -307,7 +307,7 @@ function Landing() {
               ["Which devices are supported?", "Desktop browsers on Windows 10/11 and Android 7+ phones and tablets."],
               ["How is access controlled?", "Three role levels — seniors see only their own record, OSCA staff and admins manage all records."],
             ].map(([q, a]) => (
-              <div key={q} className="surface-card p-7">
+              <div key={q} className="surface-card p-5 sm:p-7">
                 <h3 className="text-base font-bold">{q}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{a}</p>
               </div>
@@ -315,7 +315,7 @@ function Landing() {
           </div>
         </section>
 
-        <footer className="surface-card mb-8 flex flex-wrap items-center justify-center gap-4 px-8 py-6 text-center text-sm text-muted-foreground">
+        <footer className="surface-card mb-8 flex flex-wrap items-center justify-center gap-4 px-4 py-6 text-center text-sm text-muted-foreground sm:px-8">
           <p>Office of Senior Citizen Affairs · Municipality of Bulan, Sorsogon</p>
         </footer>
       </div>
