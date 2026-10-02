@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
 import type { Senior } from "./osca-data";
 
-type SeniorResponse = { data: ApiSenior[]; meta?: { total?: number } };
+type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
 type SeniorSummaryResponse = { total: number; active: number; pending: number; inactive: number };
 type SeniorCacheEntry = { value: SeniorResponse; expiresAt: number };
@@ -98,6 +98,7 @@ export function useSeniors(options: {
 } = {}) {
   const { pendingOnly = false, excludePending = false, page = 1, perPage = 50, status, search = "", barangay = "" } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
+  const [matchingCount, setMatchingCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
@@ -137,6 +138,7 @@ export function useSeniors(options: {
         const summary = summaryResult.status === "fulfilled" ? summaryResult.value : null;
         if (!current) return;
         setSeniors(seniorData.data.map(mapSenior));
+        setMatchingCount(seniorData.total ?? seniorData.meta?.total ?? seniorData.data.length);
         setLastPage(seniorData.last_page ?? 1);
         if (summary) {
           setTotalCount(summary.total);
@@ -304,6 +306,7 @@ export function useSeniors(options: {
 
   return {
     seniors,
+    matchingCount,
     totalCount,
     activeCount,
     pendingCount,
