@@ -148,11 +148,11 @@ function Landing() {
     <div className="bg-app landing-page-bg min-h-screen">
       <div className="mx-auto max-w-screen-2xl px-4 py-4 sm:px-6 sm:py-5 lg:px-10 lg:py-6">
         <header className="surface-card sticky top-2 z-50 flex items-center justify-between gap-2 border border-border/70 bg-secondary/78 px-2 py-2.5 backdrop-blur-xl sm:top-3 sm:gap-6 sm:px-6 sm:py-3">
-          <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 shrink items-center gap-2.5 sm:gap-3">
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/60 sm:h-10 sm:w-10" />
-            <div>
-              <p className="font-display text-xs font-bold sm:text-sm">Bulan SeniorCare</p>
-              <p className="text-[11px] text-muted-foreground sm:text-xs">Bulan, Sorsogon</p>
+            <div className="min-w-0">
+              <p className="font-display truncate text-xs font-bold sm:text-sm">Bulan SeniorCare</p>
+              <p className="truncate text-[11px] text-muted-foreground sm:text-xs">Bulan, Sorsogon</p>
             </div>
           </div>
           <nav className="hidden flex-1 items-center justify-center gap-1 text-xs font-semibold text-muted-foreground lg:flex xl:gap-4 xl:text-sm">
@@ -166,11 +166,11 @@ function Landing() {
               </a>
             ))}
           </nav>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-            <ThemeToggle className="max-[359px]:hidden" />
+          <div className="flex shrink-0 items-center gap-1 sm:gap-4">
+            <ThemeToggle className="hidden sm:grid" />
             <Link
               to="/login"
-              className="rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)] sm:px-5 sm:py-2.5 sm:text-sm"
+              className="rounded-full bg-card px-3 py-2 text-xs font-semibold shadow-[var(--shadow-soft)] sm:px-5 sm:py-2.5 sm:text-sm"
             >
               Login
             </Link>
