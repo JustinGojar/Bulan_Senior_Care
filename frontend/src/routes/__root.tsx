@@ -9,13 +9,81 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { broadcastAuthChange, clearToken, getCurrentUser, getToken, type ApiUser } from "@/lib/api";
+import {
+  API_URL,
+  broadcastAuthChange,
+  clearToken,
+  getToken,
+  setStoredUser,
+  type ApiUser,
+} from "@/lib/api";
 
 import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
 import appCss from "../styles.css?url";
 
 const PUBLIC_PATHS = new Set(["/", "/login", "/forgot-password", "/reset-password"]);
+const CURRENT_USER_CACHE_DURATION = 60_000;
+
+let cachedCurrentUser: { token: string; user: ApiUser; expiresAt: number } | null = null;
+const currentUserRequests = new Map<string, Promise<ApiUser>>();
+
+async function requestCurrentUser(token: string) {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/user`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    throw new Error(
+      `The browser could not complete a request to the Bulan SeniorCare API at ${API_URL}. Check the network connection and confirm the application server is available.`,
+    );
+  }
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const errorBody = body as { message?: string; errors?: Record<string, string[]> } | null;
+    const validation = errorBody?.errors ? Object.values(errorBody.errors).flat()[0] : undefined;
+    const error = new Error(
+      validation ?? errorBody?.message ?? `Request failed (${response.status})`,
+    );
+    Object.assign(error, { status: response.status });
+    throw error;
+  }
+  return body as ApiUser;
+}
+
+function loadCurrentUser(token: string) {
+  if (cachedCurrentUser?.token === token && cachedCurrentUser.expiresAt > Date.now()) {
+    return Promise.resolve(cachedCurrentUser.user);
+  }
+
+  const existingRequest = currentUserRequests.get(token);
+  if (existingRequest) return existingRequest;
+
+  const promise = requestCurrentUser(token)
+    .then((user) => {
+      if (getToken() !== token) {
+        throw new Error("Authentication changed while validating the session.");
+      }
+
+      setStoredUser(user);
+      cachedCurrentUser = {
+        token,
+        user,
+        expiresAt: Date.now() + CURRENT_USER_CACHE_DURATION,
+      };
+      return user;
+    })
+    .finally(() => {
+      if (currentUserRequests.get(token) === promise) currentUserRequests.delete(token);
+    });
+  currentUserRequests.set(token, promise);
+  return promise;
+}
 
 function NotFoundComponent() {
   return (
@@ -89,18 +157,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     const token = getToken();
 
     if (!token) {
+      cachedCurrentUser = null;
       if (!isPublic) throw redirect({ to: "/login" });
       return;
     }
 
     let user: ApiUser;
-    try {
-      user = await getCurrentUser();
-    } catch {
-      clearToken();
-      if (isPublic) return;
-      broadcastAuthChange();
-      throw redirect({ to: "/login" });
+    while (true) {
+      const token = getToken();
+      if (!token) {
+        cachedCurrentUser = null;
+        if (!isPublic) throw redirect({ to: "/login" });
+        return;
+      }
+
+      try {
+        user = await loadCurrentUser(token);
+      } catch (error) {
+        if (getToken() !== token) continue;
+
+        if (cachedCurrentUser?.token === token) cachedCurrentUser = null;
+        clearToken();
+        const wasUnauthorized = error instanceof Error && "status" in error && error.status === 401;
+        if (wasUnauthorized || !isPublic) broadcastAuthChange();
+        if (isPublic) return;
+        throw redirect({ to: "/login" });
+      }
+
+      if (getToken() === token) break;
     }
 
     if (location.pathname === "/login") {
@@ -172,7 +256,8 @@ function RootComponent() {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === "bulan-api-token" && event.newValue === null) handleAuthChange();
     };
-    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;
+    const channel =
+      typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;
     channel?.addEventListener("message", handleAuthChange);
     window.addEventListener("bulan-auth-changed", handleAuthChange);
     window.addEventListener("storage", handleStorageChange);
