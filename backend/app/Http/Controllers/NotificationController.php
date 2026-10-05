@@ -9,6 +9,16 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
+    public function unreadCount(Request $request): JsonResponse
+    {
+        $count = Notification::query()
+            ->where('recipient_account_id', $request->user()->id)
+            ->where('status', 'unread')
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $announcements = Announcement::query()->get(['id', 'title']);

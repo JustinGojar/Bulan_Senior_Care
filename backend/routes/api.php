@@ -56,6 +56,7 @@ Route::middleware(['token.idle', 'auth:sanctum'])->group(function () {
     Route::post('/messages', [MessageController::class, 'store']);
     Route::delete('/messages/conversations/{user}', [MessageController::class, 'destroyConversation']);
     Route::post('/messages/{message}/read', [MessageController::class, 'read']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::delete('/notifications', [NotificationController::class, 'clear']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);

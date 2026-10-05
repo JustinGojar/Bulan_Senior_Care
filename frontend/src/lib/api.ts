@@ -488,6 +488,10 @@ export function getServerNotifications() {
   return apiFetch<ServerNotification[]>("/notifications");
 }
 
+export function getServerUnreadNotificationCount() {
+  return apiFetch<{ count: number }>("/notifications/unread-count");
+}
+
 export function markServerNotificationRead(id: number) {
   return apiFetch<ServerNotification>(`/notifications/${id}/read`, { method: "POST" });
 }

@@ -17,7 +17,20 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { API_URL, apiFetch, clearToken, getAnnouncements, getServerNotifications, getStoredUser, getUnreadMessageSummary, logout, type Announcement, type ApiSenior, type ApiUser, type PaginatedResponse } from "@/lib/api";
+import {
+  API_URL,
+  apiFetch,
+  clearToken,
+  getAnnouncements,
+  getServerUnreadNotificationCount,
+  getStoredUser,
+  getUnreadMessageSummary,
+  logout,
+  type Announcement,
+  type ApiSenior,
+  type ApiUser,
+  type PaginatedResponse,
+} from "@/lib/api";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
@@ -106,10 +119,8 @@ export function AppShell({
   }, [user?.id, user?.role]);
   useEffect(() => {
     const updateUnreadCount = () => {
-      getServerNotifications()
-        .then((notifications) => {
-          setUnreadCount(notifications.filter((item) => item.status === "unread").length);
-        })
+      getServerUnreadNotificationCount()
+        .then(({ count }) => setUnreadCount(count))
         .catch(() => setUnreadCount(0));
     };
     updateUnreadCount();
