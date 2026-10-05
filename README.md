@@ -31,7 +31,7 @@ The frontend is deployed to Vercel and the Laravel API plus MySQL are deployed t
 ### Railway API
 
 1. Create a Railway project with a service connected to this repository. Set the service Root Directory to `/backend` and add a Railway MySQL service.
-2. Let Railway detect the Laravel app with Railpack. Set the service build command to `php artisan storage:link --force`, the pre-deploy command to `php artisan migrate --force`, and the health check path to `/up`.
+2. Let Railway detect the Laravel app with Railpack. With the service Root Directory set to `/backend`, `backend/railway.json` configures the build command to run `php artisan config:clear` before `php artisan storage:link --force`. Keep the pre-deploy command set to `php artisan migrate --force` and the health check path set to `/up`.
 3. Add these variables to the Laravel service:
 
 	- `APP_ENV=production`

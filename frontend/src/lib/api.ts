@@ -268,7 +268,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
     throw new Error(
-      `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve" in the backend folder.`,
+      `The browser could not complete a request to the Bulan SeniorCare API at ${API_URL}. Check the network connection and confirm the API allows this site's origin in its CORS policy.`,
     );
   }
   const body = (await response.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | T | null;
