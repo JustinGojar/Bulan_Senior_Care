@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => ({
     tanstackStart({
       server: { entry: "server" },
       spa: { enabled: true },
+      router: { basepath: "/" },
     }),
     nitro(),
     react(),
