@@ -145,17 +145,17 @@ export function useSeniors(options: {
       .finally(() => {
         if (!current) return;
         setLoading(false);
-        void getCachedSeniors<SeniorSummaryResponse>("/seniors?summary_only=1")
-          .then((result) => {
-            if (!current) return;
-            setTotalCount(result.total);
-            setActiveCount(result.active);
-            setPendingCount(result.pending);
-            setInactiveCount(result.inactive);
-          })
-          .catch((reason: Error) => {
-            if (current) console.error("Unable to load senior summary counts.", reason);
-          });
+      });
+    void getCachedSeniors<SeniorSummaryResponse>("/seniors?summary_only=1")
+      .then((result) => {
+        if (!current) return;
+        setTotalCount(result.total);
+        setActiveCount(result.active);
+        setPendingCount(result.pending);
+        setInactiveCount(result.inactive);
+      })
+      .catch((reason: Error) => {
+        if (current) console.error("Unable to load senior summary counts.", reason);
       });
     return () => {
       current = false;

@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import seniorCitizensPhoto from "@/images/img.png";
+import seniorCitizensPhoto from "@/images/img.webp";
 
 export const Route = createFileRoute("/")({
   head: () => ({
