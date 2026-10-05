@@ -5,6 +5,7 @@ const API_URL = (
 ).replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
+let announcementsRequest: { token: string | null; promise: Promise<Announcement[]> } | null = null;
 
 export type ApiUser = {
   id: number;
@@ -270,7 +271,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     throw new Error(
       `The browser could not complete a request to the Bulan SeniorCare API at ${API_URL}. Check the network connection and confirm the application server is available.`,
     );
@@ -418,7 +420,14 @@ export function deleteManagedUser(id: number) {
 }
 
 export function getAnnouncements() {
-  return apiFetch<Announcement[]>("/announcements");
+  const token = getToken();
+  if (announcementsRequest?.token === token) return announcementsRequest.promise;
+
+  const request = apiFetch<Announcement[]>("/announcements").finally(() => {
+    if (announcementsRequest?.promise === request) announcementsRequest = null;
+  });
+  announcementsRequest = { token, promise: request };
+  return request;
 }
 
 export function createAnnouncement(title: string, message: string, image?: File | null) {

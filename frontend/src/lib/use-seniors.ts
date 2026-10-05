@@ -5,24 +5,25 @@ import type { Senior } from "./osca-data";
 type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
 type SeniorSummaryResponse = { total: number; active: number; pending: number; inactive: number };
-type SeniorCacheEntry = { value: SeniorResponse; expiresAt: number };
+type SeniorCacheEntry = { value: unknown; expiresAt: number };
 const seniorCache = new Map<string, SeniorCacheEntry>();
-const SENIOR_CACHE_TTL = 2_000;
+const SENIOR_CACHE_TTL = 30_000;
 const SENIOR_CACHE_ROLES = new Set(["admin", "head", "leader"]);
 
-async function getCachedSeniors(path: string) {
+async function getCachedSeniors<T>(path: string, signal?: AbortSignal): Promise<T> {
   const user = getStoredUser();
   const role = user?.role?.toLowerCase();
-  if (!role || !SENIOR_CACHE_ROLES.has(role)) return apiFetch<SeniorResponse>(path);
+  const requestOptions = signal ? { signal } : {};
+  if (!role || !SENIOR_CACHE_ROLES.has(role)) return apiFetch<T>(path, requestOptions);
   const cacheKey = `${user?.id ?? "guest"}:${user?.role ?? "guest"}:${path}`;
   const cached = seniorCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const value = await apiFetch<SeniorResponse>(path);
+  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  const value = await apiFetch<T>(path, requestOptions);
   seniorCache.set(cacheKey, { value, expiresAt: Date.now() + SENIOR_CACHE_TTL });
   return value;
 }
 
-function clearSeniorCache() {
+export function clearSeniorCache() {
   seniorCache.clear();
 }
 
@@ -109,7 +110,7 @@ export function useSeniors(options: {
   const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 500);
     return () => window.clearTimeout(timeout);
   }, [search]);
 
@@ -126,37 +127,39 @@ export function useSeniors(options: {
 
   useEffect(() => {
     let current = true;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    Promise.allSettled([
-      getCachedSeniors(listPath) as Promise<PaginatedSeniorsResponse>,
-      getCachedSeniors("/seniors?summary_only=1") as Promise<SeniorSummaryResponse>,
-    ])
-      .then(([result, summaryResult]) => {
-        if (result.status === "rejected") throw result.reason;
-        const seniorData = result.value;
-        const summary = summaryResult.status === "fulfilled" ? summaryResult.value : null;
+    getCachedSeniors<PaginatedSeniorsResponse>(listPath, controller.signal)
+      .then((result) => {
         if (!current) return;
-        setSeniors(seniorData.data.map(mapSenior));
-        setMatchingCount(seniorData.total ?? seniorData.meta?.total ?? seniorData.data.length);
-        setLastPage(seniorData.last_page ?? 1);
-        if (summary) {
-          setTotalCount(summary.total);
-          setActiveCount(summary.active);
-          setPendingCount(summary.pending);
-          setInactiveCount(summary.inactive);
-        }
+        setSeniors(result.data.map(mapSenior));
+        setMatchingCount(result.total ?? result.meta?.total ?? result.data.length);
+        setLastPage(result.last_page ?? 1);
       })
       .catch((reason: Error) => {
-        if (!current) return;
+        if (!current || controller.signal.aborted) return;
         setError(reason.message);
         setSeniors([]);
       })
       .finally(() => {
-        if (current) setLoading(false);
+        if (!current) return;
+        setLoading(false);
+        void getCachedSeniors<SeniorSummaryResponse>("/seniors?summary_only=1")
+          .then((result) => {
+            if (!current) return;
+            setTotalCount(result.total);
+            setActiveCount(result.active);
+            setPendingCount(result.pending);
+            setInactiveCount(result.inactive);
+          })
+          .catch((reason: Error) => {
+            if (current) console.error("Unable to load senior summary counts.", reason);
+          });
       });
     return () => {
       current = false;
+      controller.abort();
     };
   }, [listPath]);
 

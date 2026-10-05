@@ -141,11 +141,16 @@ export function AppShell({
     }
 
     let active = true;
+    const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       setSearchLoading(true);
       const seniorRequest = apiFetch<PaginatedResponse<ApiSenior>>(
         `/seniors?search=${encodeURIComponent(term)}&per_page=5`,
-      ).then((result) => result.data).catch(() => [] as ApiSenior[]);
+        { signal: controller.signal },
+      ).then((result) => result.data).catch((error: unknown) => {
+        if (!controller.signal.aborted) console.error("Unable to search senior records.", error);
+        return [] as ApiSenior[];
+      });
 
       seniorRequest.then((seniors) => {
         if (!active) return;
@@ -153,11 +158,12 @@ export function AppShell({
       }).finally(() => {
         if (active) setSearchLoading(false);
       });
-    }, 200);
+    }, 500);
 
     return () => {
       active = false;
       window.clearTimeout(timeout);
+      controller.abort();
     };
   }, [globalSearch]);
   const initials = (user?.name ?? "User")

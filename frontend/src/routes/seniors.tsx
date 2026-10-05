@@ -27,7 +27,7 @@ import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import { API_URL, apiFetch, bulkCreateSeniors, getStoredUser, type ArchivedSenior, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
-import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
+import { clearSeniorCache, useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -390,6 +390,7 @@ function SeniorRecords() {
     setReviewingRequestId(request.id);
     try {
       await reviewSeniorEditRequest(request.id, status);
+      if (status === "approved") clearSeniorCache();
       setEditRequests((current) => current.filter((item) => item.id !== request.id));
       toast.success(status === "approved" ? "Senior record update approved." : "Senior record update declined.");
     } catch (error) {
@@ -427,6 +428,7 @@ function SeniorRecords() {
   async function restoreRecord(oscaId: string) {
     try {
       await apiFetch(`/seniors/archive/${encodeURIComponent(oscaId)}/restore`, { method: "POST" });
+      clearSeniorCache();
       setArchivedRecords((records) => records.filter((record) => record.osca_id_number !== oscaId));
       toast.success(`${oscaId} was restored.`);
     } catch (error) {
@@ -486,6 +488,7 @@ function SeniorRecords() {
     if (!bulkPreview) return;
     try {
       const result = await bulkCreateSeniors(bulkPreview);
+      if (result.created.length > 0) clearSeniorCache();
       const failed = result.failed.length;
       if (failed) toast.error(`${result.created.length} records added, ${failed} failed. Row ${result.failed[0]?.row ?? "?"}: ${result.failed[0]?.message ?? "Check the uploaded data."}`);
       else toast.success(`${result.created.length} senior records added and are pending review.`);
