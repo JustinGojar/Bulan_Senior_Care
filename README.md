@@ -38,7 +38,7 @@ The frontend is deployed to Vercel and the Laravel API plus MySQL are deployed t
 	- `APP_DEBUG=false`
 	- `APP_KEY`: generate with `php artisan key:generate --show` from `backend/`, then enter the value directly in Railway.
 	- `APP_URL`: the public Railway API origin, without `/api`.
-	- `FRONTEND_URL=https://osca.io`
+	- `FRONTEND_URL=https://bulan-senior-care.vercel.app`
 	- `DB_CONNECTION=mysql`
 	- `DB_URL=${{MySQL.MYSQL_URL}}`, replacing `MySQL` with the exact name of the database service.
 	- `LOG_CHANNEL=stderr`
@@ -54,4 +54,4 @@ Do not run the development seeder against production data. Configure mail variab
 2. Add `VITE_API_URL` for the Production environment, using the public Railway domain followed by `/api`, for example `https://<railway-domain>/api`. This URL is public and is compiled into the browser bundle; do not put credentials in it.
 3. Confirm `osca.io` is assigned to the Vercel project, then deploy. Redeploy after changing Vercel environment variables.
 
-The API's CORS allowlist uses `FRONTEND_URL`, so keep it set to the exact production frontend origin. Preview deployments need their own CORS policy before they can call the production API.
+The API's CORS allowlist includes `https://bulan-senior-care.vercel.app` and the origin in `FRONTEND_URL`. Keep `FRONTEND_URL` set to the exact production frontend origin. Preview deployments need their own CORS policy before they can call the production API. When deploying CORS configuration or environment changes, regenerate Laravel's config cache so the running service uses the updated allowlist.
