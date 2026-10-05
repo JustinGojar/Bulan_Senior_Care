@@ -6,7 +6,6 @@ return [
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:5173'),
         'http://127.0.0.1:5173',
-        'https://bulan-senior-care.vercel.app',
     ],
     'allowed_origins_patterns' => ['#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#'],
     'allowed_headers' => ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With'],

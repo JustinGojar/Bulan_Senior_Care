@@ -1,57 +1,55 @@
 # Bulan SeniorCare
 
-Bulan SeniorCare is split into two independent applications:
+Bulan SeniorCare combines a React/Vite frontend with a Laravel 11 API and Railway MySQL. The `frontend/` app keeps its TanStack Router pages and features; the outer `backend/` Laravel app serves the production SPA and API.
 
-- `frontend/` - React, Vite, TanStack Router, TailwindCSS, and Recharts
-- `backend/` - Laravel 11 API, Sanctum, Spatie permissions, and MySQL
+## Local development
 
-## Frontend
+Run the frontend and backend in separate terminals:
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
-
-## Backend
 
 ```powershell
 cd backend
 composer install
 php artisan migrate --seed
-php artisan serve --port=8000
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Configure the MySQL database in `backend/.env`. The API is available under `/api` and is documented in [backend/README.md](backend/README.md).
+Configure local MySQL in `backend/.env`. In development the frontend API client defaults to `http://127.0.0.1:8000/api`; `VITE_API_URL` can override that development URL. Seeded demo accounts and the password `password` are for local development only.
 
-## Production Deployment
+## Railway deployment
 
-The frontend is deployed to Vercel and the Laravel API plus MySQL are deployed to Railway. Deploy the API first so its public URL is available for the frontend build.
+The root `Dockerfile` builds the frontend and Laravel application into one Railway service. Laravel serves the generated React SPA shell and static assets, while its existing API remains available at `/api/*` on the same origin.
 
-### Railway API
+1. Connect this repository to a Railway service and set **Root Directory** to `/`. Keep the builder set to **Dockerfile** (the root `railway.json` selects it).
+2. Leave Railway's separate **Build Command** unset. Railway builds the root Dockerfile; its frontend stage runs `npm ci` and `npm run build:railway`, and its PHP stage runs `composer install`.
+3. Add Railway MySQL and set these variables on the application service:
+   - `APP_ENV=production`
+   - `APP_DEBUG=false`
+   - `APP_KEY`: generate with `php artisan key:generate --show` from `backend/`, then enter the value directly in Railway.
+   - `APP_URL=https://<your-railway-domain>`
+   - `FRONTEND_URL=https://<your-railway-domain>` (used for password-reset links; use the same origin as `APP_URL`)
+   - `DB_CONNECTION=mysql`
+   - `DB_URL=${{MySQL.MYSQL_URL}}` (replace `MySQL` with the exact Railway database service name)
+   - `LOG_CHANNEL=stderr`
+   - `FILESYSTEM_DISK=public`
+4. Railway supplies `PORT` at runtime. The configured **Start Command** creates Laravel's storage symlink, caches production configuration, and runs `php artisan serve --host=0.0.0.0 --port=$PORT`.
+5. The configured pre-deploy command runs `php artisan migrate --force`; `/up` is the health check. Add a Railway volume mounted at `/app/backend/storage/app/public` to retain uploaded photos and documents across deployments.
 
-1. Create a Railway project with a service connected to this repository. Set the service Root Directory to `/backend` and add a Railway MySQL service.
-2. Let Railway detect the Laravel app with Railpack. With the service Root Directory set to `/backend`, `backend/railway.json` configures the build command to run `php artisan config:clear` before `php artisan storage:link --force`. Keep the pre-deploy command set to `php artisan migrate --force` and the health check path set to `/up`.
-3. Add these variables to the Laravel service:
+Set `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` as server-side Railway variables to enable Facebook Page imports. Never put the access token in a frontend variable or commit it. To run Facebook imports and daily scheduled tasks, configure a Railway Cron service using the same image to run `php artisan schedule:run` every minute.
 
-	- `APP_ENV=production`
-	- `APP_DEBUG=false`
-	- `APP_KEY`: generate with `php artisan key:generate --show` from `backend/`, then enter the value directly in Railway.
-	- `APP_URL`: the public Railway API origin, without `/api`.
-	- `FRONTEND_URL=https://bulan-senior-care.vercel.app`
-	- `DB_CONNECTION=mysql`
-	- `DB_URL=${{MySQL.MYSQL_URL}}`, replacing `MySQL` with the exact name of the database service.
-	- `LOG_CHANNEL=stderr`
-	- `FILESYSTEM_DISK=public`
+Do not run the development seeder against production data. Configure mail variables separately if password-reset email is needed. Never commit `.env` files.
 
-4. Generate a public domain for the Railway API. Add a Railway volume mounted at `/app/storage/app/public` to preserve uploaded photos and documents. The build command creates the Laravel `public/storage` symlink to that persistent path.
+## Validation
 
-Do not run the development seeder against production data. Configure mail variables separately if password-reset email is needed.
-
-### Vercel Frontend
-
-1. In the existing Vercel project, set Root Directory to `frontend`, Framework Preset to **TanStack Start**, and Node.js Version to **24.x**. The `frontend/vercel.json` file makes framework detection explicit.
-2. Add `VITE_API_URL` for the Production environment, using the public Railway domain followed by `/api`, for example `https://<railway-domain>/api`. This URL is public and is compiled into the browser bundle; do not put credentials in it.
-3. Confirm `osca.io` is assigned to the Vercel project, then deploy. Redeploy after changing Vercel environment variables.
-
-The API's CORS allowlist includes `https://bulan-senior-care.vercel.app` and the origin in `FRONTEND_URL`. Keep `FRONTEND_URL` set to the exact production frontend origin. Preview deployments need their own CORS policy before they can call the production API. When deploying CORS configuration or environment changes, regenerate Laravel's config cache so the running service uses the updated allowlist.
+```powershell
+cd frontend
+npm run build:railway
+cd ../backend
+php artisan route:list --path=api
+php artisan test
+```

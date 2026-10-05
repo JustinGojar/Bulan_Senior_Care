@@ -1,4 +1,8 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
+const API_URL = (
+  import.meta.env.PROD
+    ? "/api"
+    : (import.meta.env["VITE_API_URL"] ?? "http://127.0.0.1:8000/api")
+).replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
 
@@ -268,7 +272,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
     throw new Error(
-      `The browser could not complete a request to the Bulan SeniorCare API at ${API_URL}. Check the network connection and confirm the API allows this site's origin in its CORS policy.`,
+      `The browser could not complete a request to the Bulan SeniorCare API at ${API_URL}. Check the network connection and confirm the application server is available.`,
     );
   }
   const body = (await response.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | T | null;
