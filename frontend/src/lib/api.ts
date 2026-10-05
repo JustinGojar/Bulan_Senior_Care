@@ -359,6 +359,38 @@ export async function createBarangayLeader(
   return result.user;
 }
 
+export async function createManagedUser(data: {
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  email: string;
+  contactNumber: string;
+  birthdate: string;
+  barangayId?: number | null;
+  role: "admin" | "head" | "leader";
+  status: "active" | "inactive";
+  password: string;
+  passwordConfirmation: string;
+}) {
+  const result = await apiFetch<{ user: ManagedUser }>('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      first_name: data.firstName,
+      middle_name: data.middleName || undefined,
+      last_name: data.lastName,
+      email: data.email,
+      contact_number: data.contactNumber,
+      birthdate: data.birthdate,
+      barangay_id: data.barangayId ?? null,
+      role: data.role,
+      status: data.status,
+      password: data.password,
+      password_confirmation: data.passwordConfirmation,
+    }),
+  });
+  return result.user;
+}
+
 export function logout() {
   return apiFetch<void>("/logout", { method: "POST" }).finally(() => {
     clearToken();
