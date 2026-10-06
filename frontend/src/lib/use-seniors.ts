@@ -79,7 +79,8 @@ function mapSenior(senior: ApiSenior): Senior {
     address: senior.address ?? "",
     contact: senior.contact_number ?? "Not provided",
     benefit: senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
-    status: senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
+    status:
+      senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
     photoPath: senior.photo_path,
     idDocumentPath: senior.id_document_path,
     validIdPath: senior.valid_id_path ?? senior.id_document_path,
@@ -87,16 +88,28 @@ function mapSenior(senior: ApiSenior): Senior {
   };
 }
 
-export function useSeniors(options: {
-  pendingOnly?: boolean;
-  excludePending?: boolean;
-  page?: number;
-  perPage?: number;
-  status?: string;
-  search?: string;
-  barangay?: string;
-} = {}) {
-  const { pendingOnly = false, excludePending = false, page = 1, perPage = 50, status, search = "", barangay = "" } = options;
+export function useSeniors(
+  options: {
+    pendingOnly?: boolean;
+    excludePending?: boolean;
+    page?: number;
+    perPage?: number;
+    status?: string;
+    search?: string;
+    barangay?: string;
+    benefit?: string;
+  } = {},
+) {
+  const {
+    pendingOnly = false,
+    excludePending = false,
+    page = 1,
+    perPage = 50,
+    status,
+    search = "",
+    barangay = "",
+    benefit = "",
+  } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
   const [matchingCount, setMatchingCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -113,15 +126,22 @@ export function useSeniors(options: {
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const makeListPath = useCallback((requestedPage: number) => {
-    const params = new URLSearchParams({ per_page: String(perPage), page: String(requestedPage) });
-    if (pendingOnly) params.set("pending_only", "1");
-    else if (excludePending) params.set("exclude_pending", "1");
-    if (status) params.set("status", status);
-    if (debouncedSearch) params.set("search", debouncedSearch);
-    if (barangay) params.set("barangay", barangay);
-    return `/seniors?${params.toString()}`;
-  }, [pendingOnly, excludePending, perPage, status, debouncedSearch, barangay]);
+  const makeListPath = useCallback(
+    (requestedPage: number) => {
+      const params = new URLSearchParams({
+        per_page: String(perPage),
+        page: String(requestedPage),
+      });
+      if (pendingOnly) params.set("pending_only", "1");
+      else if (excludePending) params.set("exclude_pending", "1");
+      if (status) params.set("status", status);
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (barangay) params.set("barangay", barangay);
+      if (benefit) params.set("benefit", benefit);
+      return `/seniors?${params.toString()}`;
+    },
+    [pendingOnly, excludePending, perPage, status, debouncedSearch, barangay, benefit],
+  );
   const listPath = makeListPath(page);
 
   useEffect(() => {
@@ -169,124 +189,139 @@ export function useSeniors(options: {
         (_, index) => firstPageNumber + index,
       );
       remainingPages.push(
-        ...(await Promise.all(pageNumbers.map((pageNumber) =>
-          apiFetch<PaginatedSeniorsResponse>(makeListPath(pageNumber)),
-        ))),
+        ...(await Promise.all(
+          pageNumbers.map((pageNumber) =>
+            apiFetch<PaginatedSeniorsResponse>(makeListPath(pageNumber)),
+          ),
+        )),
       );
     }
     return [firstPage, ...remainingPages].flatMap((result) => result.data.map(mapSenior));
   }, [makeListPath]);
 
-  const createSenior = useCallback(async (draft: SeniorDraft) => {
-    const body = new FormData();
-    body.append("first_name", draft.firstName?.trim() ?? draft.name.trim());
-    body.append("last_name", draft.lastName?.trim() ?? draft.name.trim());
-    if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
-    body.append("birthdate", draft.birthdate ?? "");
-    body.append("sex", draft.sex ?? "female");
-    body.append("place_of_birth", draft.placeOfBirth?.trim() ?? "");
-    body.append("civil_status", draft.civilStatus?.trim() ?? "");
-    body.append("educational_attainment", draft.educationalAttainment?.trim() ?? "");
-    body.append("other_skills", draft.otherSkills?.trim() ?? "");
-    body.append("family_composition", draft.familyComposition?.trim() ?? "");
-    body.append("association_name", draft.associationName?.trim() ?? "");
-    body.append("association_address", draft.associationAddress?.trim() ?? "");
-    body.append("association_membership_date", draft.associationMembershipDate ?? "");
-    body.append("association_position", draft.associationPosition?.trim() ?? "");
-    body.append("contact_number", draft.contact);
-    body.append("status", "pending");
-    body.append("barangay", draft.barangay);
-    body.append("benefit", draft.benefit);
-    if (draft.validId) body.append("valid_id", draft.validId);
-    if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
-    if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
-    const result = await apiFetch<ApiSenior>("/seniors", {
-      method: "POST",
-      body,
-    });
-    clearSeniorCache();
-    const mapped = mapSenior(result);
-    if (!excludePending || mapped.status !== "Pending") {
-      setSeniors((prev) => [mapped, ...prev]);
-      setTotalCount((count) => count + 1);
-    }
-    if (mapped.status === "Pending") setPendingCount((count) => count + 1);
-    return mapped;
-  }, [excludePending]);
-
-  const updateSenior = useCallback(async (id: string, draft: SeniorDraft) => {
-    if (getStoredUser()?.role === "leader") {
-      await submitSeniorEditRequest(id, {
-        first_name: draft.firstName?.trim() ?? draft.name.trim(),
-        middle_name: draft.middleName?.trim() || null,
-        last_name: draft.lastName?.trim() ?? draft.name.trim(),
-        birthdate: draft.birthdate ?? "",
-        place_of_birth: draft.placeOfBirth?.trim() || null,
-        sex: draft.sex ?? "female",
-        civil_status: draft.civilStatus?.trim() || null,
-        educational_attainment: draft.educationalAttainment?.trim() || null,
-        other_skills: draft.otherSkills?.trim() || null,
-        family_composition: draft.familyComposition?.trim() || null,
-        association_name: draft.associationName?.trim() || null,
-        association_address: draft.associationAddress?.trim() || null,
-        association_membership_date: draft.associationMembershipDate || null,
-        association_position: draft.associationPosition?.trim() || null,
-        address: draft.address.trim(),
-        contact_number: draft.contact.trim() || null,
-        barangay: draft.barangay,
-        benefit: draft.benefit,
+  const createSenior = useCallback(
+    async (draft: SeniorDraft) => {
+      const body = new FormData();
+      body.append("first_name", draft.firstName?.trim() ?? draft.name.trim());
+      body.append("last_name", draft.lastName?.trim() ?? draft.name.trim());
+      if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
+      body.append("birthdate", draft.birthdate ?? "");
+      body.append("sex", draft.sex ?? "female");
+      body.append("place_of_birth", draft.placeOfBirth?.trim() ?? "");
+      body.append("civil_status", draft.civilStatus?.trim() ?? "");
+      body.append("educational_attainment", draft.educationalAttainment?.trim() ?? "");
+      body.append("other_skills", draft.otherSkills?.trim() ?? "");
+      body.append("family_composition", draft.familyComposition?.trim() ?? "");
+      body.append("association_name", draft.associationName?.trim() ?? "");
+      body.append("association_address", draft.associationAddress?.trim() ?? "");
+      body.append("association_membership_date", draft.associationMembershipDate ?? "");
+      body.append("association_position", draft.associationPosition?.trim() ?? "");
+      body.append("contact_number", draft.contact);
+      body.append("status", "pending");
+      body.append("barangay", draft.barangay);
+      body.append("benefit", draft.benefit);
+      if (draft.validId) body.append("valid_id", draft.validId);
+      if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
+      if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
+      const result = await apiFetch<ApiSenior>("/seniors", {
+        method: "POST",
+        body,
       });
-      return;
-    }
-    const body = new FormData();
-    body.append("_method", "PUT");
-    if (draft.firstName?.trim()) body.append("first_name", draft.firstName.trim());
-    if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
-    if (draft.lastName?.trim()) body.append("last_name", draft.lastName.trim());
-    if (draft.birthdate) body.append("birthdate", draft.birthdate);
-    if (draft.placeOfBirth?.trim()) body.append("place_of_birth", draft.placeOfBirth.trim());
-    if (draft.sex) body.append("sex", draft.sex);
-    if (draft.civilStatus?.trim()) body.append("civil_status", draft.civilStatus.trim());
-    if (draft.educationalAttainment?.trim()) body.append("educational_attainment", draft.educationalAttainment.trim());
-    if (draft.otherSkills?.trim()) body.append("other_skills", draft.otherSkills.trim());
-    if (draft.familyComposition?.trim()) body.append("family_composition", draft.familyComposition.trim());
-    if (draft.associationName?.trim()) body.append("association_name", draft.associationName.trim());
-    if (draft.associationAddress?.trim()) body.append("association_address", draft.associationAddress.trim());
-    if (draft.associationMembershipDate) body.append("association_membership_date", draft.associationMembershipDate);
-    if (draft.associationPosition?.trim()) body.append("association_position", draft.associationPosition.trim());
-    if (draft.address.trim()) body.append("address", draft.address.trim());
-    if (draft.contact.trim()) body.append("contact_number", draft.contact.trim());
-    if (draft.barangay) body.append("barangay", draft.barangay);
-    if (draft.benefit) body.append("benefit", draft.benefit);
-    body.append("status", draft.status.toLowerCase());
-    if (draft.validId) body.append("valid_id", draft.validId);
-    if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
-    if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
-    const result = await apiFetch<ApiSenior>(`/seniors/${id}`, {
-      method: "POST",
-      body,
-    });
-    clearSeniorCache();
-    const mapped = mapSenior(result);
-    setSeniors((prev) =>
-      prev.flatMap((senior) => {
-        if (senior.id !== id) return [senior];
-        if (pendingOnly && mapped.status !== "Pending") return [];
-        if (excludePending && mapped.status === "Pending") return [];
-        return [mapped];
-      }),
-    );
-    setActiveCount((count) => {
-      if (mapped.status === "Active" && draft.status !== "Active") return count + 1;
-      if (mapped.status !== "Active" && draft.status === "Active") return Math.max(0, count - 1);
-      return count;
-    });
-    setPendingCount((count) => {
-      if (mapped.status === "Pending" && draft.status !== "Pending") return count + 1;
-      if (mapped.status !== "Pending" && draft.status === "Pending") return Math.max(0, count - 1);
-      return count;
-    });
-  }, [excludePending, pendingOnly]);
+      clearSeniorCache();
+      const mapped = mapSenior(result);
+      if (!excludePending || mapped.status !== "Pending") {
+        setSeniors((prev) => [mapped, ...prev]);
+        setTotalCount((count) => count + 1);
+      }
+      if (mapped.status === "Pending") setPendingCount((count) => count + 1);
+      return mapped;
+    },
+    [excludePending],
+  );
+
+  const updateSenior = useCallback(
+    async (id: string, draft: SeniorDraft) => {
+      if (getStoredUser()?.role === "leader") {
+        await submitSeniorEditRequest(id, {
+          first_name: draft.firstName?.trim() ?? draft.name.trim(),
+          middle_name: draft.middleName?.trim() || null,
+          last_name: draft.lastName?.trim() ?? draft.name.trim(),
+          birthdate: draft.birthdate ?? "",
+          place_of_birth: draft.placeOfBirth?.trim() || null,
+          sex: draft.sex ?? "female",
+          civil_status: draft.civilStatus?.trim() || null,
+          educational_attainment: draft.educationalAttainment?.trim() || null,
+          other_skills: draft.otherSkills?.trim() || null,
+          family_composition: draft.familyComposition?.trim() || null,
+          association_name: draft.associationName?.trim() || null,
+          association_address: draft.associationAddress?.trim() || null,
+          association_membership_date: draft.associationMembershipDate || null,
+          association_position: draft.associationPosition?.trim() || null,
+          address: draft.address.trim(),
+          contact_number: draft.contact.trim() || null,
+          barangay: draft.barangay,
+          benefit: draft.benefit,
+        });
+        return;
+      }
+      const body = new FormData();
+      body.append("_method", "PUT");
+      if (draft.firstName?.trim()) body.append("first_name", draft.firstName.trim());
+      if (draft.middleName?.trim()) body.append("middle_name", draft.middleName.trim());
+      if (draft.lastName?.trim()) body.append("last_name", draft.lastName.trim());
+      if (draft.birthdate) body.append("birthdate", draft.birthdate);
+      if (draft.placeOfBirth?.trim()) body.append("place_of_birth", draft.placeOfBirth.trim());
+      if (draft.sex) body.append("sex", draft.sex);
+      if (draft.civilStatus?.trim()) body.append("civil_status", draft.civilStatus.trim());
+      if (draft.educationalAttainment?.trim())
+        body.append("educational_attainment", draft.educationalAttainment.trim());
+      if (draft.otherSkills?.trim()) body.append("other_skills", draft.otherSkills.trim());
+      if (draft.familyComposition?.trim())
+        body.append("family_composition", draft.familyComposition.trim());
+      if (draft.associationName?.trim())
+        body.append("association_name", draft.associationName.trim());
+      if (draft.associationAddress?.trim())
+        body.append("association_address", draft.associationAddress.trim());
+      if (draft.associationMembershipDate)
+        body.append("association_membership_date", draft.associationMembershipDate);
+      if (draft.associationPosition?.trim())
+        body.append("association_position", draft.associationPosition.trim());
+      if (draft.address.trim()) body.append("address", draft.address.trim());
+      if (draft.contact.trim()) body.append("contact_number", draft.contact.trim());
+      if (draft.barangay) body.append("barangay", draft.barangay);
+      if (draft.benefit) body.append("benefit", draft.benefit);
+      body.append("status", draft.status.toLowerCase());
+      if (draft.validId) body.append("valid_id", draft.validId);
+      if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
+      if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
+      const result = await apiFetch<ApiSenior>(`/seniors/${id}`, {
+        method: "POST",
+        body,
+      });
+      clearSeniorCache();
+      const mapped = mapSenior(result);
+      setSeniors((prev) =>
+        prev.flatMap((senior) => {
+          if (senior.id !== id) return [senior];
+          if (pendingOnly && mapped.status !== "Pending") return [];
+          if (excludePending && mapped.status === "Pending") return [];
+          return [mapped];
+        }),
+      );
+      setActiveCount((count) => {
+        if (mapped.status === "Active" && draft.status !== "Active") return count + 1;
+        if (mapped.status !== "Active" && draft.status === "Active") return Math.max(0, count - 1);
+        return count;
+      });
+      setPendingCount((count) => {
+        if (mapped.status === "Pending" && draft.status !== "Pending") return count + 1;
+        if (mapped.status !== "Pending" && draft.status === "Pending")
+          return Math.max(0, count - 1);
+        return count;
+      });
+    },
+    [excludePending, pendingOnly],
+  );
 
   const deleteSenior = useCallback(async (id: string) => {
     await apiFetch<void>(`/seniors/${id}`, { method: "DELETE" });

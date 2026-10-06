@@ -15,6 +15,12 @@ class OverviewController extends Controller
         $cacheKey = "overview:{$request->user()->id}:{$request->user()->role}:{$request->user()->barangay_id}";
 
         return response()->json(Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request) {
+            $now = now();
+            $currentMonthStart = $now->copy()->startOfMonth();
+            $previousMonthStart = $currentMonthStart->copy()->subMonth();
+            $previousMonthEnd = $previousMonthStart->copy()
+                ->addDays(min($now->day, $previousMonthStart->daysInMonth) - 1)
+                ->endOfDay();
             $isLeader = $request->user()->role === 'leader';
             $leaderId = $request->user()->id;
             $barangayId = $request->user()->barangay_id;
@@ -59,6 +65,46 @@ class OverviewController extends Controller
                 )
                 ->first();
 
+            $countSeniorsForPeriod = static function ($start, $end, ?string $status = null) use ($isLeader, $leaderId, $barangayId): int {
+                $query = SeniorCitizen::query()->whereBetween('created_at', [$start, $end]);
+                if ($status !== null) {
+                    $query->where('status', $status);
+                }
+                if ($isLeader) {
+                    $query->where('barangay_id', $barangayId)->where('encoded_by', $leaderId);
+                }
+
+                return $query->count();
+            };
+            $distributedAmountForPeriod = static function ($start, $end) use ($transactionScope): float {
+                $query = DB::table('benefit_transactions')
+                    ->where('benefit_transactions.status', 'released')
+                    ->whereBetween('benefit_transactions.date_distributed', [
+                        $start->toDateString(),
+                        $end->toDateString(),
+                    ]);
+                $transactionScope($query);
+
+                return (float) $query->sum('benefit_transactions.amount');
+            };
+            $monthlyMetrics = static function ($start, $end) use ($countSeniorsForPeriod, $distributedAmountForPeriod): array {
+                return [
+                    'total_registered' => $countSeniorsForPeriod($start, $end),
+                    'active_seniors' => $countSeniorsForPeriod($start, $end, 'active'),
+                    'pending_applications' => $countSeniorsForPeriod($start, $end, 'pending'),
+                    'benefits_distributed_amount' => $distributedAmountForPeriod($start, $end),
+                ];
+            };
+            $currentMonthMetrics = $monthlyMetrics($currentMonthStart, $now);
+            $previousMonthMetrics = $monthlyMetrics($previousMonthStart, $previousMonthEnd);
+            $monthlyChange = [];
+            foreach ($currentMonthMetrics as $metric => $currentValue) {
+                $previousValue = $previousMonthMetrics[$metric];
+                $monthlyChange[$metric] = $previousValue > 0
+                    ? (int) round((($currentValue - $previousValue) / $previousValue) * 100)
+                    : null;
+            }
+
             $receivedByBenefitQuery = DB::table('benefit_transactions')
                 ->join('benefits', 'benefits.id', '=', 'benefit_transactions.benefit_id')
                 ->join('senior_citizens', 'senior_citizens.id', '=', 'benefit_transactions.senior_citizen_id')
@@ -83,6 +129,7 @@ class OverviewController extends Controller
                 'benefits_distributed_count' => (int) $transactionStats->distributed_count,
                 'benefits_pending_count' => (int) $transactionStats->pending_count,
                 'benefits_failed_count' => (int) $transactionStats->failed_count,
+                'monthly_change' => $monthlyChange,
                 'distribution_percentage' => $transactionStats->transaction_count > 0
                     ? round(($transactionStats->distributed_count / $transactionStats->transaction_count) * 100)
                     : 0,

@@ -49,12 +49,21 @@ const PIE_COLORS = [
   "var(--chart-3)",
   "var(--chart-4)",
 ];
+const BENEFIT_CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--success)",
+];
 
 type AnalyticsResponse = {
   municipal: { total_registered: number; active: number; male: number; female: number };
   barangay_summary: Array<{ barangay: string; registered: number; active: number; released: number }>;
   age_distribution: Array<{ age: string; count: number }>;
   benefit_records: Array<{ name: string; value: number }>;
+  released_benefit_records: Array<{ name: string; senior_count: number }>;
   trend: Array<{ barangay: string; registered: number; released: number; municipal: number }>;
 };
 
@@ -85,6 +94,7 @@ function Analytics() {
   const zoneParticipants = barangaySummary.map(({ barangay: zone, registered: total }) => ({ zone, total }));
   const ageDistribution = analytics?.age_distribution ?? [];
   const benefitRecords = analytics?.benefit_records ?? [];
+  const releasedBenefitRecords = analytics?.released_benefit_records ?? [];
   const municipalTotal = analytics?.municipal.total_registered ?? 0;
   const trendData = analytics?.trend ?? [];
 
@@ -96,37 +106,39 @@ function Analytics() {
     >
       {error && <p className="mb-6 rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p>}
       {loading && <p className="mb-6 text-sm text-muted-foreground">Loading analytics data...</p>}
-      <section className="surface-card p-7">
-        <CardHead icon={MapPin} title={isLeader ? `Participants in ${barangaySummary[0]?.barangay ?? "Your Barangay"}` : "Total Participants per Zone / Barangay"} />
-        <div className="mt-6 h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={zoneParticipants}>
-              <defs>
-                <linearGradient id="zoneFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} domain={isLeader ? [0, "auto"] : [0, 1000]} ticks={isLeader ? undefined : [0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
-              <Tooltip />
-              <Area
-                type="monotone"
-                dataKey="total"
-                stroke="var(--chart-1)"
-                strokeWidth={2.5}
-                fill="url(#zoneFill)"
-                dot={{ r: 4, fill: "var(--chart-1)" }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        {loading && <p className="mt-3 text-sm text-muted-foreground">Loading live analytics...</p>}
-        {!loading && zoneParticipants.length === 0 && (
-          <p className="mt-3 text-sm text-muted-foreground">No senior records available.</p>
-        )}
-      </section>
+      {!isLeader && (
+        <section className="surface-card p-7">
+          <CardHead icon={MapPin} title="Total Participants per Zone / Barangay" />
+          <div className="mt-6 h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={zoneParticipants}>
+                <defs>
+                  <linearGradient id="zoneFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} ticks={[0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="var(--chart-1)"
+                  strokeWidth={2.5}
+                  fill="url(#zoneFill)"
+                  dot={{ r: 4, fill: "var(--chart-1)" }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          {loading && <p className="mt-3 text-sm text-muted-foreground">Loading live analytics...</p>}
+          {!loading && zoneParticipants.length === 0 && (
+            <p className="mt-3 text-sm text-muted-foreground">No senior records available.</p>
+          )}
+        </section>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="surface-card p-7">
@@ -177,23 +189,68 @@ function Analytics() {
       </div>
 
       <section className="surface-card mt-6 p-7">
-        <CardHead icon={TrendingUp} title={isLeader ? "Barangay Trends" : "Trend and Analytics by Barangay and Municipality"} />
-        <p className="mt-2 text-sm text-muted-foreground">{isLeader ? "Registered seniors and released benefits in your assigned barangay." : "Registered seniors, released benefits, and cumulative municipal registrations."}</p>
+        <CardHead icon={TrendingUp} title={isLeader ? "Benefits Released by Program" : "Trend and Analytics by Barangay and Municipality"} />
+        <p className="mt-2 text-sm text-muted-foreground">{isLeader ? "Released benefit counts in your assigned barangay." : "Registered seniors, released benefits, and cumulative municipal registrations."}</p>
         <div className="mt-6 h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trendData}>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="barangay" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="registered" name="Barangay registered" stroke="var(--chart-1)" strokeWidth={2} />
-              <Line type="monotone" dataKey="released" name="Benefits released" stroke="var(--chart-2)" strokeWidth={2} />
-              {!isLeader && <Line type="monotone" dataKey="municipal" name="Municipal cumulative" stroke="var(--chart-3)" strokeWidth={2} />}
-            </LineChart>
+            {isLeader ? (
+              <BarChart data={releasedBenefitRecords}>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} interval={0} angle={-25} textAnchor="end" height={70} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                  allowDecimals={false}
+                  label={{ value: "Number of seniors", angle: -90, position: "insideLeft" }}
+                />
+                <Tooltip />
+                <Bar dataKey="senior_count" name="Seniors" radius={[4, 4, 0, 0]}>
+                  {releasedBenefitRecords.map((record, index) => (
+                    <Cell
+                      key={record.name}
+                      fill={BENEFIT_CHART_COLORS[index % BENEFIT_CHART_COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            ) : (
+              <LineChart data={trendData}>
+                <CartesianGrid stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="barangay" tickLine={false} axisLine={false} fontSize={12} />
+                <YAxis tickLine={false} axisLine={false} fontSize={12} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="registered" name="Barangay registered" stroke="var(--chart-1)" strokeWidth={2} />
+                <Line type="monotone" dataKey="released" name="Benefits released" stroke="var(--chart-2)" strokeWidth={2} />
+                <Line type="monotone" dataKey="municipal" name="Municipal cumulative" stroke="var(--chart-3)" strokeWidth={2} />
+              </LineChart>
+            )}
           </ResponsiveContainer>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">{isLeader ? "Barangay" : "Municipal"} registered total: {municipalTotal.toLocaleString()}</p>
+        {isLeader ? (
+          <>
+            {releasedBenefitRecords.length > 0 && (
+              <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-2">
+                {releasedBenefitRecords.map((record, index) => (
+                  <div key={record.name} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                      style={{ backgroundColor: BENEFIT_CHART_COLORS[index % BENEFIT_CHART_COLORS.length] }}
+                    />
+                    {record.name}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!loading && releasedBenefitRecords.length === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">No benefits have been released in this barangay.</p>
+            )}
+          </>
+        ) : (
+          <p className="mt-3 text-xs text-muted-foreground">Municipal registered total: {municipalTotal.toLocaleString()}</p>
+        )}
       </section>
 
       <section className="surface-card mt-6 p-7">

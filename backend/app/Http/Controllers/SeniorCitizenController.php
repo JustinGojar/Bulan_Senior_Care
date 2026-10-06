@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\SeniorCitizen;
+use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\Benefit;
-use App\Models\AuditLog;
+use App\Models\SeniorCitizen;
+use App\Support\AdvisoryDispatcher;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Database\QueryException;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SeniorCitizenController extends Controller
 {
@@ -36,11 +37,15 @@ class SeniorCitizenController extends Controller
         }
         if ($request->filled('search')) {
             $search = $request->string('search');
-            $query->where(fn ($q) => $q->where('osca_id_number', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%"));
+            $query->where(fn ($q) => $q->where('osca_id_number', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%")->orWhereHas('barangay', fn ($barangayQuery) => $barangayQuery->where('barangay_name', 'like', "%{$search}%")));
         }
         if ($request->filled('barangay')) {
             $barangay = $request->string('barangay')->toString();
             $query->whereHas('barangay', fn ($q) => $q->where('barangay_name', $barangay));
+        }
+        if ($request->filled('benefit')) {
+            $benefit = $request->string('benefit')->toString();
+            $query->whereHas('benefits', fn ($benefitQuery) => $benefitQuery->where('benefit_name', $benefit));
         }
 
         $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
@@ -161,6 +166,7 @@ class SeniorCitizenController extends Controller
             'period_label' => 'Registration '.today()->toDateString(),
         ]);
         AuditLog::record($request->user(), 'created', $senior, afterValue: ['status' => $senior->status]);
+        AdvisoryDispatcher::forPendingSenior($senior);
 
         return response()->json($senior->load(['barangay', 'benefits']), 201);
     }
@@ -268,10 +274,12 @@ class SeniorCitizenController extends Controller
 
                     return $senior;
                 });
-                $created[] = ['row' => $index + 2, 'osca_id_number' => $senior->osca_id_number];
             } catch (\Throwable $exception) {
                 $failed[] = ['row' => $index + 2, 'message' => $exception->getMessage()];
+                continue;
             }
+            $created[] = ['row' => $index + 2, 'osca_id_number' => $senior->osca_id_number];
+            AdvisoryDispatcher::forPendingSenior($senior);
         }
 
         return response()->json([

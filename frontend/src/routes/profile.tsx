@@ -1,10 +1,37 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Camera, Eye, EyeOff, KeyRound, LogOut, Save, UserCircle } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  BarChart3,
+  BriefcaseBusiness,
+  Camera,
+  Eye,
+  EyeOff,
+  FileText,
+  HandCoins,
+  KeyRound,
+  LogOut,
+  Mail,
+  MapPin,
+  Phone,
+  Save,
+  ShieldCheck,
+  UserCircle,
+  Users,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { API_URL, apiFetch, clearToken, getStoredUser, logout, setStoredUser, type ApiUser } from "@/lib/api";
-import oscaAdminImage from "@/images/osca_admin.jpg";
+import {
+  API_URL,
+  apiFetch,
+  clearToken,
+  getStoredUser,
+  logout,
+  setStoredUser,
+  type ApiUser,
+} from "@/lib/api";
+import coverPhoto from "@/img/CP.jpg";
+import defaultProfileImage from "@/img/Defaut.png";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "My Profile — Bulan SeniorCare" }] }),
@@ -16,6 +43,7 @@ function ProfilePage() {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [contact, setContact] = useState(user?.contact_number ?? "");
+  const [address, setAddress] = useState(user?.address ?? "");
   const [assignedBarangay, setAssignedBarangay] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -26,25 +54,34 @@ function ProfilePage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    apiFetch<ApiUser>("/user").then((freshUser) => {
-      setUser(freshUser);
-      setName(freshUser.name);
-      setEmail(freshUser.email);
-      setContact(freshUser.contact_number ?? "");
-      setStoredUser(freshUser);
-      if (freshUser.role === "leader" && freshUser.barangay_id) {
-        apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
-          .then((barangays) => setAssignedBarangay(
-            barangays.find((barangay) => barangay.id === freshUser.barangay_id)?.barangay_name ?? "",
-          ))
-          .catch(() => setAssignedBarangay(""));
-      }
-    }).catch((error: Error) => {
-      if (error.message.includes("session has expired")) {
-        toast.error(error.message);
-        window.location.href = "/login";
-      }
-    });
+    apiFetch<ApiUser>("/user")
+      .then((freshUser) => {
+        setUser(freshUser);
+        setName(freshUser.name);
+        setEmail(freshUser.email);
+        setContact(freshUser.contact_number ?? "");
+        setAddress(freshUser.address ?? "");
+        setStoredUser(freshUser);
+        const isLeader =
+          freshUser.role?.toLowerCase() === "leader" ||
+          freshUser.roles?.some((role) => role.name.toLowerCase() === "leader");
+        if (isLeader && freshUser.barangay_id) {
+          apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+            .then((barangays) =>
+              setAssignedBarangay(
+                barangays.find((barangay) => barangay.id === freshUser.barangay_id)
+                  ?.barangay_name ?? "",
+              ),
+            )
+            .catch(() => setAssignedBarangay(""));
+        }
+      })
+      .catch((error: Error) => {
+        if (error.message.includes("session has expired")) {
+          toast.error(error.message);
+          window.location.href = "/login";
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -58,15 +95,34 @@ function ProfilePage() {
     return () => URL.revokeObjectURL(previewUrl);
   }, [photo]);
 
-  const photoUrl = photoPreview ?? (user?.profile_photo_path
-    ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
-    : (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin"))
-      ? oscaAdminImage
-      : null);
-  const roleLabel = user?.role?.toLowerCase() === "leader"
-    ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
-    : user?.role ?? "user";
-  const initials = (name || "User").split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const photoUrl =
+    photoPreview ??
+    (user?.profile_photo_path
+      ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
+      : defaultProfileImage);
+  const roleLabel =
+    user?.role?.toLowerCase() === "leader"
+      ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+      : user?.role?.toLowerCase() === "head"
+        ? "OSCA Head"
+        : user?.role?.toLowerCase() === "admin"
+          ? "OSCA Admin"
+          : (user?.role ?? "user");
+  const initials = (name || "User")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const isAdminUser =
+    user?.role?.toLowerCase() === "admin" ||
+    user?.roles?.some((role) => role.name.toLowerCase() === "admin");
+  const isHeadUser =
+    user?.role?.toLowerCase() === "head" ||
+    user?.roles?.some((role) => role.name.toLowerCase() === "head");
+  const isLeaderUser =
+    user?.role?.toLowerCase() === "leader" ||
+    user?.roles?.some((role) => role.name.toLowerCase() === "leader");
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault();
@@ -76,6 +132,7 @@ function ProfilePage() {
       form.append("name", name);
       form.append("email", email);
       form.append("contact_number", contact);
+      form.append("address", address);
       if (photo) form.append("profile_photo", photo);
       const updated = await apiFetch<ApiUser>("/profile", { method: "POST", body: form });
       setUser(updated);
@@ -98,7 +155,11 @@ function ProfilePage() {
     try {
       await apiFetch<{ message: string }>("/profile/password", {
         method: "POST",
-        body: JSON.stringify({ current_password: currentPassword, password, password_confirmation: passwordConfirmation }),
+        body: JSON.stringify({
+          current_password: currentPassword,
+          password,
+          password_confirmation: passwordConfirmation,
+        }),
       });
       setCurrentPassword("");
       setPassword("");
@@ -118,56 +179,356 @@ function ProfilePage() {
   }
 
   return (
-    <AppShell title="My Profile" subtitle="Manage your account details and security" breadcrumb={["Dashboard", "My Profile"]}>
-      <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <section className="surface-card flex min-h-[640px] flex-col p-7">
-          <div className="flex flex-col items-center text-center">
-            <div className="relative grid h-28 w-28 overflow-hidden place-items-center rounded-full bg-navy text-2xl font-bold text-primary-foreground ring-4 ring-gold/50">
-              {photoUrl ? <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" onError={(event) => { if (user?.role?.toLowerCase() === "admin" || user?.roles?.some((role) => role.name.toLowerCase() === "admin")) event.currentTarget.src = oscaAdminImage; }} /> : initials}
-              <label htmlFor="profile-photo" className="absolute right-1 bottom-1 grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-gold text-gold-foreground shadow-lg" title="Change profile picture"><Camera className="h-4 w-4" /></label>
+    <AppShell
+      title="My Profile"
+      subtitle="Manage your account details and security"
+      breadcrumb={["Dashboard", "My Profile"]}
+    >
+      <div className="grid gap-6 lg:grid-cols-[0.84fr_1.16fr]">
+        <section className="surface-card flex min-h-[640px] flex-col overflow-hidden p-0">
+          <div
+            className="relative h-[226px] rounded-t-[28px]"
+            style={{
+              backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.08)), url(${coverPhoto})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.22),_transparent_55%)]" />
+            <div className="absolute inset-x-0 bottom-0 flex justify-center translate-y-1/2">
+              <div className="relative grid h-[128px] w-[128px] place-items-center overflow-hidden rounded-full bg-white text-[2.1rem] font-black text-primary-foreground">
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = defaultProfileImage;
+                    }}
+                  />
+                ) : (
+                  initials
+                )}
+                <label
+                  htmlFor="profile-photo"
+                  className="absolute right-1 bottom-1 z-10 grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-[#0d253f] text-white shadow-lg ring-2 ring-white"
+                  title="Change profile picture"
+                  aria-label="Change profile picture"
+                >
+                  <Camera className="h-4 w-4" />
+                </label>
+              </div>
             </div>
-            <input id="profile-photo" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} />
-            <h2 className="mt-5 text-xl font-bold">{user?.name ?? "Your profile"}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
-            <span className="mt-4 rounded-full bg-secondary px-4 py-1.5 text-xs font-bold uppercase">{roleLabel}</span>
+            <input
+              id="profile-photo"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+            />
           </div>
-          <button onClick={signOut} className="mt-auto flex w-full items-center justify-center gap-2 rounded-full bg-destructive/10 py-3 text-sm font-bold text-destructive"><LogOut className="h-4 w-4" /> Log out</button>
+
+          <div className="flex flex-1 flex-col px-7 pb-7 pt-[62px]">
+            <div className="text-center">
+              <h2 className="text-[2.1rem] font-black tracking-[-0.03em] text-foreground">
+                {user?.name ?? "Your profile"}
+              </h2>
+              <p className="mt-1 text-[0.95rem] text-muted-foreground">{user?.email}</p>
+              <span className="mt-4 inline-flex rounded-full bg-[#dfeaf6] px-[1rem] py-[0.45rem] text-[0.7rem] font-bold uppercase tracking-[0.02em] text-[#123a68]">
+                {roleLabel}
+              </span>
+            </div>
+
+            <div className="mt-8 space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
+                <div className="flex items-center gap-3 font-medium text-foreground">
+                  <UserCircle className="h-4 w-4 text-[#1b3b60]" /> Full name
+                </div>
+                <span className="font-semibold text-foreground">{name || "Not provided"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
+                <div className="flex items-center gap-3 font-medium text-foreground">
+                  <Mail className="h-4 w-4 text-[#1b3b60]" /> Email address
+                </div>
+                <span className="font-semibold text-foreground">{email || "Not provided"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
+                <div className="flex items-center gap-3 font-medium text-foreground">
+                  <Phone className="h-4 w-4 text-[#1b3b60]" /> Contact number
+                </div>
+                <span className="font-semibold text-foreground">{contact || "Not provided"}</span>
+              </div>
+              {(isLeaderUser || isHeadUser || isAdminUser) && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
+                  <div className="flex items-center gap-3 font-medium text-foreground">
+                    <MapPin className="h-4 w-4 text-[#1b3b60]" /> Assigned barangay
+                  </div>
+                  <span className="font-semibold text-foreground">
+                    {assignedBarangay || "Not assigned"}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
+                <div className="flex items-center gap-3 font-medium text-foreground">
+                  <BriefcaseBusiness className="h-4 w-4 text-[#1b3b60]" /> Role / Position
+                </div>
+                <span className="font-semibold text-foreground">{roleLabel}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
+                <div className="flex items-center gap-3 font-medium text-foreground">
+                  <ShieldCheck className="h-4 w-4 text-[#1b3b60]" /> Account Created
+                </div>
+                <span className="font-semibold text-foreground">January 29, 2025</span>
+              </div>
+            </div>
+
+            <button
+              onClick={signOut}
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-[#f5a1a1] bg-[#fff5f5] py-3 text-[0.97rem] font-bold text-[#e65050] transition hover:bg-[#fde9e9]"
+            >
+              <LogOut className="h-4 w-4" /> Log out
+            </button>
+          </div>
+
+          <div className="px-7 pb-7">
+            <div className="rounded-[18px] border border-border bg-[#eef5fb] p-4">
+              <div className="mb-3 flex items-center gap-3 text-foreground">
+                <div className="grid h-8 w-8 place-items-center rounded-full bg-[#dfeaf6] text-[#1b3b60]">
+                  <BarChart3 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-[1.05rem] font-bold">System Overview</h3>
+                  <p className="text-[0.78rem] text-muted-foreground">
+                    Quick access to your most used features
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    label: "Senior Record",
+                    to: "/seniors",
+                    icon: Users,
+                    color: "bg-[#eaf1ff] text-[#3b82f6]",
+                  },
+                  {
+                    label: "Benefit Tracking",
+                    to: "/benefits",
+                    icon: HandCoins,
+                    color: "bg-[#eafaf2] text-[#22c55e]",
+                  },
+                  {
+                    label: "Analytics",
+                    to: "/analytics",
+                    icon: BarChart3,
+                    color: "bg-[#f2ebff] text-[#8b5cf6]",
+                  },
+                  {
+                    label: "Reports",
+                    to: "/reports",
+                    icon: FileText,
+                    color: "bg-[#fff4dc] text-[#f59e0b]",
+                  },
+                ].map(({ label, to, icon: Icon, color }) => (
+                  <Link
+                    key={label}
+                    to={to}
+                    aria-label={`Go to ${label}`}
+                    className="flex min-h-[84px] flex-col items-center justify-center rounded-[14px] border border-border bg-white p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <div className={`mb-2 grid h-9 w-9 place-items-center rounded-xl ${color}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <p className="text-[0.72rem] font-semibold leading-tight text-foreground">
+                      {label}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
 
         <div className="space-y-6">
           <form onSubmit={saveProfile} className="surface-card p-7">
-            <div className="flex items-center gap-3"><UserCircle className="h-5 w-5 text-gold-foreground" /><h2 className="text-lg font-bold">Personal information</h2></div>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2">
-              <label className="text-sm font-semibold">Full name<input value={name} onChange={(event) => setName(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
-              <label className="text-sm font-semibold">Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
-              <label className="text-sm font-semibold sm:col-span-2">Contact number<input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="0917-123-4567" className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" /></label>
-              {user?.role === "leader" && (
-                <label className="text-sm font-semibold sm:col-span-2">
-                  Assigned barangay
-                  <input value={assignedBarangay || "Not assigned"} readOnly className="mt-2 h-12 w-full cursor-not-allowed rounded-xl bg-secondary px-4 text-muted-foreground outline-none" />
-                </label>
-              )}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <UserCircle className="h-5 w-5 text-[#1b3b60]" />
+                <h2 className="text-[1.05rem] font-bold">Personal Information</h2>
+              </div>
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-sm font-medium shadow-sm transition hover:bg-accent disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
+              </button>
             </div>
-            {photo && <p className="mt-4 text-xs text-muted-foreground">Preview updated. Click Save profile to upload {photo.name}.</p>}
-            <button type="submit" disabled={busy} className="bg-navy mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"><Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}</button>
+            <p className="mt-2 text-sm text-muted-foreground">
+              View and manage your personal details
+            </p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-semibold text-foreground">
+                Full name
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  required
+                />
+              </label>
+              <label className="text-sm font-semibold text-foreground">
+                Email address
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  required
+                />
+              </label>
+              <label className="text-sm font-semibold text-foreground">
+                Contact number
+                <input
+                  value={contact}
+                  onChange={(event) => setContact(event.target.value)}
+                  placeholder="0917-123-4567"
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <label className="text-sm font-semibold text-foreground">
+                Address
+                <input
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                  placeholder="Enter your address"
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                />
+              </label>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-semibold text-foreground">
+                  Role / Position
+                  <input
+                    value={roleLabel}
+                    readOnly
+                    className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-border bg-[#f3f7fb] px-4 text-muted-foreground outline-none"
+                  />
+                </label>
+              </div>
+            </div>
+            {photo && (
+              <p className="mt-4 text-xs text-muted-foreground">
+                Preview updated. Click Save profile to upload {photo.name}.
+              </p>
+            )}
           </form>
 
           <form onSubmit={savePassword} className="surface-card p-7">
-            <div className="flex items-center gap-3"><KeyRound className="h-5 w-5 text-gold-foreground" /><h2 className="text-lg font-bold">Change password</h2></div>
-            <div className="mt-6 flex items-center justify-end">
-              <button type="button" onClick={() => setShowPasswords((visible) => !visible)} className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-[#1b3b60]" />
+                <h2 className="text-[1.05rem] font-bold">Change Password</h2>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-[#eafaf2] px-3 py-1 text-[0.7rem] font-bold text-emerald-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Password strength{" "}
+                <span className="font-semibold">Strong</span>
+              </div>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">Keep your account secure</p>
+
+            <div className="mt-5 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowPasswords((visible) => !visible)}
+                className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
+              >
                 {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 {showPasswords ? "Hide passwords" : "Show passwords"}
               </button>
             </div>
-            <div className="mt-3 grid gap-5 sm:grid-cols-3">
-              <label className="text-sm font-semibold">Current password<input type={showPasswords ? "text" : "password"} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
-              <label className="text-sm font-semibold">New password<input type={showPasswords ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
-              <label className="text-sm font-semibold">Confirm password<input type={showPasswords ? "text" : "password"} value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} minLength={8} className="mt-2 h-12 w-full rounded-xl bg-secondary px-4 outline-none focus:ring-2 focus:ring-ring/30" required /></label>
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <label className="text-sm font-semibold text-foreground">
+                Current password
+                <input
+                  type={showPasswords ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  required
+                />
+              </label>
+              <label className="text-sm font-semibold text-foreground">
+                New password
+                <input
+                  type={showPasswords ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={8}
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  required
+                />
+              </label>
+              <label className="text-sm font-semibold text-foreground">
+                Confirm password
+                <input
+                  type={showPasswords ? "text" : "password"}
+                  value={passwordConfirmation}
+                  onChange={(event) => setPasswordConfirmation(event.target.value)}
+                  minLength={8}
+                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  required
+                />
+              </label>
             </div>
-            <button type="submit" disabled={busy} className="bg-navy mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"><KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}</button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
+            >
+              <KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}
+            </button>
           </form>
 
+          <section className="surface-card overflow-hidden p-7">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-[#eafaf2] text-[#19a75e]">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-[1.05rem] font-bold">Recent Activity</h2>
+                  <p className="text-sm text-muted-foreground">Your latest actions in the system</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-accent"
+              >
+                View all <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-xl border border-border">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-[#f3f7fb] text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Date &amp; Time</th>
+                    <th className="px-4 py-3 font-semibold">Action</th>
+                    <th className="px-4 py-3 font-semibold">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-border bg-background">
+                    <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                      No recent activity.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </div>
     </AppShell>

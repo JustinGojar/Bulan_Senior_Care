@@ -1,10 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, CheckCircle2, Download, HandCoins, Plus, ShieldCheck, XCircle } from "lucide-react";
+import {
+  Award,
+  ArrowUpDown,
+  Banknote,
+  CalendarDays,
+  CheckCircle2,
+  Coins,
+  Download,
+  Gift,
+  Grid2X2,
+  HeartHandshake,
+  ListFilter,
+  Plus,
+  MapPin,
+  ShieldCheck,
+  Users,
+  XCircle,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { API_URL, apiFetch, getStoredUser, type BenefitRelease, type BenefitTransaction, type PaginatedResponse } from "@/lib/api";
+import {
+  API_URL,
+  apiFetch,
+  getStoredUser,
+  type BenefitRelease,
+  type BenefitTransaction,
+  type PaginatedResponse,
+} from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/benefits")({
   head: () => ({ meta: [{ title: "Benefit Tracking — Bulan SeniorCare" }] }),
@@ -20,7 +50,47 @@ type BenefitProgram = {
   amount: string;
   schedule: string;
   funding: string;
+  status: "active" | "inactive";
 };
+
+const PROGRAM_STYLES = [
+  {
+    icon: Coins,
+    iconClass: "bg-sky-100 text-sky-700",
+    accentClass: "border-b-sky-500",
+    hoverClass: "hover:bg-sky-50 dark:hover:bg-sky-950/30",
+  },
+  {
+    icon: Gift,
+    iconClass: "bg-emerald-100 text-emerald-700",
+    accentClass: "border-b-emerald-500",
+    hoverClass: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
+  },
+  {
+    icon: Users,
+    iconClass: "bg-violet-100 text-violet-700",
+    accentClass: "border-b-violet-500",
+    hoverClass: "hover:bg-violet-50 dark:hover:bg-violet-950/30",
+  },
+  {
+    icon: HeartHandshake,
+    iconClass: "bg-amber-100 text-amber-700",
+    accentClass: "border-b-amber-500",
+    hoverClass: "hover:bg-amber-50 dark:hover:bg-amber-950/30",
+  },
+  {
+    icon: Banknote,
+    iconClass: "bg-rose-100 text-rose-700",
+    accentClass: "border-b-rose-500",
+    hoverClass: "hover:bg-rose-50 dark:hover:bg-rose-950/30",
+  },
+  {
+    icon: Award,
+    iconClass: "bg-cyan-100 text-cyan-700",
+    accentClass: "border-b-cyan-500",
+    hoverClass: "hover:bg-cyan-50 dark:hover:bg-cyan-950/30",
+  },
+];
 
 function BenefitTracking() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
@@ -37,6 +107,8 @@ function BenefitTracking() {
   const [savingRelease, setSavingRelease] = useState(false);
   const [selectedBarangay, setSelectedBarangay] = useState("All");
   const [selectedBenefit, setSelectedBenefit] = useState("All");
+  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [sortProgramsBy, setSortProgramsBy] = useState("name");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<number[]>([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +119,7 @@ function BenefitTracking() {
   const canUpdateTransactions = currentUser?.role === "leader";
 
   function formatDate(date: string) {
-    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date)
-      ? new Date(`${date}T00:00:00`)
-      : new Date(date);
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00`) : new Date(date);
     if (Number.isNaN(parsed.getTime())) return "No release date entered";
     return parsed.toLocaleDateString(undefined, {
       month: "short",
@@ -69,30 +139,83 @@ function BenefitTracking() {
   );
 
   const filteredTransactions = useMemo(
-    () => transactions.filter((transaction) => {
-      const barangayMatch = selectedBarangay === "All" || (transaction.senior.barangay?.barangay_name ?? "Unassigned") === selectedBarangay;
-      const benefitMatch = selectedBenefit === "All" || transaction.benefit.benefit_name === selectedBenefit;
-      return barangayMatch && benefitMatch;
-    }),
-    [selectedBarangay, selectedBenefit, transactions],
+    () =>
+      transactions.filter((transaction) => {
+        const barangayMatch =
+          selectedBarangay === "All" ||
+          (transaction.senior.barangay?.barangay_name ?? "Unassigned") === selectedBarangay;
+        const benefitMatch =
+          selectedBenefit === "All" || transaction.benefit.benefit_name === selectedBenefit;
+        const statusMatch = selectedStatus === "All" || transaction.status === selectedStatus;
+        return barangayMatch && benefitMatch && statusMatch;
+      }),
+    [selectedBarangay, selectedBenefit, selectedStatus, transactions],
   );
-  const pendingTransactions = filteredTransactions.filter((transaction) => transaction.status === "pending");
-  const allPendingSelected = pendingTransactions.length > 0 && pendingTransactions.every((transaction) => selectedTransactionIds.includes(transaction.id));
+  const sortedPrograms = useMemo(
+    () =>
+      [...programs].sort((a, b) => {
+        if (sortProgramsBy === "amount") {
+          const amountA = Number(a.amount.replace(/[^\d.]/g, "")) || 0;
+          const amountB = Number(b.amount.replace(/[^\d.]/g, "")) || 0;
+          return amountB - amountA;
+        }
+        return a.name.localeCompare(b.name);
+      }),
+    [programs, sortProgramsBy],
+  );
+  const visiblePrograms = useMemo(
+    () =>
+      selectedBenefit === "All"
+        ? sortedPrograms
+        : sortedPrograms.filter((program) => program.name === selectedBenefit),
+    [selectedBenefit, sortedPrograms],
+  );
+  const pendingTransactions = filteredTransactions.filter(
+    (transaction) => transaction.status === "pending",
+  );
+  const allPendingSelected =
+    pendingTransactions.length > 0 &&
+    pendingTransactions.every((transaction) => selectedTransactionIds.includes(transaction.id));
 
   useEffect(() => {
-    apiFetch<Array<{ id: number; benefit_name: string; benefit_type: string; min_age: number; max_age: number | null; amount: string | null; schedule: string; funding_source: string }>>("/benefits")
-      .then((benefitResult) => setPrograms(benefitResult.map((program) => ({
-        id: program.id,
-        name: program.benefit_name,
-        type: program.benefit_type,
-        minAge: program.min_age,
-        ...(program.max_age === null ? {} : { maxAge: program.max_age }),
-        amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
-        schedule: program.schedule === "one_time" ? "One-time" : program.schedule === "quarterly" ? "Quarterly" : "When funds are available",
-        funding: program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
-      }))))
+    apiFetch<
+      Array<{
+        id: number;
+        benefit_name: string;
+        benefit_type: string;
+        min_age: number;
+        max_age: number | null;
+        amount: string | null;
+        schedule: string;
+        funding_source: string;
+        status: "active" | "inactive";
+      }>
+    >("/benefits")
+      .then((benefitResult) =>
+        setPrograms(
+          benefitResult.map((program) => ({
+            id: program.id,
+            name: program.benefit_name,
+            type: program.benefit_type,
+            minAge: program.min_age,
+            ...(program.max_age === null ? {} : { maxAge: program.max_age }),
+            amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
+            schedule:
+              program.schedule === "one_time"
+                ? "One-time"
+                : program.schedule === "quarterly"
+                  ? "Quarterly"
+                  : "When funds are available",
+            funding:
+              program.funding_source.charAt(0).toUpperCase() + program.funding_source.slice(1),
+            status: program.status,
+          })),
+        ),
+      )
       .catch((reason: Error) => setError(reason.message));
-    apiFetch<PaginatedResponse<BenefitTransaction>>(`/benefit-transactions?page=${transactionPage}&per_page=25`)
+    apiFetch<PaginatedResponse<BenefitTransaction>>(
+      `/benefit-transactions?page=${transactionPage}&per_page=25`,
+    )
       .then((result) => {
         setTransactions(result.data);
         setTransactionLastPage(result.last_page);
@@ -102,7 +225,10 @@ function BenefitTracking() {
       .then((result) => {
         setBarangays(result);
         if (isLeader) {
-          setSelectedBarangay(result.find((barangay) => barangay.id === currentUser?.barangay_id)?.barangay_name ?? "Unassigned");
+          setSelectedBarangay(
+            result.find((barangay) => barangay.id === currentUser?.barangay_id)?.barangay_name ??
+              "Unassigned",
+          );
         }
       })
       .catch(() => setBarangays([]));
@@ -123,7 +249,11 @@ function BenefitTracking() {
     setReleaseFormOpen(true);
   }
 
-  async function saveTransactionStatus(transaction: BenefitTransaction, status: "released" | "failed", date: string | null) {
+  async function saveTransactionStatus(
+    transaction: BenefitTransaction,
+    status: "released" | "failed",
+    date: string | null,
+  ) {
     return apiFetch<BenefitTransaction>(`/benefit-transactions/${transaction.id}`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -137,13 +267,19 @@ function BenefitTracking() {
   }
 
   async function updateTransaction(transaction: BenefitTransaction, status: "released" | "failed") {
-    const date = status === "released"
-      ? window.prompt("Enter the actual release date (YYYY-MM-DD):", transaction.date_distributed ?? "")
-      : null;
+    const date =
+      status === "released"
+        ? window.prompt(
+            "Enter the actual release date (YYYY-MM-DD):",
+            transaction.date_distributed ?? "",
+          )
+        : null;
     if (status === "released" && !date) return;
     try {
       const updated = await saveTransactionStatus(transaction, status, date);
-      setTransactions((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setTransactions((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to update benefit status.");
     }
@@ -151,34 +287,52 @@ function BenefitTracking() {
 
   function toggleAllPendingTransactions() {
     const pendingIds = new Set(pendingTransactions.map((transaction) => transaction.id));
-    setSelectedTransactionIds((current) => allPendingSelected
-      ? current.filter((id) => !pendingIds.has(id))
-      : [...new Set([...current, ...pendingIds])]);
+    setSelectedTransactionIds((current) =>
+      allPendingSelected
+        ? current.filter((id) => !pendingIds.has(id))
+        : [...new Set([...current, ...pendingIds])],
+    );
   }
 
   async function updateSelectedTransactions(status: "released" | "failed") {
-    const selected = filteredTransactions.filter((transaction) =>
-      selectedTransactionIds.includes(transaction.id) && transaction.status === "pending",
+    const selected = filteredTransactions.filter(
+      (transaction) =>
+        selectedTransactionIds.includes(transaction.id) && transaction.status === "pending",
     );
     if (!selected.length) return;
 
-    const date = status === "released"
-      ? window.prompt(`Enter the actual release date (YYYY-MM-DD) for all ${selected.length} selected transactions:`, new Date().toISOString().slice(0, 10))
-      : null;
+    const date =
+      status === "released"
+        ? window.prompt(
+            `Enter the actual release date (YYYY-MM-DD) for all ${selected.length} selected transactions:`,
+            new Date().toISOString().slice(0, 10),
+          )
+        : null;
     if (status === "released" && !date) return;
     const statusLabel = status === "released" ? "Received" : "Not received";
     if (!window.confirm(`Mark ${selected.length} selected transactions as ${statusLabel}?`)) return;
 
     setBulkUpdating(true);
-    const results = await Promise.allSettled(selected.map((transaction) => saveTransactionStatus(transaction, status, date)));
-    const updated = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+    const results = await Promise.allSettled(
+      selected.map((transaction) => saveTransactionStatus(transaction, status, date)),
+    );
+    const updated = results.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
     const updatedIds = new Set(updated.map((transaction) => transaction.id));
-    setTransactions((current) => current.map((transaction) => updatedIds.has(transaction.id)
-      ? updated.find((item) => item.id === transaction.id)!
-      : transaction));
+    setTransactions((current) =>
+      current.map((transaction) =>
+        updatedIds.has(transaction.id)
+          ? updated.find((item) => item.id === transaction.id)!
+          : transaction,
+      ),
+    );
     setSelectedTransactionIds((current) => current.filter((id) => !updatedIds.has(id)));
     const failedCount = results.length - updated.length;
-    if (failedCount > 0) setError(`${updated.length} updated; ${failedCount} failed. Refresh and retry the remaining transactions.`);
+    if (failedCount > 0)
+      setError(
+        `${updated.length} updated; ${failedCount} failed. Refresh and retry the remaining transactions.`,
+      );
     setBulkUpdating(false);
   }
 
@@ -191,7 +345,10 @@ function BenefitTracking() {
         body: JSON.stringify({
           benefit_id: selectedBenefitId,
           amount,
-          period_label: new Date(`${releaseDate}T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+          period_label: new Date(`${releaseDate}T00:00:00`).toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+          }),
           release_date: releaseDate,
           status: "scheduled",
           remarks,
@@ -240,12 +397,35 @@ function BenefitTracking() {
           document.addPage();
           y = 18;
         }
-        const seniorName = [transaction.senior.first_name, transaction.senior.middle_name, transaction.senior.last_name].filter(Boolean).join(" ");
+        const seniorName = [
+          transaction.senior.first_name,
+          transaction.senior.middle_name,
+          transaction.senior.last_name,
+        ]
+          .filter(Boolean)
+          .join(" ");
         const source = transaction.senior.encoder?.name ?? "Unknown";
-        const status = transaction.status === "released" ? "Received" : transaction.status === "failed" ? "Not received" : "Pending";
+        const status =
+          transaction.status === "released"
+            ? "Received"
+            : transaction.status === "failed"
+              ? "Not received"
+              : "Pending";
         document.text(document.splitTextToSize(seniorName, 62)[0] ?? seniorName, 14, y);
-        document.text(document.splitTextToSize(transaction.benefit.benefit_name, 58)[0] ?? transaction.benefit.benefit_name, 82, y);
-        document.text(document.splitTextToSize(transaction.senior.barangay?.barangay_name ?? "Unassigned", 54)[0] ?? "Unassigned", 145, y);
+        document.text(
+          document.splitTextToSize(transaction.benefit.benefit_name, 58)[0] ??
+            transaction.benefit.benefit_name,
+          82,
+          y,
+        );
+        document.text(
+          document.splitTextToSize(
+            transaction.senior.barangay?.barangay_name ?? "Unassigned",
+            54,
+          )[0] ?? "Unassigned",
+          145,
+          y,
+        );
         document.text(document.splitTextToSize(source, 48)[0] ?? source, 205, y);
         document.text(status, 260, y);
         y += 7;
@@ -264,127 +444,241 @@ function BenefitTracking() {
       breadcrumb={["Dashboard", "Benefit Tracking"]}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          {!isLeader && (
-            <div className="flex flex-wrap items-center gap-2 rounded-full bg-card p-1 shadow-[var(--shadow-soft)]">
-              <label className="relative">
-                <span className="sr-only">Filter by barangay</span>
-                <select
-                  value={selectedBarangay}
-                  onChange={(event) => setSelectedBarangay(event.target.value)}
-                  className="rounded-full border border-transparent bg-transparent px-4 py-2.5 text-sm font-semibold text-foreground outline-none"
-                >
-                  {barangayOptions.map((barangay) => (
-                    <option key={barangay} value={barangay}>{barangay === "All" ? "All barangay" : barangay}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-          {(!isLeader && selectedBarangay !== "All" || selectedBenefit !== "All") && (
+          {isHead && (
             <button
               type="button"
-              onClick={() => {
-                if (!isLeader) setSelectedBarangay("All");
-                setSelectedBenefit("All");
-              }}
-              className="rounded-full bg-secondary px-4 py-2.5 text-sm font-semibold"
+              onClick={exportBenefits}
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#173A52] shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition hover:bg-[#173A52]/5 dark:bg-card dark:text-foreground"
             >
-              Clear
-            </button>
-          )}
-          {isHead && (
-            <button type="button" onClick={exportBenefits} className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
-              <Download className="mr-2 inline h-4 w-4" /> Export PDF
+              <Download className="h-4 w-4" /> Export PDF
             </button>
           )}
           {canManageReleases && (
-            <button type="button" onClick={openAddRelease} className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground">
-              <Plus className="mr-2 inline h-4 w-4" /> Add Release
+            <button
+              type="button"
+              onClick={openAddRelease}
+              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#173A52] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(23,58,82,0.16)] transition hover:bg-[#112C3E]"
+            >
+              <Plus className="h-4 w-4" /> Add Benefit Record
             </button>
           )}
         </div>
       }
     >
       {error && <p className="mb-4 text-sm font-medium text-destructive">{error}</p>}
-      <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>Expanded Centenarian:</span>
-        <span className="rounded-full bg-secondary px-3 py-1 font-semibold text-foreground">
-              {selectedBenefit === "All" ? "All Expanded Centenarian programs" : selectedBenefit}
-        </span>
-      </div>
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {programs.map((program) => (
-          <article
-            key={program.type}
-            role="button"
-            tabIndex={0}
-            aria-pressed={selectedBenefit === program.name}
-            onClick={() => setSelectedBenefit(selectedBenefit === program.name ? "All" : program.name)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setSelectedBenefit(selectedBenefit === program.name ? "All" : program.name);
-              }
-            }}
-            className={`surface-card cursor-pointer p-6 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] focus:outline-none focus:ring-2 focus:ring-navy/40 ${
-              selectedBenefit === program.name ? "ring-2 ring-navy/40" : ""
-            }`}
+      <div className="mb-5 grid grid-cols-1 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[170px_155px_165px_minmax(185px,1fr)]">
+        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10">
+          <Grid2X2 className="h-4 w-4 shrink-0 text-[#173A52]" />
+          <span className="sr-only">Filter by program</span>
+          <select
+            value={selectedBenefit}
+            onChange={(event) => setSelectedBenefit(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none dark:text-foreground"
           >
-            {(() => {
-              const programTransactions = filteredTransactions.filter((transaction) => transaction.benefit.benefit_name === program.name);
-              const received = programTransactions.filter((transaction) => transaction.status === "released").length;
-              const notReceived = programTransactions.filter((transaction) => transaction.status === "failed").length;
-              const pending = programTransactions.filter((transaction) => transaction.status === "pending").length;
-              const releaseDates = releaseSchedules
-                .filter((release) => release.benefit.benefit_name === program.name && release.status !== "cancelled")
-                .map((release) => release.release_date)
-                .sort()
-                .reverse();
-              return (
-                <>
-            <div className="flex items-start justify-between">
-              <div className="bg-gold grid h-11 w-11 place-items-center rounded-2xl text-gold-foreground">
-                <HandCoins className="h-5 w-5" />
+            {benefitOptions.map((benefit) => (
+              <option key={benefit} value={benefit}>
+                {benefit === "All" ? "All Programs" : benefit}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10">
+          <ListFilter className="h-4 w-4 shrink-0 text-[#173A52]" />
+          <span className="sr-only">Filter by transaction status</span>
+          <select
+            value={selectedStatus}
+            onChange={(event) => setSelectedStatus(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none dark:text-foreground"
+          >
+            <option value="All">All Statuses</option>
+            <option value="released">Released</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Not Released</option>
+          </select>
+        </label>
+        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10">
+          <MapPin className="h-4 w-4 shrink-0 text-[#173A52]" />
+          <span className="sr-only">Filter by barangay</span>
+          <select
+            value={selectedBarangay}
+            onChange={(event) => setSelectedBarangay(event.target.value)}
+            disabled={isLeader}
+            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none disabled:opacity-70 dark:text-foreground"
+          >
+            {barangayOptions.map((barangay) => (
+              <option key={barangay} value={barangay}>
+                {barangay === "All" ? "All Barangays" : barangay}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 xl:ml-auto xl:w-[205px]">
+          <ArrowUpDown className="h-4 w-4 shrink-0 text-[#173A52]" />
+          <span className="shrink-0 text-[10px] text-muted-foreground">Sort by</span>
+          <select
+            value={sortProgramsBy}
+            onChange={(event) => setSortProgramsBy(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none dark:text-foreground"
+          >
+            <option value="name">Program name</option>
+            <option value="amount">Amount</option>
+          </select>
+        </label>
+        {((!isLeader && selectedBarangay !== "All") ||
+          selectedBenefit !== "All" ||
+          selectedStatus !== "All") && (
+          <button
+            type="button"
+            onClick={() => {
+              if (!isLeader) setSelectedBarangay("All");
+              setSelectedBenefit("All");
+              setSelectedStatus("All");
+            }}
+            className="rounded-[10px] px-3 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-secondary"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {visiblePrograms.map((program, index) => {
+          const programTransactions = filteredTransactions.filter(
+            (transaction) => transaction.benefit.benefit_name === program.name,
+          );
+          const received = programTransactions.filter(
+            (transaction) => transaction.status === "released",
+          ).length;
+          const notReceived = programTransactions.filter(
+            (transaction) => transaction.status === "failed",
+          ).length;
+          const pending = programTransactions.filter(
+            (transaction) => transaction.status === "pending",
+          ).length;
+          const scheduledReleases = releaseSchedules
+            .filter(
+              (release) =>
+                release.benefit.benefit_name === program.name && release.status === "scheduled",
+            )
+            .sort((a, b) => a.release_date.localeCompare(b.release_date));
+          const completedReleases = releaseSchedules
+            .filter(
+              (release) =>
+                release.benefit.benefit_name === program.name && release.status === "released",
+            )
+            .sort((a, b) => b.release_date.localeCompare(a.release_date));
+          const nextRelease = scheduledReleases[0];
+          const latestRelease = completedReleases[0];
+          const {
+            icon: ProgramIcon,
+            iconClass,
+            accentClass,
+            hoverClass,
+          } = PROGRAM_STYLES[index % PROGRAM_STYLES.length];
+          const relatedBarangay = selectedBarangay === "All" ? "All barangays" : selectedBarangay;
+
+          return (
+            <article
+              key={program.type}
+              className={`surface-card flex min-h-[270px] flex-col rounded-[10px] border border-border/70 border-b-[3px] ${accentClass} ${hoverClass} cursor-pointer p-4 shadow-[0_8px_24px_rgba(23,58,82,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] sm:p-5`}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-[10px] ${iconClass}`}
+                >
+                  <ProgramIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="font-display text-base font-bold leading-tight">
+                      {program.name}
+                    </h2>
+                    <span
+                      className={`shrink-0 rounded-[10px] px-2.5 py-1 text-[10px] font-bold ${program.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-secondary text-muted-foreground"}`}
+                    >
+                      {program.status === "active" ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {program.schedule} assistance for seniors aged {program.minAge}
+                    {program.maxAge ? `-${program.maxAge}` : "+"}.
+                  </p>
+                </div>
               </div>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">
-                {program.funding}
-              </span>
-            </div>
-            <h2 className="mt-5 font-display text-lg font-bold">{program.name}</h2>
-            <p className="mt-2 text-3xl font-extrabold">{program.amount}</p>
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-              <CalendarDays className="h-4 w-4" /> {program.schedule}
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Eligibility: age {program.minAge}
-              {program.maxAge ? `-${program.maxAge}` : "+"}
-            </p>
-            <div className="mt-5 border-t border-border pt-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Release status</p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-                <span className="rounded-full bg-success/15 px-3 py-1.5 text-success">Received: {received}</span>
-                <span className="rounded-full bg-gold/20 px-3 py-1.5 text-gold-foreground">Not yet: {pending}</span>
-                {notReceived > 0 && <span className="rounded-full bg-destructive/10 px-3 py-1.5 text-destructive">Not received: {notReceived}</span>}
+
+              <p className="mt-3 font-display text-2xl font-extrabold text-[#173A52] dark:text-foreground">
+                {program.amount}
+              </p>
+              <p className="text-xs text-muted-foreground">{program.schedule}</p>
+
+              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
+                <div className="flex min-w-0 gap-2">
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-navy" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground">Release date</p>
+                    <p className="truncate text-xs font-semibold">
+                      {latestRelease ? formatDate(latestRelease.release_date) : "Not yet released"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex min-w-0 gap-2 border-l border-border/70 pl-3">
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-navy" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-muted-foreground">Next release</p>
+                    <p className="truncate text-xs font-semibold">
+                      {nextRelease ? formatDate(nextRelease.release_date) : "Not scheduled"}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="mt-3 rounded-xl bg-secondary px-3 py-2">
-                <p className="text-xs text-muted-foreground">Release date for this Expanded Centenarian program</p>
-                <p className="mt-1 text-sm font-bold">
-                  {releaseDates[0] ? formatDate(releaseDates[0]) : "No release date entered"}
+
+              <div className="mt-3 rounded-[10px] bg-sky-50 px-3 py-2 dark:bg-sky-950/30">
+                <p className="text-[10px] text-muted-foreground">Related to</p>
+                <p className="mt-0.5 truncate text-xs font-semibold text-[#173A52] dark:text-foreground">
+                  {isLeader ? `BSCA - ${relatedBarangay}` : relatedBarangay}
                 </p>
               </div>
-            </div>
-                </>
-              );
-            })()}
-          </article>
-        ))}
+
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+                <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold">
+                  <span className="rounded-[10px] bg-emerald-100 px-2 py-1 text-emerald-700">
+                    Released {received}
+                  </span>
+                  <span className="rounded-[10px] bg-amber-100 px-2 py-1 text-amber-700">
+                    Pending {pending}
+                  </span>
+                  {notReceived > 0 && (
+                    <span className="rounded-[10px] bg-rose-100 px-2 py-1 text-rose-700">
+                      Not released {notReceived}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedBenefit(program.name);
+                    document
+                      .getElementById("release-queue")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="rounded-[10px] border border-blue-300 px-3 py-1.5 text-[10px] font-bold text-blue-700 transition hover:bg-blue-50"
+                >
+                  View Records
+                </button>
+              </div>
+            </article>
+          );
+        })}
         {!error && programs.length === 0 && (
           <p className="text-sm text-muted-foreground">No benefit programs available.</p>
         )}
       </div>
-      <section className="surface-card mt-6 p-7">
+      <section
+        id="release-queue"
+        className="surface-card mt-5 overflow-hidden rounded-[10px] border border-border/70 p-4 sm:p-5"
+      >
         <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
+          <div className="bg-navy grid h-10 w-10 place-items-center rounded-[10px] text-primary-foreground">
             <ShieldCheck className="h-4 w-4" />
           </div>
           <div>
@@ -407,22 +701,43 @@ function BenefitTracking() {
               Select all pending on this page
             </label>
             <span className="text-xs text-muted-foreground">
-              {filteredTransactions.filter((transaction) => selectedTransactionIds.includes(transaction.id) && transaction.status === "pending").length} selected
+              {
+                filteredTransactions.filter(
+                  (transaction) =>
+                    selectedTransactionIds.includes(transaction.id) &&
+                    transaction.status === "pending",
+                ).length
+              }{" "}
+              selected
             </span>
             <div className="ml-auto flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => updateSelectedTransactions("released")}
-                disabled={bulkUpdating || !filteredTransactions.some((transaction) => selectedTransactionIds.includes(transaction.id) && transaction.status === "pending")}
-                className="inline-flex items-center gap-1 rounded-full bg-success/15 px-3 py-2 text-xs font-bold text-success disabled:opacity-40"
+                disabled={
+                  bulkUpdating ||
+                  !filteredTransactions.some(
+                    (transaction) =>
+                      selectedTransactionIds.includes(transaction.id) &&
+                      transaction.status === "pending",
+                  )
+                }
+                className="inline-flex items-center gap-1 rounded-[10px] bg-success/15 px-3 py-2 text-xs font-bold text-success disabled:opacity-40"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> Received
               </button>
               <button
                 type="button"
                 onClick={() => updateSelectedTransactions("failed")}
-                disabled={bulkUpdating || !filteredTransactions.some((transaction) => selectedTransactionIds.includes(transaction.id) && transaction.status === "pending")}
-                className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive disabled:opacity-40"
+                disabled={
+                  bulkUpdating ||
+                  !filteredTransactions.some(
+                    (transaction) =>
+                      selectedTransactionIds.includes(transaction.id) &&
+                      transaction.status === "pending",
+                  )
+                }
+                className="inline-flex items-center gap-1 rounded-[10px] bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive disabled:opacity-40"
               >
                 <XCircle className="h-3.5 w-3.5" /> Not received
               </button>
@@ -434,8 +749,20 @@ function BenefitTracking() {
             <thead>
               <tr className="text-left">
                 {canUpdateTransactions && <th className="px-3 py-3 font-bold">Select</th>}
-                {["Senior", "Program", "Barangay", "Source", "Release date", "Status", "Audit", ...(canUpdateTransactions ? ["Action"] : [])].map((heading) => (
-                  <th key={heading} className={`px-4 py-3 font-bold ${heading === "Action" ? "w-[190px]" : ""}`}>
+                {[
+                  "Senior",
+                  "Program",
+                  "Barangay",
+                  "Source",
+                  "Release date",
+                  "Status",
+                  "Audit",
+                  ...(canUpdateTransactions ? ["Action"] : []),
+                ].map((heading) => (
+                  <th
+                    key={heading}
+                    className={`px-4 py-3 font-bold ${heading === "Action" ? "w-[190px]" : ""}`}
+                  >
                     {heading}
                   </th>
                 ))}
@@ -443,67 +770,125 @@ function BenefitTracking() {
             </thead>
             <tbody>
               {filteredTransactions.map((transaction) => {
-                const seniorName = [transaction.senior.first_name, transaction.senior.middle_name, transaction.senior.last_name].filter(Boolean).join(" ");
-                const statusLabel = transaction.status === "released" ? "Received" : transaction.status === "failed" ? "Not received" : "Pending";
+                const seniorName = [
+                  transaction.senior.first_name,
+                  transaction.senior.middle_name,
+                  transaction.senior.last_name,
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                const statusLabel =
+                  transaction.status === "released"
+                    ? "Received"
+                    : transaction.status === "failed"
+                      ? "Not received"
+                      : "Pending";
                 return (
-                <tr key={transaction.id} className="border-t border-border">
-                  {canUpdateTransactions && <td className="px-3 py-4">
-                    {transaction.status === "pending" && (
-                      <input
-                        type="checkbox"
-                        checked={selectedTransactionIds.includes(transaction.id)}
-                        onChange={() => setSelectedTransactionIds((current) => current.includes(transaction.id)
-                          ? current.filter((id) => id !== transaction.id)
-                          : [...current, transaction.id])}
-                        disabled={bulkUpdating}
-                        aria-label={`Select ${seniorName}`}
-                        className="h-4 w-4 accent-[var(--navy)]"
-                      />
+                  <tr key={transaction.id} className="border-t border-border">
+                    {canUpdateTransactions && (
+                      <td className="px-3 py-4">
+                        {transaction.status === "pending" && (
+                          <input
+                            type="checkbox"
+                            checked={selectedTransactionIds.includes(transaction.id)}
+                            onChange={() =>
+                              setSelectedTransactionIds((current) =>
+                                current.includes(transaction.id)
+                                  ? current.filter((id) => id !== transaction.id)
+                                  : [...current, transaction.id],
+                              )
+                            }
+                            disabled={bulkUpdating}
+                            aria-label={`Select ${seniorName}`}
+                            className="h-4 w-4 accent-[var(--navy)]"
+                          />
+                        )}
+                      </td>
                     )}
-                  </td>}
-                  <td className="px-4 py-4 font-semibold">{seniorName}</td>
-                  <td className="px-4 py-4">{transaction.benefit.benefit_name}</td>
-                  <td className="px-4 py-4 text-muted-foreground">{transaction.senior.barangay?.barangay_name ?? "Unassigned"}</td>
-                  <td className="px-4 py-4 text-muted-foreground">
-                    {transaction.senior.encoder?.role === "leader" ? `BSCA: ${transaction.senior.encoder.name}` : transaction.senior.encoder?.name ?? "Unknown"}
-                  </td>
-                  <td className="px-4 py-4 text-muted-foreground">
-                    {transaction.date_distributed
-                      ? formatDate(transaction.date_distributed)
-                      : "-"}
-                  </td>
-                  <td className={`px-4 py-4 font-bold ${transaction.status === "released" ? "text-success" : transaction.status === "failed" ? "text-destructive" : "text-gold-foreground"}`}>
-                    {statusLabel}
-                  </td>
-                  <td className="px-4 py-4 text-xs text-muted-foreground">
-                    <p>Created by {transaction.creator?.name ?? transaction.distributor?.name ?? "Unknown"}</p>
-                    {transaction.created_at && <p>{new Date(transaction.created_at).toLocaleString()}</p>}
-                    {transaction.updater && <p className="mt-1">Modified by {transaction.updater.name}</p>}
-                    {transaction.attachment_path && <a href={`${API_URL.replace(/\/api$/, "")}/storage/${transaction.attachment_path}`} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-foreground underline">Open proof</a>}
-                  </td>
-                  {canUpdateTransactions && <td className="px-4 py-4">
-                    {transaction.status === "pending" ? (
-                      <div className="flex flex-nowrap gap-2">
-                        <button type="button" onClick={() => updateTransaction(transaction, "released")} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success/15 px-2.5 py-1.5 text-xs font-bold text-success">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Received
-                        </button>
-                        <button type="button" onClick={() => updateTransaction(transaction, "failed")} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-destructive/10 px-2.5 py-1.5 text-xs font-bold text-destructive">
-                          <XCircle className="h-3.5 w-3.5" /> Not received
-                        </button>
-                      </div>
-                    ) : (
-                      <span className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-xs font-bold ${transaction.status === "released" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}>
-                        {transaction.status === "released" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-                        {transaction.status === "released" ? "Received" : "Not received"}
-                      </span>
+                    <td className="px-4 py-4 font-semibold">{seniorName}</td>
+                    <td className="px-4 py-4">{transaction.benefit.benefit_name}</td>
+                    <td className="px-4 py-4 text-muted-foreground">
+                      {transaction.senior.barangay?.barangay_name ?? "Unassigned"}
+                    </td>
+                    <td className="px-4 py-4 text-muted-foreground">
+                      {transaction.senior.encoder?.role === "leader"
+                        ? `BSCA: ${transaction.senior.encoder.name}`
+                        : (transaction.senior.encoder?.name ?? "Unknown")}
+                    </td>
+                    <td className="px-4 py-4 text-muted-foreground">
+                      {transaction.date_distributed
+                        ? formatDate(transaction.date_distributed)
+                        : "-"}
+                    </td>
+                    <td
+                      className={`px-4 py-4 font-bold ${transaction.status === "released" ? "text-success" : transaction.status === "failed" ? "text-destructive" : "text-gold-foreground"}`}
+                    >
+                      {statusLabel}
+                    </td>
+                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                      <p>
+                        Created by{" "}
+                        {transaction.creator?.name ?? transaction.distributor?.name ?? "Unknown"}
+                      </p>
+                      {transaction.created_at && (
+                        <p>{new Date(transaction.created_at).toLocaleString()}</p>
+                      )}
+                      {transaction.updater && (
+                        <p className="mt-1">Modified by {transaction.updater.name}</p>
+                      )}
+                      {transaction.attachment_path && (
+                        <a
+                          href={`${API_URL.replace(/\/api$/, "")}/storage/${transaction.attachment_path}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block font-semibold text-foreground underline"
+                        >
+                          Open proof
+                        </a>
+                      )}
+                    </td>
+                    {canUpdateTransactions && (
+                      <td className="px-4 py-4">
+                        {transaction.status === "pending" ? (
+                          <div className="flex flex-nowrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateTransaction(transaction, "released")}
+                              className="inline-flex items-center gap-1 whitespace-nowrap rounded-[10px] bg-success/15 px-2.5 py-1.5 text-xs font-bold text-success"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Received
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateTransaction(transaction, "failed")}
+                              className="inline-flex items-center gap-1 whitespace-nowrap rounded-[10px] bg-destructive/10 px-2.5 py-1.5 text-xs font-bold text-destructive"
+                            >
+                              <XCircle className="h-3.5 w-3.5" /> Not received
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-[10px] px-3 py-2 text-xs font-bold ${transaction.status === "released" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}
+                          >
+                            {transaction.status === "released" ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5" />
+                            )}
+                            {transaction.status === "released" ? "Received" : "Not received"}
+                          </span>
+                        )}
+                      </td>
                     )}
-                  </td>}
-                </tr>
+                  </tr>
                 );
               })}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={canUpdateTransactions ? 9 : 7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td
+                    colSpan={canUpdateTransactions ? 9 : 7}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
                     No records available for the selected barangay and Expanded Centenarian program.
                   </td>
                 </tr>
@@ -513,15 +898,37 @@ function BenefitTracking() {
         </div>
         {transactionLastPage > 1 && (
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">Page {transactionPage} of {transactionLastPage}</p>
+            <p className="text-xs text-muted-foreground">
+              Page {transactionPage} of {transactionLastPage}
+            </p>
             <div className="flex gap-2">
-              <button type="button" disabled={transactionPage === 1} onClick={() => setTransactionPage((page) => page - 1)} className="rounded-full px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40">Previous</button>
-              <button type="button" disabled={transactionPage === transactionLastPage} onClick={() => setTransactionPage((page) => page + 1)} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next</button>
+              <button
+                type="button"
+                disabled={transactionPage === 1}
+                onClick={() => setTransactionPage((page) => page - 1)}
+                className="rounded-[10px] px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={transactionPage === transactionLastPage}
+                onClick={() => setTransactionPage((page) => page + 1)}
+                className="rounded-[10px] bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}
       </section>
-      <Dialog open={releaseFormOpen} onOpenChange={(open) => { setReleaseFormOpen(open); if (!open) resetReleaseForm(); }}>
+      <Dialog
+        open={releaseFormOpen}
+        onOpenChange={(open) => {
+          setReleaseFormOpen(open);
+          if (!open) resetReleaseForm();
+        }}
+      >
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Add Release</DialogTitle>
@@ -531,27 +938,80 @@ function BenefitTracking() {
           </DialogHeader>
           <form onSubmit={saveRelease} className="grid gap-4 sm:grid-cols-2">
             <label>
-              <span className="text-xs font-semibold text-muted-foreground">Expanded Centenarian</span>
-              <select required value={selectedBenefitId} onChange={(event) => { setSelectedBenefitId(event.target.value); const selected = programs.find((program) => String(program.id) === event.target.value); setAmount(selected?.amount === "Variable" ? "" : selected?.amount.replace(/[^0-9.]/g, "") ?? ""); }} className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm">
+              <span className="text-xs font-semibold text-muted-foreground">
+                Expanded Centenarian
+              </span>
+              <select
+                required
+                value={selectedBenefitId}
+                onChange={(event) => {
+                  setSelectedBenefitId(event.target.value);
+                  const selected = programs.find(
+                    (program) => String(program.id) === event.target.value,
+                  );
+                  setAmount(
+                    selected?.amount === "Variable"
+                      ? ""
+                      : (selected?.amount.replace(/[^0-9.]/g, "") ?? ""),
+                  );
+                }}
+                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+              >
                 <option value="">Select benefit</option>
-                {programs.map((program) => <option key={program.id} value={program.id}>{program.name}</option>)}
+                {programs.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.name}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
               <span className="text-xs font-semibold text-muted-foreground">Amount</span>
-              <input required min="0" step="0.01" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm" />
+              <input
+                required
+                min="0"
+                step="0.01"
+                type="number"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="0.00"
+                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+              />
             </label>
             <label>
               <span className="text-xs font-semibold text-muted-foreground">Release Date</span>
-              <input required type="date" value={releaseDate} onChange={(event) => setReleaseDate(event.target.value)} className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm" />
+              <input
+                required
+                type="date"
+                value={releaseDate}
+                onChange={(event) => setReleaseDate(event.target.value)}
+                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+              />
             </label>
             <label>
               <span className="text-xs font-semibold text-muted-foreground">Remarks</span>
-              <input value={remarks} onChange={(event) => setRemarks(event.target.value)} placeholder="Optional remarks" className="mt-1 w-full rounded-xl border border-border bg-transparent px-4 py-3 text-sm" />
+              <input
+                value={remarks}
+                onChange={(event) => setRemarks(event.target.value)}
+                placeholder="Optional remarks"
+                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+              />
             </label>
             <div className="flex justify-end gap-2 sm:col-span-2">
-              <button type="button" onClick={() => setReleaseFormOpen(false)} className="rounded-full bg-secondary px-5 py-3 text-sm font-semibold">Cancel</button>
-              <button type="submit" disabled={savingRelease} className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">{savingRelease ? "Saving..." : "Save release"}</button>
+              <button
+                type="button"
+                onClick={() => setReleaseFormOpen(false)}
+                className="rounded-[10px] bg-secondary px-5 py-3 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingRelease}
+                className="bg-navy rounded-[10px] px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+              >
+                {savingRelease ? "Saving..." : "Save release"}
+              </button>
             </div>
           </form>
         </DialogContent>

@@ -36,6 +36,7 @@ class User extends Authenticatable
         'role',
         'barangay_id',
         'contact_number',
+        'address',
         'birthdate',
         'profile_photo_path',
         'status',

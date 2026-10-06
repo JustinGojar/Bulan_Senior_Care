@@ -289,3 +289,22 @@
 @utility bg-navy {
   background-image: var(--gradient-navy);
 }
+
+@media (hover: hover) {
+  :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+          [type="file"]
+        ):not([type="button"]):not([type="submit"]):not([type="reset"]):not(
+          [type="color"]
+        ):not(:disabled):not([readonly]),
+      textarea:not(:disabled):not([readonly]),
+      select:not(:disabled),
+      [role="combobox"]:not([aria-disabled="true"])
+    ):hover {
+    background-color: var(--accent);
+    border-color: #173a52;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+}

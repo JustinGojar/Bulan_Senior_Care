@@ -1,5 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, Clock, CornerUpLeft, ImagePlus, Megaphone, ShieldCheck, UserCheck, Users, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Clock,
+  CornerUpLeft,
+  ImagePlus,
+  Megaphone,
+  ShieldCheck,
+  UserCheck,
+  Users,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -42,6 +54,24 @@ const TONES: Record<string, string> = {
   coral: "bg-coral",
 };
 
+function MonthlyChange({ value }: { value: number | null | undefined }) {
+  if (value == null) {
+    return <span className="text-[10px] text-muted-foreground">— vs. last month</span>;
+  }
+
+  const isIncrease = value >= 0;
+  const TrendIcon = isIncrease ? ArrowUpRight : ArrowDownRight;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${isIncrease ? "text-emerald-600" : "text-rose-600"}`}
+    >
+      <TrendIcon className="h-3.5 w-3.5" />
+      {Math.abs(value)}% vs. last month
+    </span>
+  );
+}
+
 function Dashboard() {
   const { seniors, totalCount, activeCount, pendingCount, loading } = useSeniors();
   const currentUser = getStoredUser();
@@ -63,14 +93,16 @@ function Dashboard() {
     seniors.filter((senior) => senior.status === "Active"),
   );
   useEffect(() => {
-    getAnnouncements().then((loadedAnnouncements) => {
-      setAnnouncements(loadedAnnouncements);
-      const match = window.location.hash.match(/^#announcement-(\d+)$/);
-      const announcement = match
-        ? loadedAnnouncements.find((item) => item.id === Number(match[1]))
-        : undefined;
-      if (announcement) setSelectedAnnouncement(announcement);
-    }).catch(() => setAnnouncements([]));
+    getAnnouncements()
+      .then((loadedAnnouncements) => {
+        setAnnouncements(loadedAnnouncements);
+        const match = window.location.hash.match(/^#announcement-(\d+)$/);
+        const announcement = match
+          ? loadedAnnouncements.find((item) => item.id === Number(match[1]))
+          : undefined;
+        if (announcement) setSelectedAnnouncement(announcement);
+      })
+      .catch(() => setAnnouncements([]));
   }, []);
 
   useEffect(() => {
@@ -88,7 +120,9 @@ function Dashboard() {
   }, [announcements]);
 
   useEffect(() => {
-    apiFetch<Overview>("/overview").then(setOverview).catch(() => setOverview(null));
+    apiFetch<Overview>("/overview")
+      .then(setOverview)
+      .catch(() => setOverview(null));
   }, []);
 
   useEffect(() => {
@@ -106,34 +140,55 @@ function Dashboard() {
     setAnnouncementSaving(true);
     setAnnouncementError(null);
     try {
-      const announcement = await createAnnouncement(announcementTitle, announcementMessage, announcementImage);
+      const announcement = await createAnnouncement(
+        announcementTitle,
+        announcementMessage,
+        announcementImage,
+      );
       setAnnouncements((current) => [announcement, ...current]);
       setAnnouncementTitle("");
       setAnnouncementMessage("");
       setAnnouncementImage(null);
       setShowAnnouncementForm(false);
     } catch (error) {
-      setAnnouncementError(error instanceof Error ? error.message : "Unable to create announcement.");
+      setAnnouncementError(
+        error instanceof Error ? error.message : "Unable to create announcement.",
+      );
     } finally {
       setAnnouncementSaving(false);
     }
   }
 
-  async function handleCreateComment(event: React.FormEvent<HTMLFormElement>, parentCommentId?: number) {
+  async function handleCreateComment(
+    event: React.FormEvent<HTMLFormElement>,
+    parentCommentId?: number,
+  ) {
     event.preventDefault();
     if (!selectedAnnouncement) return;
     const message = parentCommentId ? replyMessage : commentMessage;
     if (!message.trim()) return;
     setCommentSaving(true);
     try {
-      const comment = await createAnnouncementComment(selectedAnnouncement.id, message.trim(), parentCommentId);
+      const comment = await createAnnouncementComment(
+        selectedAnnouncement.id,
+        message.trim(),
+        parentCommentId,
+      );
       const comments = parentCommentId
-        ? (selectedAnnouncement.comments ?? []).map((item) => item.id === parentCommentId ? { ...item, replies: [...(item.replies ?? []), comment] } : item)
+        ? (selectedAnnouncement.comments ?? []).map((item) =>
+            item.id === parentCommentId
+              ? { ...item, replies: [...(item.replies ?? []), comment] }
+              : item,
+          )
         : [...(selectedAnnouncement.comments ?? []), comment];
       setSelectedAnnouncement({ ...selectedAnnouncement, comments });
-      setAnnouncements((current) => current.map((announcement) =>
-        announcement.id === selectedAnnouncement.id ? { ...announcement, comments } : announcement,
-      ));
+      setAnnouncements((current) =>
+        current.map((announcement) =>
+          announcement.id === selectedAnnouncement.id
+            ? { ...announcement, comments }
+            : announcement,
+        ),
+      );
       if (parentCommentId) {
         setReplyMessage("");
         setReplyTo(null);
@@ -151,11 +206,115 @@ function Dashboard() {
       subtitle="Overview of OSCA Bulan operations and analytics"
       breadcrumb={["Dashboard"]}
     >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Link
+          to="/seniors"
+          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#173A52]/35 bg-white p-4 shadow-[0_8px_24px_rgba(23,58,82,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#173A52]/[0.04] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#173A52] dark:hover:bg-[#173A52]/80 sm:p-5"
+        >
+          <Users className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#173A52]/15 sm:h-16 sm:w-16" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#173A52] text-white shadow-[0_6px_14px_rgba(23,58,82,0.32)]">
+                <Users className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-bold leading-tight text-foreground">Total Registered</p>
+            </div>
+            <p className="mt-2 ml-[52px] font-display text-3xl font-extrabold leading-none text-foreground">
+              {loading ? "..." : totalCount.toLocaleString()}
+            </p>
+            <p className="mt-2 ml-1">
+              <MonthlyChange value={overview?.monthly_change.total_registered} />
+            </p>
+            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+              Total number of senior citizens in the system.
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          to="/benefits"
+          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#DCAC4D]/45 bg-white p-4 shadow-[0_8px_24px_rgba(220,172,77,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#DCAC4D]/[0.08] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#594B2D] dark:hover:bg-[#594B2D]/80 sm:p-5"
+        >
+          <ShieldCheck className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#DCAC4D]/25 sm:h-16 sm:w-16" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#DCAC4D] text-white shadow-[0_6px_14px_rgba(220,172,77,0.36)]">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-bold leading-tight text-foreground">
+                Total Benefits Distributed
+              </p>
+            </div>
+            <p className="mt-2 ml-[52px] font-display text-2xl font-extrabold leading-none text-foreground sm:text-3xl">
+              {overview ? `₱${overview.benefits_distributed_amount.toLocaleString()}` : "..."}
+            </p>
+            <p className="mt-2 ml-1">
+              <MonthlyChange value={overview?.monthly_change.benefits_distributed_amount} />
+            </p>
+            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+              Total amount of benefits released to senior citizens.
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          to="/seniors"
+          search={{ status: "active" }}
+          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#1B9E70]/40 bg-white p-4 shadow-[0_8px_24px_rgba(27,158,112,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B9E70]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#164B3A] dark:hover:bg-[#164B3A]/80 sm:p-5"
+        >
+          <UserCheck className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#1B9E70]/25 sm:h-16 sm:w-16" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#1B9E70] text-white shadow-[0_6px_14px_rgba(27,158,112,0.36)]">
+                <UserCheck className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-bold leading-tight text-foreground">Active Seniors</p>
+            </div>
+            <p className="mt-2 ml-[52px] font-display text-3xl font-extrabold leading-none text-foreground">
+              {loading ? "..." : activeCount.toLocaleString()}
+            </p>
+            <p className="mt-2 ml-1">
+              <MonthlyChange value={overview?.monthly_change.active_seniors} />
+            </p>
+            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+              Seniors with active records and benefits.
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          to="/seniors"
+          search={{ status: "pending" }}
+          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#EB625D]/40 bg-white p-4 shadow-[0_8px_24px_rgba(235,98,93,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#EB625D]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#5C2E2C] dark:hover:bg-[#5C2E2C]/80 sm:p-5"
+        >
+          <Clock className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#EB625D]/25 sm:h-16 sm:w-16" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EB625D] text-white shadow-[0_6px_14px_rgba(235,98,93,0.36)]">
+                <Clock className="h-5 w-5" />
+              </span>
+              <p className="text-sm font-bold leading-tight text-foreground">
+                Pending Applications
+              </p>
+            </div>
+            <p className="mt-2 ml-[52px] font-display text-3xl font-extrabold leading-none text-foreground">
+              {loading ? "..." : pendingCount.toLocaleString()}
+            </p>
+            <p className="mt-2 ml-1">
+              <MonthlyChange value={overview?.monthly_change.pending_applications} />
+            </p>
+            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+              Applications awaiting verification or approval.
+            </p>
+          </div>
+        </Link>
+      </div>
+
       {currentUser?.role === "head" && (
         <button
           type="button"
           onClick={() => setShowAnnouncementForm(true)}
-          className="surface-card mb-4 flex w-full items-center gap-3 p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] sm:mb-6 sm:gap-4 sm:p-4"
+          className="surface-card mt-4 flex w-full items-center gap-3 p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] sm:mt-5 sm:gap-4 sm:p-4"
         >
           <div className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground sm:h-11 sm:w-11">
             <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -164,59 +323,11 @@ function Dashboard() {
         </button>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-        <Link to="/seniors" className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
-          <div className="bg-navy grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-primary-foreground sm:h-16 sm:w-16">
-            <Users className="h-7 w-7 sm:h-8 sm:w-8" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-muted-foreground">Total Registered</p>
-            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">
-              {loading ? "..." : totalCount.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Current senior records</p>
-          </div>
-        </Link>
-
-        <Link to="/benefits" className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gold text-gold-foreground sm:h-16 sm:w-16">
-            <ShieldCheck className="h-7 w-7 sm:h-8 sm:w-8" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-muted-foreground">Total Benefits Distributed</p>
-            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">{overview ? overview.benefits_distributed_count.toLocaleString() : "..."}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Released benefit transactions</p>
-          </div>
-        </Link>
-
-        <Link to="/seniors" search={{ status: "active" }} className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-success text-success-foreground sm:h-16 sm:w-16">
-            <UserCheck className="h-7 w-7 sm:h-8 sm:w-8" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-muted-foreground">Active Seniors</p>
-            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">
-              {loading ? "..." : activeCount.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Verified and receiving benefits</p>
-          </div>
-        </Link>
-
-        <Link to="/seniors" search={{ status: "pending" }} className="surface-card flex items-center gap-4 p-4 transition-shadow hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:gap-5 sm:p-6">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-coral text-coral-foreground sm:h-16 sm:w-16">
-            <Clock className="h-7 w-7 sm:h-8 sm:w-8" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-muted-foreground">Pending Applications</p>
-            <p className="mt-1 font-display text-4xl font-extrabold sm:text-5xl">
-              {loading ? "..." : pendingCount.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">Awaiting eligibility verification</p>
-          </div>
-        </Link>
-      </div>
-
-      <div className={currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"}>
+      <div
+        className={
+          currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"
+        }
+      >
         <section className="surface-card flex h-[430px] flex-col overflow-hidden p-7">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -249,9 +360,11 @@ function Dashboard() {
               >
                 {(announcement.image_path || announcement.source_image_url) && (
                   <img
-                    src={announcement.image_path
-                      ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`
-                      : announcement.source_image_url!}
+                    src={
+                      announcement.image_path
+                        ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`
+                        : announcement.source_image_url!
+                    }
                     alt=""
                     className="mb-3 h-auto w-full rounded-xl bg-card object-cover"
                   />
@@ -273,7 +386,9 @@ function Dashboard() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold">Benefits received by age</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Live count of seniors who received each age-based benefit.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Live count of seniors who received each age-based benefit.
+                </p>
               </div>
               <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-bold text-success">
                 {overview?.distribution_percentage ?? 0}% released
@@ -309,11 +424,29 @@ function Dashboard() {
           </div>
           <div className="mt-7 space-y-5">
             {[
-              { label: "Received", value: overview?.benefits_distributed_count ?? 0, color: "bg-success", text: "text-success" },
-              { label: "Pending", value: overview?.benefits_pending_count ?? 0, color: "bg-gold", text: "text-gold-foreground" },
-              { label: "Not received", value: overview?.benefits_failed_count ?? 0, color: "bg-coral", text: "text-coral" },
+              {
+                label: "Received",
+                value: overview?.benefits_distributed_count ?? 0,
+                color: "bg-success",
+                text: "text-success",
+              },
+              {
+                label: "Pending",
+                value: overview?.benefits_pending_count ?? 0,
+                color: "bg-gold",
+                text: "text-gold-foreground",
+              },
+              {
+                label: "Not received",
+                value: overview?.benefits_failed_count ?? 0,
+                color: "bg-coral",
+                text: "text-coral",
+              },
             ].map((item) => {
-              const total = (overview?.benefits_distributed_count ?? 0) + (overview?.benefits_pending_count ?? 0) + (overview?.benefits_failed_count ?? 0);
+              const total =
+                (overview?.benefits_distributed_count ?? 0) +
+                (overview?.benefits_pending_count ?? 0) +
+                (overview?.benefits_failed_count ?? 0);
               const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
               return (
                 <div key={item.label}>
@@ -322,54 +455,65 @@ function Dashboard() {
                     <span className={`font-bold ${item.text}`}>{item.value}</span>
                   </div>
                   <div className="mt-2 h-2 rounded-full bg-secondary">
-                    <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${percentage}%` }} />
+                    <div
+                      className={`h-2 rounded-full ${item.color}`}
+                      style={{ width: `${percentage}%` }}
+                    />
                   </div>
                 </div>
               );
             })}
-            {!overview && <p className="text-sm text-muted-foreground">Loading distribution data...</p>}
-            {overview && (overview.benefits_distributed_count + overview.benefits_pending_count + overview.benefits_failed_count === 0) && (
-              <p className="text-sm text-muted-foreground">No benefit transactions recorded yet.</p>
+            {!overview && (
+              <p className="text-sm text-muted-foreground">Loading distribution data...</p>
             )}
+            {overview &&
+              overview.benefits_distributed_count +
+                overview.benefits_pending_count +
+                overview.benefits_failed_count ===
+                0 && (
+                <p className="text-sm text-muted-foreground">
+                  No benefit transactions recorded yet.
+                </p>
+              )}
           </div>
         </section>
       </div>
 
       <section className="surface-card mt-6 p-7">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
-                <AlertTriangle className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold">Age Threshold Detection</h2>
-                <p className="text-sm text-muted-foreground">
-                  Derived eligibility surfaced from current senior ages.
-                </p>
-              </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
+              <AlertTriangle className="h-4 w-4" />
             </div>
-            <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
-              {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
-            </span>
+            <div>
+              <h2 className="text-lg font-bold">Age Threshold Detection</h2>
+              <p className="text-sm text-muted-foreground">
+                Derived eligibility surfaced from current senior ages.
+              </p>
+            </div>
           </div>
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
-              <div key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-bold">{senior.name}</p>
-                  <span className="shrink-0 text-xs font-bold text-gold-foreground">
-                    Age {senior.age}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+          <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
+            {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
+          </span>
+        </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
+            <div key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-bold">{senior.name}</p>
+                <span className="shrink-0 text-xs font-bold text-gold-foreground">
+                  Age {senior.age}
+                </span>
               </div>
-            ))}
-            {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
-            {!loading && eligibilityFlags.length === 0 && (
-              <p className="text-sm text-muted-foreground">No age threshold flags.</p>
-            )}
-          </div>
+              <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+            </div>
+          ))}
+          {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
+          {!loading && eligibilityFlags.length === 0 && (
+            <p className="text-sm text-muted-foreground">No age threshold flags.</p>
+          )}
+        </div>
       </section>
 
       {showAnnouncementForm && currentUser?.role === "head" && (
@@ -479,9 +623,11 @@ function Dashboard() {
             </div>
             {(selectedAnnouncement.image_path || selectedAnnouncement.source_image_url) && (
               <img
-                src={selectedAnnouncement.image_path
-                  ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`
-                  : selectedAnnouncement.source_image_url!}
+                src={
+                  selectedAnnouncement.image_path
+                    ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`
+                    : selectedAnnouncement.source_image_url!
+                }
                 alt=""
                 className="max-h-[65vh] w-full object-contain"
               />
@@ -518,13 +664,18 @@ function Dashboard() {
                       <p className="mt-1 text-sm text-muted-foreground">{comment.message}</p>
                       <button
                         type="button"
-                        onClick={() => setReplyTo((current) => current === comment.id ? null : comment.id)}
+                        onClick={() =>
+                          setReplyTo((current) => (current === comment.id ? null : comment.id))
+                        }
                         className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-foreground"
                       >
                         <CornerUpLeft className="h-3.5 w-3.5" /> Reply
                       </button>
                       {comment.replies?.map((reply) => (
-                        <div key={reply.id} className="mt-3 ml-5 rounded-xl border-l-2 border-border bg-card p-3">
+                        <div
+                          key={reply.id}
+                          className="mt-3 ml-5 rounded-xl border-l-2 border-border bg-card p-3"
+                        >
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-xs font-bold">{reply.user.name}</p>
                             <p className="text-[11px] text-muted-foreground">{reply.user.role}</p>
@@ -533,7 +684,10 @@ function Dashboard() {
                         </div>
                       ))}
                       {replyTo === comment.id && (
-                        <form onSubmit={(event) => handleCreateComment(event, comment.id)} className="mt-3 ml-5 flex gap-2">
+                        <form
+                          onSubmit={(event) => handleCreateComment(event, comment.id)}
+                          className="mt-3 ml-5 flex gap-2"
+                        >
                           <input
                             required
                             maxLength={2000}
@@ -543,7 +697,11 @@ function Dashboard() {
                             placeholder={`Reply to ${comment.user.name}`}
                             className="min-w-0 flex-1 rounded-xl bg-card px-3 py-2 text-sm outline-none"
                           />
-                          <button type="submit" disabled={commentSaving} className="bg-navy rounded-xl px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60">
+                          <button
+                            type="submit"
+                            disabled={commentSaving}
+                            className="bg-navy rounded-xl px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                          >
                             {commentSaving ? "Sending..." : "Reply"}
                           </button>
                         </form>
@@ -576,7 +734,6 @@ function Dashboard() {
           </article>
         </div>
       )}
-
     </AppShell>
   );
 }

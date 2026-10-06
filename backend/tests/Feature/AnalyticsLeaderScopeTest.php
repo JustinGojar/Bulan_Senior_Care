@@ -42,6 +42,20 @@ class AnalyticsLeaderScopeTest extends TestCase
             'amount' => 3000,
             'status' => 'released',
         ]);
+        BenefitTransaction::create([
+            'senior_citizen_id' => $localSenior->id,
+            'benefit_id' => $benefit->id,
+            'distributed_by' => $leader->id,
+            'amount' => 3000,
+            'status' => 'released',
+        ]);
+        BenefitTransaction::create([
+            'senior_citizen_id' => $localSenior->id,
+            'benefit_id' => $benefit->id,
+            'distributed_by' => $leader->id,
+            'amount' => 3000,
+            'status' => 'pending',
+        ]);
 
         $this->actingAs($leader, 'sanctum')
             ->getJson('/api/analytics?barangay_id='.$otherBarangay->id)
@@ -49,10 +63,12 @@ class AnalyticsLeaderScopeTest extends TestCase
             ->assertJsonPath('municipal.total_registered', 1)
             ->assertJsonPath('barangay_summary.0.barangay', 'Zone 1')
             ->assertJsonPath('barangay_summary.0.registered', 1)
-            ->assertJsonPath('barangay_summary.0.released', 1)
+            ->assertJsonPath('barangay_summary.0.released', 2)
             ->assertJsonPath('age_distribution.1.count', 1)
             ->assertJsonPath('age_distribution.4.count', 0)
-            ->assertJsonPath('benefit_records.0.value', 1);
+            ->assertJsonPath('benefit_records.0.value', 3)
+            ->assertJsonPath('released_benefit_records.0.name', 'Social Pension')
+            ->assertJsonPath('released_benefit_records.0.senior_count', 1);
     }
 
     private function createSenior(User $encoder, Barangay $barangay, string $oscaId, int $age): SeniorCitizen

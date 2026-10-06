@@ -13,6 +13,7 @@ export type ApiUser = {
   birthdate?: string | null;
   barangay_id?: number | null;
   contact_number?: string | null;
+  address?: string | null;
   profile_photo_path?: string | null;
   roles?: Array<{ name: string }>;
 };
@@ -25,7 +26,6 @@ export type ManagedUser = ApiUser & {
   barangay_id?: number | null;
   status: "active" | "inactive";
 };
-
 
 export type ApiSenior = {
   id: number;
@@ -52,7 +52,10 @@ export type ApiSenior = {
   birth_certificate_path?: string | null;
   status: "active" | "pending" | "inactive";
   barangay?: { barangay_name: string } | null;
-  benefits?: Array<{ benefit_name: string; pivot?: { status: string; amount: string; date_distributed?: string | null } }>;
+  benefits?: Array<{
+    benefit_name: string;
+    pivot?: { status: string; amount: string; date_distributed?: string | null };
+  }>;
   encoder?: { id: number; name: string; role: string } | null;
 };
 
@@ -65,6 +68,12 @@ export type Overview = {
   benefits_pending_count: number;
   benefits_failed_count: number;
   distribution_percentage: number;
+  monthly_change: {
+    total_registered: number | null;
+    active_seniors: number | null;
+    pending_applications: number | null;
+    benefits_distributed_amount: number | null;
+  };
   received_by_benefit: Array<{ benefit: string; age_range: string; received_count: number }>;
 };
 
@@ -271,7 +280,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve" in the backend folder.`,
     );
   }
-  const body = (await response.json().catch(() => null)) as { message?: string; errors?: Record<string, string[]> } | T | null;
+  const body = (await response.json().catch(() => null)) as
+    { message?: string; errors?: Record<string, string[]> } | T | null;
   if (!response.ok) {
     if (response.status === 401 && path !== "/login" && token) {
       clearToken();
@@ -306,7 +316,12 @@ export function requestPasswordReset(email: string) {
   });
 }
 
-export function resetPassword(token: string, email: string, password: string, passwordConfirmation: string) {
+export function resetPassword(
+  token: string,
+  email: string,
+  password: string,
+  passwordConfirmation: string,
+) {
   return apiFetch<{ message: string }>("/reset-password", {
     method: "POST",
     body: JSON.stringify({
@@ -323,27 +338,25 @@ export function bulkCreateSeniors(records: Array<Record<string, string>>) {
     created: Array<{ row: number; osca_id_number: string }>;
     failed: Array<{ row: number; message: string }>;
     message: string;
-  }>('/seniors/bulk', {
-    method: 'POST',
+  }>("/seniors/bulk", {
+    method: "POST",
     body: JSON.stringify({ records }),
   });
 }
 
-export async function createBarangayLeader(
-  data: {
-    firstName: string;
-    middleName: string;
-    lastName: string;
-    email: string;
-    contactNumber: string;
-    birthdate: string;
-    barangayId: number;
-    password: string;
-    passwordConfirmation: string;
-  },
-) {
-  const result = await apiFetch<{ user: ApiUser }>('/admin/barangay-leaders', {
-    method: 'POST',
+export async function createBarangayLeader(data: {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  email: string;
+  contactNumber: string;
+  birthdate: string;
+  barangayId: number;
+  password: string;
+  passwordConfirmation: string;
+}) {
+  const result = await apiFetch<{ user: ApiUser }>("/admin/barangay-leaders", {
+    method: "POST",
     body: JSON.stringify({
       first_name: data.firstName,
       middle_name: data.middleName || undefined,
@@ -396,7 +409,11 @@ export function createAnnouncement(title: string, message: string, image?: File 
   });
 }
 
-export function createAnnouncementComment(announcementId: number, message: string, parentCommentId?: number) {
+export function createAnnouncementComment(
+  announcementId: number,
+  message: string,
+  parentCommentId?: number,
+) {
   return apiFetch<AnnouncementComment>(`/announcements/${announcementId}/comments`, {
     method: "POST",
     body: JSON.stringify({ message, parent_comment_id: parentCommentId }),
@@ -462,6 +479,29 @@ export function deleteServerNotification(id: number) {
 
 export function clearServerNotifications() {
   return apiFetch<void>("/notifications", { method: "DELETE" });
+}
+
+export type NotificationChannelSettings = {
+  email_advisories: boolean;
+  sms_advisories: boolean;
+};
+
+export type NotificationChannelReadiness = NotificationChannelSettings;
+
+export async function getNotificationChannelSettings() {
+  return apiFetch<{
+    settings: NotificationChannelSettings;
+    configured: NotificationChannelReadiness;
+  }>("/admin/notification-settings");
+}
+
+export async function updateNotificationChannelSettings(
+  settings: Partial<NotificationChannelSettings>,
+) {
+  return apiFetch<{ settings: NotificationChannelSettings }>("/admin/notification-settings", {
+    method: "PATCH",
+    body: JSON.stringify(settings),
+  });
 }
 
 export { API_URL };

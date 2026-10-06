@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BenefitRelease;
 use App\Models\AuditLog;
+use App\Models\BenefitRelease;
 use App\Models\Notification;
 use App\Models\User;
+use App\Support\AdvisoryDispatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -65,6 +66,13 @@ class BenefitReleaseController extends Controller
                 'status' => 'unread',
             ]);
         });
+        if ($release->status !== 'cancelled') {
+            AdvisoryDispatcher::forBenefitRelease(
+                $benefitName,
+                $release->period_label,
+                $release->release_date->format('F j, Y'),
+            );
+        }
 
         return response()->json($release->load(['benefit:id,benefit_name', 'creator:id,name,role', 'updater:id,name,role']), 201);
     }

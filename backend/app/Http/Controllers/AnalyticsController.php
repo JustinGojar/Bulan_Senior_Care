@@ -56,6 +56,12 @@ class AnalyticsController extends Controller
 
         $benefitRecords = $transactions->groupBy(fn (BenefitTransaction $transaction) => $transaction->benefit?->benefit_name ?? 'Unknown')
             ->map(fn ($group, $name) => ['name' => $name, 'value' => $group->count()])->values();
+        $releasedBenefitRecords = $transactions->where('status', 'released')
+            ->groupBy(fn (BenefitTransaction $transaction) => $transaction->benefit?->benefit_name ?? 'Unknown')
+            ->map(fn ($group, $name) => [
+                'name' => $name,
+                'senior_count' => $group->pluck('senior_citizen_id')->unique()->count(),
+            ])->values();
         $runningTotal = 0;
         $trend = $barangaySummary->map(function (array $row) use (&$runningTotal) {
             $runningTotal += $row['registered'];
@@ -72,6 +78,7 @@ class AnalyticsController extends Controller
             'barangay_summary' => $barangaySummary,
             'age_distribution' => $ageDistribution,
             'benefit_records' => $benefitRecords,
+            'released_benefit_records' => $releasedBenefitRecords,
             'trend' => $trend,
         ]);
     }

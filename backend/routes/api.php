@@ -1,19 +1,20 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BenefitController;
+use App\Http\Controllers\BenefitReleaseController;
 use App\Http\Controllers\BenefitTransactionController;
-use App\Http\Controllers\SeniorCitizenController;
-use App\Http\Controllers\SeniorEditRequestController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\OverviewController;
-use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\BenefitReleaseController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\NotificationSettingsController;
+use App\Http\Controllers\OverviewController;
+use App\Http\Controllers\SeniorCitizenController;
+use App\Http\Controllers\SeniorEditRequestController;
 use App\Http\Controllers\SystemDataController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
@@ -56,6 +57,8 @@ Route::middleware(['token.idle', 'auth:sanctum'])->group(function () {
     Route::delete('/messages/conversations/{user}', [MessageController::class, 'destroyConversation']);
     Route::post('/messages/{message}/read', [MessageController::class, 'read']);
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/admin/notification-settings', [NotificationSettingsController::class, 'show']);
+    Route::patch('/admin/notification-settings', [NotificationSettingsController::class, 'update']);
     Route::delete('/notifications', [NotificationController::class, 'clear']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
