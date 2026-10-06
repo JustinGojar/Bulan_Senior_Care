@@ -276,7 +276,7 @@ export function AppShell({
   function openSenior(senior: ApiSenior) {
     const query = senior.osca_id_number;
     clearGlobalSearch();
-    navigate({ to: "/seniors", search: { q: query } });
+    navigate({ to: "/seniors", search: { q: query, status: undefined } });
   }
 
   async function signOut() {

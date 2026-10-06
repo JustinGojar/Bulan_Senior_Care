@@ -569,7 +569,7 @@ function BenefitTracking() {
             iconClass,
             accentClass,
             hoverClass,
-          } = PROGRAM_STYLES[index % PROGRAM_STYLES.length];
+          } = PROGRAM_STYLES[index % PROGRAM_STYLES.length]!;
           const relatedBarangay = selectedBarangay === "All" ? "All barangays" : selectedBarangay;
 
           return (

@@ -128,7 +128,7 @@ function normalizeBulkDate(value: unknown) {
   if (!text) return "";
   const monthFirst = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (monthFirst)
-    return `${monthFirst[3]}-${monthFirst[1].padStart(2, "0")}-${monthFirst[2].padStart(2, "0")}`;
+    return `${monthFirst[3]}-${monthFirst[1]!.padStart(2, "0")}-${monthFirst[2]!.padStart(2, "0")}`;
   const parsed = new Date(text);
   return Number.isNaN(parsed.getTime())
     ? text
@@ -171,7 +171,7 @@ async function readBulkRecords(file: File) {
 async function imageDataUrl(source: File | string) {
   const response = typeof source === "string" ? await fetch(source) : null;
   if (response && !response.ok) throw new Error("Profile photo could not be loaded.");
-  const blob = response ? await response.blob() : source;
+  const blob = response ? await response.blob() : (source as File);
   const objectUrl = URL.createObjectURL(blob);
   return new Promise<string>((resolve, reject) => {
     const image = new Image();
@@ -237,7 +237,7 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.setFontSize(16);
   document.setTextColor(33, 91, 125);
   document.text("REGISTRATION FORM", 112, 39, { align: "center" });
-  const oscaId = draft.id ?? draft.oscaIdNumber;
+  const oscaId = draft.id;
   if (oscaId) {
     document.setFontSize(9);
     document.setTextColor(0, 0, 0);
@@ -411,7 +411,7 @@ function changedFields(request: SeniorEditRequest) {
   if (senior && senior.barangay?.barangay_name !== changes.barangay)
     fields.push(["Barangay", senior.barangay?.barangay_name || "None", changes.barangay]);
   if (senior && senior.benefits?.[0]?.benefit_name !== changes.benefit)
-    fields.push(["Benefit", senior.benefits[0]?.benefit_name || "None", changes.benefit]);
+    fields.push(["Benefit", senior.benefits?.[0]?.benefit_name || "None", changes.benefit]);
   if (senior && (senior.address ?? "") !== (changes.address ?? ""))
     fields.push(["Address", senior.address || "None", changes.address || "None"]);
   return fields;
@@ -1064,15 +1064,15 @@ function SeniorRecords() {
               <tbody>
                 {(bulkPreview ?? []).slice(0, 50).map((record, index) => (
                   <tr
-                    key={`${record.first_name}-${record.last_name}-${index}`}
+                    key={`${record["first_name"]}-${record["last_name"]}-${index}`}
                     className="border-t border-border"
                   >
                     <td className="px-3 py-2">
-                      {record.first_name} {record.last_name}
+                      {record["first_name"]} {record["last_name"]}
                     </td>
-                    <td className="px-3 py-2">{record.birthdate}</td>
-                    <td className="px-3 py-2">{record.sex || "Missing"}</td>
-                    <td className="px-3 py-2">{record.barangay || "Missing"}</td>
+                    <td className="px-3 py-2">{record["birthdate"]}</td>
+                    <td className="px-3 py-2">{record["sex"] || "Missing"}</td>
+                    <td className="px-3 py-2">{record["barangay"] || "Missing"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1117,8 +1117,8 @@ function SeniorRecords() {
                   <div>
                     <p className="font-semibold">{record.osca_id_number}</p>
                     <p className="text-sm text-muted-foreground">
-                      {[record.first_name, record.last_name].filter(Boolean).join(" ")} · Deleted{" "}
-                      {new Date(record.deleted_at).toLocaleDateString()}
+                      {[record["first_name"], record["last_name"]].filter(Boolean).join(" ")} ·
+                      Deleted {new Date(record.deleted_at).toLocaleDateString()}
                     </p>
                   </div>
                   <button
@@ -1264,8 +1264,8 @@ function SeniorRecords() {
             const history = benefitTransactions
               .filter((transaction) => transaction.senior.osca_id_number === viewing?.id)
               .sort((first, second) => {
-                const firstDate = first.date_distributed ?? first.created_at;
-                const secondDate = second.date_distributed ?? second.created_at;
+                const firstDate = first.date_distributed ?? first.created_at ?? "";
+                const secondDate = second.date_distributed ?? second.created_at ?? "";
                 return new Date(firstDate).getTime() - new Date(secondDate).getTime();
               });
             const latest = history.at(-1);
