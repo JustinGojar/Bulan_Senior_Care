@@ -1,6 +1,11 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api").replace(/\/$/, "");
+const API_URL = (
+  import.meta.env.PROD
+    ? "/api"
+    : (import.meta.env["VITE_API_URL"] ?? "http://127.0.0.1:8000/api")
+).replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
+let announcementsRequest: { token: string | null; promise: Promise<Announcement[]> } | null = null;
 
 export type ApiUser = {
   id: number;
@@ -275,9 +280,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
     throw new Error(
-      `Cannot reach the Bulan SeniorCare API at ${API_URL}. Start it with "php artisan serve" in the backend folder.`,
+      `The browser could not complete a request to the Bulan SeniorCare API at ${API_URL}. Check the network connection and confirm the application server is available.`,
     );
   }
   const body = (await response.json().catch(() => null)) as
@@ -372,6 +378,38 @@ export async function createBarangayLeader(data: {
   return result.user;
 }
 
+export async function createManagedUser(data: {
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  email: string;
+  contactNumber: string;
+  birthdate: string;
+  barangayId?: number | null;
+  role: "admin" | "head" | "leader";
+  status: "active" | "inactive";
+  password: string;
+  passwordConfirmation: string;
+}) {
+  const result = await apiFetch<{ user: ManagedUser }>('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      first_name: data.firstName,
+      middle_name: data.middleName || undefined,
+      last_name: data.lastName,
+      email: data.email,
+      contact_number: data.contactNumber,
+      birthdate: data.birthdate,
+      barangay_id: data.barangayId ?? null,
+      role: data.role,
+      status: data.status,
+      password: data.password,
+      password_confirmation: data.passwordConfirmation,
+    }),
+  });
+  return result.user;
+}
+
 export function logout() {
   return apiFetch<void>("/logout", { method: "POST" }).finally(() => {
     clearToken();
@@ -395,7 +433,14 @@ export function deleteManagedUser(id: number) {
 }
 
 export function getAnnouncements() {
-  return apiFetch<Announcement[]>("/announcements");
+  const token = getToken();
+  if (announcementsRequest?.token === token) return announcementsRequest.promise;
+
+  const request = apiFetch<Announcement[]>("/announcements").finally(() => {
+    if (announcementsRequest?.promise === request) announcementsRequest = null;
+  });
+  announcementsRequest = { token, promise: request };
+  return request;
 }
 
 export function createAnnouncement(title: string, message: string, image?: File | null) {
@@ -467,6 +512,10 @@ export function deleteConversation(userId: number) {
 
 export function getServerNotifications() {
   return apiFetch<ServerNotification[]>("/notifications");
+}
+
+export function getServerUnreadNotificationCount() {
+  return apiFetch<{ count: number }>("/notifications/unread-count");
 }
 
 export function markServerNotificationRead(id: number) {

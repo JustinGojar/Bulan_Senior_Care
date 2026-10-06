@@ -1,7 +1,7 @@
-<<<<<<< HEAD
 /.phpunit.cache
 /node_modules
 /public/build
+/public/spa-assets
 /public/hot
 /public/storage
 /storage/*.key
@@ -18,7 +18,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
-=======
+
 # Logs
 logs
 *.log
@@ -54,4 +54,3 @@ dist-ssr
 claude.exe
 .vercel
 .env*
->>>>>>> 83335333bfc8ca496d647dacdbd1a1bdc19d6926

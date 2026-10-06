@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->redirectGuestsTo(fn (Request $request) =>
+            $request->is('api/*') ? null : route('login')
+        );
         $middleware->alias([
             'token.idle' => EnforceTokenIdleTimeout::class,
         ]);

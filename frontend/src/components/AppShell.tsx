@@ -24,7 +24,7 @@ import {
   apiFetch,
   clearToken,
   getAnnouncements,
-  getServerNotifications,
+  getServerUnreadNotificationCount,
   getStoredUser,
   getUnreadMessageSummary,
   logout,
@@ -125,10 +125,8 @@ export function AppShell({
   }, [user?.id, user?.role]);
   useEffect(() => {
     const updateUnreadCount = () => {
-      getServerNotifications()
-        .then((notifications) => {
-          setUnreadCount(notifications.filter((item) => item.status === "unread").length);
-        })
+      getServerUnreadNotificationCount()
+        .then(({ count }) => setUnreadCount(count))
         .catch(() => setUnreadCount(0));
     };
     updateUnreadCount();
@@ -149,13 +147,20 @@ export function AppShell({
     }
 
     let active = true;
+    const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       setSearchLoading(true);
       const seniorRequest = apiFetch<PaginatedResponse<ApiSenior>>(
         `/seniors?search=${encodeURIComponent(term)}&per_page=5`,
+        { signal: controller.signal },
       )
         .then((result) => result.data)
-        .catch(() => [] as ApiSenior[]);
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted) {
+            console.error("Unable to search senior records.", error);
+          }
+          return [] as ApiSenior[];
+        });
 
       seniorRequest
         .then((seniors) => {
@@ -165,11 +170,12 @@ export function AppShell({
         .finally(() => {
           if (active) setSearchLoading(false);
         });
-    }, 200);
+    }, 500);
 
     return () => {
       active = false;
       window.clearTimeout(timeout);
+      controller.abort();
     };
   }, [globalSearch]);
   const initials = (user?.name ?? "User")

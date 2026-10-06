@@ -7,7 +7,7 @@ import oscaAdminImage from "@/images/osca_admin.jpg";
 import {
   apiFetch,
   API_URL,
-  createBarangayLeader,
+  createManagedUser,
   deleteManagedUser,
   getManagedUsers,
   getStoredUser,
@@ -154,19 +154,21 @@ function UserManagement() {
         setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
         toast.success("User account updated.");
       } else {
-        const leader = await createBarangayLeader({
+        const created = await createManagedUser({
           firstName,
           middleName,
           lastName,
           email,
           contactNumber,
           birthdate,
-          barangayId: Number(barangayId),
+          barangayId: barangayId ? Number(barangayId) : null,
+          role,
+          status,
           password,
           passwordConfirmation,
         });
-        setUsers((current) => [...current, leader]);
-        toast.success("BSCA / Barangay Senior Citizen Affairs account created.");
+        setUsers((current) => [...current, created]);
+        toast.success("User account created.");
       }
       resetForm();
       setShowCreateForm(false);
@@ -335,23 +337,21 @@ function UserManagement() {
                   <input value={getAge(birthdate)} readOnly placeholder="Calculated automatically" className="mt-1 w-full bg-transparent text-sm outline-none" />
                 </label>
               </div>
-              {editingUser && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <select required value={role} onChange={(event) => setRole(event.target.value as typeof role)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
-                    <option value="admin">Admin</option>
-                    <option value="head">Head</option>
-                    <option value="leader">BSCA</option>
-                  </select>
-                  <select required value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <select required value={role} onChange={(event) => setRole(event.target.value as typeof role)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                  <option value="admin">Admin</option>
+                  <option value="head">Head</option>
+                  <option value="leader">BSCA</option>
+                </select>
+                <select required value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30">
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
               <label className="rounded-xl border border-border px-4 py-3">
                 <span className="block text-xs font-semibold text-muted-foreground">Barangay</span>
-                <select required={!editingUser || role === "leader"} value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none">
-                  <option value="">No barangay assignment</option>
+                <select required={role === "leader"} value={barangayId} onChange={(event) => setBarangayId(event.target.value)} className="mt-1 w-full bg-transparent text-sm outline-none" disabled={role !== "leader"}>
+                  <option value="">{role === "leader" ? "Select a barangay" : "No barangay assignment"}</option>
                   {barangays.map((barangay) => <option key={barangay.id} value={barangay.id}>{barangay.barangay_name}</option>)}
                 </select>
               </label>
