@@ -259,6 +259,38 @@
     linear-gradient(rgb(0 0 0 / 48%), rgb(0 0 0 / 48%)), var(--app-background-image);
 }
 
+@keyframes nav-progress {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 90%;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: page-enter 200ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
+
 @keyframes landing-card-pop {
   0% {
     transform: scale(1);

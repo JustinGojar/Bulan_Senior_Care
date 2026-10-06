@@ -665,7 +665,7 @@ export function AppShell({
             {actions}
           </div>
 
-          <div className="mt-5 pb-10 sm:mt-6">{children}</div>
+          <div className="page-enter mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
     </div>
