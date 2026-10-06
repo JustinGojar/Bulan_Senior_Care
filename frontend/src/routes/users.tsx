@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import { badgeClass, fieldClass, iconButtonClass, panelClass } from "@/components/design-kit";
@@ -88,6 +89,7 @@ function UserManagement() {
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirm, confirmDialog] = useConfirmDialog();
   const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
@@ -211,7 +213,13 @@ function UserManagement() {
   }
 
   async function handleDelete(user: ManagedUser) {
-    if (!window.confirm(`Delete the account for ${user.name}?`)) return;
+    const confirmed = await confirm({
+      title: "Delete this account?",
+      description: `${user.name} (${user.email}) will no longer be able to log in. This cannot be undone.`,
+      confirmLabel: "Delete account",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteManagedUser(user.id);
       setUsers((current) => current.filter((item) => item.id !== user.id));
@@ -628,6 +636,7 @@ function UserManagement() {
           </form>
         </div>
       )}
+      {confirmDialog}
     </AppShell>
   );
 }

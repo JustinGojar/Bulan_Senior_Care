@@ -30,6 +30,7 @@ import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import {
@@ -443,6 +444,7 @@ function changedFields(request: SeniorEditRequest) {
 }
 
 function SeniorRecords() {
+  const [confirm, confirmDialog] = useConfirmDialog();
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -1087,7 +1089,12 @@ function SeniorRecords() {
                           aria-label={`Archive record of ${s.name}`}
                           title="Archive record"
                           onClick={async () => {
-                            if (!window.confirm(`Archive the record of ${s.name}?`)) return;
+                            const confirmed = await confirm({
+                              title: "Archive this record?",
+                              description: `${s.name} (${s.id}) will be moved to the archive and hidden from the active list.`,
+                              confirmLabel: "Archive record",
+                            });
+                            if (!confirmed) return;
                             try {
                               await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, {
                                 method: "POST",
@@ -1588,6 +1595,7 @@ function SeniorRecords() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (!deleting) return;
                 deleteSenior(deleting.id);
@@ -1600,6 +1608,7 @@ function SeniorRecords() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {confirmDialog}
     </AppShell>
   );
 }
