@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
 import { SectionHeader } from "@/components/DesignKit";
 import { fieldClass, panelClass, tileClass } from "@/components/design-kit";
 import { authSubmitClass } from "@/components/AuthLayout";
@@ -55,6 +56,9 @@ function ProfilePage() {
   const [address, setAddress] = useState(user?.address ?? "");
   const [assignedBarangay, setAssignedBarangay] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  // The original file the user picked; kept so the edit can be adjusted again.
+  const [originalPhoto, setOriginalPhoto] = useState<File | null>(null);
+  const [editingPhoto, setEditingPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
@@ -150,6 +154,7 @@ function ProfilePage() {
       setUser(updated);
       setStoredUser(updated);
       setPhoto(null);
+      setOriginalPhoto(null);
       toast.success("Profile updated successfully.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update profile.");
@@ -237,7 +242,18 @@ function ProfilePage() {
               type="file"
               accept="image/png,image/jpeg,image/webp"
               className="hidden"
-              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const picked = event.target.files?.[0] ?? null;
+                // Clear the input so picking the same file again still opens the editor.
+                event.target.value = "";
+                if (!picked) return;
+                if (!/^image\/(png|jpe?g|webp)$/.test(picked.type)) {
+                  toast.error("Choose a JPG, PNG or WebP image.");
+                  return;
+                }
+                setOriginalPhoto(picked);
+                setEditingPhoto(picked);
+              }}
             />
           </div>
 
@@ -303,8 +319,27 @@ function ProfilePage() {
                 />
               </label>
               {photo && (
-                <p className="text-xs text-muted-foreground">
-                  Preview updated. Click Save profile to upload {photo.name}.
+                <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  New photo ready. Click Save profile to upload it.
+                  {originalPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingPhoto(originalPhoto)}
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Adjust photo
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoto(null);
+                      setOriginalPhoto(null);
+                    }}
+                    className="font-semibold text-destructive hover:underline"
+                  >
+                    Discard
+                  </button>
                 </p>
               )}
               <button type="submit" disabled={busy} className={authSubmitClass}>
@@ -509,6 +544,14 @@ function ProfilePage() {
           </section>
         </div>
       </div>
+      <PhotoEditorDialog
+        file={editingPhoto}
+        onCancel={() => setEditingPhoto(null)}
+        onApply={(edited) => {
+          setPhoto(edited);
+          setEditingPhoto(null);
+        }}
+      />
     </AppShell>
   );
 }
