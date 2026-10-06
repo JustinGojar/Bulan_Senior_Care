@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, KeyRound, Loader2, Lock, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
-import { BrandLogo } from "@/components/BrandLogo";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
 import { resetPassword } from "@/lib/api";
 
 export const Route = createFileRoute("/reset-password")({
@@ -34,77 +33,102 @@ function ResetPasswordPage() {
   }
 
   return (
-    <div className="bg-app relative grid min-h-screen place-items-center px-4">
-      <ThemeToggle className="absolute top-5 right-5" />
-      <div className="surface-card w-full max-w-md p-10">
-        <div className="flex items-center gap-3">
-          <BrandLogo className="h-11 w-11 ring-2 ring-gold/70" />
-          <div>
-            <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
-            <p className="text-xs text-muted-foreground">OSCA - Municipality of Bulan</p>
-          </div>
-        </div>
-        <h1 className="mt-12 text-4xl font-extrabold">Create new password</h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Use at least 8 characters for your new password.
-        </p>
-        <form className="mt-8" onSubmit={handleSubmit}>
-          <label className="flex items-center gap-3 border-b border-border pb-3">
+    <AuthLayout
+      title="Create new password"
+      subtitle="Use at least 8 characters for your new password."
+    >
+      <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        {error && <AuthAlert tone="error">{error}</AuthAlert>}
+
+        <div>
+          <label htmlFor="reset-email" className="mb-2 block text-sm font-semibold">
+            Email address
+          </label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              id="reset-email"
               required
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="Email address"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="you@example.com"
+              className={authInputClass}
             />
-            <LockKeyhole className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="reset-password" className="mb-2 block text-sm font-semibold">
+            New password
           </label>
-          <label className="mt-6 flex items-center gap-3 border-b border-border pb-3">
+          <div className="relative">
+            <Lock className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              id="reset-password"
               required
               minLength={8}
               type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="New password"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="At least 8 characters"
+              className={`${authInputClass} pr-12`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={showPassword ? "Hide passwords" : "Show passwords"}
+              className="absolute top-1/2 right-2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="reset-password-confirmation" className="mb-2 block text-sm font-semibold">
+            Confirm new password
           </label>
-          <label className="mt-6 flex items-center gap-3 border-b border-border pb-3">
+          <div className="relative">
+            <LockKeyhole className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
+              id="reset-password-confirmation"
               required
               minLength={8}
               type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
               value={passwordConfirmation}
               onChange={(event) => setPasswordConfirmation(event.target.value)}
-              placeholder="Confirm new password"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="Re-enter your new password"
+              className={authInputClass}
             />
-          </label>
-          {error && <p className="mt-5 text-sm font-medium text-destructive">{error}</p>}
-          <button
-            type="submit"
-            disabled={submitting || !token}
-            className="bg-navy mt-8 w-full rounded-full py-4 text-sm font-bold text-primary-foreground shadow-[var(--shadow-card)] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? "Resetting password..." : "Reset password"}
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          <Link to="/login" className="font-bold text-foreground">
-            Back to Log In
-          </Link>
-        </p>
-      </div>
-    </div>
+          </div>
+        </div>
+
+        <button type="submit" disabled={submitting || !token} className={`${authSubmitClass} mt-2`}>
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Resetting password...
+            </>
+          ) : (
+            <>
+              <KeyRound className="h-4 w-4" />
+              Reset password
+            </>
+          )}
+        </button>
+      </form>
+
+      <Link
+        to="/login"
+        className="mt-8 inline-flex items-center justify-center gap-2 self-center text-sm font-semibold text-primary hover:underline"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to log in
+      </Link>
+    </AuthLayout>
   );
 }
