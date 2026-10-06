@@ -148,24 +148,24 @@ function EligibilityReview() {
                   <p className="mt-1 text-sm text-coral">Age {senior.age} · {senior.barangay}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Review this registration before it becomes an active record.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setViewing(senior)}
                     aria-label={`View full information for ${senior.name}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2.5 text-sm font-semibold"
+                    className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-card px-4 py-2.5 text-sm font-semibold"
                   >
                     <Eye className="h-4 w-4" /> View
                   </button>
                   <div className="flex gap-2">
                     <button
                       onClick={() => reviewSenior(senior, "Inactive")}
-                      className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive"
+                      className="whitespace-nowrap rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive"
                     >
                       Not eligible
                     </button>
                     <button
                       onClick={() => reviewSenior(senior, "Active")}
-                      className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+                      className="bg-navy whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground"
                     >
                       Eligible
                     </button>

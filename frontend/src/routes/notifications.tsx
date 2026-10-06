@@ -104,7 +104,7 @@ function Notifications() {
       subtitle="System alerts and operational messages"
       breadcrumb={["Dashboard", "Notifications"]}
     >
-      <section className="surface-card p-7">
+      <section className="surface-card p-5 sm:p-7">
         <div className="flex items-center gap-3">
           <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
             <Bell className="h-4 w-4" />

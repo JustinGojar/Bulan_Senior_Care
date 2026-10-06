@@ -57,7 +57,7 @@ function AgeThresholdPage() {
       subtitle="Review age brackets and newly eligible senior citizens"
       breadcrumb={["Dashboard", "Age Threshold"]}
     >
-      <section className="surface-card p-7">
+      <section className="surface-card p-5 sm:p-7">
         <div className="flex items-center gap-3">
           <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
             <SlidersHorizontal className="h-4 w-4" />
@@ -89,7 +89,7 @@ function AgeThresholdPage() {
         </div>
       </section>
 
-      <section className="surface-card mt-6 p-7">
+      <section className="surface-card mt-6 p-5 sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">

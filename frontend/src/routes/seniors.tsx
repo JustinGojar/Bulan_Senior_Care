@@ -694,12 +694,12 @@ function SeniorRecords() {
       subtitle="Manage all registered senior citizens"
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
-        <div className="flex gap-3">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
           {(isLeader || isAdmin) && (
             <>
               <button
                 onClick={() => bulkFileInput.current?.click()}
-                className="inline-flex items-center gap-2 rounded-[10px] bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-card px-4 py-3 sm:px-6 sm:py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
               >
                 <Upload className="h-4 w-4" /> Bulk record
               </button>
@@ -715,7 +715,7 @@ function SeniorRecords() {
                   setEditing(null);
                   setFormOpen(true);
                 }}
-                className="bg-navy inline-flex items-center gap-2 rounded-[10px] px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
+                className="bg-navy inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] px-4 py-3 sm:px-6 sm:py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
               >
                 <Plus className="h-4 w-4" /> Register Senior
               </button>
@@ -724,7 +724,7 @@ function SeniorRecords() {
           {isAdmin && (
             <button
               onClick={openArchive}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-card px-4 py-3 sm:px-6 sm:py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
             >
               <Archive className="h-4 w-4" /> Archive
             </button>
@@ -733,7 +733,7 @@ function SeniorRecords() {
             type="button"
             onClick={exportRecords}
             disabled={exporting}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] bg-card px-4 py-3 sm:px-6 sm:py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
           >
             <Download className="h-4 w-4" /> {exporting ? "Preparing..." : "Export"}
           </button>
@@ -900,7 +900,7 @@ function SeniorRecords() {
       )}
 
       <div className="surface-card mt-6 overflow-x-auto p-2">
-        <table className="w-full min-w-[880px] border-collapse text-sm">
+        <table className="w-full min-w-[880px] border-collapse text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             <tr className="text-left text-muted-foreground">
               {[

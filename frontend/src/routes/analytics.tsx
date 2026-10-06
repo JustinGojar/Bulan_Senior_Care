@@ -107,7 +107,7 @@ function Analytics() {
       {error && <p className="mb-6 rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p>}
       {loading && <p className="mb-6 text-sm text-muted-foreground">Loading analytics data...</p>}
       {!isLeader && (
-        <section className="surface-card p-7">
+        <section className="surface-card p-5 sm:p-7">
           <CardHead icon={MapPin} title="Total Participants per Zone / Barangay" />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -147,7 +147,7 @@ function Analytics() {
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="surface-card p-7">
+        <section className="surface-card p-5 sm:p-7">
           <CardHead icon={Users} title="Age Distribution" />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -163,7 +163,7 @@ function Analytics() {
           </div>
         </section>
 
-        <section className="surface-card p-7">
+        <section className="surface-card p-5 sm:p-7">
           <CardHead icon={PieIcon} title="Benefit Records" />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -194,7 +194,7 @@ function Analytics() {
         </section>
       </div>
 
-      <section className="surface-card mt-6 p-7">
+      <section className="surface-card mt-6 p-5 sm:p-7">
         <CardHead icon={TrendingUp} title={isLeader ? "Benefits Released by Program" : "Trend and Analytics by Barangay and Municipality"} />
         <p className="mt-2 text-sm text-muted-foreground">{isLeader ? "Released benefit counts in your assigned barangay." : "Registered seniors, released benefits, and cumulative municipal registrations."}</p>
         <div className="mt-6 h-72">
@@ -259,7 +259,7 @@ function Analytics() {
         )}
       </section>
 
-      <section className="surface-card mt-6 p-7">
+      <section className="surface-card mt-6 p-5 sm:p-7">
         <CardHead icon={MapPin} title={isLeader ? "Your Barangay Summary" : "Barangay-Level Summary"} />
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
