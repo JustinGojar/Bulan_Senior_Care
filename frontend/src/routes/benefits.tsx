@@ -482,6 +482,7 @@ function BenefitTracking() {
         />
         <IconSelect
           label="Barangay"
+          searchable
           className="sm:flex-1 xl:w-44 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={selectedBarangay}

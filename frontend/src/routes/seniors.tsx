@@ -844,6 +844,7 @@ function SeniorRecords() {
         </label>
         <IconSelect
           label="Barangay"
+          searchable
           className="sm:flex-1 xl:w-40 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}

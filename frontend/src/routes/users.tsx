@@ -17,6 +17,7 @@ import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import { badgeClass, fieldClass, iconButtonClass, panelClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import {
   Select,
   SelectContent,
@@ -525,28 +526,19 @@ function UserManagement() {
                 <label htmlFor="user-barangay" className={labelClass}>
                   Barangay
                 </label>
-                <Select
-                  name="barangay_id"
+                <SearchableSelect
+                  id="user-barangay"
+                  label="Barangay"
                   required={role === "leader"}
-                  value={role === "leader" ? barangayId : ""}
-                  onValueChange={setBarangayId}
                   disabled={role !== "leader"}
-                >
-                  <SelectTrigger id="user-barangay">
-                    <SelectValue
-                      placeholder={
-                        role === "leader" ? "Select a barangay" : "No barangay assignment"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {barangays.map((barangay) => (
-                      <SelectItem key={barangay.id} value={String(barangay.id)}>
-                        {barangay.barangay_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  value={role === "leader" ? barangayId : ""}
+                  onChange={setBarangayId}
+                  placeholder={role === "leader" ? "Select a barangay" : "No barangay assignment"}
+                  options={barangays.map((barangay) => ({
+                    value: String(barangay.id),
+                    label: barangay.barangay_name,
+                  }))}
+                />
               </div>
               {!editingUser && (
                 <div className="grid gap-4 sm:grid-cols-2">
