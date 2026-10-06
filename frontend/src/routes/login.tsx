@@ -123,7 +123,6 @@ function LoginPage() {
           >
             {submitting ? "Signing in..." : "Log In"}
           </button>
-
         </form>
       </div>
     </div>

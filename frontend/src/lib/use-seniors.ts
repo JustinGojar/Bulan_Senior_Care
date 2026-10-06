@@ -90,10 +90,10 @@ function mapSenior(senior: ApiSenior): Senior {
     benefit: senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
     status:
       senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
-    photoPath: senior.photo_path,
-    idDocumentPath: senior.id_document_path,
-    validIdPath: senior.valid_id_path ?? senior.id_document_path,
-    birthCertificatePath: senior.birth_certificate_path,
+    photoPath: senior.photo_path ?? null,
+    idDocumentPath: senior.id_document_path ?? null,
+    validIdPath: senior.valid_id_path ?? senior.id_document_path ?? null,
+    birthCertificatePath: senior.birth_certificate_path ?? null,
   };
 }
 

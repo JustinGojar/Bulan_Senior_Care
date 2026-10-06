@@ -1,5 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft, ChevronLeft, Image, MoreHorizontal, PenLine, Plus, Search, Send, Smile } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  Image,
+  MoreHorizontal,
+  PenLine,
+  Plus,
+  Search,
+  Send,
+  Smile,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -98,7 +108,9 @@ function MessagesPage() {
     if (item.recipient.id !== currentUser?.id || item.read_at) return;
     try {
       const updated = await markMessageRead(item.id);
-      setMessages((current) => current.map((messageItem) => messageItem.id === updated.id ? updated : messageItem));
+      setMessages((current) =>
+        current.map((messageItem) => (messageItem.id === updated.id ? updated : messageItem)),
+      );
       window.dispatchEvent(new Event("bulan-unread-updated"));
     } catch {
       toast.error("Unable to mark message as read.");
@@ -108,9 +120,10 @@ function MessagesPage() {
   async function sendReply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedConversation || !reply.trim()) return;
-    const other = selectedConversation.sender.id === currentUser?.id
-      ? selectedConversation.recipient
-      : selectedConversation.sender;
+    const other =
+      selectedConversation.sender.id === currentUser?.id
+        ? selectedConversation.recipient
+        : selectedConversation.sender;
     setSendingReply(true);
     try {
       const sent = await sendMessage(other.id, selectedConversation.subject, reply.trim());
@@ -128,11 +141,16 @@ function MessagesPage() {
     const other = item.sender.id === currentUser?.id ? item.recipient : item.sender;
     try {
       await deleteConversationApi(other.id);
-      setMessages((current) => current.filter((messageItem) => {
-        const participants = [messageItem.sender.id, messageItem.recipient.id];
-        return !(participants.includes(other.id) && participants.includes(currentUser?.id ?? -1));
-      }));
-      if (selectedConversation && [selectedConversation.sender.id, selectedConversation.recipient.id].includes(other.id)) {
+      setMessages((current) =>
+        current.filter((messageItem) => {
+          const participants = [messageItem.sender.id, messageItem.recipient.id];
+          return !(participants.includes(other.id) && participants.includes(currentUser?.id ?? -1));
+        }),
+      );
+      if (
+        selectedConversation &&
+        [selectedConversation.sender.id, selectedConversation.recipient.id].includes(other.id)
+      ) {
         setSelectedConversation(null);
       }
       setContextConversation(null);
@@ -174,7 +192,12 @@ function MessagesPage() {
   }, [conversations, currentUserId, filter, search]);
 
   function avatarLabel(name: string) {
-    return name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
   }
 
   return (
@@ -206,9 +229,18 @@ function MessagesPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">New message</h2>
-              <p className="text-sm text-muted-foreground">Search BSCA and OSCA Head accounts by name or email.</p>
+              <p className="text-sm text-muted-foreground">
+                Search BSCA and OSCA Head accounts by name or email.
+              </p>
             </div>
-            <button type="button" onClick={() => setComposerOpen(false)} aria-label="Close new message" className="grid h-9 w-9 place-items-center rounded-full bg-secondary"><ChevronLeft className="h-4 w-4 rotate-90" /></button>
+            <button
+              type="button"
+              onClick={() => setComposerOpen(false)}
+              aria-label="Close new message"
+              className="grid h-9 w-9 place-items-center rounded-full bg-secondary"
+            >
+              <ChevronLeft className="h-4 w-4 rotate-90" />
+            </button>
           </div>
           <div className="mt-6 grid gap-4">
             <div className="relative">
@@ -234,8 +266,13 @@ function MessagesPage() {
                       }}
                       className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left hover:bg-secondary"
                     >
-                      <span><strong className="block text-sm">{item.name}</strong><small className="text-xs text-muted-foreground">{item.email}</small></span>
-                      <small className="text-xs font-semibold capitalize text-muted-foreground">{item.role}</small>
+                      <span>
+                        <strong className="block text-sm">{item.name}</strong>
+                        <small className="text-xs text-muted-foreground">{item.email}</small>
+                      </span>
+                      <small className="text-xs font-semibold capitalize text-muted-foreground">
+                        {item.role}
+                      </small>
                     </button>
                   ))}
                 </div>
@@ -247,10 +284,29 @@ function MessagesPage() {
                 <p className="mt-2 text-xs text-muted-foreground">No matching accounts.</p>
               )}
             </div>
-            <input required maxLength={180} value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Subject" className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
-            <textarea required maxLength={5000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Write your message..." rows={5} className="resize-none rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30" />
+            <input
+              required
+              maxLength={180}
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              placeholder="Subject"
+              className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+            />
+            <textarea
+              required
+              maxLength={5000}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Write your message..."
+              rows={5}
+              className="resize-none rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+            />
           </div>
-          <button type="submit" disabled={saving || !recipient} className="bg-navy mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60">
+          <button
+            type="submit"
+            disabled={saving || !recipient}
+            className="bg-navy mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
             <Send className="h-4 w-4" /> {saving ? "Sending..." : "Send message"}
           </button>
         </form>
@@ -267,57 +323,123 @@ function MessagesPage() {
           onBack={() => setSelectedConversation(null)}
           onSubmit={sendReply}
         />
-      ) : <section className="surface-card overflow-hidden p-4 sm:p-6">
-        <div className="relative">
-          <Search className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search Messenger" className="h-12 w-full rounded-full bg-secondary pr-4 pl-12 text-base outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" />
-        </div>
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-          {(["All", "Unread"] as const).map((tab) => (
-            <button key={tab} type="button" onClick={() => setFilter(tab)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${filter === tab ? "bg-navy text-primary-foreground" : "text-foreground hover:bg-secondary"}`}>
-              {tab}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 divide-y divide-border">
-          {messagesLoading && <p className="px-2 py-12 text-center text-sm text-muted-foreground">Loading conversations...</p>}
-          {visibleMessages.map((item) => {
-            const received = item.recipient.id === currentUser?.id;
-            const other = received ? item.sender : item.recipient;
-            return (
-              <article key={item.id} onClick={() => openMessage(item)} onContextMenu={(event) => { event.preventDefault(); setContextConversation(item); }} className="relative flex cursor-pointer items-center gap-3 px-1 py-4 transition-colors hover:bg-secondary/60 sm:gap-4 sm:px-2">
-                <div className="bg-navy relative grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold text-primary-foreground sm:h-14 sm:w-14">
-                  {avatarLabel(other.name)}
-                  <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className={`truncate text-base ${received && !item.read_at ? "font-extrabold" : "font-semibold"}`}>{other.name}</p>
-                    <span className="shrink-0 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-                  </div>
-                  <p className={`mt-1 truncate text-sm ${received && !item.read_at ? "font-semibold text-foreground" : "text-muted-foreground"}`}><span className="font-medium">{item.subject}: </span>{item.message}</p>
-                </div>
-                {received && !item.read_at && <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-navy" />}
-                {contextConversation?.id === item.id && (
-                  <div className="surface-card absolute right-2 bottom-2 z-10 w-44 p-1 shadow-[var(--shadow-card)]">
-                    <button type="button" onClick={() => removeConversation(item)} className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-destructive hover:bg-destructive/10">Delete conversation</button>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-          {!messagesLoading && !visibleMessages.length && <p className="px-2 py-12 text-center text-sm text-muted-foreground">No conversations found.</p>}
-        </div>
-        {lastPage > 1 && (
-          <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">Page {currentPage} of {lastPage}</p>
-            <div className="flex gap-2">
-              <button type="button" disabled={currentPage === 1 || messagesLoading} onClick={() => setCurrentPage((page) => page - 1)} className="rounded-full px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40">Previous</button>
-              <button type="button" disabled={currentPage === lastPage || messagesLoading} onClick={() => setCurrentPage((page) => page + 1)} className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40">Next</button>
-            </div>
+      ) : (
+        <section className="surface-card overflow-hidden p-4 sm:p-6">
+          <div className="relative">
+            <Search className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search Messenger"
+              className="h-12 w-full rounded-full bg-secondary pr-4 pl-12 text-base outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
+            />
           </div>
-        )}
-      </section>}
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+            {(["All", "Unread"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setFilter(tab)}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${filter === tab ? "bg-navy text-primary-foreground" : "text-foreground hover:bg-secondary"}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 divide-y divide-border">
+            {messagesLoading && (
+              <p className="px-2 py-12 text-center text-sm text-muted-foreground">
+                Loading conversations...
+              </p>
+            )}
+            {visibleMessages.map((item) => {
+              const received = item.recipient.id === currentUser?.id;
+              const other = received ? item.sender : item.recipient;
+              return (
+                <article
+                  key={item.id}
+                  onClick={() => openMessage(item)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setContextConversation(item);
+                  }}
+                  className="relative flex cursor-pointer items-center gap-3 px-1 py-4 transition-colors hover:bg-secondary/60 sm:gap-4 sm:px-2"
+                >
+                  <div className="bg-navy relative grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold text-primary-foreground sm:h-14 sm:w-14">
+                    {avatarLabel(other.name)}
+                    <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p
+                        className={`truncate text-base ${received && !item.read_at ? "font-extrabold" : "font-semibold"}`}
+                      >
+                        {other.name}
+                      </p>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {new Date(item.created_at).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <p
+                      className={`mt-1 truncate text-sm ${received && !item.read_at ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                    >
+                      <span className="font-medium">{item.subject}: </span>
+                      {item.message}
+                    </p>
+                  </div>
+                  {received && !item.read_at && (
+                    <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-navy" />
+                  )}
+                  {contextConversation?.id === item.id && (
+                    <div className="surface-card absolute right-2 bottom-2 z-10 w-44 p-1 shadow-[var(--shadow-card)]">
+                      <button
+                        type="button"
+                        onClick={() => removeConversation(item)}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-destructive hover:bg-destructive/10"
+                      >
+                        Delete conversation
+                      </button>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+            {!messagesLoading && !visibleMessages.length && (
+              <p className="px-2 py-12 text-center text-sm text-muted-foreground">
+                No conversations found.
+              </p>
+            )}
+          </div>
+          {lastPage > 1 && (
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">
+                Page {currentPage} of {lastPage}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage === 1 || messagesLoading}
+                  onClick={() => setCurrentPage((page) => page - 1)}
+                  className="rounded-full px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={currentPage === lastPage || messagesLoading}
+                  onClick={() => setCurrentPage((page) => page + 1)}
+                  className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </AppShell>
   );
 }
@@ -325,7 +447,7 @@ function MessagesPage() {
 type ConversationDetailProps = {
   selected: Message;
   messages: Message[];
-  currentUserId?: number;
+  currentUserId?: number | undefined;
   reply: string;
   setReply: (value: string) => void;
   sending: boolean;
@@ -333,23 +455,46 @@ type ConversationDetailProps = {
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 };
 
-function ConversationDetail({ selected, messages, currentUserId, reply, setReply, sending, onBack, onSubmit }: ConversationDetailProps) {
+function ConversationDetail({
+  selected,
+  messages,
+  currentUserId,
+  reply,
+  setReply,
+  sending,
+  onBack,
+  onSubmit,
+}: ConversationDetailProps) {
   const other = selected.sender.id === currentUserId ? selected.recipient : selected.sender;
   const conversation = messages
     .filter((item) => {
       const participants = [item.sender.id, item.recipient.id];
       return participants.includes(other.id) && participants.includes(currentUserId ?? -1);
     })
-    .sort((first, second) => new Date(first.created_at).getTime() - new Date(second.created_at).getTime());
+    .sort(
+      (first, second) =>
+        new Date(first.created_at).getTime() - new Date(second.created_at).getTime(),
+    );
 
   return (
     <section className="surface-card flex h-[calc(100vh-9rem)] min-h-[560px] flex-col overflow-hidden">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
-        <button type="button" onClick={onBack} aria-label="Back to conversations" title="Back" className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to conversations"
+          title="Back"
+          className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+        >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-primary-foreground">
-          {other.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
+          {other.name
+            .split(" ")
+            .map((part) => part[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase()}
           <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
         </div>
         <div className="min-w-0 flex-1">
@@ -357,7 +502,14 @@ function ConversationDetail({ selected, messages, currentUserId, reply, setReply
           <p className="text-xs text-muted-foreground">Active now</p>
         </div>
         <div className="flex items-center gap-1 text-foreground">
-          <button type="button" aria-label="More options" title="More options" className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"><MoreHorizontal className="h-5 w-5" /></button>
+          <button
+            type="button"
+            aria-label="More options"
+            title="More options"
+            className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
         </div>
       </header>
       <div className="flex-1 space-y-3 overflow-y-auto bg-card px-4 py-6 sm:px-8">
@@ -366,24 +518,76 @@ function ConversationDetail({ selected, messages, currentUserId, reply, setReply
           const mine = item.sender.id === currentUserId;
           return (
             <div key={item.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[60%] ${mine ? "rounded-br-md bg-navy text-primary-foreground" : "rounded-bl-md bg-navy/10 text-foreground"}`}>
-                {!mine && <p className="mb-1 text-xs font-bold text-muted-foreground">{item.sender.name}</p>}
+              <div
+                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[60%] ${mine ? "rounded-br-md bg-navy text-primary-foreground" : "rounded-bl-md bg-navy/10 text-foreground"}`}
+              >
+                {!mine && (
+                  <p className="mb-1 text-xs font-bold text-muted-foreground">{item.sender.name}</p>
+                )}
                 <p className="whitespace-pre-wrap">{item.message}</p>
-                <p className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}>{new Date(item.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p>
+                <p
+                  className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}
+                >
+                  {new Date(item.created_at).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
               </div>
             </div>
           );
         })}
-        {!conversation.length && <p className="text-center text-sm text-muted-foreground">No messages in this conversation yet.</p>}
+        {!conversation.length && (
+          <p className="text-center text-sm text-muted-foreground">
+            No messages in this conversation yet.
+          </p>
+        )}
       </div>
-      <form onSubmit={onSubmit} className="flex items-center gap-2 border-t border-border bg-card px-3 py-3 sm:px-5">
-        <button type="button" aria-label="Add attachment" title="Add attachment" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-foreground hover:bg-secondary"><Plus className="h-5 w-5" /></button>
-        <button type="button" aria-label="Add photo" title="Add photo" className="hidden h-9 w-9 shrink-0 place-items-center rounded-full text-foreground hover:bg-secondary sm:grid"><Image className="h-5 w-5" /></button>
+      <form
+        onSubmit={onSubmit}
+        className="flex items-center gap-2 border-t border-border bg-card px-3 py-3 sm:px-5"
+      >
+        <button
+          type="button"
+          aria-label="Add attachment"
+          title="Add attachment"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-foreground hover:bg-secondary"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Add photo"
+          title="Add photo"
+          className="hidden h-9 w-9 shrink-0 place-items-center rounded-full text-foreground hover:bg-secondary sm:grid"
+        >
+          <Image className="h-5 w-5" />
+        </button>
         <div className="flex min-w-0 flex-1 items-center rounded-full bg-secondary px-4">
-          <input value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Aa" className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-          <button type="button" aria-label="Add emoji" title="Add emoji" className="text-foreground"><Smile className="h-5 w-5" /></button>
+          <input
+            value={reply}
+            onChange={(event) => setReply(event.target.value)}
+            placeholder="Aa"
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            aria-label="Add emoji"
+            title="Add emoji"
+            className="text-foreground"
+          >
+            <Smile className="h-5 w-5" />
+          </button>
         </div>
-        <button type="submit" disabled={sending || !reply.trim()} aria-label="Send reply" title="Send reply" className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"><Send className="h-4 w-4" /></button>
+        <button
+          type="submit"
+          disabled={sending || !reply.trim()}
+          aria-label="Send reply"
+          title="Send reply"
+          className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Send className="h-4 w-4" />
+        </button>
       </form>
     </section>
   );
