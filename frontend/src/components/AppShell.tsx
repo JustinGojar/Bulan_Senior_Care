@@ -357,7 +357,9 @@ export function AppShell({
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {user?.role ?? "Admin"}
+                    </p>
                   </div>
                 </Link>
               </div>
@@ -366,18 +368,18 @@ export function AppShell({
         </Sheet>
 
         <main className="min-w-0 flex-1">
-          <header className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
+          <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
             <button
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open navigation menu"
               title="Open navigation menu"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] lg:hidden"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] sm:h-11 sm:w-11 lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
             <nav
               aria-label="Breadcrumb"
-              className="flex h-11 min-w-0 shrink-0 items-center gap-2 rounded-[10px] border border-white/70 bg-white/80 px-3 text-xs shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:gap-3 sm:px-4 sm:text-sm"
+              className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-white/70 bg-white/80 px-2 text-xs shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:h-11 sm:shrink-0 sm:gap-3 sm:px-4 sm:text-sm"
             >
               <Link
                 to="/dashboard"
@@ -391,7 +393,10 @@ export function AppShell({
                 const isCurrent = i === breadcrumb.length - 1;
 
                 return (
-                  <span key={`${crumb}-${i}`} className="flex min-w-0 items-center gap-2 sm:gap-3">
+                  <span
+                    key={`${crumb}-${i}`}
+                    className={`min-w-0 items-center gap-2 sm:flex sm:gap-3 ${isCurrent ? "flex" : "hidden"}`}
+                  >
                     <ChevronRight className="h-4 w-4 shrink-0 text-[#7EA5C5]" />
                     {destination && !isCurrent ? (
                       <Link
@@ -413,7 +418,7 @@ export function AppShell({
               })}
             </nav>
             <div
-              className="relative col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:row-auto sm:flex-1"
+              className="relative col-span-3 row-start-2 min-w-0 sm:col-span-1 sm:row-auto sm:flex-1"
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                   setSearchOpen(false);
@@ -433,7 +438,7 @@ export function AppShell({
                 aria-expanded={searchOpen && globalSearch.trim().length >= 2}
                 aria-controls="global-search-results"
                 placeholder="Search citizens, records..."
-                className="h-12 w-full rounded-[10px] bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
+                className="h-11 w-full rounded-[10px] bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
               />
               {searchOpen && normalizedSearch.length >= 2 && (
                 <div
@@ -530,13 +535,13 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <div className="relative flex items-center gap-1.5 sm:gap-3">
+            <div className="relative col-start-3 row-start-1 flex items-center gap-1.5 sm:col-auto sm:row-auto sm:gap-3">
               {!isAdmin && (
                 <button
                   onClick={() => navigate({ to: "/messages" })}
                   aria-label="Open messages"
                   title="Messages"
-                  className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
+                  className="relative grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] sm:h-11 sm:w-11"
                 >
                   <Mail className="h-5 w-5" />
                   {unreadMessageCount > 0 && (
@@ -549,7 +554,7 @@ export function AppShell({
               <button
                 onClick={() => navigate({ to: "/notifications" })}
                 aria-label="Notifications"
-                className="relative grid h-11 w-11 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]"
+                className="relative grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] sm:h-11 sm:w-11"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -561,7 +566,7 @@ export function AppShell({
               <button
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-label="Open profile menu"
-                className="bg-navy grid h-11 w-11 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground"
+                className="bg-navy grid h-10 w-10 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground sm:h-11 sm:w-11"
               >
                 {photoUrl ? (
                   <img

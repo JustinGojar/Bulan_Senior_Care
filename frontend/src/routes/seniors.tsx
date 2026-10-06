@@ -5,6 +5,7 @@ import {
   Download,
   Eye,
   HandCoins,
+  Loader2,
   MapPin,
   Pencil,
   Plus,
@@ -20,6 +21,7 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
   AlertDialog,
@@ -694,15 +696,23 @@ function SeniorRecords() {
       subtitle="Manage all registered senior citizens"
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           {(isLeader || isAdmin) && (
             <>
-              <button
+              <IconActionButton
+                label="Register Senior"
+                variant="primary"
+                icon={<Plus className="h-5 w-5" />}
+                onClick={() => {
+                  setEditing(null);
+                  setFormOpen(true);
+                }}
+              />
+              <IconActionButton
+                label="Bulk Upload"
+                icon={<Upload className="h-5 w-5" />}
                 onClick={() => bulkFileInput.current?.click()}
-                className="inline-flex items-center gap-2 rounded-[10px] bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
-              >
-                <Upload className="h-4 w-4" /> Bulk record
-              </button>
+              />
               <input
                 ref={bulkFileInput}
                 type="file"
@@ -710,38 +720,33 @@ function SeniorRecords() {
                 onChange={handleBulkFile}
                 className="hidden"
               />
-              <button
-                onClick={() => {
-                  setEditing(null);
-                  setFormOpen(true);
-                }}
-                className="bg-navy inline-flex items-center gap-2 rounded-[10px] px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
-              >
-                <Plus className="h-4 w-4" /> Register Senior
-              </button>
             </>
           )}
           {isAdmin && (
-            <button
+            <IconActionButton
+              label="Archive"
+              icon={<Archive className="h-5 w-5" />}
               onClick={openArchive}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
-            >
-              <Archive className="h-4 w-4" /> Archive
-            </button>
+            />
           )}
-          <button
-            type="button"
+          <IconActionButton
+            label={exporting ? "Preparing export..." : "Export"}
+            icon={
+              exporting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )
+            }
             onClick={exportRecords}
             disabled={exporting}
-            className="inline-flex items-center gap-2 rounded-[10px] bg-card px-6 py-3.5 text-sm font-semibold shadow-[var(--shadow-soft)]"
-          >
-            <Download className="h-4 w-4" /> {exporting ? "Preparing..." : "Export"}
-          </button>
+            aria-busy={exporting}
+          />
         </div>
       }
     >
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_150px_140px_150px_auto]">
-        <label className="flex h-11 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 dark:bg-card sm:col-span-2 xl:col-span-1">
+      <div className="flex flex-wrap items-center gap-2 max-sm:flex-nowrap xl:flex-nowrap">
+        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 dark:bg-card sm:h-11 sm:basis-full xl:basis-0">
           <Search className="h-4 w-4 shrink-0 text-[#173A52]" />
           <span className="sr-only">Search senior records</span>
           <input
@@ -754,65 +759,54 @@ function SeniorRecords() {
             className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-slate-500"
           />
         </label>
-        <label className="flex h-11 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 dark:bg-card">
-          <MapPin className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="sr-only">Filter by barangay</span>
-          <select
-            value={barangayFilter}
-            onChange={(event) => {
-              setBarangayFilter(event.target.value);
-              setPage(1);
-            }}
-            disabled={isLeader}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none disabled:opacity-70"
-          >
-            <option value="All">All Barangays</option>
-            {BARANGAYS.map((barangay) => (
-              <option key={barangay} value={barangay}>
-                {barangay}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex h-11 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 dark:bg-card">
-          <UserRound className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="sr-only">Filter by senior status</span>
-          <select
-            value={filter}
-            onChange={(event) => {
-              setFilter(event.target.value);
-              setPage(1);
-            }}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none"
-          >
-            {filters.map((item) => (
-              <option key={item.key} value={item.key}>
-                {item.key === "All" ? "All Status" : item.key}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex h-11 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 dark:bg-card">
-          <HandCoins className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="sr-only">Filter by benefit</span>
-          <select
-            value={benefitFilter}
-            onChange={(event) => {
-              setBenefitFilter(event.target.value);
-              setPage(1);
-            }}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold outline-none"
-          >
-            <option value="All">All Benefits</option>
-            {benefitOptions.map((benefit) => (
-              <option key={benefit} value={benefit}>
-                {benefit}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
+        <IconSelect
+          label="Barangay"
+          className="sm:flex-1 xl:w-40 xl:flex-none"
+          icon={<MapPin className="h-4 w-4" />}
+          value={barangayFilter}
+          disabled={isLeader}
+          options={[
+            { value: "All", label: "All Barangays" },
+            ...BARANGAYS.map((barangay) => ({ value: barangay, label: barangay })),
+          ]}
+          onChange={(value) => {
+            setBarangayFilter(value);
+            setPage(1);
+          }}
+        />
+        <IconSelect
+          label="Status"
+          className="sm:flex-1 xl:w-40 xl:flex-none"
+          icon={<UserRound className="h-4 w-4" />}
+          value={filter}
+          options={filters.map((item) => ({
+            value: item.key,
+            label: item.key === "All" ? "All Status" : item.key,
+          }))}
+          onChange={(value) => {
+            setFilter(value);
+            setPage(1);
+          }}
+        />
+        <IconSelect
+          label="Benefit"
+          className="sm:flex-1 xl:w-40 xl:flex-none"
+          icon={<HandCoins className="h-4 w-4" />}
+          value={benefitFilter}
+          options={[
+            { value: "All", label: "All Benefits" },
+            ...benefitOptions.map((benefit) => ({ value: benefit, label: benefit })),
+          ]}
+          onChange={(value) => {
+            setBenefitFilter(value);
+            setPage(1);
+          }}
+        />
+        <IconActionButton
+          label="Reset"
+          variant="outline"
+          icon={<RotateCcw className="h-4 w-4" />}
+          className="h-10 w-10 text-xs hover:translate-y-0 sm:h-11 sm:px-4"
           onClick={() => {
             setQuery("");
             setPage(1);
@@ -822,11 +816,7 @@ function SeniorRecords() {
             setFilter("All");
             setBenefitFilter("All");
           }}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-4 text-xs font-semibold text-[#173A52] shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition hover:border-[#173A52]/40 hover:bg-[#173A52]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173A52]/20 dark:bg-card dark:text-foreground dark:hover:bg-secondary sm:px-3"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Reset
-        </button>
+        />
       </div>
 
       {isHead && editRequests.length > 0 && (

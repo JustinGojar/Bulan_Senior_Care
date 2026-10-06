@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton } from "@/components/IconActionButton";
 import { deleteServerNotification, getServerNotifications, markServerNotificationRead, type ServerNotification } from "@/lib/api";
 
 export const Route = createFileRoute("/notifications")({
@@ -128,22 +129,27 @@ function Notifications() {
             Select all
           </label>
           <div className="flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
+          <IconActionButton
+            label="Mark all as read"
+            variant="outline"
+            icon={<CheckCheck className="h-4 w-4" />}
+            className="h-10 w-10 sm:h-9 sm:rounded-full sm:border-0 sm:bg-secondary sm:px-4 sm:text-xs sm:font-bold sm:text-foreground sm:shadow-none"
             onClick={markAllServerNotificationsRead}
             disabled={!serverNotifications.some((notification) => notification.status === "unread")}
-            className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <CheckCheck className="h-4 w-4" /> Mark all as read
-          </button>
-          <button
-            type="button"
+          />
+          <IconActionButton
+            label={
+              selectedNotificationIds.length > 0
+                ? `Clear selected (${selectedNotificationIds.length})`
+                : "Clear selected"
+            }
+            variant="outline"
+            icon={<Trash2 className="h-4 w-4" />}
+            badge={selectedNotificationIds.length}
+            className="h-10 w-10 text-destructive sm:h-9 sm:rounded-full sm:border-0 sm:bg-secondary sm:px-4 sm:text-xs sm:font-bold sm:shadow-none dark:text-destructive"
             onClick={clearSelectedNotifications}
             disabled={selectedNotificationIds.length === 0}
-            className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-xs font-bold text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" /> Clear selected{selectedNotificationIds.length > 0 ? ` (${selectedNotificationIds.length})` : ""}
-          </button>
+          />
           </div>
         </div>
         <div className="mt-3 space-y-3">

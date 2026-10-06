@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ClipboardCheck, Eye, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardCheck, Eye, Search, X, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { API_URL, getStoredUser } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
@@ -80,8 +81,8 @@ function EligibilityReview() {
             </p>
           </div>
         </div>
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <label className="relative block min-w-0 sm:flex-1">
+        <div className="mt-5 flex items-center gap-2 sm:gap-3">
+          <label className="relative block min-w-0 flex-1">
             <span className="sr-only">Search pending registrations</span>
             <Search
               aria-hidden="true"
@@ -95,38 +96,36 @@ function EligibilityReview() {
                 setPage(1);
               }}
               placeholder="Search name or OSCA ID"
-              className="h-12 w-full rounded-full border border-border bg-card pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+              className="h-10 w-full rounded-[10px] border border-[#173A52]/20 bg-card pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-ring/30 sm:h-12 sm:rounded-full sm:border-border"
             />
           </label>
-          <label className="block min-w-0 sm:w-60">
-            <span className="sr-only">Filter by barangay</span>
-            <select
-              value={barangay}
-              onChange={(event) => {
-                setBarangay(event.target.value);
-                setPage(1);
-              }}
-              className="h-12 w-full rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-ring/30"
-            >
-              <option value="">All barangays</option>
-              {BARANGAYS.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </label>
+          <IconSelect
+            label="Barangay"
+            icon={<MapPin className="h-4 w-4" />}
+            value={barangay}
+            defaultValue=""
+            className="sm:h-12 sm:w-60 sm:rounded-full sm:px-4"
+            options={[
+              { value: "", label: "All barangays" },
+              ...BARANGAYS.map((name) => ({ value: name, label: name })),
+            ]}
+            onChange={(value) => {
+              setBarangay(value);
+              setPage(1);
+            }}
+          />
           {(search || barangay) && (
-            <button
-              type="button"
+            <IconActionButton
+              label="Clear filters"
+              variant="outline"
+              icon={<X className="h-4 w-4" />}
+              className="h-10 w-10 hover:translate-y-0 sm:h-12 sm:rounded-full sm:border-0 sm:bg-secondary sm:px-4 sm:text-foreground sm:shadow-none"
               onClick={() => {
                 setSearch("");
                 setBarangay("");
                 setPage(1);
               }}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-secondary px-4 text-sm font-semibold"
-            >
-              <X aria-hidden="true" className="h-4 w-4" />
-              Clear filters
-            </button>
+            />
           )}
         </div>
         <div className="mt-6 space-y-3">

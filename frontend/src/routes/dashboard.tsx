@@ -223,27 +223,29 @@ function Dashboard() {
         </button>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
         <Link
           to="/seniors"
           search={{ q: undefined, status: undefined }}
-          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#173A52]/35 bg-white p-4 shadow-[0_8px_24px_rgba(23,58,82,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#173A52]/[0.04] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#173A52] dark:hover:bg-[#173A52]/80 sm:p-5"
+          className="relative isolate flex min-h-[168px] overflow-hidden rounded-xl border border-[#173A52]/35 bg-white p-3 shadow-[0_8px_24px_rgba(23,58,82,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#173A52]/[0.04] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#173A52] dark:hover:bg-[#173A52]/80 sm:min-h-[184px] sm:p-5"
         >
-          <Users className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#173A52]/15 sm:h-16 sm:w-16" />
+          <Users className="pointer-events-none absolute right-3 bottom-4 -z-10 h-10 w-10 sm:right-4 sm:bottom-5 sm:h-14 sm:w-14 md:h-16 md:w-16 text-[#173A52]/15" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#173A52] text-white shadow-[0_6px_14px_rgba(23,58,82,0.32)]">
-                <Users className="h-5 w-5" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full sm:h-10 sm:w-10 bg-[#173A52] text-white shadow-[0_6px_14px_rgba(23,58,82,0.32)]">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
               </span>
-              <p className="text-sm font-bold leading-tight text-foreground">Total Registered</p>
+              <p className="text-xs font-bold leading-tight text-foreground sm:text-sm">
+                Total Registered
+              </p>
             </div>
-            <p className="mt-2 ml-[52px] font-display text-3xl font-extrabold leading-none text-foreground">
+            <p className="mt-2 ml-10 truncate font-display text-2xl font-extrabold leading-none text-foreground sm:ml-[52px] sm:text-3xl">
               {loading ? "..." : totalCount.toLocaleString()}
             </p>
             <p className="mt-2 ml-1">
               <MonthlyChange value={overview?.monthly_change.total_registered} />
             </p>
-            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[220px] pr-8 text-[10px] leading-snug text-muted-foreground sm:mt-3 sm:pr-0 sm:text-[11px] sm:leading-relaxed">
               Total number of senior citizens in the system.
             </p>
           </div>
@@ -251,25 +253,25 @@ function Dashboard() {
 
         <Link
           to="/benefits"
-          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#DCAC4D]/45 bg-white p-4 shadow-[0_8px_24px_rgba(220,172,77,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#DCAC4D]/[0.08] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#594B2D] dark:hover:bg-[#594B2D]/80 sm:p-5"
+          className="relative isolate flex min-h-[168px] overflow-hidden rounded-xl border border-[#DCAC4D]/45 bg-white p-3 shadow-[0_8px_24px_rgba(220,172,77,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#DCAC4D]/[0.08] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#594B2D] dark:hover:bg-[#594B2D]/80 sm:min-h-[184px] sm:p-5"
         >
-          <ShieldCheck className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#DCAC4D]/25 sm:h-16 sm:w-16" />
+          <ShieldCheck className="pointer-events-none absolute right-3 bottom-4 -z-10 h-10 w-10 sm:right-4 sm:bottom-5 sm:h-14 sm:w-14 md:h-16 md:w-16 text-[#DCAC4D]/25" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#DCAC4D] text-white shadow-[0_6px_14px_rgba(220,172,77,0.36)]">
-                <ShieldCheck className="h-5 w-5" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full sm:h-10 sm:w-10 bg-[#DCAC4D] text-white shadow-[0_6px_14px_rgba(220,172,77,0.36)]">
+                <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5" />
               </span>
-              <p className="text-sm font-bold leading-tight text-foreground">
+              <p className="text-xs font-bold leading-tight text-foreground sm:text-sm">
                 Total Benefits Distributed
               </p>
             </div>
-            <p className="mt-2 ml-[52px] font-display text-2xl font-extrabold leading-none text-foreground sm:text-3xl">
+            <p className="mt-2 ml-10 truncate font-display text-xl font-extrabold leading-none text-foreground sm:ml-[52px] sm:text-3xl">
               {overview ? `₱${overview.benefits_distributed_amount.toLocaleString()}` : "..."}
             </p>
             <p className="mt-2 ml-1">
               <MonthlyChange value={overview?.monthly_change.benefits_distributed_amount} />
             </p>
-            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[220px] pr-8 text-[10px] leading-snug text-muted-foreground sm:mt-3 sm:pr-0 sm:text-[11px] sm:leading-relaxed">
               Total amount of benefits released to senior citizens.
             </p>
           </div>
@@ -278,23 +280,25 @@ function Dashboard() {
         <Link
           to="/seniors"
           search={{ q: undefined, status: "active" }}
-          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#1B9E70]/40 bg-white p-4 shadow-[0_8px_24px_rgba(27,158,112,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B9E70]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#164B3A] dark:hover:bg-[#164B3A]/80 sm:p-5"
+          className="relative isolate flex min-h-[168px] overflow-hidden rounded-xl border border-[#1B9E70]/40 bg-white p-3 shadow-[0_8px_24px_rgba(27,158,112,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B9E70]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#164B3A] dark:hover:bg-[#164B3A]/80 sm:min-h-[184px] sm:p-5"
         >
-          <UserCheck className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#1B9E70]/25 sm:h-16 sm:w-16" />
+          <UserCheck className="pointer-events-none absolute right-3 bottom-4 -z-10 h-10 w-10 sm:right-4 sm:bottom-5 sm:h-14 sm:w-14 md:h-16 md:w-16 text-[#1B9E70]/25" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#1B9E70] text-white shadow-[0_6px_14px_rgba(27,158,112,0.36)]">
-                <UserCheck className="h-5 w-5" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full sm:h-10 sm:w-10 bg-[#1B9E70] text-white shadow-[0_6px_14px_rgba(27,158,112,0.36)]">
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
               </span>
-              <p className="text-sm font-bold leading-tight text-foreground">Active Seniors</p>
+              <p className="text-xs font-bold leading-tight text-foreground sm:text-sm">
+                Active Seniors
+              </p>
             </div>
-            <p className="mt-2 ml-[52px] font-display text-3xl font-extrabold leading-none text-foreground">
+            <p className="mt-2 ml-10 truncate font-display text-2xl font-extrabold leading-none text-foreground sm:ml-[52px] sm:text-3xl">
               {loading ? "..." : activeCount.toLocaleString()}
             </p>
             <p className="mt-2 ml-1">
               <MonthlyChange value={overview?.monthly_change.active_seniors} />
             </p>
-            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[220px] pr-8 text-[10px] leading-snug text-muted-foreground sm:mt-3 sm:pr-0 sm:text-[11px] sm:leading-relaxed">
               Seniors with active records and benefits.
             </p>
           </div>
@@ -303,25 +307,25 @@ function Dashboard() {
         <Link
           to="/seniors"
           search={{ q: undefined, status: "pending" }}
-          className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#EB625D]/40 bg-white p-4 shadow-[0_8px_24px_rgba(235,98,93,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#EB625D]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#5C2E2C] dark:hover:bg-[#5C2E2C]/80 sm:p-5"
+          className="relative isolate flex min-h-[168px] overflow-hidden rounded-xl border border-[#EB625D]/40 bg-white p-3 shadow-[0_8px_24px_rgba(235,98,93,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#EB625D]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#5C2E2C] dark:hover:bg-[#5C2E2C]/80 sm:min-h-[184px] sm:p-5"
         >
-          <Clock className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#EB625D]/25 sm:h-16 sm:w-16" />
+          <Clock className="pointer-events-none absolute right-3 bottom-4 -z-10 h-10 w-10 sm:right-4 sm:bottom-5 sm:h-14 sm:w-14 md:h-16 md:w-16 text-[#EB625D]/25" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#EB625D] text-white shadow-[0_6px_14px_rgba(235,98,93,0.36)]">
-                <Clock className="h-5 w-5" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full sm:h-10 sm:w-10 bg-[#EB625D] text-white shadow-[0_6px_14px_rgba(235,98,93,0.36)]">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
               </span>
-              <p className="text-sm font-bold leading-tight text-foreground">
+              <p className="text-xs font-bold leading-tight text-foreground sm:text-sm">
                 Pending Applications
               </p>
             </div>
-            <p className="mt-2 ml-[52px] font-display text-3xl font-extrabold leading-none text-foreground">
+            <p className="mt-2 ml-10 truncate font-display text-2xl font-extrabold leading-none text-foreground sm:ml-[52px] sm:text-3xl">
               {loading ? "..." : pendingCount.toLocaleString()}
             </p>
             <p className="mt-2 ml-1">
               <MonthlyChange value={overview?.monthly_change.pending_applications} />
             </p>
-            <p className="mt-3 max-w-[220px] text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-[220px] pr-8 text-[10px] leading-snug text-muted-foreground sm:mt-3 sm:pr-0 sm:text-[11px] sm:leading-relaxed">
               Applications awaiting verification or approval.
             </p>
           </div>

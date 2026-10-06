@@ -3,6 +3,7 @@ import { Eye, EyeOff, Pencil, Trash2, UserCog, UserPlus, X } from "lucide-react"
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton } from "@/components/IconActionButton";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import {
   apiFetch,
@@ -197,12 +198,13 @@ function UserManagement() {
       breadcrumb={["Dashboard", "User Management"]}
       actions={
         isAdmin ? (
-          <button
+          <IconActionButton
+            label="Create BSCA / Barangay Senior Citizen Affairs"
+            variant="primary"
+            icon={<UserPlus className="h-5 w-5" />}
+            className="sm:rounded-[20px] sm:px-6"
             onClick={() => setShowCreateForm(true)}
-            className="bg-navy rounded-[20px] px-6 py-3.5 text-sm font-semibold text-primary-foreground"
-          >
-            <UserPlus className="mr-2 inline h-4 w-4" /> Create BSCA / Barangay Senior Citizen Affairs
-          </button>
+          />
         ) : undefined
       }
     >

@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronLeft, Image, MoreHorizontal, PenLine, Plus, Search, S
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton } from "@/components/IconActionButton";
 import {
   getMessageRecipients,
   getMessages,
@@ -183,12 +184,20 @@ function MessagesPage() {
       breadcrumb={["Dashboard", "Inbox"]}
       actions={
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="More chat options" title="More options" className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)]">
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
-          <button type="button" onClick={() => setComposerOpen((open) => !open)} aria-label="New message" title="New message" className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground shadow-[var(--shadow-soft)]">
-            <PenLine className="h-4 w-4" />
-          </button>
+          <IconActionButton
+            label="More options"
+            iconOnly
+            icon={<MoreHorizontal className="h-5 w-5" />}
+            className="h-10 w-10 rounded-full sm:h-10 sm:w-10"
+          />
+          <IconActionButton
+            label="New message"
+            iconOnly
+            variant="primary"
+            icon={<PenLine className="h-4 w-4" />}
+            className="h-10 w-10 rounded-full sm:h-10 sm:w-10"
+            onClick={() => setComposerOpen((open) => !open)}
+          />
         </div>
       }
     >

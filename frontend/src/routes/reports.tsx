@@ -3,6 +3,7 @@ import { CheckCircle2, Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton } from "@/components/IconActionButton";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
 
@@ -93,14 +94,15 @@ function Reports() {
       title="Reports"
       subtitle="Generate, approve, and publish OSCA reports"
       breadcrumb={["Dashboard", "Reports"]}
-      actions={(
-        <button
+      actions={
+        <IconActionButton
+          label="Generate report"
+          variant="primary"
+          icon={<FileText className="h-5 w-5" />}
+          className="sm:rounded-full sm:px-6 print:hidden"
           onClick={generateReport}
-          className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground print:hidden"
-        >
-          <FileText className="mr-2 inline h-4 w-4" /> Generate report
-        </button>
-      )}
+        />
+      }
     >
       <section className="surface-card p-7 print:hidden">
         <div className="flex items-center gap-3">

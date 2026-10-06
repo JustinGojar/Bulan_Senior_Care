@@ -16,8 +16,10 @@ import {
   ShieldCheck,
   Users,
   XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import {
   API_URL,
   apiFetch,
@@ -443,101 +445,93 @@ function BenefitTracking() {
       subtitle="Monitor program enrollment and releases"
       breadcrumb={["Dashboard", "Benefit Tracking"]}
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          {isHead && (
-            <button
-              type="button"
-              onClick={exportBenefits}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#173A52] shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition hover:bg-[#173A52]/5 dark:bg-card dark:text-foreground"
-            >
-              <Download className="h-4 w-4" /> Export PDF
-            </button>
-          )}
+        <div className="flex items-center gap-2 sm:gap-3">
           {canManageReleases && (
-            <button
-              type="button"
+            <IconActionButton
+              label="Add Benefit Record"
+              variant="primary"
+              className="sm:h-10 sm:px-4"
+              icon={<Plus className="h-5 w-5" />}
               onClick={openAddRelease}
-              className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#173A52] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_4px_12px_rgba(23,58,82,0.16)] transition hover:bg-[#112C3E]"
-            >
-              <Plus className="h-4 w-4" /> Add Benefit Record
-            </button>
+            />
+          )}
+          {isHead && (
+            <IconActionButton
+              label="Export PDF"
+              variant="outline"
+              className="sm:h-10 sm:px-4"
+              icon={<Download className="h-5 w-5" />}
+              onClick={exportBenefits}
+            />
           )}
         </div>
       }
     >
       {error && <p className="mb-4 text-sm font-medium text-destructive">{error}</p>}
-      <div className="mb-5 grid grid-cols-1 items-center gap-2 sm:grid-cols-2 xl:grid-cols-[170px_155px_165px_minmax(185px,1fr)]">
-        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10">
-          <Grid2X2 className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="sr-only">Filter by program</span>
-          <select
-            value={selectedBenefit}
-            onChange={(event) => setSelectedBenefit(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none dark:text-foreground"
-          >
-            {benefitOptions.map((benefit) => (
-              <option key={benefit} value={benefit}>
-                {benefit === "All" ? "All Programs" : benefit}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10">
-          <ListFilter className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="sr-only">Filter by transaction status</span>
-          <select
-            value={selectedStatus}
-            onChange={(event) => setSelectedStatus(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none dark:text-foreground"
-          >
-            <option value="All">All Statuses</option>
-            <option value="released">Released</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Not Released</option>
-          </select>
-        </label>
-        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10">
-          <MapPin className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="sr-only">Filter by barangay</span>
-          <select
-            value={selectedBarangay}
-            onChange={(event) => setSelectedBarangay(event.target.value)}
-            disabled={isLeader}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none disabled:opacity-70 dark:text-foreground"
-          >
-            {barangayOptions.map((barangay) => (
-              <option key={barangay} value={barangay}>
-                {barangay === "All" ? "All Barangays" : barangay}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 xl:ml-auto xl:w-[205px]">
-          <ArrowUpDown className="h-4 w-4 shrink-0 text-[#173A52]" />
-          <span className="shrink-0 text-[10px] text-muted-foreground">Sort by</span>
-          <select
-            value={sortProgramsBy}
-            onChange={(event) => setSortProgramsBy(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#173A52] outline-none dark:text-foreground"
-          >
-            <option value="name">Program name</option>
-            <option value="amount">Amount</option>
-          </select>
-        </label>
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <IconSelect
+          label="Program"
+          className="sm:flex-1 xl:w-44 xl:flex-none"
+          icon={<Grid2X2 className="h-4 w-4" />}
+          value={selectedBenefit}
+          options={benefitOptions.map((benefit) => ({
+            value: benefit,
+            label: benefit === "All" ? "All Programs" : benefit,
+          }))}
+          onChange={setSelectedBenefit}
+        />
+        <IconSelect
+          label="Status"
+          className="sm:flex-1 xl:w-44 xl:flex-none"
+          icon={<ListFilter className="h-4 w-4" />}
+          value={selectedStatus}
+          options={[
+            { value: "All", label: "All Statuses" },
+            { value: "released", label: "Released" },
+            { value: "pending", label: "Pending" },
+            { value: "failed", label: "Not Released" },
+          ]}
+          onChange={setSelectedStatus}
+        />
+        <IconSelect
+          label="Barangay"
+          className="sm:flex-1 xl:w-44 xl:flex-none"
+          icon={<MapPin className="h-4 w-4" />}
+          value={selectedBarangay}
+          disabled={isLeader}
+          options={barangayOptions.map((barangay) => ({
+            value: barangay,
+            label: barangay === "All" ? "All Barangays" : barangay,
+          }))}
+          onChange={setSelectedBarangay}
+        />
+        <IconSelect
+          label="Sort by"
+          prefix="Sort by"
+          className="sm:flex-1 xl:ml-auto xl:w-[205px] xl:flex-none"
+          icon={<ArrowUpDown className="h-4 w-4" />}
+          value={sortProgramsBy}
+          defaultValue="name"
+          options={[
+            { value: "name", label: "Program name" },
+            { value: "amount", label: "Amount" },
+          ]}
+          onChange={setSortProgramsBy}
+        />
         {((!isLeader && selectedBarangay !== "All") ||
           selectedBenefit !== "All" ||
           selectedStatus !== "All") && (
-          <button
-            type="button"
+          <IconActionButton
+            label="Clear filters"
+            variant="outline"
+            icon={<RotateCcw className="h-4 w-4" />}
+            className="h-10 w-10 text-xs hover:translate-y-0 sm:h-11 sm:px-4"
             onClick={() => {
               if (!isLeader) setSelectedBarangay("All");
               setSelectedBenefit("All");
               setSelectedStatus("All");
             }}
-            className="rounded-[10px] px-3 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-secondary"
-          >
-            Clear filters
-          </button>
+          />
         )}
       </div>
 
