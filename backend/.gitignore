@@ -54,3 +54,6 @@ dist-ssr
 claude.exe
 .vercel
 .env*
+
+# Vite dependency cache
+.vite/
