@@ -264,7 +264,7 @@ export function AppShell({
                   className={
                     active
                       ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
-                      : "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
                   }
                 >
                   <Icon className="h-5 w-5" />
@@ -326,7 +326,7 @@ export function AppShell({
                       className={
                         active
                           ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
-                          : "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                          : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
                       }
                     >
                       <Icon className="h-5 w-5" />

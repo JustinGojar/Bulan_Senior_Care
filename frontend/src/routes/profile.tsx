@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   BarChart3,
-  BriefcaseBusiness,
   Camera,
   Eye,
   EyeOff,
@@ -10,9 +9,6 @@ import {
   HandCoins,
   KeyRound,
   LogOut,
-  Mail,
-  MapPin,
-  Phone,
   Save,
   ShieldCheck,
   UserCircle,
@@ -21,6 +17,13 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   API_URL,
   apiFetch,
@@ -51,6 +54,7 @@ function ProfilePage() {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -114,16 +118,6 @@ function ProfilePage() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const isAdminUser =
-    user?.role?.toLowerCase() === "admin" ||
-    user?.roles?.some((role) => role.name.toLowerCase() === "admin");
-  const isHeadUser =
-    user?.role?.toLowerCase() === "head" ||
-    user?.roles?.some((role) => role.name.toLowerCase() === "head");
-  const isLeaderUser =
-    user?.role?.toLowerCase() === "leader" ||
-    user?.roles?.some((role) => role.name.toLowerCase() === "leader");
-
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -164,6 +158,7 @@ function ProfilePage() {
       setCurrentPassword("");
       setPassword("");
       setPasswordConfirmation("");
+      setPasswordDialogOpen(false);
       toast.success("Password changed successfully.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not change password.");
@@ -239,138 +234,12 @@ function ProfilePage() {
               </span>
             </div>
 
-            <div className="mt-8 space-y-3">
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
-                <div className="flex items-center gap-3 font-medium text-foreground">
-                  <UserCircle className="h-4 w-4 text-[#1b3b60]" /> Full name
-                </div>
-                <span className="font-semibold text-foreground">{name || "Not provided"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
-                <div className="flex items-center gap-3 font-medium text-foreground">
-                  <Mail className="h-4 w-4 text-[#1b3b60]" /> Email address
-                </div>
-                <span className="font-semibold text-foreground">{email || "Not provided"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
-                <div className="flex items-center gap-3 font-medium text-foreground">
-                  <Phone className="h-4 w-4 text-[#1b3b60]" /> Contact number
-                </div>
-                <span className="font-semibold text-foreground">{contact || "Not provided"}</span>
-              </div>
-              {(isLeaderUser || isHeadUser || isAdminUser) && (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
-                  <div className="flex items-center gap-3 font-medium text-foreground">
-                    <MapPin className="h-4 w-4 text-[#1b3b60]" /> Assigned barangay
-                  </div>
-                  <span className="font-semibold text-foreground">
-                    {assignedBarangay || "Not assigned"}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
-                <div className="flex items-center gap-3 font-medium text-foreground">
-                  <BriefcaseBusiness className="h-4 w-4 text-[#1b3b60]" /> Role / Position
-                </div>
-                <span className="font-semibold text-foreground">{roleLabel}</span>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-[#f3f7fb] px-4 py-3 text-[0.95rem]">
-                <div className="flex items-center gap-3 font-medium text-foreground">
-                  <ShieldCheck className="h-4 w-4 text-[#1b3b60]" /> Account Created
-                </div>
-                <span className="font-semibold text-foreground">January 29, 2025</span>
-              </div>
-            </div>
-
-            <button
-              onClick={signOut}
-              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-[#f5a1a1] bg-[#fff5f5] py-3 text-[0.97rem] font-bold text-[#e65050] transition hover:bg-[#fde9e9]"
-            >
-              <LogOut className="h-4 w-4" /> Log out
-            </button>
-          </div>
-
-          <div className="px-7 pb-7">
-            <div className="rounded-[18px] border border-border bg-[#eef5fb] p-4">
-              <div className="mb-3 flex items-center gap-3 text-foreground">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-[#dfeaf6] text-[#1b3b60]">
-                  <BarChart3 className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-[1.05rem] font-bold">System Overview</h3>
-                  <p className="text-[0.78rem] text-muted-foreground">
-                    Quick access to your most used features
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {[
-                  {
-                    label: "Senior Record",
-                    to: "/seniors",
-                    icon: Users,
-                    color: "bg-[#eaf1ff] text-[#3b82f6]",
-                  },
-                  {
-                    label: "Benefit Tracking",
-                    to: "/benefits",
-                    icon: HandCoins,
-                    color: "bg-[#eafaf2] text-[#22c55e]",
-                  },
-                  {
-                    label: "Analytics",
-                    to: "/analytics",
-                    icon: BarChart3,
-                    color: "bg-[#f2ebff] text-[#8b5cf6]",
-                  },
-                  {
-                    label: "Reports",
-                    to: "/reports",
-                    icon: FileText,
-                    color: "bg-[#fff4dc] text-[#f59e0b]",
-                  },
-                ].map(({ label, to, icon: Icon, color }) => (
-                  <Link
-                    key={label}
-                    to={to}
-                    aria-label={`Go to ${label}`}
-                    className="flex min-h-[84px] flex-col items-center justify-center rounded-[14px] border border-border bg-white p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  >
-                    <div className={`mb-2 grid h-9 w-9 place-items-center rounded-xl ${color}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <p className="text-[0.72rem] font-semibold leading-tight text-foreground">
-                      {label}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="space-y-6">
-          <form onSubmit={saveProfile} className="surface-card p-7">
-            <div className="flex items-center justify-between gap-3">
+            <form onSubmit={saveProfile} className="mt-8 space-y-4">
               <div className="flex items-center gap-3">
                 <UserCircle className="h-5 w-5 text-[#1b3b60]" />
-                <h2 className="text-[1.05rem] font-bold">Personal Information</h2>
+                <h2 className="text-[1.05rem] font-bold">Edit Profile</h2>
               </div>
-              <button
-                type="submit"
-                disabled={busy}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-sm font-medium shadow-sm transition hover:bg-accent disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
-              </button>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              View and manage your personal details
-            </p>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-semibold text-foreground">
+              <label className="block text-sm font-semibold text-foreground">
                 Full name
                 <input
                   value={name}
@@ -379,7 +248,7 @@ function ProfilePage() {
                   required
                 />
               </label>
-              <label className="text-sm font-semibold text-foreground">
+              <label className="block text-sm font-semibold text-foreground">
                 Email address
                 <input
                   type="email"
@@ -389,7 +258,7 @@ function ProfilePage() {
                   required
                 />
               </label>
-              <label className="text-sm font-semibold text-foreground">
+              <label className="block text-sm font-semibold text-foreground">
                 Contact number
                 <input
                   value={contact}
@@ -398,7 +267,7 @@ function ProfilePage() {
                   className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </label>
-              <label className="text-sm font-semibold text-foreground">
+              <label className="block text-sm font-semibold text-foreground">
                 Address
                 <input
                   value={address}
@@ -407,89 +276,173 @@ function ProfilePage() {
                   className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
                 />
               </label>
-              <div className="sm:col-span-2">
-                <label className="text-sm font-semibold text-foreground">
-                  Role / Position
+              <label className="block text-sm font-semibold text-foreground">
+                Role / Position
+                <input
+                  value={roleLabel}
+                  readOnly
+                  className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-border bg-[#f3f7fb] px-4 text-muted-foreground outline-none"
+                />
+              </label>
+              {photo && (
+                <p className="text-xs text-muted-foreground">
+                  Preview updated. Click Save profile to upload {photo.name}.
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
+              </button>
+            </form>
+            <button
+              onClick={signOut}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#f5a1a1] bg-[#fff5f5] py-3 text-[0.97rem] font-bold text-[#e65050] transition hover:bg-[#fde9e9]"
+            >
+              <LogOut className="h-4 w-4" /> Log out
+            </button>
+          </div>
+        </section>
+
+        <div className="space-y-6">
+          <section className="surface-card p-7">
+            <div className="mb-3 flex items-center gap-3 text-foreground">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-[#dfeaf6] text-[#1b3b60]">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-[1.05rem] font-bold">System Overview</h2>
+                <p className="text-sm text-muted-foreground">
+                  Quick access to your most used features
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  label: "Senior Record",
+                  to: "/seniors",
+                  icon: Users,
+                  color: "bg-[#eaf1ff] text-[#3b82f6]",
+                },
+                {
+                  label: "Benefit Tracking",
+                  to: "/benefits",
+                  icon: HandCoins,
+                  color: "bg-[#eafaf2] text-[#22c55e]",
+                },
+                {
+                  label: "Analytics",
+                  to: "/analytics",
+                  icon: BarChart3,
+                  color: "bg-[#f2ebff] text-[#8b5cf6]",
+                },
+                {
+                  label: "Reports",
+                  to: "/reports",
+                  icon: FileText,
+                  color: "bg-[#fff4dc] text-[#f59e0b]",
+                },
+              ].map(({ label, to, icon: Icon, color }) => (
+                <Link
+                  key={label}
+                  to={to}
+                  aria-label={`Go to ${label}`}
+                  className="flex min-h-[84px] flex-col items-center justify-center rounded-[14px] border border-border bg-white p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <div className={`mb-2 grid h-9 w-9 place-items-center rounded-xl ${color}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <p className="text-[0.72rem] font-semibold leading-tight text-foreground">
+                    {label}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+            <button
+              type="button"
+              onClick={() => setPasswordDialogOpen(true)}
+              className="surface-card flex w-full items-center justify-between gap-4 p-7 text-left transition hover:border-[#173A52]/30 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <span className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-[#1b3b60]" />
+                <span>
+                  <span className="block text-[1.05rem] font-bold">Change Password</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    Keep your account secure
+                  </span>
+                </span>
+              </span>
+              <KeyRound className="h-5 w-5 shrink-0 text-[#1b3b60]" />
+            </button>
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Change Password</DialogTitle>
+                <DialogDescription>
+                  Enter your current password and choose a new password of at least 8 characters.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={savePassword} className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords((visible) => !visible)}
+                    className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
+                  >
+                    {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPasswords ? "Hide passwords" : "Show passwords"}
+                  </button>
+                </div>
+                <label className="block text-sm font-semibold text-foreground">
+                  Current password
                   <input
-                    value={roleLabel}
-                    readOnly
-                    className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-border bg-[#f3f7fb] px-4 text-muted-foreground outline-none"
+                    type={showPasswords ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                    className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    required
                   />
                 </label>
-              </div>
-            </div>
-            {photo && (
-              <p className="mt-4 text-xs text-muted-foreground">
-                Preview updated. Click Save profile to upload {photo.name}.
-              </p>
-            )}
-          </form>
-
-          <form onSubmit={savePassword} className="surface-card p-7">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-[#1b3b60]" />
-                <h2 className="text-[1.05rem] font-bold">Change Password</h2>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-[#eafaf2] px-3 py-1 text-[0.7rem] font-bold text-emerald-700">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Password strength{" "}
-                <span className="font-semibold">Strong</span>
-              </div>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">Keep your account secure</p>
-
-            <div className="mt-5 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowPasswords((visible) => !visible)}
-                className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
-              >
-                {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {showPasswords ? "Hide passwords" : "Show passwords"}
-              </button>
-            </div>
-            <div className="mt-3 grid gap-4 sm:grid-cols-3">
-              <label className="text-sm font-semibold text-foreground">
-                Current password
-                <input
-                  type={showPasswords ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-                  required
-                />
-              </label>
-              <label className="text-sm font-semibold text-foreground">
-                New password
-                <input
-                  type={showPasswords ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={8}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-                  required
-                />
-              </label>
-              <label className="text-sm font-semibold text-foreground">
-                Confirm password
-                <input
-                  type={showPasswords ? "text" : "password"}
-                  value={passwordConfirmation}
-                  onChange={(event) => setPasswordConfirmation(event.target.value)}
-                  minLength={8}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
-                  required
-                />
-              </label>
-            </div>
-            <button
-              type="submit"
-              disabled={busy}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
-            >
-              <KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}
-            </button>
-          </form>
+                <label className="block text-sm font-semibold text-foreground">
+                  New password
+                  <input
+                    type={showPasswords ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    required
+                  />
+                </label>
+                <label className="block text-sm font-semibold text-foreground">
+                  Confirm password
+                  <input
+                    type={showPasswords ? "text" : "password"}
+                    value={passwordConfirmation}
+                    onChange={(event) => setPasswordConfirmation(event.target.value)}
+                    minLength={8}
+                    autoComplete="new-password"
+                    className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    required
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                >
+                  <KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}
+                </button>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           <section className="surface-card overflow-hidden p-7">
             <div className="flex items-center justify-between gap-3">

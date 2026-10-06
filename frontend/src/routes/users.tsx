@@ -199,7 +199,7 @@ function UserManagement() {
         isAdmin ? (
           <button
             onClick={() => setShowCreateForm(true)}
-            className="bg-navy rounded-full px-6 py-3.5 text-sm font-semibold text-primary-foreground"
+            className="bg-navy rounded-[20px] px-6 py-3.5 text-sm font-semibold text-primary-foreground"
           >
             <UserPlus className="mr-2 inline h-4 w-4" /> Create BSCA / Barangay Senior Citizen Affairs
           </button>
