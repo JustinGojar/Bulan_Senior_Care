@@ -8,6 +8,8 @@ $spaShell = static function () {
 
     return response()->file($shellPath, [
         'Content-Type' => 'text/html; charset=UTF-8',
+        // Always check for a new deploy; the hashed assets it points to are cached for a year.
+        'Cache-Control' => 'no-cache',
     ]);
 };
 
