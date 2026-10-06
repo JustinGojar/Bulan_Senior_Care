@@ -243,7 +243,7 @@ export function AppShell({
   }
 
   return (
-    <div className="bg-app app-shell w-full">
+    <div className="bg-app app-shell w-full overflow-x-clip">
       <div className="flex min-w-0 w-full gap-3 sm:gap-4 lg:gap-6">
         <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex print:hidden">
           <div className="flex items-center gap-3">
@@ -357,7 +357,7 @@ export function AppShell({
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
                   </div>
                 </Link>
               </div>
@@ -366,7 +366,7 @@ export function AppShell({
         </Sheet>
 
         <main className="min-w-0 flex-1">
-          <header className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
+          <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 print:hidden sm:flex sm:flex-wrap sm:gap-4">
             <button
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open navigation menu"
@@ -377,7 +377,7 @@ export function AppShell({
             </button>
             <nav
               aria-label="Breadcrumb"
-              className="flex h-11 min-w-0 shrink-0 items-center gap-2 rounded-[10px] border border-white/70 bg-white/80 px-3 text-xs shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:gap-3 sm:px-4 sm:text-sm"
+              className="flex h-11 min-w-0 items-center gap-2 rounded-[10px] border border-white/70 bg-white/80 px-3 text-xs shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:gap-3 sm:px-4 sm:text-sm"
             >
               <Link
                 to="/dashboard"
@@ -391,7 +391,10 @@ export function AppShell({
                 const isCurrent = i === breadcrumb.length - 1;
 
                 return (
-                  <span key={`${crumb}-${i}`} className="flex min-w-0 items-center gap-2 sm:gap-3">
+                  <span
+                    key={`${crumb}-${i}`}
+                    className={`${isCurrent ? "flex" : "hidden sm:flex"} min-w-0 items-center gap-2 sm:gap-3`}
+                  >
                     <ChevronRight className="h-4 w-4 shrink-0 text-[#7EA5C5]" />
                     {destination && !isCurrent ? (
                       <Link
@@ -413,7 +416,7 @@ export function AppShell({
               })}
             </nav>
             <div
-              className="relative col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:row-auto sm:flex-1"
+              className="relative col-span-3 row-start-2 min-w-0 sm:flex-1"
               onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                   setSearchOpen(false);
@@ -530,7 +533,7 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <div className="relative flex items-center gap-1.5 sm:gap-3">
+            <div className="relative col-start-3 row-start-1 flex items-center gap-1.5 sm:gap-3">
               {!isAdmin && (
                 <button
                   onClick={() => navigate({ to: "/messages" })}
@@ -577,7 +580,7 @@ export function AppShell({
                 )}
               </button>
               {profileOpen && (
-                <div className="surface-card absolute top-14 right-0 z-20 w-64 p-3">
+                <div className="surface-card absolute top-14 right-0 z-20 w-[min(16rem,calc(100vw-1.5rem))] p-3">
                   <div className="flex items-center gap-3 border-b border-border px-2 pb-3">
                     <UserCircle className="h-8 w-8 text-muted-foreground" />
                     <div className="min-w-0">
@@ -619,7 +622,7 @@ export function AppShell({
             {actions}
           </div>
 
-          <div className="mt-6 pb-10">{children}</div>
+          <div className="mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
     </div>

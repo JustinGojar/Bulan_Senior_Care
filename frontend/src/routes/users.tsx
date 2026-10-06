@@ -77,7 +77,7 @@ function UserManagement() {
         subtitle="User Management is available to Admin accounts only"
         breadcrumb={["Dashboard"]}
       >
-        <section className="surface-card p-7">
+        <section className="surface-card p-5 sm:p-7">
           <p className="text-sm text-muted-foreground">
             You do not have permission to view user management.
           </p>
@@ -206,7 +206,7 @@ function UserManagement() {
         ) : undefined
       }
     >
-      <section className="surface-card p-7">
+      <section className="surface-card p-5 sm:p-7">
         <div className="flex items-center gap-3">
           <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
             <UserCog className="h-4 w-4" />
@@ -219,7 +219,7 @@ function UserManagement() {
           </div>
         </div>
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[720px] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-left">
                 {["Name", "Email", "Role", "Barangay scope", "Status", "Action"].map((heading) => (
@@ -294,7 +294,7 @@ function UserManagement() {
 
       {showCreateForm && isAdmin && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4">
-          <form className="surface-card w-full max-w-lg p-7" onSubmit={handleSubmit}>
+          <form className="surface-card w-full max-w-lg p-5 sm:p-7" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">{editingUser ? "Edit user account" : "Create BSCA / Barangay Senior Citizen Affairs account"}</h2>

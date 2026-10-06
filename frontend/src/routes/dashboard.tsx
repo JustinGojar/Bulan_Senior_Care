@@ -333,7 +333,7 @@ function Dashboard() {
           currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"
         }
       >
-        <section className="surface-card flex h-[430px] flex-col overflow-hidden p-7">
+        <section className="surface-card flex max-h-[430px] flex-col overflow-hidden p-5 sm:p-7 lg:h-[430px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
@@ -387,7 +387,7 @@ function Dashboard() {
           </div>
         </section>
         {isHead && (
-          <section className="surface-card p-7">
+          <section className="surface-card p-5 sm:p-7">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold">Benefits received by age</h2>
@@ -415,7 +415,7 @@ function Dashboard() {
           </section>
         )}
 
-        <section className="surface-card h-[430px] overflow-hidden p-7">
+        <section className="surface-card overflow-hidden p-5 sm:p-7 lg:h-[430px]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
@@ -484,7 +484,7 @@ function Dashboard() {
         </section>
       </div>
 
-      <section className="surface-card mt-6 p-7">
+      <section className="surface-card mt-6 p-5 sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
