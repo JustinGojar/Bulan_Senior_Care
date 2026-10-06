@@ -527,7 +527,7 @@ function ConversationDetail({
 
   return (
     <section
-      className={`${panelClass} flex h-[calc(100vh-9rem)] min-h-[560px] flex-col overflow-hidden`}
+      className={`${panelClass} flex h-[calc(100dvh-13.5rem)] min-h-[420px] flex-col overflow-hidden lg:h-[calc(100dvh-12.75rem)]`}
     >
       <header className="flex items-center gap-3 border-b border-border/60 bg-muted/40 px-4 py-3 sm:px-6">
         <button
