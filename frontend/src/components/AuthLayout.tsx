@@ -26,7 +26,7 @@ export function AuthLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="bg-app relative grid min-h-screen place-items-center px-4 py-8 sm:px-6">
+    <div className="bg-app relative grid min-h-screen place-items-center px-4 pt-20 pb-8 sm:px-6">
       <div className="pointer-events-none absolute inset-0 bg-background/40 backdrop-blur-[2px]" />
       <ThemeToggle className="absolute top-5 right-5 z-10" />
 
