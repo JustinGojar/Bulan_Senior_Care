@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { panelClass, secondaryButtonClass, tileClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import {
   deleteServerNotification,
@@ -131,19 +133,26 @@ function Notifications() {
       subtitle="System alerts and operational messages"
       breadcrumb={["Dashboard", "Notifications"]}
     >
-      <section className="surface-card p-5 sm:p-7">
-        <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
-            <Bell className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">Inbox</h2>
-            <p className="text-sm text-muted-foreground">
-              Age threshold, benefit, report, and workflow notifications.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <section className={`${panelClass} p-5 sm:p-7`}>
+        <SectionHeader
+          icon={Bell}
+          title="Inbox"
+          subtitle="Age threshold, benefit, report, and workflow notifications."
+          badge={
+            serverNotifications.some((notification) => notification.status === "unread") ? (
+              <StatusPill tone="gold">
+                {
+                  serverNotifications.filter((notification) => notification.status === "unread")
+                    .length
+                }{" "}
+                unread
+              </StatusPill>
+            ) : undefined
+          }
+        />
+        <div
+          className={`${tileClass} mt-6 flex flex-wrap items-center justify-between gap-3 py-2.5`}
+        >
           <label className="inline-flex items-center gap-2 text-sm font-semibold">
             <input
               type="checkbox"
@@ -159,7 +168,7 @@ function Notifications() {
               label="Mark all as read"
               variant="outline"
               icon={<CheckCheck className="h-4 w-4" />}
-              className="h-10 w-10 sm:h-9 sm:rounded-full sm:border-0 sm:bg-secondary sm:px-4 sm:text-xs sm:font-bold sm:text-foreground sm:shadow-none"
+              className="h-10 w-10 text-xs hover:translate-y-0 sm:h-9 sm:px-3 sm:shadow-none"
               onClick={markAllServerNotificationsRead}
               disabled={
                 !serverNotifications.some((notification) => notification.status === "unread")
@@ -174,7 +183,7 @@ function Notifications() {
               variant="outline"
               icon={<Trash2 className="h-4 w-4" />}
               badge={selectedNotificationIds.length}
-              className="h-10 w-10 text-destructive sm:h-9 sm:rounded-full sm:border-0 sm:bg-secondary sm:px-4 sm:text-xs sm:font-bold sm:shadow-none dark:text-destructive"
+              className="h-10 w-10 text-xs text-destructive hover:translate-y-0 sm:h-9 sm:px-3 sm:shadow-none dark:text-destructive"
               onClick={clearSelectedNotifications}
               disabled={selectedNotificationIds.length === 0}
             />
@@ -185,7 +194,7 @@ function Notifications() {
             <div
               key={`server-${notification.id}`}
               onClick={() => handleOpenServerNotification(notification)}
-              className={`flex items-start gap-4 rounded-2xl p-5 ${notification.status === "unread" ? "bg-secondary" : "bg-secondary/60"}`}
+              className={`${tileClass} flex cursor-pointer items-start gap-4 transition-colors hover:border-ring/40 ${notification.status === "unread" ? "border-l-4 border-l-gold" : "opacity-80"}`}
             >
               <input
                 type="checkbox"
@@ -195,11 +204,18 @@ function Notifications() {
                 aria-label={`Select ${notificationTitle(notification)}`}
                 className="mt-2 h-4 w-4 shrink-0 accent-[var(--navy)]"
               />
-              <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold text-gold-foreground">
+              <span
+                className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg ${notification.status === "unread" ? "bg-navy text-gold" : "bg-muted text-muted-foreground"}`}
+              >
                 <Bell className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <strong className="block text-sm">{notificationTitle(notification)}</strong>
+                <strong className="flex items-center gap-2 text-sm">
+                  {notificationTitle(notification)}
+                  {notification.status === "unread" && (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-gold" aria-label="Unread" />
+                  )}
+                </strong>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {notification.message}
                 </span>
@@ -221,7 +237,7 @@ function Notifications() {
                         )
                         .catch(() => undefined);
                     }}
-                    className="inline-flex items-center gap-1 rounded-full bg-card px-3 py-2 text-xs font-bold"
+                    className={`${secondaryButtonClass} h-8 px-3 text-xs`}
                   >
                     <Check className="h-3.5 w-3.5" /> Mark as read
                   </button>
@@ -234,7 +250,7 @@ function Notifications() {
                   }}
                   aria-label="Delete notification"
                   title="Delete notification"
-                  className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -242,9 +258,13 @@ function Notifications() {
             </div>
           ))}
           {serverNotifications.length === 0 && (
-            <p className="rounded-2xl bg-secondary p-8 text-center text-sm text-muted-foreground">
-              Your inbox is clear.
-            </p>
+            <div className={`${tileClass} py-10 text-center`}>
+              <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-lg bg-muted text-muted-foreground">
+                <CheckCheck className="h-5 w-5" />
+              </span>
+              <p className="font-semibold">Your inbox is clear.</p>
+              <p className="mt-1 text-sm text-muted-foreground">New alerts will show up here.</p>
+            </div>
           )}
         </div>
       </section>

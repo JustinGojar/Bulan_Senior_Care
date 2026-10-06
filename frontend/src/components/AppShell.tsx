@@ -306,8 +306,8 @@ export function AppShell({
                   to={to}
                   className={
                     active
-                      ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
-                      : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
+                      ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-soft)]"
+                      : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
                   }
                 >
                   <Icon className="h-5 w-5" />
@@ -320,9 +320,9 @@ export function AppShell({
           <div className="mt-auto border-t border-border pt-4">
             <Link
               to="/profile"
-              className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
+              className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
             >
-              <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
+              <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-white">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -368,8 +368,8 @@ export function AppShell({
                       onClick={() => setMobileNavOpen(false)}
                       className={
                         active
-                          ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
-                          : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
+                          ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-soft)]"
+                          : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
                       }
                     >
                       <Icon className="h-5 w-5" />
@@ -382,9 +382,9 @@ export function AppShell({
                 <Link
                   to="/profile"
                   onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
+                  className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
                 >
-                  <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
+                  <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-white">
                     {photoUrl ? (
                       <img
                         src={photoUrl}
@@ -607,7 +607,7 @@ export function AppShell({
               <button
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-label="Open profile menu"
-                className="bg-navy grid h-10 w-10 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground sm:h-11 sm:w-11"
+                className="bg-navy grid h-10 w-10 overflow-hidden place-items-center rounded-full text-xs font-bold text-white sm:h-11 sm:w-11"
               >
                 {photoUrl ? (
                   <img
@@ -665,7 +665,7 @@ export function AppShell({
             {actions}
           </div>
 
-          <div className="mt-5 pb-10 sm:mt-6">{children}</div>
+          <div className="page-enter mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
     </div>

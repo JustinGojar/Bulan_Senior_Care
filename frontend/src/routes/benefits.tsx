@@ -5,12 +5,15 @@ import {
   Banknote,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Coins,
   Download,
   Gift,
   Grid2X2,
   HeartHandshake,
   ListFilter,
+  Loader2,
   Plus,
   MapPin,
   ShieldCheck,
@@ -19,7 +22,25 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { AuthAlert } from "@/components/AuthLayout";
+import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  TONE_BAR,
+  fieldClass,
+  panelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  statCardClass,
+  tileClass,
+} from "@/components/design-kit";
 import {
   API_URL,
   apiFetch,
@@ -56,44 +77,7 @@ type BenefitProgram = {
   status: "active" | "inactive";
 };
 
-const PROGRAM_STYLES = [
-  {
-    icon: Coins,
-    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
-    accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
-  },
-  {
-    icon: Gift,
-    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
-    accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
-  },
-  {
-    icon: Users,
-    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
-    accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
-  },
-  {
-    icon: HeartHandshake,
-    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
-    accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
-  },
-  {
-    icon: Banknote,
-    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
-    accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
-  },
-  {
-    icon: Award,
-    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
-    accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
-  },
-];
+const PROGRAM_ICONS = [Coins, Gift, Users, HeartHandshake, Banknote, Award];
 
 function BenefitTracking() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
@@ -451,7 +435,6 @@ function BenefitTracking() {
             <IconActionButton
               label="Add Benefit Record"
               variant="primary"
-              className="sm:h-10 sm:px-4"
               icon={<Plus className="h-5 w-5" />}
               onClick={openAddRelease}
             />
@@ -460,7 +443,6 @@ function BenefitTracking() {
             <IconActionButton
               label="Export PDF"
               variant="outline"
-              className="sm:h-10 sm:px-4"
               icon={<Download className="h-5 w-5" />}
               onClick={exportBenefits}
             />
@@ -468,8 +450,12 @@ function BenefitTracking() {
         </div>
       }
     >
-      {error && <p className="mb-4 text-sm font-medium text-destructive">{error}</p>}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      {error && (
+        <div className="mb-4">
+          <AuthAlert tone="error">{error}</AuthAlert>
+        </div>
+      )}
+      <div className={`${panelClass} mb-5 flex flex-wrap items-center gap-2 p-3 sm:p-4`}>
         <IconSelect
           label="Program"
           className="sm:flex-1 xl:w-44 xl:flex-none"
@@ -496,6 +482,7 @@ function BenefitTracking() {
         />
         <IconSelect
           label="Barangay"
+          searchable
           className="sm:flex-1 xl:w-44 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={selectedBarangay}
@@ -564,23 +551,19 @@ function BenefitTracking() {
             .sort((a, b) => b.release_date.localeCompare(a.release_date));
           const nextRelease = scheduledReleases[0];
           const latestRelease = completedReleases[0];
-          const {
-            icon: ProgramIcon,
-            iconClass,
-            accentClass,
-            hoverClass,
-          } = PROGRAM_STYLES[index % PROGRAM_STYLES.length]!;
+          const ProgramIcon = PROGRAM_ICONS[index % PROGRAM_ICONS.length]!;
           const relatedBarangay = selectedBarangay === "All" ? "All barangays" : selectedBarangay;
 
           return (
             <article
               key={program.type}
-              className={`surface-card flex min-w-0 flex-col rounded-[10px] border border-border/70 border-b-[3px] ${accentClass} ${hoverClass} cursor-pointer p-2.5 shadow-[0_8px_24px_rgba(23,58,82,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] md:min-h-[270px] md:p-5`}
+              className={`${statCardClass} min-w-0 p-2.5 md:min-h-[270px] md:p-5`}
             >
+              <span
+                className={`absolute inset-x-0 top-0 h-1 ${program.status === "active" ? TONE_BAR.gold : "bg-muted-foreground/30"}`}
+              />
               <div className="flex flex-col items-start gap-2 md:flex-row md:gap-3">
-                <div
-                  className={`grid h-8 w-8 shrink-0 md:h-11 md:w-11 place-items-center rounded-[10px] ${iconClass}`}
-                >
+                <div className="bg-navy grid h-8 w-8 shrink-0 place-items-center rounded-lg text-gold md:h-11 md:w-11 dark:ring-1 dark:ring-white/20">
                   <ProgramIcon className="h-4 w-4 md:h-5 md:w-5" />
                 </div>
                 <div className="min-w-0 w-full flex-1">
@@ -588,10 +571,10 @@ function BenefitTracking() {
                     <h2 className="font-display text-[11px] font-bold leading-tight md:text-base">
                       {program.name}
                     </h2>
-                    <span
-                      className={`hidden shrink-0 rounded-[10px] px-2.5 py-1 text-[10px] md:inline-block font-bold ${program.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-secondary text-muted-foreground"}`}
-                    >
-                      {program.status === "active" ? "Active" : "Inactive"}
+                    <span className="hidden shrink-0 md:inline-flex">
+                      <StatusPill tone={program.status === "active" ? "success" : "neutral"}>
+                        {program.status === "active" ? "Active" : "Inactive"}
+                      </StatusPill>
                     </span>
                   </div>
                   <p className="mt-1 hidden text-xs leading-relaxed text-muted-foreground md:block">
@@ -601,14 +584,14 @@ function BenefitTracking() {
                 </div>
               </div>
 
-              <p className="mt-2 font-display text-sm font-extrabold md:mt-3 md:text-2xl text-[#1E3C51] dark:text-foreground">
+              <p className="mt-2 font-display text-sm font-extrabold md:mt-3 md:text-2xl">
                 {program.amount}
               </p>
               <p className="text-[10px] text-muted-foreground md:text-xs">{program.schedule}</p>
 
               <div className="mt-3 hidden grid-cols-2 gap-3 border-t md:grid border-border/70 pt-3">
                 <div className="flex min-w-0 gap-2">
-                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-navy" />
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
                     <p className="text-[10px] text-muted-foreground">Release date</p>
                     <p className="truncate text-xs font-semibold">
@@ -617,7 +600,7 @@ function BenefitTracking() {
                   </div>
                 </div>
                 <div className="flex min-w-0 gap-2 border-l border-border/70 pl-3">
-                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-navy" />
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
                     <p className="text-[10px] text-muted-foreground">Next release</p>
                     <p className="truncate text-xs font-semibold">
@@ -627,25 +610,19 @@ function BenefitTracking() {
                 </div>
               </div>
 
-              <div className="mt-3 hidden rounded-[10px] bg-sky-50 md:block px-3 py-2 dark:bg-sky-950/30">
+              <div className={`${tileClass} mt-3 hidden px-3 py-2 md:block`}>
                 <p className="text-[10px] text-muted-foreground">Related to</p>
-                <p className="mt-0.5 truncate text-xs font-semibold text-[#1E3C51] dark:text-foreground">
+                <p className="mt-0.5 truncate text-xs font-semibold">
                   {isLeader ? `BSCA - ${relatedBarangay}` : relatedBarangay}
                 </p>
               </div>
 
               <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2 md:pt-3">
                 <div className="hidden flex-wrap md:flex gap-1.5 text-[10px] font-semibold">
-                  <span className="rounded-[10px] bg-emerald-100 px-2 py-1 text-emerald-700">
-                    Released {received}
-                  </span>
-                  <span className="rounded-[10px] bg-amber-100 px-2 py-1 text-amber-700">
-                    Pending {pending}
-                  </span>
+                  <StatusPill tone="success">Released {received}</StatusPill>
+                  <StatusPill tone="gold">Pending {pending}</StatusPill>
                   {notReceived > 0 && (
-                    <span className="rounded-[10px] bg-rose-100 px-2 py-1 text-rose-700">
-                      Not released {notReceived}
-                    </span>
+                    <StatusPill tone="danger">Not released {notReceived}</StatusPill>
                   )}
                 </div>
                 <button
@@ -656,7 +633,7 @@ function BenefitTracking() {
                       .getElementById("release-queue")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="w-full rounded-[10px] border border-[#1E3C51]/40 px-2 py-1 md:w-auto md:px-3 md:py-1.5 text-[10px] font-bold text-[#1E3C51] transition hover:bg-[#1E3C51] hover:text-white"
+                  className="w-full rounded-lg border border-border bg-card px-2 py-1 text-[10px] font-bold text-foreground transition-colors hover:border-ring/40 hover:bg-muted md:w-auto md:px-3 md:py-1.5 md:text-xs"
                 >
                   View Records
                 </button>
@@ -668,23 +645,14 @@ function BenefitTracking() {
           <p className="text-sm text-muted-foreground">No benefit programs available.</p>
         )}
       </div>
-      <section
-        id="release-queue"
-        className="surface-card mt-5 overflow-hidden rounded-[10px] border border-border/70 p-4 sm:p-5"
-      >
-        <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-[10px] text-primary-foreground">
-            <ShieldCheck className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">Release queue</h2>
-            <p className="text-sm text-muted-foreground">
-              Transactions are linked to a senior and program; one-time grants cannot be duplicated.
-            </p>
-          </div>
-        </div>
+      <section id="release-queue" className={`${panelClass} mt-5 overflow-hidden p-4 sm:p-6`}>
+        <SectionHeader
+          icon={ShieldCheck}
+          title="Release queue"
+          subtitle="Transactions are linked to a senior and program; one-time grants cannot be duplicated."
+        />
         {canUpdateTransactions && (
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <div className={`${tileClass} mt-5 flex flex-wrap items-center gap-3 py-3`}>
             <label className="inline-flex items-center gap-2 text-sm font-semibold">
               <input
                 type="checkbox"
@@ -717,7 +685,7 @@ function BenefitTracking() {
                       transaction.status === "pending",
                   )
                 }
-                className="inline-flex items-center gap-1 rounded-[10px] bg-success/15 px-3 py-2 text-xs font-bold text-success disabled:opacity-40"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-success/30 bg-success/10 px-3 text-xs font-bold text-success transition-colors hover:bg-success/20 disabled:opacity-40"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> Received
               </button>
@@ -732,18 +700,22 @@ function BenefitTracking() {
                       transaction.status === "pending",
                   )
                 }
-                className="inline-flex items-center gap-1 rounded-[10px] bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive disabled:opacity-40"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 text-xs font-bold text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
               >
                 <XCircle className="h-3.5 w-3.5" /> Not received
               </button>
             </div>
           </div>
         )}
-        <div className="mt-6 overflow-x-auto">
+        <div className="mt-5 overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[940px] text-sm">
             <thead>
-              <tr className="text-left">
-                {canUpdateTransactions && <th className="px-3 py-3 font-bold">Select</th>}
+              <tr className="bg-muted text-left">
+                {canUpdateTransactions && (
+                  <th className="px-3 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                    Select
+                  </th>
+                )}
                 {[
                   "Senior",
                   "Program",
@@ -756,7 +728,7 @@ function BenefitTracking() {
                 ].map((heading) => (
                   <th
                     key={heading}
-                    className={`px-4 py-3 font-bold ${heading === "Action" ? "w-[190px]" : ""}`}
+                    className={`px-4 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase ${heading === "Action" ? "w-[190px]" : ""}`}
                   >
                     {heading}
                   </th>
@@ -779,9 +751,9 @@ function BenefitTracking() {
                       ? "Not received"
                       : "Pending";
                 return (
-                  <tr key={transaction.id} className="border-t border-border">
+                  <tr key={transaction.id} className="border-t border-border/60">
                     {canUpdateTransactions && (
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-3.5">
                         {transaction.status === "pending" && (
                           <input
                             type="checkbox"
@@ -800,27 +772,35 @@ function BenefitTracking() {
                         )}
                       </td>
                     )}
-                    <td className="px-4 py-4 font-semibold">{seniorName}</td>
-                    <td className="px-4 py-4">{transaction.benefit.benefit_name}</td>
-                    <td className="px-4 py-4 text-muted-foreground">
+                    <td className="px-4 py-3.5 font-semibold">{seniorName}</td>
+                    <td className="px-4 py-3.5">{transaction.benefit.benefit_name}</td>
+                    <td className="px-4 py-3.5 text-muted-foreground">
                       {transaction.senior.barangay?.barangay_name ?? "Unassigned"}
                     </td>
-                    <td className="px-4 py-4 text-muted-foreground">
+                    <td className="px-4 py-3.5 text-muted-foreground">
                       {transaction.senior.encoder?.role === "leader"
                         ? `BSCA: ${transaction.senior.encoder.name}`
                         : (transaction.senior.encoder?.name ?? "Unknown")}
                     </td>
-                    <td className="px-4 py-4 text-muted-foreground">
+                    <td className="px-4 py-3.5 text-muted-foreground">
                       {transaction.date_distributed
                         ? formatDate(transaction.date_distributed)
                         : "-"}
                     </td>
-                    <td
-                      className={`px-4 py-4 font-bold ${transaction.status === "released" ? "text-success" : transaction.status === "failed" ? "text-destructive" : "text-gold-foreground"}`}
-                    >
-                      {statusLabel}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <StatusPill
+                        tone={
+                          transaction.status === "released"
+                            ? "success"
+                            : transaction.status === "failed"
+                              ? "danger"
+                              : "gold"
+                        }
+                      >
+                        {statusLabel}
+                      </StatusPill>
                     </td>
-                    <td className="px-4 py-4 text-xs text-muted-foreground">
+                    <td className="px-4 py-3.5 text-xs text-muted-foreground">
                       <p>
                         Created by{" "}
                         {transaction.creator?.name ?? transaction.distributor?.name ?? "Unknown"}
@@ -836,34 +816,34 @@ function BenefitTracking() {
                           href={`${API_URL.replace(/\/api$/, "")}/storage/${transaction.attachment_path}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-1 inline-block font-semibold text-foreground underline"
+                          className="mt-1 inline-block font-semibold text-primary hover:underline"
                         >
                           Open proof
                         </a>
                       )}
                     </td>
                     {canUpdateTransactions && (
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-3.5">
                         {transaction.status === "pending" ? (
                           <div className="flex flex-nowrap gap-2">
                             <button
                               type="button"
                               onClick={() => updateTransaction(transaction, "released")}
-                              className="inline-flex items-center gap-1 whitespace-nowrap rounded-[10px] bg-success/15 px-2.5 py-1.5 text-xs font-bold text-success"
+                              className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-success/30 bg-success/10 px-2.5 text-xs font-bold text-success transition-colors hover:bg-success/20"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" /> Received
                             </button>
                             <button
                               type="button"
                               onClick={() => updateTransaction(transaction, "failed")}
-                              className="inline-flex items-center gap-1 whitespace-nowrap rounded-[10px] bg-destructive/10 px-2.5 py-1.5 text-xs font-bold text-destructive"
+                              className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 text-xs font-bold text-destructive transition-colors hover:bg-destructive/20"
                             >
                               <XCircle className="h-3.5 w-3.5" /> Not received
                             </button>
                           </div>
                         ) : (
                           <span
-                            className={`inline-flex items-center gap-1 rounded-[10px] px-3 py-2 text-xs font-bold ${transaction.status === "released" ? "bg-success/15 text-success" : "bg-destructive/10 text-destructive"}`}
+                            className={`inline-flex items-center gap-1 text-xs font-bold ${transaction.status === "released" ? "text-success" : "text-destructive"}`}
                           >
                             {transaction.status === "released" ? (
                               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -882,7 +862,7 @@ function BenefitTracking() {
                 <tr>
                   <td
                     colSpan={canUpdateTransactions ? 9 : 7}
-                    className="px-4 py-8 text-center text-muted-foreground"
+                    className="px-4 py-12 text-center text-muted-foreground"
                   >
                     No records available for the selected barangay and Expanded Centenarian program.
                   </td>
@@ -892,26 +872,29 @@ function BenefitTracking() {
           </table>
         </div>
         {transactionLastPage > 1 && (
-          <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground">
-              Page {transactionPage} of {transactionLastPage}
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Page <span className="font-semibold text-foreground">{transactionPage}</span> of{" "}
+              <span className="font-semibold text-foreground">{transactionLastPage}</span>
             </p>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={transactionPage === 1}
                 onClick={() => setTransactionPage((page) => page - 1)}
-                className="rounded-[10px] px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
+                className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
               >
+                <ChevronLeft className="h-4 w-4" />
                 Previous
               </button>
               <button
                 type="button"
                 disabled={transactionPage === transactionLastPage}
                 onClick={() => setTransactionPage((page) => page + 1)}
-                className="rounded-[10px] bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
               >
                 Next
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -932,36 +915,38 @@ function BenefitTracking() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={saveRelease} className="grid gap-4 sm:grid-cols-2">
-            <label>
-              <span className="text-xs font-semibold text-muted-foreground">
+            <div>
+              <label htmlFor="release-benefit" className="mb-2 block text-sm font-semibold">
                 Expanded Centenarian
-              </span>
-              <select
+              </label>
+              <Select
+                name="benefit_id"
                 required
                 value={selectedBenefitId}
-                onChange={(event) => {
-                  setSelectedBenefitId(event.target.value);
-                  const selected = programs.find(
-                    (program) => String(program.id) === event.target.value,
-                  );
+                onValueChange={(value) => {
+                  setSelectedBenefitId(value);
+                  const selected = programs.find((program) => String(program.id) === value);
                   setAmount(
                     selected?.amount === "Variable"
                       ? ""
                       : (selected?.amount.replace(/[^0-9.]/g, "") ?? ""),
                   );
                 }}
-                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
               >
-                <option value="">Select benefit</option>
-                {programs.map((program) => (
-                  <option key={program.id} value={program.id}>
-                    {program.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger id="release-benefit">
+                  <SelectValue placeholder="Select benefit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {programs.map((program) => (
+                    <SelectItem key={program.id} value={String(program.id)}>
+                      {program.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <label>
-              <span className="text-xs font-semibold text-muted-foreground">Amount</span>
+              <span className="mb-2 block text-sm font-semibold">Amount</span>
               <input
                 required
                 min="0"
@@ -970,41 +955,38 @@ function BenefitTracking() {
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
                 placeholder="0.00"
-                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+                className={`${fieldClass} h-11`}
               />
             </label>
             <label>
-              <span className="text-xs font-semibold text-muted-foreground">Release Date</span>
+              <span className="mb-2 block text-sm font-semibold">Release Date</span>
               <input
                 required
                 type="date"
                 value={releaseDate}
                 onChange={(event) => setReleaseDate(event.target.value)}
-                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+                className={`${fieldClass} h-11`}
               />
             </label>
             <label>
-              <span className="text-xs font-semibold text-muted-foreground">Remarks</span>
+              <span className="mb-2 block text-sm font-semibold">Remarks</span>
               <input
                 value={remarks}
                 onChange={(event) => setRemarks(event.target.value)}
                 placeholder="Optional remarks"
-                className="mt-1 w-full rounded-[10px] border border-border bg-transparent px-4 py-3 text-sm"
+                className={`${fieldClass} h-11`}
               />
             </label>
             <div className="flex justify-end gap-2 sm:col-span-2">
               <button
                 type="button"
                 onClick={() => setReleaseFormOpen(false)}
-                className="rounded-[10px] bg-secondary px-5 py-3 text-sm font-semibold"
+                className={secondaryButtonClass}
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={savingRelease}
-                className="bg-navy rounded-[10px] px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
-              >
+              <button type="submit" disabled={savingRelease} className={primaryButtonClass}>
+                {savingRelease && <Loader2 className="h-4 w-4 animate-spin" />}
                 {savingRelease ? "Saving..." : "Save release"}
               </button>
             </div>

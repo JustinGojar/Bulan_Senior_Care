@@ -17,6 +17,11 @@ import {
   setStoredUser,
   type ApiUser,
 } from "@/lib/api";
+import { THEME_KEY } from "@/lib/theme";
+import { NavigationProgress } from "@/components/NavigationProgress";
+import { StatusPage } from "@/components/StatusPage";
+import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
+import { Home, LayoutGrid, MapPinOff, RotateCw, TriangleAlert } from "lucide-react";
 
 import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
@@ -53,6 +58,8 @@ async function requestCurrentUser(token: string) {
     Object.assign(error, { status: response.status });
     throw error;
   }
+  // The body can be missing when the request is cancelled mid-response (e.g. a page reload).
+  if (!body) throw new Error("The session check returned no user.");
   return body as ApiUser;
 }
 
@@ -87,23 +94,27 @@ function loadCurrentUser(token: string) {
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
+    <StatusPage
+      icon={MapPinOff}
+      tone="gold"
+      code="404"
+      title="Page not found"
+      actions={
+        <>
+          <Link to="/dashboard" className={primaryButtonClass}>
+            <LayoutGrid className="h-4 w-4" />
+            Go to dashboard
           </Link>
-        </div>
-      </div>
-    </div>
+          <Link to="/" className={secondaryButtonClass}>
+            <Home className="h-4 w-4" />
+            Home page
+          </Link>
+        </>
+      }
+    >
+      The page you&apos;re looking for doesn&apos;t exist or has been moved. Check the address, or
+      head back to a page you know.
+    </StatusPage>
   );
 }
 
@@ -112,33 +123,33 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+    <StatusPage
+      icon={TriangleAlert}
+      tone="danger"
+      title="This page didn't load"
+      actions={
+        <>
           <button
+            type="button"
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className={primaryButtonClass}
           >
+            <RotateCw className="h-4 w-4" />
             Try again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
+          <a href="/" className={secondaryButtonClass}>
+            <Home className="h-4 w-4" />
+            Home page
           </a>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      Something went wrong on our end. Check your internet connection and try again, or head back
+      home.
+    </StatusPage>
   );
 }
 
@@ -177,9 +188,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         if (getToken() !== token) continue;
 
         if (cachedCurrentUser?.token === token) cachedCurrentUser = null;
-        clearToken();
         const wasUnauthorized = error instanceof Error && "status" in error && error.status === 401;
-        if (wasUnauthorized || !isPublic) broadcastAuthChange();
+        // Only a 401 means the session is gone. Network failures, server errors and
+        // requests cancelled by a page reload must not sign the user out.
+        if (!wasUnauthorized) {
+          if (isPublic) return;
+          throw error;
+        }
+        clearToken();
+        broadcastAuthChange();
         if (isPublic) return;
         throw redirect({ to: "/login" });
       }
@@ -229,10 +246,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Applies the saved theme before first paint, so pages load in dark mode without a light flash.
+const themeScript = `try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)})==="dark"?"dark":"light";document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.style.colorScheme=t}catch(e){}`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>
@@ -271,6 +292,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <NavigationProgress />
       <Outlet />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>

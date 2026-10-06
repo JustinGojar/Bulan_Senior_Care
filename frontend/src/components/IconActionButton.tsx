@@ -6,8 +6,11 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { ChevronDown } from "lucide-react";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchMenu } from "./SearchableSelect";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 const TOUCH_TOOLTIP_MS = 1500;
@@ -118,7 +121,7 @@ export function IconActionButton({
         className={cn(
           "relative inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173A52]/30 disabled:pointer-events-none disabled:opacity-60 sm:h-12",
           iconOnly ? "sm:w-12" : "sm:w-auto sm:px-5",
-          variant === "primary" && "bg-navy text-primary-foreground shadow-[var(--shadow-card)]",
+          variant === "primary" && "bg-navy text-white shadow-[var(--shadow-card)]",
           variant === "default" &&
             "bg-card text-foreground shadow-[var(--shadow-soft)] hover:bg-[#173A52]/5",
           variant === "outline" &&
@@ -148,12 +151,16 @@ export function IconActionButton({
   );
 }
 
+// Radix Select items cannot use "" as a value, so empty values travel under this key.
+const EMPTY_VALUE = "__empty__";
+const toItemValue = (value: string) => (value === "" ? EMPTY_VALUE : value);
+const fromItemValue = (value: string) => (value === EMPTY_VALUE ? "" : value);
+
 /**
- * Dropdown that is icon-only with a tooltip on mobile, and shows the selected
- * option as text from the `sm` breakpoint up. A transparent native <select>
- * covers the control so tapping opens the platform picker; a chevron marks it
- * as a dropdown. On mobile it fills navy when a non-default value is chosen,
- * since the selected value is not visible there.
+ * Filter dropdown that is icon-only with a tooltip on mobile, and shows the
+ * selected option as text from the `sm` breakpoint up. Opens a styled menu
+ * (keyboard and type-ahead friendly). A non-default choice is marked with a
+ * gold dot, and on mobile the button fills navy since the value is hidden.
  */
 export function IconSelect({
   label,
@@ -164,6 +171,7 @@ export function IconSelect({
   onChange,
   prefix,
   disabled,
+  searchable,
   className,
 }: {
   label: string;
@@ -175,45 +183,130 @@ export function IconSelect({
   /** Muted text before the selected value on larger screens, e.g. "Sort by". */
   prefix?: string;
   disabled?: boolean;
+  /** Adds a search box to the menu, for long lists such as barangays. */
+  searchable?: boolean;
   className?: string;
 }) {
   const labelsVisible = useLabelsVisible();
+  const [searchOpen, setSearchOpen] = useState(false);
   const active = value !== defaultValue;
   const current = options.find((option) => option.value === value)?.label ?? value;
-
-  return (
-    <TapTooltip label={`${label}: ${current}`} disabled={labelsVisible}>
-      <div
+  const triggerClass = cn(
+    "group relative flex h-10 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-input bg-card px-2.5 text-foreground shadow-[0_2px_8px_rgba(23,58,82,0.04)] transition-[border-color,box-shadow,background-color] outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/15 data-[state=open]:border-ring data-[state=open]:ring-4 data-[state=open]:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:gap-2 sm:px-3",
+    active &&
+      "sm:border-gold/60 sm:bg-gold/5 max-sm:border-transparent max-sm:bg-navy max-sm:text-white",
+    className,
+  );
+  const triggerContent = (
+    <>
+      <span
         className={cn(
-          "relative flex h-10 min-w-0 shrink-0 items-center gap-0.5 rounded-[10px] border border-[#173A52]/20 bg-white px-2 text-[#173A52] shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 hover:border-[#173A52]/40 dark:bg-card dark:text-foreground sm:h-11 sm:gap-2 sm:px-3",
-          active &&
-            "max-sm:border-[#173A52] max-sm:bg-[#173A52] max-sm:text-white max-sm:shadow-[0_6px_14px_rgba(23,58,82,0.25)]",
-          disabled && "opacity-70",
-          className,
+          "shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4",
+          active && "max-sm:text-white sm:text-gold-foreground dark:sm:text-gold",
         )}
       >
-        <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
-        <span className="hidden min-w-0 flex-1 truncate text-xs font-semibold sm:block">
-          {prefix && (
-            <span className="mr-1.5 text-[10px] font-normal text-muted-foreground">{prefix}</span>
-          )}
-          {current}
-        </span>
-        <ChevronDown aria-hidden="true" className="h-3 w-3 shrink-0 opacity-70 sm:h-4 sm:w-4" />
-        <select
-          aria-label={`Filter by ${label.toLowerCase()}`}
-          value={value}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-not-allowed"
+        {icon}
+      </span>
+      <span className="hidden min-w-0 flex-1 truncate text-left text-xs font-semibold sm:block">
+        {prefix && (
+          <span className="mr-1.5 text-[10px] font-normal text-muted-foreground">{prefix}</span>
+        )}
+        {current}
+      </span>
+      {active && (
+        <span
+          aria-hidden="true"
+          className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-gold sm:block"
+        />
+      )}
+      <ChevronDown
+        aria-hidden="true"
+        className="h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-180 sm:h-4 sm:w-4"
+      />
+    </>
+  );
+
+  if (searchable) {
+    return (
+      <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+        <TapTooltip label={`${label}: ${current}`} disabled={labelsVisible}>
+          <PopoverTrigger asChild disabled={disabled ?? false}>
+            <button
+              type="button"
+              role="combobox"
+              aria-expanded={searchOpen}
+              aria-label={`Filter by ${label.toLowerCase()}`}
+              className={triggerClass}
+            >
+              {triggerContent}
+            </button>
+          </PopoverTrigger>
+        </TapTooltip>
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className="z-[60] w-[max(var(--radix-popover-trigger-width),16rem)] overflow-hidden rounded-lg border-border/60 p-0 shadow-[var(--shadow-card)]"
         >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </TapTooltip>
+          <SearchMenu
+            label={label}
+            options={options}
+            value={value}
+            onSelect={(next) => {
+              onChange(next);
+              setSearchOpen(false);
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <SelectPrimitive.Root
+      value={toItemValue(value)}
+      onValueChange={(next) => onChange(fromItemValue(next))}
+      disabled={disabled ?? false}
+    >
+      <TapTooltip label={`${label}: ${current}`} disabled={labelsVisible}>
+        <SelectPrimitive.Trigger
+          aria-label={`Filter by ${label.toLowerCase()}`}
+          className={triggerClass}
+        >
+          {triggerContent}
+        </SelectPrimitive.Trigger>
+      </TapTooltip>
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          position="popper"
+          align="start"
+          sideOffset={6}
+          className="z-[60] max-h-[min(20rem,var(--radix-select-content-available-height))] min-w-[max(var(--radix-select-trigger-width),12rem)] overflow-hidden rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-[var(--shadow-card)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+        >
+          <p className="border-b border-border/60 px-3 py-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            {label}
+          </p>
+          <SelectPrimitive.ScrollUpButton className="flex h-6 items-center justify-center text-muted-foreground">
+            <ChevronUp className="h-4 w-4" />
+          </SelectPrimitive.ScrollUpButton>
+          <SelectPrimitive.Viewport className="max-h-72 p-1">
+            {options.map((option) => (
+              <SelectPrimitive.Item
+                key={option.value}
+                value={toItemValue(option.value)}
+                className="relative flex w-full cursor-pointer items-center rounded-md py-2 pr-9 pl-3 text-sm outline-none select-none data-[highlighted]:bg-muted data-[state=checked]:font-semibold data-[state=checked]:text-primary"
+              >
+                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                <SelectPrimitive.ItemIndicator className="absolute right-2.5 flex items-center">
+                  <Check className="h-4 w-4 text-gold" />
+                </SelectPrimitive.ItemIndicator>
+              </SelectPrimitive.Item>
+            ))}
+          </SelectPrimitive.Viewport>
+          <SelectPrimitive.ScrollDownButton className="flex h-6 items-center justify-center text-muted-foreground">
+            <ChevronDown className="h-4 w-4" />
+          </SelectPrimitive.ScrollDownButton>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    </SelectPrimitive.Root>
   );
 }

@@ -17,6 +17,10 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
+import { SectionHeader } from "@/components/DesignKit";
+import { fieldClass, panelClass, tileClass } from "@/components/design-kit";
+import { authSubmitClass } from "@/components/AuthLayout";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +33,14 @@ import {
   apiFetch,
   getBarangays,
   clearToken,
+  getAuditLogs,
   getStoredUser,
   logout,
   setStoredUser,
   type ApiUser,
+  type AuditLog,
 } from "@/lib/api";
-import coverPhoto from "@/img/CP.jpg";
+import coverPhoto from "@/img/CP.webp";
 import defaultProfileImage from "@/img/Defaut.png";
 
 export const Route = createFileRoute("/profile")({
@@ -50,6 +56,9 @@ function ProfilePage() {
   const [address, setAddress] = useState(user?.address ?? "");
   const [assignedBarangay, setAssignedBarangay] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  // The original file the user picked; kept so the edit can be adjusted again.
+  const [originalPhoto, setOriginalPhoto] = useState<File | null>(null);
+  const [editingPhoto, setEditingPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
@@ -57,6 +66,8 @@ function ProfilePage() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<AuditLog[] | null>(null);
+  const isAdmin = user?.role?.toLowerCase() === "admin";
 
   useEffect(() => {
     apiFetch<ApiUser>("/user")
@@ -88,6 +99,16 @@ function ProfilePage() {
         }
       });
   }, []);
+
+  // Only admins can read the audit log, so only they get their own recent entries here.
+  useEffect(() => {
+    if (!isAdmin || !user?.id) return;
+    getAuditLogs(1)
+      .then((result) =>
+        setRecentActivity(result.data.filter((log) => log.actor?.id === user.id).slice(0, 5)),
+      )
+      .catch(() => setRecentActivity([]));
+  }, [isAdmin, user?.id]);
 
   useEffect(() => {
     if (!photo) {
@@ -133,6 +154,7 @@ function ProfilePage() {
       setUser(updated);
       setStoredUser(updated);
       setPhoto(null);
+      setOriginalPhoto(null);
       toast.success("Profile updated successfully.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update profile.");
@@ -181,18 +203,18 @@ function ProfilePage() {
       breadcrumb={["Dashboard", "My Profile"]}
     >
       <div className="grid gap-6 lg:grid-cols-[0.84fr_1.16fr]">
-        <section className="surface-card flex min-h-[640px] flex-col overflow-hidden p-0">
+        <section className={`${panelClass} flex min-h-[640px] flex-col overflow-hidden p-0`}>
           <div
-            className="relative h-[226px] rounded-t-[28px]"
+            className="relative h-[226px]"
             style={{
               backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.08)), url(${coverPhoto})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.22),_transparent_55%)]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[oklch(0.24_0.06_258/0.25)] to-[oklch(0.2_0.05_258/0.75)]" />
             <div className="absolute inset-x-0 bottom-0 flex justify-center translate-y-1/2">
-              <div className="relative grid h-[128px] w-[128px] place-items-center overflow-hidden rounded-full bg-white text-[2.1rem] font-black text-primary-foreground">
+              <div className="bg-navy relative grid h-[128px] w-[128px] place-items-center overflow-hidden rounded-full text-[2.1rem] font-black text-white ring-4 ring-card">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -207,7 +229,7 @@ function ProfilePage() {
                 )}
                 <label
                   htmlFor="profile-photo"
-                  className="absolute right-1 bottom-1 z-10 grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-[#0d253f] text-white shadow-lg ring-2 ring-white"
+                  className="absolute right-1 bottom-1 z-10 grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-gold text-gold-foreground shadow-lg ring-2 ring-card"
                   title="Change profile picture"
                   aria-label="Change profile picture"
                 >
@@ -220,32 +242,43 @@ function ProfilePage() {
               type="file"
               accept="image/png,image/jpeg,image/webp"
               className="hidden"
-              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const picked = event.target.files?.[0] ?? null;
+                // Clear the input so picking the same file again still opens the editor.
+                event.target.value = "";
+                if (!picked) return;
+                if (!/^image\/(png|jpe?g|webp)$/.test(picked.type)) {
+                  toast.error("Choose a JPG, PNG or WebP image.");
+                  return;
+                }
+                setOriginalPhoto(picked);
+                setEditingPhoto(picked);
+              }}
             />
           </div>
 
           <div className="flex flex-1 flex-col px-7 pb-7 pt-[62px]">
             <div className="text-center">
-              <h2 className="text-[2.1rem] font-black tracking-[-0.03em] text-foreground">
-                {user?.name ?? "Your profile"}
-              </h2>
-              <p className="mt-1 text-[0.95rem] text-muted-foreground">{user?.email}</p>
-              <span className="mt-4 inline-flex rounded-full bg-[#dfeaf6] px-[1rem] py-[0.45rem] text-[0.7rem] font-bold uppercase tracking-[0.02em] text-[#123a68]">
+              <h2 className="text-3xl font-extrabold">{user?.name ?? "Your profile"}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
+              <span className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase dark:text-gold">
                 {roleLabel}
               </span>
             </div>
 
             <form onSubmit={saveProfile} className="mt-8 space-y-4">
-              <div className="flex items-center gap-3">
-                <UserCircle className="h-5 w-5 text-[#1b3b60]" />
-                <h2 className="text-[1.05rem] font-bold">Edit Profile</h2>
+              <div className="flex items-center gap-2 border-t border-border/60 pt-6">
+                <UserCircle className="h-5 w-5 text-primary" />
+                <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Edit profile
+                </h2>
               </div>
               <label className="block text-sm font-semibold text-foreground">
                 Full name
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  className={`${fieldClass} mt-2 h-11 font-normal`}
                   required
                 />
               </label>
@@ -255,7 +288,7 @@ function ProfilePage() {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  className={`${fieldClass} mt-2 h-11 font-normal`}
                   required
                 />
               </label>
@@ -265,7 +298,7 @@ function ProfilePage() {
                   value={contact}
                   onChange={(event) => setContact(event.target.value)}
                   placeholder="0917-123-4567"
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  className={`${fieldClass} mt-2 h-11 font-normal`}
                 />
               </label>
               <label className="block text-sm font-semibold text-foreground">
@@ -274,7 +307,7 @@ function ProfilePage() {
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
                   placeholder="Enter your address"
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                  className={`${fieldClass} mt-2 h-11 font-normal`}
                 />
               </label>
               <label className="block text-sm font-semibold text-foreground">
@@ -282,25 +315,40 @@ function ProfilePage() {
                 <input
                   value={roleLabel}
                   readOnly
-                  className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-border bg-[#f3f7fb] px-4 text-muted-foreground outline-none"
+                  className={`${fieldClass} mt-2 h-11 cursor-not-allowed bg-muted/60 font-normal text-muted-foreground`}
                 />
               </label>
               {photo && (
-                <p className="text-xs text-muted-foreground">
-                  Preview updated. Click Save profile to upload {photo.name}.
+                <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  New photo ready. Click Save profile to upload it.
+                  {originalPhoto && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingPhoto(originalPhoto)}
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Adjust photo
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoto(null);
+                      setOriginalPhoto(null);
+                    }}
+                    className="font-semibold text-destructive hover:underline"
+                  >
+                    Discard
+                  </button>
                 </p>
               )}
-              <button
-                type="submit"
-                disabled={busy}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
-              >
+              <button type="submit" disabled={busy} className={authSubmitClass}>
                 <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
               </button>
             </form>
             <button
               onClick={signOut}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#f5a1a1] bg-[#fff5f5] py-3 text-[0.97rem] font-bold text-[#e65050] transition hover:bg-[#fde9e9]"
+              className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
             >
               <LogOut className="h-4 w-4" /> Log out
             </button>
@@ -308,57 +356,49 @@ function ProfilePage() {
         </section>
 
         <div className="space-y-6">
-          <section className="surface-card p-5 sm:p-7">
-            <div className="mb-3 flex items-center gap-3 text-foreground">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-[#dfeaf6] text-[#1b3b60]">
-                <BarChart3 className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-[1.05rem] font-bold">System Overview</h2>
-                <p className="text-sm text-muted-foreground">
-                  Quick access to your most used features
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <section className={`${panelClass} p-5 sm:p-7`}>
+            <SectionHeader
+              icon={BarChart3}
+              title="System Overview"
+              subtitle="Quick access to your most used features"
+            />
+            <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
               {[
                 {
                   label: "Senior Record",
                   to: "/seniors",
                   icon: Users,
-                  color: "bg-[#eaf1ff] text-[#3b82f6]",
+                  color: "bg-navy text-white",
                 },
                 {
                   label: "Benefit Tracking",
                   to: "/benefits",
                   icon: HandCoins,
-                  color: "bg-[#eafaf2] text-[#22c55e]",
+                  color: "bg-gold text-gold-foreground",
                 },
                 {
                   label: "Analytics",
                   to: "/analytics",
                   icon: BarChart3,
-                  color: "bg-[#f2ebff] text-[#8b5cf6]",
+                  color: "bg-success text-success-foreground",
                 },
                 {
                   label: "Reports",
                   to: "/reports",
                   icon: FileText,
-                  color: "bg-[#fff4dc] text-[#f59e0b]",
+                  color: "bg-coral text-coral-foreground",
                 },
               ].map(({ label, to, icon: Icon, color }) => (
                 <Link
                   key={label}
                   to={to}
                   aria-label={`Go to ${label}`}
-                  className="flex min-h-[84px] flex-col items-center justify-center rounded-[14px] border border-border bg-white p-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className={`${tileClass} flex min-h-[92px] flex-col items-center justify-center p-3 text-center transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
                 >
-                  <div className={`mb-2 grid h-9 w-9 place-items-center rounded-xl ${color}`}>
+                  <div className={`mb-2 grid h-9 w-9 place-items-center rounded-lg ${color}`}>
                     <Icon className="h-4 w-4" />
                   </div>
-                  <p className="text-[0.72rem] font-semibold leading-tight text-foreground">
-                    {label}
-                  </p>
+                  <p className="text-xs leading-tight font-semibold">{label}</p>
                 </Link>
               ))}
             </div>
@@ -368,22 +408,24 @@ function ProfilePage() {
             <button
               type="button"
               onClick={() => setPasswordDialogOpen(true)}
-              className="surface-card flex w-full items-center justify-between gap-4 p-5 sm:p-7 text-left transition hover:border-[#173A52]/30 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className={`${panelClass} group flex w-full items-center justify-between gap-4 p-5 text-left transition-[border-color,box-shadow] hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-7`}
             >
               <span className="flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-[#1b3b60]" />
+                <span className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-lg">
+                  <ShieldCheck className="h-4 w-4 text-gold" />
+                </span>
                 <span>
-                  <span className="block text-[1.05rem] font-bold">Change Password</span>
+                  <span className="block text-lg font-bold">Change Password</span>
                   <span className="mt-1 block text-sm text-muted-foreground">
                     Keep your account secure
                   </span>
                 </span>
               </span>
-              <KeyRound className="h-5 w-5 shrink-0 text-[#1b3b60]" />
+              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
             </button>
             <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
               <DialogHeader>
-                <DialogTitle>Change Password</DialogTitle>
+                <DialogTitle className="font-display">Change Password</DialogTitle>
                 <DialogDescription>
                   Enter your current password and choose a new password of at least 8 characters.
                 </DialogDescription>
@@ -393,7 +435,7 @@ function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setShowPasswords((visible) => !visible)}
-                    className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground"
+                    className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:underline"
                   >
                     {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     {showPasswords ? "Hide passwords" : "Show passwords"}
@@ -406,7 +448,7 @@ function ProfilePage() {
                     value={currentPassword}
                     onChange={(event) => setCurrentPassword(event.target.value)}
                     autoComplete="current-password"
-                    className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    className={`${fieldClass} mt-2 h-11 font-normal`}
                     required
                   />
                 </label>
@@ -418,7 +460,7 @@ function ProfilePage() {
                     onChange={(event) => setPassword(event.target.value)}
                     minLength={8}
                     autoComplete="new-password"
-                    className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    className={`${fieldClass} mt-2 h-11 font-normal`}
                     required
                   />
                 </label>
@@ -430,61 +472,86 @@ function ProfilePage() {
                     onChange={(event) => setPasswordConfirmation(event.target.value)}
                     minLength={8}
                     autoComplete="new-password"
-                    className="mt-2 h-11 w-full rounded-xl border border-border bg-[#f3f7fb] px-4 text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    className={`${fieldClass} mt-2 h-11 font-normal`}
                     required
                   />
                 </label>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
-                >
+                <button type="submit" disabled={busy} className={authSubmitClass}>
                   <KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}
                 </button>
               </form>
             </DialogContent>
           </Dialog>
 
-          <section className="surface-card overflow-hidden p-5 sm:p-7">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-[#eafaf2] text-[#19a75e]">
-                  <ShieldCheck className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-[1.05rem] font-bold">Recent Activity</h2>
-                  <p className="text-sm text-muted-foreground">Your latest actions in the system</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground transition hover:bg-accent"
-              >
-                View all <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+          <section className={`${panelClass} overflow-hidden p-5 sm:p-7`}>
+            <SectionHeader
+              icon={ShieldCheck}
+              title="Recent Activity"
+              subtitle="Your latest actions in the system"
+              badge={
+                isAdmin ? (
+                  <Link
+                    to="/audit-logs"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                  >
+                    View all <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : undefined
+              }
+            />
 
-            <div className="mt-6 overflow-hidden rounded-xl border border-border">
+            <div className="mt-6 overflow-hidden rounded-lg border border-border/60">
               <table className="w-full border-collapse text-left text-sm">
-                <thead className="bg-[#f3f7fb] text-muted-foreground">
-                  <tr>
+                <thead className="bg-muted">
+                  <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
                     <th className="px-4 py-3 font-semibold">Date &amp; Time</th>
                     <th className="px-4 py-3 font-semibold">Action</th>
                     <th className="px-4 py-3 font-semibold">Details</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t border-border bg-background">
-                    <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                      No recent activity.
-                    </td>
-                  </tr>
+                  {recentActivity?.map((log) => (
+                    <tr key={log.id} className="border-t border-border/60">
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 font-semibold capitalize">
+                        {log.action.replaceAll("_", " ")}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {log.target_type
+                          .split("\\")
+                          .at(-1)
+                          ?.replace(/([a-z])([A-Z])/g, "$1 $2")}{" "}
+                        #{log.target_id}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!recentActivity || recentActivity.length === 0) && (
+                    <tr className="border-t border-border/60">
+                      <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                        {!isAdmin
+                          ? "Your activity history is kept in the audit log, which the OSCA administrator can review."
+                          : recentActivity === null
+                            ? "Loading recent activity..."
+                            : "No recent activity."}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </section>
         </div>
       </div>
+      <PhotoEditorDialog
+        file={editingPhoto}
+        onCancel={() => setEditingPhoto(null)}
+        onApply={(edited) => {
+          setPhoto(edited);
+          setEditingPhoto(null);
+        }}
+      />
     </AppShell>
   );
 }

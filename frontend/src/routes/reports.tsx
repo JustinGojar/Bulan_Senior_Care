@@ -3,6 +3,15 @@ import { CheckCircle2, Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import {
+  TONE_BAR,
+  panelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  tileClass,
+  type Tone,
+} from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
@@ -102,43 +111,40 @@ function Reports() {
           label="Generate report"
           variant="primary"
           icon={<FileText className="h-5 w-5" />}
-          className="sm:rounded-full sm:px-6 print:hidden"
+          className="print:hidden"
           onClick={generateReport}
         />
       }
     >
-      <section className="surface-card p-5 sm:p-7 print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
-            <FileText className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">Report workflow</h2>
-            <p className="text-sm text-muted-foreground">
-              Admin drafts, Head approves, and approved reports can be published or exported.
-            </p>
-          </div>
-        </div>
+      <section className={`${panelClass} p-5 sm:p-7 print:hidden`}>
+        <SectionHeader
+          icon={FileText}
+          title="Report workflow"
+          subtitle="Admin drafts, Head approves, and approved reports can be published or exported."
+        />
         <div className="mt-6 space-y-3">
           {REPORTS.map(([name, status, date]) => (
             <div
               key={name}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary p-5"
+              className={`${tileClass} flex flex-wrap items-center justify-between gap-4`}
             >
               <div>
                 <p className="font-bold">{name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Generated {date}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${status === "Published" ? "bg-success/15 text-success" : "bg-gold/20 text-gold-foreground"}`}
+                <StatusPill
+                  tone={
+                    status === "Published" ? "success" : status === "Approved" ? "neutral" : "gold"
+                  }
                 >
                   {status === "Published" && <CheckCircle2 className="h-3 w-3" />}
                   {status}
-                </span>
+                </StatusPill>
                 <button
                   onClick={printReport}
-                  className="grid h-9 w-9 place-items-center rounded-full bg-card print:hidden"
+                  title="Print report"
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground print:hidden"
                   aria-label={`Print ${name}`}
                 >
                   <Printer className="h-4 w-4" />
@@ -151,51 +157,55 @@ function Reports() {
 
       {generatedAt && (
         <section
-          className="surface-card mt-6 p-5 sm:p-7 print:mt-0 print:shadow-none"
+          className={`${panelClass} mt-6 p-5 sm:p-7 print:mt-0 print:border-0 print:shadow-none`}
           id="generated-report"
         >
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="mr-auto">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Generated report
               </p>
               <h2 className="mt-2 text-2xl font-extrabold">Municipal Senior Citizen Registry</h2>
               <p className="mt-1 text-sm text-muted-foreground">Generated {generatedAt}</p>
             </div>
-            <button
-              onClick={printReport}
-              className="inline-flex items-center gap-2 rounded-full bg-secondary px-5 py-3 text-sm font-semibold print:hidden"
-            >
+            <button onClick={printReport} className={`${secondaryButtonClass} print:hidden`}>
               <Printer className="h-4 w-4" /> Print report
             </button>
-            <button
-              onClick={exportPdf}
-              className="bg-navy inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground print:hidden"
-            >
+            <button onClick={exportPdf} className={`${primaryButtonClass} print:hidden`}>
               <Download className="h-4 w-4" /> Export PDF
             </button>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
-            {[
-              ["Total records", summary.total],
-              ["Active", summary.active],
-              ["Pending", summary.pending],
-              ["Inactive", summary.inactive],
-            ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-2xl bg-secondary p-4">
-                <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-                <p className="mt-2 text-2xl font-extrabold">{loading ? "..." : value}</p>
+            {(
+              [
+                ["Total records", summary.total, "navy"],
+                ["Active", summary.active, "success"],
+                ["Pending", summary.pending, "gold"],
+                ["Inactive", summary.inactive, "coral"],
+              ] as Array<[string, number, Tone]>
+            ).map(([label, value, tone]) => (
+              <div key={label} className={`${tileClass} relative overflow-hidden`}>
+                <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {label}
+                </p>
+                <p className="font-display mt-2 text-2xl font-extrabold">
+                  {loading ? "..." : value.toLocaleString()}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 overflow-x-auto rounded-lg border border-border/60">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-border text-left">
+                <tr className="bg-muted text-left">
                   {["Senior ID", "Name", "Age", "Barangay", "Benefit", "Status"].map((heading) => (
-                    <th key={heading} className="px-3 py-3 font-bold">
+                    <th
+                      key={heading}
+                      className="px-3 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                    >
                       {heading}
                     </th>
                   ))}
@@ -203,13 +213,25 @@ function Reports() {
               </thead>
               <tbody>
                 {seniors.map((senior) => (
-                  <tr key={senior.id} className="border-b border-border">
+                  <tr key={senior.id} className="border-t border-border/60">
                     <td className="px-3 py-3">{senior.id}</td>
                     <td className="px-3 py-3 font-semibold">{senior.name}</td>
                     <td className="px-3 py-3">{senior.age}</td>
                     <td className="px-3 py-3">{senior.barangay}</td>
                     <td className="px-3 py-3">{senior.benefit}</td>
-                    <td className="px-3 py-3">{senior.status}</td>
+                    <td className="px-3 py-3">
+                      <StatusPill
+                        tone={
+                          senior.status === "Active"
+                            ? "success"
+                            : senior.status === "Pending"
+                              ? "gold"
+                              : "danger"
+                        }
+                      >
+                        {senior.status}
+                      </StatusPill>
+                    </td>
                   </tr>
                 ))}
               </tbody>

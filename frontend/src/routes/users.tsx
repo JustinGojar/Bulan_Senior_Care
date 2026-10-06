@@ -1,9 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Eye, EyeOff, Pencil, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Pencil,
+  ShieldAlert,
+  Trash2,
+  UserCog,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
+import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { badgeClass, fieldClass, iconButtonClass, panelClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import {
   getBarangays,
@@ -85,10 +106,12 @@ function UserManagement() {
         subtitle="User Management is available to Admin accounts only"
         breadcrumb={["Dashboard"]}
       >
-        <section className="surface-card p-5 sm:p-7">
-          <p className="text-sm text-muted-foreground">
-            You do not have permission to view user management.
-          </p>
+        <section className={`${panelClass} p-5 sm:p-7`}>
+          <SectionHeader
+            icon={ShieldAlert}
+            title="Admins only"
+            subtitle="You do not have permission to view user management."
+          />
         </section>
       </AppShell>
     );
@@ -198,6 +221,12 @@ function UserManagement() {
     }
   }
 
+  const roleLabel = (value: string) =>
+    value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA";
+  const labelClass = "mb-2 block text-sm font-semibold";
+  const actionButtonClass =
+    "grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground";
+
   return (
     <AppShell
       title="User Management"
@@ -209,30 +238,27 @@ function UserManagement() {
             label="Create BSCA / Barangay Senior Citizen Affairs"
             variant="primary"
             icon={<UserPlus className="h-5 w-5" />}
-            className="sm:rounded-[20px] sm:px-6"
             onClick={() => setShowCreateForm(true)}
           />
         ) : undefined
       }
     >
-      <section className="surface-card p-5 sm:p-7">
-        <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
-            <UserCog className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">Login accounts</h2>
-            <p className="text-sm text-muted-foreground">
-              Role enforcement belongs on the API; this view mirrors the approved accounts.
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 overflow-x-auto">
+      <section className={`${panelClass} p-5 sm:p-7`}>
+        <SectionHeader
+          icon={UserCog}
+          title="Login accounts"
+          subtitle="Role enforcement belongs on the API; this view mirrors the approved accounts."
+          badge={<span className={badgeClass}>{users.length} accounts</span>}
+        />
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[720px] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
             <thead>
-              <tr className="text-left">
-                {["Name", "Email", "Role", "Barangay scope", "Status", "Action"].map((heading) => (
-                  <th key={heading} className="px-4 py-3 font-bold">
+              <tr className="bg-muted text-left">
+                {["Name", "Email", "Role", "Barangay scope", "Status", "Actions"].map((heading) => (
+                  <th
+                    key={heading}
+                    className="px-4 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                  >
                     {heading}
                   </th>
                 ))}
@@ -240,10 +266,10 @@ function UserManagement() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-t border-border">
-                  <td className="px-4 py-4 font-semibold">
+                <tr key={user.id} className="border-t border-border/60">
+                  <td className="px-4 py-3.5 font-semibold">
                     <div className="flex items-center gap-3">
-                      <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-primary-foreground">
+                      <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-white ring-2 ring-gold/40">
                         {user.profile_photo_path ? (
                           <img
                             src={`${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`}
@@ -266,36 +292,44 @@ function UserManagement() {
                       {user.name}
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-muted-foreground">{user.email}</td>
-                  <td className="px-4 py-4">
-                    <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">
-                      {user.role}
+                  <td className="px-4 py-3.5 text-muted-foreground">{user.email}</td>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className={
+                        user.role === "leader"
+                          ? badgeClass
+                          : "rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-foreground dark:text-gold"
+                      }
+                    >
+                      {roleLabel(user.role)}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-muted-foreground">
+                  <td className="px-4 py-3.5 text-muted-foreground">
                     {user.role === "leader"
                       ? (barangays.find((item) => item.id === user.barangay_id)?.barangay_name ??
                         "Unassigned")
                       : "All barangays"}
                   </td>
-                  <td
-                    className={`px-4 py-4 font-bold ${user.status === "active" ? "text-success" : "text-destructive"}`}
-                  >
-                    {user.status}
+                  <td className="px-4 py-3.5">
+                    <StatusPill tone={user.status === "active" ? "success" : "danger"}>
+                      {user.status === "active" ? "Active" : "Inactive"}
+                    </StatusPill>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex gap-2">
+                  <td className="px-4 py-3.5">
+                    <div className="flex gap-1.5">
                       <button
                         onClick={() => openEditForm(user)}
                         aria-label={`Edit ${user.name}`}
-                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary"
+                        title="Edit account"
+                        className={actionButtonClass}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(user)}
                         aria-label={`Delete ${user.name}`}
-                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-destructive"
+                        title="Delete account"
+                        className={`${actionButtonClass} hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -303,197 +337,294 @@ function UserManagement() {
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                    No login accounts to show.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
       {showCreateForm && isAdmin && (
-        <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4">
-          <form className="surface-card w-full max-w-lg p-5 sm:p-7" onSubmit={handleSubmit}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold">
-                  {editingUser
-                    ? "Edit user account"
-                    : "Create BSCA / Barangay Senior Citizen Affairs account"}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Only Admin can manage these accounts.
-                </p>
+        <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 px-4 backdrop-blur-[2px]">
+          <form
+            className="surface-card max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto border border-border/60 p-0 shadow-2xl"
+            onSubmit={handleSubmit}
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-lg">
+                  <UserPlus className="h-4 w-4 text-gold" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-xl font-extrabold">
+                    {editingUser ? "Edit user account" : "Create BSCA account"}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {editingUser
+                      ? "Only Admin can manage these accounts."
+                      : "Barangay Senior Citizen Affairs login. Only Admin can manage these accounts."}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
                 aria-label="Close create account form"
-                className="grid h-9 w-9 place-items-center rounded-full bg-secondary"
+                className={iconButtonClass}
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-6 grid gap-4">
+            <div className="space-y-5 p-6">
+              {error && <AuthAlert tone="error">{error}</AuthAlert>}
               <div className="grid gap-4 sm:grid-cols-3">
-                <input
-                  required
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  placeholder="First name"
-                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                />
-                <input
-                  value={middleName}
-                  onChange={(event) => setMiddleName(event.target.value)}
-                  placeholder="Middle name"
-                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                />
-                <input
-                  required
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  placeholder="Last name"
-                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                />
-              </div>
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email address"
-                className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-              />
-              <input
-                required={!editingUser}
-                type="tel"
-                value={contactNumber}
-                onChange={(event) => setContactNumber(event.target.value)}
-                placeholder="Phone / mobile number"
-                className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="rounded-xl border border-border px-4 py-3">
-                  <span className="block text-xs font-semibold text-muted-foreground">
-                    Birthday
-                  </span>
+                <div>
+                  <label htmlFor="user-first-name" className={labelClass}>
+                    First name
+                  </label>
                   <input
+                    id="user-first-name"
+                    required
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
+                    placeholder="Juan"
+                    className={`${fieldClass} h-11`}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="user-middle-name" className={labelClass}>
+                    Middle name
+                  </label>
+                  <input
+                    id="user-middle-name"
+                    value={middleName}
+                    onChange={(event) => setMiddleName(event.target.value)}
+                    placeholder="Optional"
+                    className={`${fieldClass} h-11`}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="user-last-name" className={labelClass}>
+                    Last name
+                  </label>
+                  <input
+                    id="user-last-name"
+                    required
+                    value={lastName}
+                    onChange={(event) => setLastName(event.target.value)}
+                    placeholder="Dela Cruz"
+                    className={`${fieldClass} h-11`}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="user-email" className={labelClass}>
+                    Email address
+                  </label>
+                  <input
+                    id="user-email"
+                    required
+                    type="email"
+                    autoComplete="off"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="name@example.com"
+                    className={`${fieldClass} h-11`}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="user-contact" className={labelClass}>
+                    Mobile number
+                  </label>
+                  <input
+                    id="user-contact"
+                    required={!editingUser}
+                    type="tel"
+                    value={contactNumber}
+                    onChange={(event) => setContactNumber(event.target.value)}
+                    placeholder="0917 123 4567"
+                    className={`${fieldClass} h-11`}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="user-birthdate" className={labelClass}>
+                    Birthday
+                  </label>
+                  <input
+                    id="user-birthdate"
                     required={!editingUser}
                     type="date"
                     value={birthdate}
                     onChange={(event) => setBirthdate(event.target.value)}
-                    className="mt-1 w-full bg-transparent text-sm outline-none"
+                    className={`${fieldClass} h-11`}
                   />
-                </label>
-                <label className="rounded-xl border border-border px-4 py-3">
-                  <span className="block text-xs font-semibold text-muted-foreground">Age</span>
+                </div>
+                <div>
+                  <label htmlFor="user-age" className={labelClass}>
+                    Age
+                  </label>
                   <input
+                    id="user-age"
                     value={getAge(birthdate)}
                     readOnly
                     placeholder="Calculated automatically"
-                    className="mt-1 w-full bg-transparent text-sm outline-none"
+                    className={`${fieldClass} h-11 bg-muted/60`}
                   />
-                </label>
+                </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <select
-                  required
-                  value={role}
-                  onChange={(event) => setRole(event.target.value as typeof role)}
-                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="head">Head</option>
-                  <option value="leader">BSCA</option>
-                </select>
-                <select
-                  required
-                  value={status}
-                  onChange={(event) => setStatus(event.target.value as typeof status)}
-                  className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                <div>
+                  <label htmlFor="user-role" className={labelClass}>
+                    Role
+                  </label>
+                  <Select
+                    name="role"
+                    required
+                    value={role}
+                    onValueChange={(value) => setRole(value as typeof role)}
+                  >
+                    <SelectTrigger id="user-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="head">Head</SelectItem>
+                      <SelectItem value="leader">BSCA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label htmlFor="user-status" className={labelClass}>
+                    Status
+                  </label>
+                  <Select
+                    name="status"
+                    required
+                    value={status}
+                    onValueChange={(value) => setStatus(value as typeof status)}
+                  >
+                    <SelectTrigger id="user-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <label className="rounded-xl border border-border px-4 py-3">
-                <span className="block text-xs font-semibold text-muted-foreground">Barangay</span>
-                <select
+              <div>
+                <label htmlFor="user-barangay" className={labelClass}>
+                  Barangay
+                </label>
+                <SearchableSelect
+                  id="user-barangay"
+                  label="Barangay"
                   required={role === "leader"}
-                  value={barangayId}
-                  onChange={(event) => setBarangayId(event.target.value)}
-                  className="mt-1 w-full bg-transparent text-sm outline-none"
                   disabled={role !== "leader"}
-                >
-                  <option value="">
-                    {role === "leader" ? "Select a barangay" : "No barangay assignment"}
-                  </option>
-                  {barangays.map((barangay) => (
-                    <option key={barangay.id} value={barangay.id}>
-                      {barangay.barangay_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  value={role === "leader" ? barangayId : ""}
+                  onChange={setBarangayId}
+                  placeholder={role === "leader" ? "Select a barangay" : "No barangay assignment"}
+                  options={barangays.map((barangay) => ({
+                    value: String(barangay.id),
+                    label: barangay.barangay_name,
+                  }))}
+                />
+              </div>
               {!editingUser && (
-                <>
-                  <div className="relative">
-                    <input
-                      minLength={8}
-                      required
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Password (8+ characters)"
-                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30 [&::-ms-reveal]:hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="user-password" className={labelClass}>
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="user-password"
+                        minLength={8}
+                        required
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="8+ characters"
+                        className={`${fieldClass} h-11 pr-11 [&::-ms-reveal]:hidden`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((visible) => !visible)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <input
-                      minLength={8}
-                      required
-                      type={showPasswordConfirmation ? "text" : "password"}
-                      value={passwordConfirmation}
-                      onChange={(event) => setPasswordConfirmation(event.target.value)}
-                      placeholder="Confirm new password"
-                      className="w-full rounded-xl border border-border bg-transparent px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-ring/30 [&::-ms-reveal]:hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPasswordConfirmation((visible) => !visible)}
-                      aria-label={
-                        showPasswordConfirmation
-                          ? "Hide confirmation password"
-                          : "Show confirmation password"
-                      }
-                      className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPasswordConfirmation ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
+                  <div>
+                    <label htmlFor="user-password-confirmation" className={labelClass}>
+                      Confirm password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="user-password-confirmation"
+                        minLength={8}
+                        required
+                        type={showPasswordConfirmation ? "text" : "password"}
+                        autoComplete="new-password"
+                        value={passwordConfirmation}
+                        onChange={(event) => setPasswordConfirmation(event.target.value)}
+                        placeholder="Re-enter password"
+                        className={`${fieldClass} h-11 pr-11 [&::-ms-reveal]:hidden`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordConfirmation((visible) => !visible)}
+                        aria-label={
+                          showPasswordConfirmation
+                            ? "Hide confirmation password"
+                            : "Show confirmation password"
+                        }
+                        className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPasswordConfirmation ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </>
+                  <p className="text-xs text-muted-foreground sm:col-span-2">
+                    Use uppercase and lowercase letters, a number, and a special character.
+                  </p>
+                </div>
               )}
-            </div>
 
-            {error && <p className="mt-4 text-sm font-medium text-destructive">{error}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="bg-navy mt-6 w-full rounded-full py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-60"
-            >
-              {submitting ? "Saving..." : editingUser ? "Save changes" : "Create account"}
-            </button>
+              <button type="submit" disabled={submitting} className={authSubmitClass}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : editingUser ? (
+                  "Save changes"
+                ) : (
+                  "Create account"
+                )}
+              </button>
+            </div>
           </form>
         </div>
       )}

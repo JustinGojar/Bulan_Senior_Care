@@ -1,4 +1,4 @@
-const THEME_KEY = "bulan-theme";
+export const THEME_KEY = "bulan-theme";
 
 export type Theme = "light" | "dark";
 
