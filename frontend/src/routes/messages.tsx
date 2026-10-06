@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MessagesSquare,
   Image,
   MoreHorizontal,
   PenLine,
@@ -9,10 +12,19 @@ import {
   Search,
   Send,
   Smile,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { authSubmitClass } from "@/components/AuthLayout";
+import { SectionHeader } from "@/components/DesignKit";
+import {
+  fieldClass,
+  iconButtonClass,
+  panelClass,
+  secondaryButtonClass,
+} from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import {
   getMessageRecipients,
@@ -211,51 +223,54 @@ function MessagesPage() {
             label="More options"
             iconOnly
             icon={<MoreHorizontal className="h-5 w-5" />}
-            className="h-10 w-10 rounded-full sm:h-10 sm:w-10"
+            className="h-10 w-10 sm:h-11 sm:w-11"
           />
           <IconActionButton
             label="New message"
             iconOnly
             variant="primary"
             icon={<PenLine className="h-4 w-4" />}
-            className="h-10 w-10 rounded-full sm:h-10 sm:w-10"
+            className="h-10 w-10 sm:h-11 sm:w-11"
             onClick={() => setComposerOpen((open) => !open)}
           />
         </div>
       }
     >
       {composerOpen && canMessage && (
-        <form onSubmit={handleSend} className="surface-card mb-5 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold">New message</h2>
-              <p className="text-sm text-muted-foreground">
-                Search BSCA and OSCA Head accounts by name or email.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setComposerOpen(false)}
-              aria-label="Close new message"
-              className="grid h-9 w-9 place-items-center rounded-full bg-secondary"
-            >
-              <ChevronLeft className="h-4 w-4 rotate-90" />
-            </button>
-          </div>
+        <form onSubmit={handleSend} className={`${panelClass} mb-5 p-5 sm:p-6`}>
+          <SectionHeader
+            icon={PenLine}
+            title="New message"
+            subtitle="Search BSCA and OSCA Head accounts by name or email."
+            badge={
+              <button
+                type="button"
+                onClick={() => setComposerOpen(false)}
+                aria-label="Close new message"
+                className={iconButtonClass}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            }
+          />
           <div className="mt-6 grid gap-4">
             <div className="relative">
-              <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <label htmlFor="message-recipient" className="mb-2 block text-sm font-semibold">
+                To
+              </label>
+              <Search className="pointer-events-none absolute bottom-3.5 left-3.5 h-4 w-4 text-muted-foreground" />
               <input
+                id="message-recipient"
                 value={recipient ? `${recipient.name} · ${recipient.email}` : recipientSearch}
                 onChange={(event) => {
                   setRecipient(null);
                   setRecipientSearch(event.target.value);
                 }}
                 placeholder="Search BSCA or OSCA Head by name or email"
-                className="h-12 w-full rounded-xl border border-border bg-transparent pr-4 pl-11 text-sm outline-none focus:ring-2 focus:ring-ring/30"
+                className={`${fieldClass} h-11 pl-10`}
               />
               {!recipient && recipientSearch && recipients.length > 0 && (
-                <div className="surface-card absolute top-14 right-0 left-0 z-10 max-h-56 overflow-y-auto p-2">
+                <div className="surface-card absolute top-full right-0 left-0 z-10 mt-1 max-h-56 overflow-y-auto border border-border/60 p-2">
                   {recipients.map((item) => (
                     <button
                       type="button"
@@ -264,14 +279,14 @@ function MessagesPage() {
                         setRecipient(item);
                         setRecipientSearch("");
                       }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left hover:bg-secondary"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left hover:bg-muted"
                     >
                       <span>
                         <strong className="block text-sm">{item.name}</strong>
                         <small className="text-xs text-muted-foreground">{item.email}</small>
                       </span>
-                      <small className="text-xs font-semibold capitalize text-muted-foreground">
-                        {item.role}
+                      <small className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                        {item.role === "head" ? "OSCA Head" : "BSCA"}
                       </small>
                     </button>
                   ))}
@@ -284,30 +299,43 @@ function MessagesPage() {
                 <p className="mt-2 text-xs text-muted-foreground">No matching accounts.</p>
               )}
             </div>
-            <input
-              required
-              maxLength={180}
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              placeholder="Subject"
-              className="rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-            />
-            <textarea
-              required
-              maxLength={5000}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Write your message..."
-              rows={5}
-              className="resize-none rounded-xl border border-border bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring/30"
-            />
+            <div>
+              <label htmlFor="message-subject" className="mb-2 block text-sm font-semibold">
+                Subject
+              </label>
+              <input
+                id="message-subject"
+                required
+                maxLength={180}
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="What is this about?"
+                className={`${fieldClass} h-11`}
+              />
+            </div>
+            <div>
+              <label htmlFor="message-body" className="mb-2 block text-sm font-semibold">
+                Message
+              </label>
+              <textarea
+                id="message-body"
+                required
+                maxLength={5000}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Write your message..."
+                rows={5}
+                className={`${fieldClass} resize-none py-3`}
+              />
+            </div>
           </div>
           <button
             type="submit"
             disabled={saving || !recipient}
-            className="bg-navy mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+            className={`${authSubmitClass} mt-5 sm:w-auto sm:px-6`}
           >
-            <Send className="h-4 w-4" /> {saving ? "Sending..." : "Send message"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {saving ? "Sending..." : "Send message"}
           </button>
         </form>
       )}
@@ -324,32 +352,41 @@ function MessagesPage() {
           onSubmit={sendReply}
         />
       ) : (
-        <section className="surface-card overflow-hidden p-4 sm:p-6">
-          <div className="relative">
-            <Search className="absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search Messenger"
-              className="h-12 w-full rounded-full bg-secondary pr-4 pl-12 text-base outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
-            />
+        <section className={`${panelClass} overflow-hidden p-4 sm:p-6`}>
+          <SectionHeader
+            icon={MessagesSquare}
+            title="Conversations"
+            subtitle="Messages between OSCA Head and BSCA accounts."
+          />
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <label className="relative min-w-0 flex-1">
+              <span className="sr-only">Search conversations</span>
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search conversations"
+                className={`${fieldClass} h-11 pl-10`}
+              />
+            </label>
+            <div className="inline-flex shrink-0 rounded-lg border border-border/60 bg-muted/60 p-1">
+              {(["All", "Unread"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setFilter(tab)}
+                  aria-pressed={filter === tab}
+                  className={`h-9 shrink-0 rounded-md px-4 text-sm font-bold transition-colors ${filter === tab ? "bg-navy text-white shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-            {(["All", "Unread"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFilter(tab)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${filter === tab ? "bg-navy text-white" : "text-foreground hover:bg-secondary"}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 divide-y divide-border">
+          <div className="mt-4 divide-y divide-border/60 rounded-lg border border-border/60">
             {messagesLoading && (
-              <p className="px-2 py-12 text-center text-sm text-muted-foreground">
-                Loading conversations...
+              <p className="flex items-center justify-center gap-2 px-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading conversations...
               </p>
             )}
             {visibleMessages.map((item) => {
@@ -363,9 +400,9 @@ function MessagesPage() {
                     event.preventDefault();
                     setContextConversation(item);
                   }}
-                  className="relative flex cursor-pointer items-center gap-3 px-1 py-4 transition-colors hover:bg-secondary/60 sm:gap-4 sm:px-2"
+                  className="relative flex cursor-pointer items-center gap-3 px-3 py-3.5 transition-colors hover:bg-muted/50 sm:gap-4 sm:px-4"
                 >
-                  <div className="bg-navy relative grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold text-white sm:h-14 sm:w-14">
+                  <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-gold/40 sm:h-12 sm:w-12">
                     {avatarLabel(other.name)}
                     <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
                   </div>
@@ -391,10 +428,13 @@ function MessagesPage() {
                     </p>
                   </div>
                   {received && !item.read_at && (
-                    <span className="h-3.5 w-3.5 shrink-0 rounded-full bg-navy" />
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full bg-gold"
+                      aria-label="Unread"
+                    />
                   )}
                   {contextConversation?.id === item.id && (
-                    <div className="surface-card absolute right-2 bottom-2 z-10 w-44 p-1 shadow-[var(--shadow-card)]">
+                    <div className="surface-card absolute right-2 bottom-2 z-10 w-44 border border-border/60 p-1 shadow-[var(--shadow-card)]">
                       <button
                         type="button"
                         onClick={() => removeConversation(item)}
@@ -408,32 +448,41 @@ function MessagesPage() {
               );
             })}
             {!messagesLoading && !visibleMessages.length && (
-              <p className="px-2 py-12 text-center text-sm text-muted-foreground">
-                No conversations found.
-              </p>
+              <div className="px-2 py-12 text-center">
+                <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-lg bg-muted text-muted-foreground">
+                  <MessagesSquare className="h-5 w-5" />
+                </span>
+                <p className="font-semibold">No conversations found.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Start one with the New message button.
+                </p>
+              </div>
             )}
           </div>
           {lastPage > 1 && (
-            <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
-              <p className="text-xs text-muted-foreground">
-                Page {currentPage} of {lastPage}
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Page <span className="font-semibold text-foreground">{currentPage}</span> of{" "}
+                <span className="font-semibold text-foreground">{lastPage}</span>
               </p>
               <div className="flex gap-2">
                 <button
                   type="button"
                   disabled={currentPage === 1 || messagesLoading}
                   onClick={() => setCurrentPage((page) => page - 1)}
-                  className="rounded-full px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-40"
+                  className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
                 >
+                  <ChevronLeft className="h-4 w-4" />
                   Previous
                 </button>
                 <button
                   type="button"
                   disabled={currentPage === lastPage || messagesLoading}
                   onClick={() => setCurrentPage((page) => page + 1)}
-                  className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                  className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
                 >
                   Next
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -477,18 +526,20 @@ function ConversationDetail({
     );
 
   return (
-    <section className="surface-card flex h-[calc(100vh-9rem)] min-h-[560px] flex-col overflow-hidden">
-      <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
+    <section
+      className={`${panelClass} flex h-[calc(100vh-9rem)] min-h-[560px] flex-col overflow-hidden`}
+    >
+      <header className="flex items-center gap-3 border-b border-border/60 bg-muted/40 px-4 py-3 sm:px-6">
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to conversations"
           title="Back"
-          className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+          className={iconButtonClass}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-white">
+        <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-gold/40">
           {other.name
             .split(" ")
             .map((part) => part[0])
@@ -506,20 +557,24 @@ function ConversationDetail({
             type="button"
             aria-label="More options"
             title="More options"
-            className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+            className={iconButtonClass}
           >
             <MoreHorizontal className="h-5 w-5" />
           </button>
         </div>
       </header>
       <div className="flex-1 space-y-3 overflow-y-auto bg-card px-4 py-6 sm:px-8">
-        <p className="pb-3 text-center text-xs text-muted-foreground">Today</p>
+        <p className="pb-3 text-center">
+          <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+            Today
+          </span>
+        </p>
         {conversation.map((item) => {
           const mine = item.sender.id === currentUserId;
           return (
             <div key={item.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[60%] ${mine ? "rounded-br-md bg-navy text-white" : "rounded-bl-md bg-navy/10 text-foreground"}`}
+                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[60%] ${mine ? "rounded-br-md bg-navy text-white" : "rounded-bl-md border border-border/60 bg-muted text-foreground"}`}
               >
                 {!mine && (
                   <p className="mb-1 text-xs font-bold text-muted-foreground">{item.sender.name}</p>
@@ -545,13 +600,13 @@ function ConversationDetail({
       </div>
       <form
         onSubmit={onSubmit}
-        className="flex items-center gap-2 border-t border-border bg-card px-3 py-3 sm:px-5"
+        className="flex items-center gap-2 border-t border-border/60 bg-card px-3 py-3 sm:px-5"
       >
         <button
           type="button"
           aria-label="Add attachment"
           title="Add attachment"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-foreground hover:bg-secondary"
+          className={`${iconButtonClass} shrink-0`}
         >
           <Plus className="h-5 w-5" />
         </button>
@@ -559,11 +614,11 @@ function ConversationDetail({
           type="button"
           aria-label="Add photo"
           title="Add photo"
-          className="hidden h-9 w-9 shrink-0 place-items-center rounded-full text-foreground hover:bg-secondary sm:grid"
+          className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground transition-colors hover:text-foreground sm:grid"
         >
           <Image className="h-5 w-5" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center rounded-full bg-secondary px-4">
+        <div className="flex min-w-0 flex-1 items-center rounded-lg border border-input bg-background/60 px-4 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/15">
           <input
             value={reply}
             onChange={(event) => setReply(event.target.value)}
@@ -574,7 +629,7 @@ function ConversationDetail({
             type="button"
             aria-label="Add emoji"
             title="Add emoji"
-            className="text-foreground"
+            className="text-muted-foreground hover:text-foreground"
           >
             <Smile className="h-5 w-5" />
           </button>
@@ -584,7 +639,7 @@ function ConversationDetail({
           disabled={sending || !reply.trim()}
           aria-label="Send reply"
           title="Send reply"
-          className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
         </button>
