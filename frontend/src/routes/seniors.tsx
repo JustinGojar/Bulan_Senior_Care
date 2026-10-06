@@ -26,6 +26,7 @@ import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import {
@@ -186,7 +187,11 @@ async function readBulkRecords(file: File, XLSX: XlsxModule) {
 }
 
 async function imageDataUrl(source: File | string) {
-  const response = typeof source === "string" ? await fetch(source) : null;
+  // A slow or stalled photo request must not hold up the registration form download.
+  const response =
+    typeof source === "string"
+      ? await fetch(source, { signal: AbortSignal.timeout(10_000) })
+      : null;
   if (response && !response.ok) throw new Error("Profile photo could not be loaded.");
   const blob = response ? await response.blob() : (source as File);
   const objectUrl = URL.createObjectURL(blob);
@@ -218,8 +223,20 @@ async function imageDataUrl(source: File | string) {
   });
 }
 
+async function loadJsPdf() {
+  try {
+    return (await import("jspdf")).jsPDF;
+  } catch {
+    // The PDF library is a separate file that is replaced on every deploy, so a page opened
+    // before the latest deploy can no longer load it.
+    throw new Error(
+      "The PDF tool could not be loaded. The app may have been updated; reload the page and try again.",
+    );
+  }
+}
+
 async function downloadRegistrationForm(draft: SeniorDraft) {
-  const { jsPDF } = await import("jspdf");
+  const jsPDF = await loadJsPdf();
   const document = new jsPDF();
   const pageWidth = document.internal.pageSize.getWidth();
   const left = 18;
@@ -435,6 +452,7 @@ function changedFields(request: SeniorEditRequest) {
 }
 
 function SeniorRecords() {
+  const [confirm, confirmDialog] = useConfirmDialog();
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -473,6 +491,7 @@ function SeniorRecords() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
+  const [downloadingForm, setDownloadingForm] = useState(false);
   const [deleting, setDeleting] = useState<Senior | null>(null);
   const [editRequests, setEditRequests] = useState<SeniorEditRequest[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -1029,7 +1048,12 @@ function SeniorRecords() {
                           aria-label={`Archive record of ${s.name}`}
                           title="Archive record"
                           onClick={async () => {
-                            if (!window.confirm(`Archive the record of ${s.name}?`)) return;
+                            const confirmed = await confirm({
+                              title: "Archive this record?",
+                              description: `${s.name} (${s.id}) will be moved to the archive and hidden from the active list.`,
+                              confirmLabel: "Archive record",
+                            });
+                            if (!confirmed) return;
                             try {
                               await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, {
                                 method: "POST",
@@ -1215,8 +1239,17 @@ function SeniorRecords() {
                 );
               } else {
                 const created = await createSenior(draft);
-                await downloadRegistrationForm({ ...draft, id: created.id });
                 toast.success(`${draft.name} was registered and is pending review.`);
+                // The record is saved even if the form download fails; it can be downloaded later
+                // from the senior's profile.
+                await downloadRegistrationForm({ ...draft, id: created.id }).catch((reason) => {
+                  console.error(reason);
+                  toast.error(
+                    reason instanceof Error && reason.message
+                      ? reason.message
+                      : "Unable to download the registration form.",
+                  );
+                });
               }
             } catch (reason) {
               toast.error(reason instanceof Error ? reason.message : "Unable to register senior.");
@@ -1496,6 +1529,7 @@ function SeniorRecords() {
             <button
               type="button"
               onClick={async () => {
+                setDownloadingForm(true);
                 try {
                   const nameParts = viewing.name.split(" ");
                   await downloadRegistrationForm({
@@ -1506,13 +1540,29 @@ function SeniorRecords() {
                     status: viewing.status,
                   });
                   toast.success("Registration form downloaded.");
-                } catch {
-                  toast.error("Unable to download the registration form.");
+                } catch (reason) {
+                  console.error(reason);
+                  toast.error(
+                    reason instanceof Error && reason.message
+                      ? reason.message
+                      : "Unable to download the registration form.",
+                  );
+                } finally {
+                  setDownloadingForm(false);
                 }
               }}
-              className={`${primaryButtonClass} mt-3 h-12 w-full`}
+              disabled={downloadingForm}
+              className={`${primaryButtonClass} mt-3 h-12 w-full disabled:opacity-70`}
             >
-              <Download className="h-4 w-4" /> Download Registration Form
+              {downloadingForm ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Preparing Registration Form...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" /> Download Registration Form
+                </>
+              )}
             </button>
           )}
         </DialogContent>
@@ -1530,6 +1580,7 @@ function SeniorRecords() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (!deleting) return;
                 deleteSenior(deleting.id);
@@ -1542,6 +1593,7 @@ function SeniorRecords() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {confirmDialog}
     </AppShell>
   );
 }

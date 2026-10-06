@@ -37,7 +37,8 @@ RUN printf '%s\n' \
     'opcache.validate_timestamps=0' \
     > /usr/local/etc/php/conf.d/opcache-production.ini
 
-# Serve several requests at once; `artisan serve` only honours this with --no-reload.
+# Serve several requests at once (the built-in server reads this).
 ENV PHP_CLI_SERVER_WORKERS=4
 
-CMD ["sh", "-c", "php artisan storage:link --force && php artisan config:cache && php artisan route:cache && php artisan event:cache && exec php artisan serve --no-reload --host=0.0.0.0 --port=${PORT:-8080}"]
+# public/router.php adds compression and cache headers that the built-in server lacks.
+CMD ["sh", "-c", "php artisan storage:link --force && php artisan config:cache && php artisan route:cache && php artisan event:cache && exec php -S 0.0.0.0:${PORT:-8080} -t public public/router.php"]

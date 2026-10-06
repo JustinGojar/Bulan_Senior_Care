@@ -8,6 +8,7 @@ use App\Models\SeniorCitizen;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AnalyticsController extends Controller
 {
@@ -25,6 +26,16 @@ class AnalyticsController extends Controller
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
+
+        $user = $request->user();
+        $cacheKey = "analytics:{$user->id}:{$user->role}:{$user->barangay_id}:".sha1(json_encode($data));
+
+        return response()->json(Cache::remember($cacheKey, now()->addSeconds(3), fn () => $this->summarize($request, $data)));
+    }
+
+    private function summarize(Request $request, array $data): array
+    {
+        $isLeader = $request->user()->role === 'leader';
 
         // All counting happens in the database so the response time stays flat as records grow.
         $seniors = SeniorCitizen::query()->where('senior_citizens.status', '!=', 'pending');
@@ -123,19 +134,19 @@ class AnalyticsController extends Controller
             return [...$row, 'municipal' => $runningTotal];
         });
 
-        return response()->json([
+        return [
             'municipal' => [
                 'total_registered' => (int) $totals->total_registered,
                 'active' => (int) $totals->active,
                 'male' => (int) $totals->male,
                 'female' => (int) $totals->female,
             ],
-            'barangay_summary' => $barangaySummary,
-            'age_distribution' => $ageDistribution,
-            'benefit_records' => $benefitRecords,
-            'released_benefit_records' => $releasedBenefitRecords,
-            'trend' => $trend,
-        ]);
+            'barangay_summary' => $barangaySummary->all(),
+            'age_distribution' => $ageDistribution->all(),
+            'benefit_records' => $benefitRecords->all(),
+            'released_benefit_records' => $releasedBenefitRecords->all(),
+            'trend' => $trend->values()->all(),
+        ];
     }
 
     private function applyFilters(Builder $query, array $data): void

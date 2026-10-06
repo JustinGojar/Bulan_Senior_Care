@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Barangay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Password as PasswordBroker;
@@ -19,7 +20,8 @@ class AuthController extends Controller
 {
     public function barangays(Request $request): JsonResponse
     {
-        return response()->json(Barangay::query()->orderBy('barangay_name')->get(['id', 'barangay_name']));
+        // Saving a barangay clears this entry.
+        return response()->json(Cache::remember(Barangay::LIST_CACHE_KEY, now()->addHour(), fn () => Barangay::query()->orderBy('barangay_name')->get(['id', 'barangay_name'])->toArray()));
     }
 
     public function createBarangayLeader(Request $request): JsonResponse
@@ -99,15 +101,23 @@ class AuthController extends Controller
         } catch (TransportExceptionInterface $exception) {
             report($exception);
 
+            // The token was stored before sending failed; drop it so an immediate retry
+            // is not silently throttled while reporting the link as sent.
+            $user = PasswordBroker::getUser(['email' => $data['email']]);
+            if ($user) {
+                PasswordBroker::deleteToken($user);
+            }
+
             return response()->json([
                 'message' => 'We could not send the reset email right now. Please try again later.',
             ], 503);
         }
 
         logger()->info('Password reset link request processed.', ['status' => $status]);
-        $message = 'If an account exists for that email address, a password reset link has been sent.';
 
-        return response()->json(['message' => $message], $status === PasswordBroker::RESET_LINK_SENT ? 200 : 200);
+        return response()->json([
+            'message' => 'If an account exists for that email address, a password reset link has been sent.',
+        ]);
     }
 
     public function resetPassword(Request $request): JsonResponse
