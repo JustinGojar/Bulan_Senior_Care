@@ -75,6 +75,9 @@ function MonthlyChange({ value }: { value: number | null | undefined }) {
 function Dashboard() {
   const { seniors, totalCount, activeCount, pendingCount, loading } = useSeniors();
   const currentUser = getStoredUser();
+  const isHead =
+    currentUser?.role?.toLowerCase() === "head" ||
+    currentUser?.roles?.some((role) => role.name.toLowerCase() === "head");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [commentMessage, setCommentMessage] = useState("");
@@ -206,6 +209,19 @@ function Dashboard() {
       subtitle="Overview of OSCA Bulan operations and analytics"
       breadcrumb={["Dashboard"]}
     >
+      {isHead && (
+        <button
+          type="button"
+          onClick={() => setShowAnnouncementForm(true)}
+          className="surface-card mb-4 flex w-full items-center gap-3 p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] sm:mb-5 sm:gap-4 sm:p-4"
+        >
+          <div className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground sm:h-11 sm:w-11">
+            <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
+          </div>
+          <span className="flex-1 text-sm text-muted-foreground">What is the announcement?</span>
+        </button>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Link
           to="/seniors"
@@ -310,19 +326,6 @@ function Dashboard() {
         </Link>
       </div>
 
-      {currentUser?.role === "head" && (
-        <button
-          type="button"
-          onClick={() => setShowAnnouncementForm(true)}
-          className="surface-card mt-4 flex w-full items-center gap-3 p-3 text-left transition-shadow hover:shadow-[var(--shadow-soft)] sm:mt-5 sm:gap-4 sm:p-4"
-        >
-          <div className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground sm:h-11 sm:w-11">
-            <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
-          </div>
-          <span className="flex-1 text-sm text-muted-foreground">What is the announcement?</span>
-        </button>
-      )}
-
       <div
         className={
           currentUser?.role === "admin" ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"
@@ -381,7 +384,7 @@ function Dashboard() {
             )}
           </div>
         </section>
-        {currentUser?.role === "head" && (
+        {isHead && (
           <section className="surface-card p-7">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -516,7 +519,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {showAnnouncementForm && currentUser?.role === "head" && (
+      {showAnnouncementForm && isHead && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 backdrop-blur-[2px] px-4">
           <form
             onSubmit={handleCreateAnnouncement}

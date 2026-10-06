@@ -120,7 +120,13 @@ function Analytics() {
                 </defs>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={12} ticks={[0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000]} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                  domain={[0, 200]}
+                  ticks={[0, 50, 100, 150, 200]}
+                />
                 <Tooltip />
                 <Area
                   type="monotone"

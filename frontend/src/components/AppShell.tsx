@@ -277,7 +277,7 @@ export function AppShell({
           <div className="mt-auto border-t border-border pt-4">
             <Link
               to="/profile"
-              className="flex items-center gap-3 rounded-2xl p-2 transition-colors hover:bg-secondary"
+              className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
             >
               <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
                 {photoUrl ? (
@@ -335,30 +335,32 @@ export function AppShell({
                   );
                 })}
               </nav>
-              <Link
-                to="/profile"
-                onClick={() => setMobileNavOpen(false)}
-                className="mt-auto flex items-center gap-3 rounded-2xl border-t border-border p-2 pt-4 transition-colors hover:bg-secondary"
-              >
-                <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
-                  {photoUrl ? (
-                    <img
-                      src={photoUrl}
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                      onError={(event) => {
-                        event.currentTarget.src = defaultProfileImage;
-                      }}
-                    />
-                  ) : (
-                    initials
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
-                  <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
-                </div>
-              </Link>
+              <div className="mt-auto border-t border-border pt-4">
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52]"
+                >
+                  <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-primary-foreground">
+                    {photoUrl ? (
+                      <img
+                        src={photoUrl}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src = defaultProfileImage;
+                        }}
+                      />
+                    ) : (
+                      initials
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{user?.role ?? "Admin"}</p>
+                  </div>
+                </Link>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
