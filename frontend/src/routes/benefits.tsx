@@ -58,39 +58,39 @@ type BenefitProgram = {
 const PROGRAM_STYLES = [
   {
     icon: Coins,
-    iconClass: "bg-sky-100 text-sky-700",
-    accentClass: "border-b-sky-500",
-    hoverClass: "hover:bg-sky-50 dark:hover:bg-sky-950/30",
+    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
+    accentClass: "border-b-[#1E3C51]",
+    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Gift,
-    iconClass: "bg-emerald-100 text-emerald-700",
-    accentClass: "border-b-emerald-500",
-    hoverClass: "hover:bg-emerald-50 dark:hover:bg-emerald-950/30",
+    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
+    accentClass: "border-b-[#1E3C51]",
+    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Users,
-    iconClass: "bg-violet-100 text-violet-700",
-    accentClass: "border-b-violet-500",
-    hoverClass: "hover:bg-violet-50 dark:hover:bg-violet-950/30",
+    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
+    accentClass: "border-b-[#1E3C51]",
+    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: HeartHandshake,
-    iconClass: "bg-amber-100 text-amber-700",
-    accentClass: "border-b-amber-500",
-    hoverClass: "hover:bg-amber-50 dark:hover:bg-amber-950/30",
+    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
+    accentClass: "border-b-[#1E3C51]",
+    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Banknote,
-    iconClass: "bg-rose-100 text-rose-700",
-    accentClass: "border-b-rose-500",
-    hoverClass: "hover:bg-rose-50 dark:hover:bg-rose-950/30",
+    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
+    accentClass: "border-b-[#1E3C51]",
+    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Award,
-    iconClass: "bg-cyan-100 text-cyan-700",
-    accentClass: "border-b-cyan-500",
-    hoverClass: "hover:bg-cyan-50 dark:hover:bg-cyan-950/30",
+    iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
+    accentClass: "border-b-[#1E3C51]",
+    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
 ];
 
@@ -535,7 +535,7 @@ function BenefitTracking() {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
         {visiblePrograms.map((program, index) => {
           const programTransactions = filteredTransactions.filter(
             (transaction) => transaction.benefit.benefit_name === program.name,
@@ -574,38 +574,38 @@ function BenefitTracking() {
           return (
             <article
               key={program.type}
-              className={`surface-card flex min-h-[270px] flex-col rounded-[10px] border border-border/70 border-b-[3px] ${accentClass} ${hoverClass} cursor-pointer p-4 shadow-[0_8px_24px_rgba(23,58,82,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] sm:p-5`}
+              className={`surface-card flex min-w-0 flex-col rounded-[10px] border border-border/70 border-b-[3px] ${accentClass} ${hoverClass} cursor-pointer p-2.5 shadow-[0_8px_24px_rgba(23,58,82,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] md:min-h-[270px] md:p-5`}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col items-start gap-2 md:flex-row md:gap-3">
                 <div
-                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-[10px] ${iconClass}`}
+                  className={`grid h-8 w-8 shrink-0 md:h-11 md:w-11 place-items-center rounded-[10px] ${iconClass}`}
                 >
-                  <ProgramIcon className="h-5 w-5" />
+                  <ProgramIcon className="h-4 w-4 md:h-5 md:w-5" />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 w-full flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="font-display text-base font-bold leading-tight">
+                    <h2 className="font-display text-[11px] font-bold leading-tight md:text-base">
                       {program.name}
                     </h2>
                     <span
-                      className={`shrink-0 rounded-[10px] px-2.5 py-1 text-[10px] font-bold ${program.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-secondary text-muted-foreground"}`}
+                      className={`hidden shrink-0 rounded-[10px] px-2.5 py-1 text-[10px] md:inline-block font-bold ${program.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-secondary text-muted-foreground"}`}
                     >
                       {program.status === "active" ? "Active" : "Inactive"}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  <p className="mt-1 hidden text-xs leading-relaxed text-muted-foreground md:block">
                     {program.schedule} assistance for seniors aged {program.minAge}
                     {program.maxAge ? `-${program.maxAge}` : "+"}.
                   </p>
                 </div>
               </div>
 
-              <p className="mt-3 font-display text-2xl font-extrabold text-[#173A52] dark:text-foreground">
+              <p className="mt-2 font-display text-sm font-extrabold md:mt-3 md:text-2xl text-[#1E3C51] dark:text-foreground">
                 {program.amount}
               </p>
-              <p className="text-xs text-muted-foreground">{program.schedule}</p>
+              <p className="text-[10px] text-muted-foreground md:text-xs">{program.schedule}</p>
 
-              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-border/70 pt-3">
+              <div className="mt-3 hidden grid-cols-2 gap-3 border-t md:grid border-border/70 pt-3">
                 <div className="flex min-w-0 gap-2">
                   <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-navy" />
                   <div className="min-w-0">
@@ -626,15 +626,15 @@ function BenefitTracking() {
                 </div>
               </div>
 
-              <div className="mt-3 rounded-[10px] bg-sky-50 px-3 py-2 dark:bg-sky-950/30">
+              <div className="mt-3 hidden rounded-[10px] bg-sky-50 md:block px-3 py-2 dark:bg-sky-950/30">
                 <p className="text-[10px] text-muted-foreground">Related to</p>
-                <p className="mt-0.5 truncate text-xs font-semibold text-[#173A52] dark:text-foreground">
+                <p className="mt-0.5 truncate text-xs font-semibold text-[#1E3C51] dark:text-foreground">
                   {isLeader ? `BSCA - ${relatedBarangay}` : relatedBarangay}
                 </p>
               </div>
 
-              <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
-                <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold">
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2 md:pt-3">
+                <div className="hidden flex-wrap md:flex gap-1.5 text-[10px] font-semibold">
                   <span className="rounded-[10px] bg-emerald-100 px-2 py-1 text-emerald-700">
                     Released {received}
                   </span>
@@ -655,7 +655,7 @@ function BenefitTracking() {
                       .getElementById("release-queue")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="rounded-[10px] border border-blue-300 px-3 py-1.5 text-[10px] font-bold text-blue-700 transition hover:bg-blue-50"
+                  className="w-full rounded-[10px] border border-[#1E3C51]/40 px-2 py-1 md:w-auto md:px-3 md:py-1.5 text-[10px] font-bold text-[#1E3C51] transition hover:bg-[#1E3C51] hover:text-white"
                 >
                   View Records
                 </button>

@@ -377,12 +377,12 @@ export function AppShell({
             </button>
             <nav
               aria-label="Breadcrumb"
-              className="flex h-10 min-w-0 items-center gap-2 rounded-[10px] border border-white/70 bg-white/80 px-2 text-xs shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:h-11 sm:shrink-0 sm:gap-3 sm:px-4 sm:text-sm"
+              className="flex h-10 w-fit min-w-0 items-center gap-1.5 rounded-[10px] border border-white/70 bg-white/80 pl-1.5 pr-3.5 text-xs leading-none shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:h-11 sm:shrink-0 sm:gap-2 sm:pl-2 sm:pr-4 sm:text-sm"
             >
               <Link
                 to="/dashboard"
                 aria-label="Go to dashboard"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[#173A52] transition hover:bg-[#173A52]/5"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[#173A52] sm:h-8 sm:w-8 transition hover:bg-[#173A52]/5"
               >
                 <Home className="h-4 w-4 fill-current" />
               </Link>
@@ -393,9 +393,9 @@ export function AppShell({
                 return (
                   <span
                     key={`${crumb}-${i}`}
-                    className={`${isCurrent ? "flex" : "hidden sm:flex"} min-w-0 items-center gap-2 sm:gap-3`}
+                    className={`${isCurrent ? "flex" : "hidden sm:flex"} min-w-0 items-center gap-1.5 sm:gap-2`}
                   >
-                    <ChevronRight className="h-4 w-4 shrink-0 text-[#7EA5C5]" />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#7EA5C5]" />
                     {destination && !isCurrent ? (
                       <Link
                         to={destination}
