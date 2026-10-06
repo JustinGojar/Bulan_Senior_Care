@@ -122,15 +122,16 @@ class SeniorCitizenController extends Controller
         if ($request->hasFile('profile_photo')) {
             $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
         }
-        if ($request->filled('barangay')) {
+        if ($request->user()->role === 'leader') {
+            // Leaders are always scoped to their own barangay; never let their input
+            // create or select a different one.
+            abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
+            $data['barangay_id'] = $request->user()->barangay_id;
+        } elseif ($request->filled('barangay')) {
             $barangay = Barangay::firstOrCreate([
                 'barangay_name' => $request->string('barangay'),
             ]);
             $data['barangay_id'] = $barangay->id;
-        }
-        if ($request->user()->role === 'leader') {
-            abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
-            $data['barangay_id'] = $request->user()->barangay_id;
         }
         abort_if(! $data['barangay_id'], 422, 'A barangay is required.');
         $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
