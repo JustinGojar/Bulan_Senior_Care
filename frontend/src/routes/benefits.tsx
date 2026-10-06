@@ -26,6 +26,13 @@ import { AuthAlert } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   TONE_BAR,
   fieldClass,
   panelClass,
@@ -907,32 +914,36 @@ function BenefitTracking() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={saveRelease} className="grid gap-4 sm:grid-cols-2">
-            <label>
-              <span className="mb-2 block text-sm font-semibold">Expanded Centenarian</span>
-              <select
+            <div>
+              <label htmlFor="release-benefit" className="mb-2 block text-sm font-semibold">
+                Expanded Centenarian
+              </label>
+              <Select
+                name="benefit_id"
                 required
                 value={selectedBenefitId}
-                onChange={(event) => {
-                  setSelectedBenefitId(event.target.value);
-                  const selected = programs.find(
-                    (program) => String(program.id) === event.target.value,
-                  );
+                onValueChange={(value) => {
+                  setSelectedBenefitId(value);
+                  const selected = programs.find((program) => String(program.id) === value);
                   setAmount(
                     selected?.amount === "Variable"
                       ? ""
                       : (selected?.amount.replace(/[^0-9.]/g, "") ?? ""),
                   );
                 }}
-                className={`${fieldClass} h-11`}
               >
-                <option value="">Select benefit</option>
-                {programs.map((program) => (
-                  <option key={program.id} value={program.id}>
-                    {program.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger id="release-benefit">
+                  <SelectValue placeholder="Select benefit" />
+                </SelectTrigger>
+                <SelectContent>
+                  {programs.map((program) => (
+                    <SelectItem key={program.id} value={String(program.id)}>
+                      {program.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <label>
               <span className="mb-2 block text-sm font-semibold">Amount</span>
               <input
