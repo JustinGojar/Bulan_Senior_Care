@@ -61,37 +61,43 @@ const PROGRAM_STYLES = [
     icon: Coins,
     iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
     accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
+    hoverClass:
+      "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Gift,
     iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
     accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
+    hoverClass:
+      "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Users,
     iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
     accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
+    hoverClass:
+      "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: HeartHandshake,
     iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
     accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
+    hoverClass:
+      "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Banknote,
     iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
     accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
+    hoverClass:
+      "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
   {
     icon: Award,
     iconClass: "bg-[#1E3C51]/10 text-[#1E3C51] dark:bg-[#1E3C51]/40 dark:text-sky-100",
     accentClass: "border-b-[#1E3C51]",
-    hoverClass: "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
+    hoverClass:
+      "hover:bg-[#F0F4F6] hover:border-x-[#BAC4CC] hover:border-t-[#BAC4CC] dark:hover:bg-[#1E3C51]/30",
   },
 ];
 
