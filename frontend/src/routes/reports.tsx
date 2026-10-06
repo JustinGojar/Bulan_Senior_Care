@@ -104,7 +104,7 @@ function Reports() {
         />
       }
     >
-      <section className="surface-card p-7 print:hidden">
+      <section className="surface-card p-5 sm:p-7 print:hidden">
         <div className="flex items-center gap-3">
           <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
             <FileText className="h-4 w-4" />
@@ -147,7 +147,7 @@ function Reports() {
       </section>
 
       {generatedAt && (
-        <section className="surface-card mt-6 p-7 print:mt-0 print:shadow-none" id="generated-report">
+        <section className="surface-card mt-6 p-5 sm:p-7 print:mt-0 print:shadow-none" id="generated-report">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">

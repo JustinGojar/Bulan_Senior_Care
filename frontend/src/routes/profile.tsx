@@ -307,7 +307,7 @@ function ProfilePage() {
         </section>
 
         <div className="space-y-6">
-          <section className="surface-card p-7">
+          <section className="surface-card p-5 sm:p-7">
             <div className="mb-3 flex items-center gap-3 text-foreground">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-[#dfeaf6] text-[#1b3b60]">
                 <BarChart3 className="h-4 w-4" />
@@ -319,7 +319,7 @@ function ProfilePage() {
                 </p>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               {[
                 {
                   label: "Senior Record",
@@ -367,7 +367,7 @@ function ProfilePage() {
             <button
               type="button"
               onClick={() => setPasswordDialogOpen(true)}
-              className="surface-card flex w-full items-center justify-between gap-4 p-7 text-left transition hover:border-[#173A52]/30 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="surface-card flex w-full items-center justify-between gap-4 p-5 sm:p-7 text-left transition hover:border-[#173A52]/30 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               <span className="flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-[#1b3b60]" />
@@ -444,7 +444,7 @@ function ProfilePage() {
             </DialogContent>
           </Dialog>
 
-          <section className="surface-card overflow-hidden p-7">
+          <section className="surface-card overflow-hidden p-5 sm:p-7">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 place-items-center rounded-full bg-[#eafaf2] text-[#19a75e]">

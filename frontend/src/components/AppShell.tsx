@@ -243,7 +243,7 @@ export function AppShell({
   }
 
   return (
-    <div className="bg-app app-shell w-full">
+    <div className="bg-app app-shell w-full overflow-x-clip">
       <div className="flex min-w-0 w-full gap-3 sm:gap-4 lg:gap-6">
         <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex print:hidden">
           <div className="flex items-center gap-3">
@@ -357,9 +357,7 @@ export function AppShell({
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {user?.role ?? "Admin"}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
                   </div>
                 </Link>
               </div>
@@ -395,7 +393,7 @@ export function AppShell({
                 return (
                   <span
                     key={`${crumb}-${i}`}
-                    className={`min-w-0 items-center gap-2 sm:flex sm:gap-3 ${isCurrent ? "flex" : "hidden"}`}
+                    className={`${isCurrent ? "flex" : "hidden sm:flex"} min-w-0 items-center gap-2 sm:gap-3`}
                   >
                     <ChevronRight className="h-4 w-4 shrink-0 text-[#7EA5C5]" />
                     {destination && !isCurrent ? (
@@ -582,7 +580,7 @@ export function AppShell({
                 )}
               </button>
               {profileOpen && (
-                <div className="surface-card absolute top-14 right-0 z-20 w-64 p-3">
+                <div className="surface-card absolute top-14 right-0 z-20 w-[min(16rem,calc(100vw-1.5rem))] p-3">
                   <div className="flex items-center gap-3 border-b border-border px-2 pb-3">
                     <UserCircle className="h-8 w-8 text-muted-foreground" />
                     <div className="min-w-0">
@@ -624,7 +622,7 @@ export function AppShell({
             {actions}
           </div>
 
-          <div className="mt-6 pb-10">{children}</div>
+          <div className="mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
     </div>

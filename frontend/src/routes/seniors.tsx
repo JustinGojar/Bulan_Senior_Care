@@ -890,7 +890,7 @@ function SeniorRecords() {
       )}
 
       <div className="surface-card mt-6 overflow-x-auto p-2">
-        <table className="w-full min-w-[880px] border-collapse text-sm">
+        <table className="w-full min-w-[880px] border-collapse text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
           <thead>
             <tr className="text-left text-muted-foreground">
               {[
