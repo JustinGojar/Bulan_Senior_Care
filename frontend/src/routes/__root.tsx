@@ -17,6 +17,7 @@ import {
   setStoredUser,
   type ApiUser,
 } from "@/lib/api";
+import { THEME_KEY } from "@/lib/theme";
 
 import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
@@ -237,10 +238,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Applies the saved theme before first paint, so pages load in dark mode without a light flash.
+const themeScript = `try{var t=localStorage.getItem(${JSON.stringify(THEME_KEY)})==="dark"?"dark":"light";document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.style.colorScheme=t}catch(e){}`;
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>

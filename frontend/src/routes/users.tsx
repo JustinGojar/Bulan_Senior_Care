@@ -217,7 +217,7 @@ function UserManagement() {
     >
       <section className="surface-card p-5 sm:p-7">
         <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
+          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-white">
             <UserCog className="h-4 w-4" />
           </div>
           <div>
@@ -243,7 +243,7 @@ function UserManagement() {
                 <tr key={user.id} className="border-t border-border">
                   <td className="px-4 py-4 font-semibold">
                     <div className="flex items-center gap-3">
-                      <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-primary-foreground">
+                      <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-white">
                         {user.profile_photo_path ? (
                           <img
                             src={`${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`}
@@ -490,7 +490,7 @@ function UserManagement() {
             <button
               type="submit"
               disabled={submitting}
-              className="bg-navy mt-6 w-full rounded-full py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-60"
+              className="bg-navy mt-6 w-full rounded-full py-3.5 text-sm font-bold text-white disabled:opacity-60"
             >
               {submitting ? "Saving..." : editingUser ? "Save changes" : "Create account"}
             </button>

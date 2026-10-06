@@ -118,7 +118,7 @@ export function IconActionButton({
         className={cn(
           "relative inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173A52]/30 disabled:pointer-events-none disabled:opacity-60 sm:h-12",
           iconOnly ? "sm:w-12" : "sm:w-auto sm:px-5",
-          variant === "primary" && "bg-navy text-primary-foreground shadow-[var(--shadow-card)]",
+          variant === "primary" && "bg-navy text-white shadow-[var(--shadow-card)]",
           variant === "default" &&
             "bg-card text-foreground shadow-[var(--shadow-soft)] hover:bg-[#173A52]/5",
           variant === "outline" &&

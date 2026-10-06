@@ -133,7 +133,7 @@ function Notifications() {
     >
       <section className="surface-card p-5 sm:p-7">
         <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
+          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-white">
             <Bell className="h-4 w-4" />
           </div>
           <div>

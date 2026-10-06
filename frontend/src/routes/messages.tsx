@@ -305,7 +305,7 @@ function MessagesPage() {
           <button
             type="submit"
             disabled={saving || !recipient}
-            className="bg-navy mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+            className="bg-navy mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
             <Send className="h-4 w-4" /> {saving ? "Sending..." : "Send message"}
           </button>
@@ -340,7 +340,7 @@ function MessagesPage() {
                 key={tab}
                 type="button"
                 onClick={() => setFilter(tab)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${filter === tab ? "bg-navy text-primary-foreground" : "text-foreground hover:bg-secondary"}`}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors ${filter === tab ? "bg-navy text-white" : "text-foreground hover:bg-secondary"}`}
               >
                 {tab}
               </button>
@@ -365,7 +365,7 @@ function MessagesPage() {
                   }}
                   className="relative flex cursor-pointer items-center gap-3 px-1 py-4 transition-colors hover:bg-secondary/60 sm:gap-4 sm:px-2"
                 >
-                  <div className="bg-navy relative grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold text-primary-foreground sm:h-14 sm:w-14">
+                  <div className="bg-navy relative grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold text-white sm:h-14 sm:w-14">
                     {avatarLabel(other.name)}
                     <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
                   </div>
@@ -431,7 +431,7 @@ function MessagesPage() {
                   type="button"
                   disabled={currentPage === lastPage || messagesLoading}
                   onClick={() => setCurrentPage((page) => page + 1)}
-                  className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                  className="rounded-full bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -488,7 +488,7 @@ function ConversationDetail({
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-primary-foreground">
+        <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-white">
           {other.name
             .split(" ")
             .map((part) => part[0])
@@ -519,7 +519,7 @@ function ConversationDetail({
           return (
             <div key={item.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[60%] ${mine ? "rounded-br-md bg-navy text-primary-foreground" : "rounded-bl-md bg-navy/10 text-foreground"}`}
+                className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed sm:max-w-[60%] ${mine ? "rounded-br-md bg-navy text-white" : "rounded-bl-md bg-navy/10 text-foreground"}`}
               >
                 {!mine && (
                   <p className="mb-1 text-xs font-bold text-muted-foreground">{item.sender.name}</p>
@@ -584,7 +584,7 @@ function ConversationDetail({
           disabled={sending || !reply.trim()}
           aria-label="Send reply"
           title="Send reply"
-          className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-full text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
         </button>

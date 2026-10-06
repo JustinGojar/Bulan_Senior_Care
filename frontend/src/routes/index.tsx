@@ -231,7 +231,7 @@ function Landing() {
             <div className="mt-9 flex flex-wrap gap-4">
               <Link
                 to="/login"
-                className="bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)] dark:text-white"
+                className="bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] dark:text-white"
               >
                 Get Started <ArrowRight className="h-4 w-4" />
               </Link>
@@ -304,7 +304,7 @@ function Landing() {
           <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, body }) => (
               <article key={title} className="surface-card p-5 sm:p-7">
-                <div className="bg-navy grid h-11 w-11 place-items-center rounded-2xl text-primary-foreground">
+                <div className="bg-navy grid h-11 w-11 place-items-center rounded-2xl text-white">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-5 text-lg font-bold">{title}</h3>

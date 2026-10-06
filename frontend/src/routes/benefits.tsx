@@ -679,7 +679,7 @@ function BenefitTracking() {
         className="surface-card mt-5 overflow-hidden rounded-[10px] border border-border/70 p-4 sm:p-5"
       >
         <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-[10px] text-primary-foreground">
+          <div className="bg-navy grid h-10 w-10 place-items-center rounded-[10px] text-white">
             <ShieldCheck className="h-4 w-4" />
           </div>
           <div>
@@ -915,7 +915,7 @@ function BenefitTracking() {
                 type="button"
                 disabled={transactionPage === transactionLastPage}
                 onClick={() => setTransactionPage((page) => page + 1)}
-                className="rounded-[10px] bg-navy px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+                className="rounded-[10px] bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
               >
                 Next
               </button>
@@ -1009,7 +1009,7 @@ function BenefitTracking() {
               <button
                 type="submit"
                 disabled={savingRelease}
-                className="bg-navy rounded-[10px] px-5 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+                className="bg-navy rounded-[10px] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {savingRelease ? "Saving..." : "Save release"}
               </button>

@@ -878,7 +878,7 @@ function SeniorRecords() {
                     type="button"
                     disabled={reviewingRequestId === request.id}
                     onClick={() => reviewEditRequest(request, "approved")}
-                    className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+                    className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     {reviewingRequestId === request.id ? "Saving..." : "Approve"}
                   </button>
@@ -927,7 +927,7 @@ function SeniorRecords() {
                 <tr key={s.id} className="border-t border-border">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-primary-foreground">
+                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white">
                         {avatarPath(s) ? (
                           <img
                             src={`${API_URL.replace(/\/api$/, "")}/storage/${avatarPath(s)}`}
@@ -1089,7 +1089,7 @@ function SeniorRecords() {
             <button
               type="button"
               onClick={confirmBulkImport}
-              className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground"
+              className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-white"
             >
               Import records
             </button>
@@ -1417,7 +1417,7 @@ function SeniorRecords() {
                   toast.error("Unable to download the registration form.");
                 }
               }}
-              className="mt-5 flex w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
+              className="mt-5 flex w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-soft)]"
             >
               <Download className="mr-2 h-4 w-4" /> Download Registration Form
             </button>

@@ -70,7 +70,7 @@ type AnalyticsResponse = {
 function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
+      <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-white">
         <Icon className="h-4 w-4" />
       </div>
       <h2 className="text-lg font-bold">{title}</h2>
