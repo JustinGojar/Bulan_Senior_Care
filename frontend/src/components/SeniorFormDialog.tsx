@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AuthAlert } from "@/components/AuthLayout";
+import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { API_URL } from "@/lib/api";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
@@ -201,8 +203,8 @@ export function SeniorFormDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          <section className="rounded-2xl border border-border p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Personal information
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -308,8 +310,8 @@ export function SeniorFormDialog({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Residence and eligibility
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -361,8 +363,8 @@ export function SeniorFormDialog({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Education, skills, and family
             </p>
             <div className="mt-4 space-y-4">
@@ -393,7 +395,7 @@ export function SeniorFormDialog({
                   value={draft.familyComposition ?? ""}
                   onChange={(event) => set("familyComposition", event.target.value)}
                   placeholder="Name | Relationship | Age | Status | Occupation"
-                  className="mt-1.5 min-h-28 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="mt-1.5 min-h-28 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-4 focus:ring-ring/15"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   You may enter one family member per line.
@@ -420,9 +422,11 @@ export function SeniorFormDialog({
             </div>
           )}
 
-          <section className="rounded-2xl border border-border p-4">
-            <div className="border-b border-border pb-3">
-              <p className="text-sm font-bold">Membership to Senior Citizen Association</p>
+          <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
+            <div className="border-b border-border/60 pb-3">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Membership to Senior Citizen Association
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Complete the association details shown on the registration form.
               </p>
@@ -473,8 +477,8 @@ export function SeniorFormDialog({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Documents and photo
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -518,7 +522,7 @@ export function SeniorFormDialog({
                       <img
                         src={validIdPreview}
                         alt="Valid ID preview"
-                        className="h-24 w-24 rounded-xl border border-border object-cover"
+                        className="h-24 w-24 rounded-lg border border-border/60 object-cover"
                       />
                     ) : (
                       <span className="text-xs text-muted-foreground">Current Valid ID</span>
@@ -557,7 +561,7 @@ export function SeniorFormDialog({
                       <img
                         src={birthCertificatePreview}
                         alt="Birth Certificate preview"
-                        className="h-24 w-24 rounded-xl border border-border object-cover"
+                        className="h-24 w-24 rounded-lg border border-border/60 object-cover"
                       />
                     ) : (
                       <span className="text-xs text-muted-foreground">
@@ -571,19 +575,13 @@ export function SeniorFormDialog({
           </section>
         </div>
 
-        {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+        {error && <AuthAlert tone="error">{error}</AuthAlert>}
 
         <DialogFooter>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="rounded-full bg-secondary px-6 py-3 text-sm font-semibold"
-          >
+          <button onClick={() => onOpenChange(false)} className={secondaryButtonClass}>
             Cancel
           </button>
-          <button
-            onClick={submit}
-            className="bg-navy rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[var(--shadow-card)]"
-          >
+          <button onClick={submit} className={primaryButtonClass}>
             {senior ? "Save changes" : "Register senior"}
           </button>
         </DialogFooter>

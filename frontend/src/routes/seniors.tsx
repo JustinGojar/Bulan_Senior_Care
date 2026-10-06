@@ -1,9 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Archive,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
   Clipboard,
+  Clock,
   Download,
   Eye,
+  FilePenLine,
   HandCoins,
   Loader2,
   MapPin,
@@ -14,13 +20,30 @@ import {
   Trash2,
   Undo2,
   Upload,
+  UserCheck,
   UserRound,
+  Users,
+  UserX,
+  X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { AppShell } from "@/components/AppShell";
+import { AuthAlert } from "@/components/AuthLayout";
+import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import {
+  TONE_BAR,
+  TONE_ICON,
+  fieldClass,
+  panelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  statCardClass,
+  tileClass,
+  type Tone,
+} from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
@@ -81,10 +104,10 @@ export const Route = createFileRoute("/seniors")({
   component: SeniorRecords,
 });
 
-const STATUS_CLASS: Record<string, string> = {
-  Active: "text-success",
-  Pending: "text-gold-foreground",
-  Inactive: "text-destructive",
+const STATUS_TONE: Record<string, "success" | "gold" | "danger"> = {
+  Active: "success",
+  Pending: "gold",
+  Inactive: "danger",
 };
 
 function initials(name: string) {
@@ -690,6 +713,22 @@ function SeniorRecords() {
     }
   }
 
+  const statusTiles: Array<{
+    key: string;
+    label: string;
+    count: number;
+    tone: Tone;
+    icon: typeof Users;
+  }> = [
+    { key: "All", label: "All records", count: totalCount, tone: "navy", icon: Users },
+    { key: "Active", label: "Active", count: activeCount, tone: "success", icon: UserCheck },
+    { key: "Pending", label: "Pending", count: pendingCount, tone: "gold", icon: Clock },
+    { key: "Inactive", label: "Inactive", count: inactiveCount, tone: "coral", icon: UserX },
+  ];
+  const storageUrl = (path: string) => `${API_URL.replace(/\/api$/, "")}/storage/${path}`;
+  const actionButtonClass =
+    "grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground";
+
   return (
     <AppShell
       title="Senior Record"
@@ -745,9 +784,47 @@ function SeniorRecords() {
         </div>
       }
     >
-      <div className="flex flex-wrap items-center gap-2 max-sm:flex-nowrap xl:flex-nowrap">
-        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-[#173A52]/20 bg-white px-3 shadow-[0_4px_12px_rgba(23,58,82,0.05)] transition focus-within:border-[#173A52]/60 focus-within:ring-2 focus-within:ring-[#173A52]/10 dark:bg-card sm:h-11 sm:basis-full xl:basis-0">
-          <Search className="h-4 w-4 shrink-0 text-[#173A52]" />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        {statusTiles.map(({ key, label, count, tone, icon: Icon }) => {
+          const active = filter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setFilter(key);
+                setPage(1);
+              }}
+              className={`${statCardClass} text-left ${active ? "ring-2 ring-ring/40" : ""}`}
+            >
+              <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+                  {label}
+                </p>
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${TONE_ICON[tone]} ${tone === "navy" ? "dark:ring-1 dark:ring-white/20" : ""}`}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="font-display mt-1 text-2xl leading-none font-extrabold sm:text-3xl">
+                {loading && count === 0 ? "..." : count.toLocaleString()}
+              </p>
+              <p className="mt-2 text-[11px] text-muted-foreground sm:text-xs">
+                {active ? "Showing in the table below" : "Click to filter the table"}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        className={`${panelClass} mt-5 flex flex-wrap items-center gap-2 p-3 max-sm:flex-nowrap sm:p-4 xl:flex-nowrap`}
+      >
+        <label className="relative min-w-0 flex-1 sm:basis-full xl:basis-0">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <span className="sr-only">Search senior records</span>
           <input
             value={query}
@@ -756,7 +833,7 @@ function SeniorRecords() {
               setPage(1);
             }}
             placeholder="Search by name, senior ID, or barangay..."
-            className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-slate-500"
+            className={`${fieldClass} h-10 pl-10 text-xs sm:h-11 sm:text-sm`}
           />
         </label>
         <IconSelect
@@ -820,20 +897,20 @@ function SeniorRecords() {
       </div>
 
       {isHead && editRequests.length > 0 && (
-        <section className="surface-card mt-6 p-6">
-          <div>
-            <h2 className="text-lg font-bold">Senior record edit requests</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Review changes submitted by BSCA before they update the official record.
-            </p>
-          </div>
+        <section className={`${panelClass} mt-5 p-5 sm:p-6`}>
+          <SectionHeader
+            icon={FilePenLine}
+            title="Senior record edit requests"
+            subtitle="Review changes submitted by BSCA before they update the official record."
+            badge={<StatusPill tone="gold">{editRequests.length} waiting</StatusPill>}
+          />
           <div className="mt-5 space-y-3">
             {editRequests.map((request) => (
               <div
                 key={request.id}
-                className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-secondary p-4"
+                className={`${tileClass} flex flex-wrap items-center justify-between gap-4`}
               >
-                <div className="text-sm">
+                <div className="min-w-0 text-sm">
                   <p className="font-bold">
                     {request.senior
                       ? [
@@ -855,14 +932,18 @@ function SeniorRecords() {
                     {request.senior?.osca_id_number ?? "Senior record"} · Requested by{" "}
                     {request.requester?.name ?? "Unknown user"}
                   </p>
-                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  <div className="mt-3 space-y-1.5 text-xs">
                     {changedFields(request).map(([field, current, next]) => (
-                      <p key={field}>
-                        <span className="font-semibold text-foreground">{field}:</span> {current} to{" "}
-                        {next}
+                      <p key={field} className="flex flex-wrap items-center gap-1.5">
+                        <span className="w-16 shrink-0 font-semibold text-foreground">{field}</span>
+                        <span className="text-muted-foreground line-through">{current}</span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-semibold text-foreground">{next}</span>
                       </p>
                     ))}
-                    {changedFields(request).length === 0 && <p>No changed values found.</p>}
+                    {changedFields(request).length === 0 && (
+                      <p className="text-muted-foreground">No changed values found.</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -870,16 +951,18 @@ function SeniorRecords() {
                     type="button"
                     disabled={reviewingRequestId === request.id}
                     onClick={() => reviewEditRequest(request, "declined")}
-                    className="rounded-full bg-card px-4 py-2.5 text-sm font-semibold text-destructive disabled:opacity-50"
+                    className={`${secondaryButtonClass} h-10 text-destructive`}
                   >
+                    <X className="h-4 w-4" />
                     {reviewingRequestId === request.id ? "Saving..." : "Decline"}
                   </button>
                   <button
                     type="button"
                     disabled={reviewingRequestId === request.id}
                     onClick={() => reviewEditRequest(request, "approved")}
-                    className="bg-navy rounded-full px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className={`${primaryButtonClass} h-10`}
                   >
+                    <Check className="h-4 w-4" />
                     {reviewingRequestId === request.id ? "Saving..." : "Approve"}
                   </button>
                 </div>
@@ -889,10 +972,10 @@ function SeniorRecords() {
         </section>
       )}
 
-      <div className="surface-card mt-6 overflow-x-auto p-2">
-        <table className="w-full min-w-[880px] border-collapse text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+      <div className={`${panelClass} mt-5 overflow-x-auto`}>
+        <table className="w-full min-w-[880px] border-collapse text-sm [&_th]:whitespace-nowrap">
           <thead>
-            <tr className="text-left text-muted-foreground">
+            <tr className="border-b border-border/60 bg-muted text-left">
               {[
                 "Name",
                 "Senior ID",
@@ -903,7 +986,10 @@ function SeniorRecords() {
                 "Status",
                 "Actions",
               ].map((h) => (
-                <th key={h} className="px-5 py-5 font-bold text-foreground">
+                <th
+                  key={h}
+                  className={`px-4 py-3.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
+                >
                   {h}
                 </th>
               ))}
@@ -912,25 +998,30 @@ function SeniorRecords() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
+                <td colSpan={8} className="px-5 py-14 text-center text-muted-foreground">
+                  <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
                   Loading senior records...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-destructive">
-                  Unable to load senior records. Please refresh and try again.
+                <td colSpan={8} className="px-5 py-12">
+                  <div className="mx-auto max-w-md">
+                    <AuthAlert tone="error">
+                      Unable to load senior records. Please refresh and try again.
+                    </AuthAlert>
+                  </div>
                 </td>
               </tr>
             ) : (
               rows.map((s) => (
-                <tr key={s.id} className="border-t border-border">
-                  <td className="px-5 py-4">
+                <tr key={s.id} className="border-t border-border/60 first:border-t-0">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white">
+                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white ring-2 ring-gold/40">
                         {avatarPath(s) ? (
                           <img
-                            src={`${API_URL.replace(/\/api$/, "")}/storage/${avatarPath(s)}`}
+                            src={storageUrl(avatarPath(s)!)}
                             alt={`${s.name} profile`}
                             className="h-full w-full object-cover"
                             loading="lazy"
@@ -940,39 +1031,46 @@ function SeniorRecords() {
                           initials(s.name)
                         )}
                       </span>
-                      <span className="font-medium">{s.name}</span>
+                      <span className="font-semibold">{s.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-muted-foreground">{s.id}</td>
-                  <td className="px-5 py-4">{s.age}</td>
-                  <td className="px-5 py-4 text-muted-foreground">{s.barangay}</td>
-                  <td className="px-5 py-4 text-muted-foreground">{s.contact}</td>
-                  <td className="px-5 py-4">{s.benefit}</td>
-                  <td className={`px-5 py-4 font-bold ${STATUS_CLASS[s.status]}`}>{s.status}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
+                  <td className="px-4 py-3.5 whitespace-nowrap text-muted-foreground">{s.id}</td>
+                  <td className="px-4 py-3.5">{s.age}</td>
+                  <td className="max-w-44 px-4 py-3.5 text-muted-foreground">{s.barangay}</td>
+                  <td className="px-4 py-3.5 whitespace-nowrap text-muted-foreground">
+                    {s.contact}
+                  </td>
+                  <td className="max-w-40 px-4 py-3.5">{s.benefit}</td>
+                  <td className="px-4 py-3.5 whitespace-nowrap">
+                    <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                  </td>
+                  <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
+                    <div className="flex gap-1.5">
                       <button
                         aria-label={`View record of ${s.name}`}
+                        title="View record"
                         onClick={() => setViewing(s)}
-                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
+                        className={actionButtonClass}
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
                         aria-label={`Edit record of ${s.name}`}
+                        title="Edit record"
                         onClick={() => {
                           setEditing(s);
                           setFormOpen(true);
                         }}
-                        className="grid h-9 w-9 place-items-center rounded-full bg-secondary transition-colors hover:bg-muted"
+                        className={actionButtonClass}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       {isAdmin && (
                         <button
                           aria-label={`Delete record of ${s.name}`}
+                          title="Delete record"
                           onClick={() => setDeleting(s)}
-                          className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-destructive transition-colors hover:bg-destructive/10"
+                          className={`${actionButtonClass} hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -997,7 +1095,7 @@ function SeniorRecords() {
                               );
                             }
                           }}
-                          className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-muted"
+                          className={actionButtonClass}
                         >
                           <Archive className="h-4 w-4" />
                         </button>
@@ -1009,8 +1107,14 @@ function SeniorRecords() {
             )}
             {!loading && !error && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-12 text-center text-muted-foreground">
-                  No records match this filter.
+                <td colSpan={8} className="px-5 py-14 text-center">
+                  <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-lg bg-muted text-muted-foreground">
+                    <Search className="h-5 w-5" />
+                  </span>
+                  <p className="font-semibold">No records match this filter.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Try a different search or reset the filters.
+                  </p>
                 </td>
               </tr>
             )}
@@ -1020,24 +1124,27 @@ function SeniorRecords() {
 
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
-          Page {page} of {lastPage}
+          Page <span className="font-semibold text-foreground">{page}</span> of{" "}
+          <span className="font-semibold text-foreground">{lastPage}</span>
         </span>
         <div className="flex gap-2">
           <button
             type="button"
             disabled={page <= 1 || loading}
             onClick={() => setPage((current) => current - 1)}
-            className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50"
+            className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
           >
+            <ChevronLeft className="h-4 w-4" />
             Previous
           </button>
           <button
             type="button"
             disabled={page >= lastPage || loading}
             onClick={() => setPage((current) => current + 1)}
-            className="rounded-full bg-card px-4 py-2 font-semibold disabled:opacity-50"
+            className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
           >
             Next
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -1051,28 +1158,32 @@ function SeniorRecords() {
               rejected by the server.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-80 overflow-auto rounded-xl border border-border">
+          <div className="max-h-80 overflow-auto rounded-lg border border-border/60">
             <table className="w-full text-left text-xs">
-              <thead className="bg-secondary">
-                <tr>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Birthdate</th>
-                  <th className="px-3 py-2">Sex</th>
-                  <th className="px-3 py-2">Barangay</th>
+              <thead className="sticky top-0 bg-muted">
+                <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <th className="px-3 py-2.5 font-semibold">Name</th>
+                  <th className="px-3 py-2.5 font-semibold">Birthdate</th>
+                  <th className="px-3 py-2.5 font-semibold">Sex</th>
+                  <th className="px-3 py-2.5 font-semibold">Barangay</th>
                 </tr>
               </thead>
               <tbody>
                 {(bulkPreview ?? []).slice(0, 50).map((record, index) => (
                   <tr
                     key={`${record["first_name"]}-${record["last_name"]}-${index}`}
-                    className="border-t border-border"
+                    className="border-t border-border/60"
                   >
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 font-medium">
                       {record["first_name"]} {record["last_name"]}
                     </td>
                     <td className="px-3 py-2">{record["birthdate"]}</td>
-                    <td className="px-3 py-2">{record["sex"] || "Missing"}</td>
-                    <td className="px-3 py-2">{record["barangay"] || "Missing"}</td>
+                    <td className="px-3 py-2">
+                      {record["sex"] || <span className="text-destructive">Missing</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      {record["barangay"] || <span className="text-destructive">Missing</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1082,15 +1193,12 @@ function SeniorRecords() {
             <button
               type="button"
               onClick={() => setBulkPreview(null)}
-              className="rounded-full bg-secondary px-5 py-3 text-sm font-semibold"
+              className={secondaryButtonClass}
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={confirmBulkImport}
-              className="bg-navy rounded-full px-5 py-3 text-sm font-semibold text-white"
-            >
+            <button type="button" onClick={confirmBulkImport} className={primaryButtonClass}>
+              <Upload className="h-4 w-4" />
               Import records
             </button>
           </div>
@@ -1104,19 +1212,22 @@ function SeniorRecords() {
             <DialogDescription>OSCA IDs for records deleted by an administrator.</DialogDescription>
           </DialogHeader>
           {archiveLoading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Loading archive...</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
+              Loading archive...
+            </p>
           ) : archivedRecords.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No deleted records.</p>
           ) : (
-            <div className="max-h-80 divide-y divide-border overflow-y-auto">
+            <div className="max-h-80 space-y-2 overflow-y-auto">
               {archivedRecords.map((record) => (
                 <div
                   key={record.osca_id_number}
-                  className="flex items-center justify-between gap-4 py-3"
+                  className={`${tileClass} flex items-center justify-between gap-4 py-3`}
                 >
-                  <div>
-                    <p className="font-semibold">{record.osca_id_number}</p>
-                    <p className="text-sm text-muted-foreground">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">{record.osca_id_number}</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {[record["first_name"], record["last_name"]].filter(Boolean).join(" ")} ·
                       Deleted {new Date(record.deleted_at).toLocaleDateString()}
                     </p>
@@ -1124,9 +1235,11 @@ function SeniorRecords() {
                   <button
                     onClick={() => restoreRecord(record.osca_id_number)}
                     aria-label={`Restore ${record.osca_id_number}`}
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-foreground transition-colors hover:bg-muted"
+                    title="Restore record"
+                    className={`${secondaryButtonClass} h-9 shrink-0 px-3`}
                   >
                     <Undo2 className="h-4 w-4" />
+                    Restore
                   </button>
                 </div>
               ))}
@@ -1164,42 +1277,65 @@ function SeniorRecords() {
       )}
 
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto bg-slate-50 sm:max-w-md">
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display text-lg">{viewing?.name}</DialogTitle>
-            <DialogDescription className="flex items-center gap-2 text-xs">
-              OSCA ID {viewing?.id}
-              {viewing?.id && (
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 font-semibold text-foreground"
-                  onClick={() =>
-                    navigator.clipboard
-                      .writeText(viewing.id)
-                      .then(() => toast.success("OSCA ID copied."))
-                  }
-                >
-                  <Clipboard className="h-3 w-3" /> Copy
-                </button>
-              )}
-            </DialogDescription>
+            <div className="flex items-center gap-4">
+              <span className="bg-navy grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white ring-2 ring-gold/50">
+                {viewing && avatarPath(viewing) ? (
+                  <img
+                    src={storageUrl(avatarPath(viewing)!)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initials(viewing?.name ?? "")
+                )}
+              </span>
+              <div className="min-w-0 text-left">
+                <DialogTitle className="font-display truncate text-xl">{viewing?.name}</DialogTitle>
+                <DialogDescription className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                  <span>OSCA ID {viewing?.id}</span>
+                  {viewing?.id && (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                      onClick={() =>
+                        navigator.clipboard
+                          .writeText(viewing.id)
+                          .then(() => toast.success("OSCA ID copied."))
+                      }
+                    >
+                      <Clipboard className="h-3 w-3" /> Copy
+                    </button>
+                  )}
+                  {viewing && (
+                    <StatusPill tone={STATUS_TONE[viewing.status] ?? "neutral"}>
+                      {viewing.status}
+                    </StatusPill>
+                  )}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <dl className="grid grid-cols-2 gap-3 text-sm">
             {[
               ["Age", viewing?.age],
               ["Barangay", viewing?.barangay],
               ["Contact", viewing?.contact],
               ["Benefit", viewing?.benefit],
-              ["Status", viewing?.status],
             ].map(([label, value]) => (
-              <div key={String(label)}>
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="mt-0.5 font-semibold">{value}</dd>
+              <div key={String(label)} className={`${tileClass} p-3`}>
+                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {label}
+                </dt>
+                <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>
               </div>
             ))}
           </dl>
-          <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-bold">Registration information</p>
+          <div className="mt-2 border-t border-border/60 pt-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Registration information
+            </p>
             <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {[
                 ["Place of birth", viewing?.placeOfBirth || "Not provided"],
@@ -1231,14 +1367,18 @@ function SeniorRecords() {
               ))}
             </dl>
           </div>
-          <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-bold">Family composition</p>
-            <p className="mt-2 whitespace-pre-line rounded-xl bg-secondary px-3 py-3 text-sm">
+          <div className="mt-2 border-t border-border/60 pt-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Family composition
+            </p>
+            <p className={`${tileClass} mt-3 p-3 text-sm whitespace-pre-line`}>
               {viewing?.familyComposition || "Not provided"}
             </p>
           </div>
-          <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-bold">Senior citizen association</p>
+          <div className="mt-2 border-t border-border/60 pt-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Senior citizen association
+            </p>
             <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
               {[
                 ["Name of association", viewing?.associationName || "Not provided"],
@@ -1270,8 +1410,10 @@ function SeniorRecords() {
               });
             const latest = history.at(-1);
             return (
-              <div className="mt-5 border-t border-border pt-5">
-                <p className="text-sm font-bold">Benefit release history</p>
+              <div className="mt-2 border-t border-border/60 pt-5">
+                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Benefit release history
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Latest release:{" "}
                   {latest?.date_distributed
@@ -1279,33 +1421,33 @@ function SeniorRecords() {
                     : "No release recorded"}
                 </p>
                 {history.length > 0 && (
-                  <div className="mt-3 overflow-x-auto">
+                  <div className="mt-3 overflow-x-auto rounded-lg border border-border/60">
                     <table className="w-full table-fixed text-xs">
                       <thead>
-                        <tr className="border-b border-border text-left text-muted-foreground">
-                          <th className="w-[34%] px-1 py-2">Release period</th>
-                          <th className="w-[22%] px-1 py-2">Actual date</th>
-                          <th className="w-[20%] px-1 py-2">Amount</th>
-                          <th className="w-[24%] px-1 py-2">Status</th>
+                        <tr className="bg-muted/60 text-left text-[11px] tracking-wider text-muted-foreground uppercase">
+                          <th className="w-[34%] px-2 py-2 font-semibold">Release period</th>
+                          <th className="w-[22%] px-2 py-2 font-semibold">Actual date</th>
+                          <th className="w-[20%] px-2 py-2 font-semibold">Amount</th>
+                          <th className="w-[24%] px-2 py-2 font-semibold">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {history.map((transaction) => (
-                          <tr key={transaction.id} className="border-b border-border last:border-0">
-                            <td className="truncate px-1 py-2 font-semibold">
+                          <tr key={transaction.id} className="border-t border-border/60">
+                            <td className="truncate px-2 py-2 font-semibold">
                               {transaction.period_label ?? "-"}
                             </td>
-                            <td className="truncate px-1 py-2">
+                            <td className="truncate px-2 py-2">
                               {transaction.date_distributed
                                 ? new Date(
                                     `${transaction.date_distributed}T00:00:00`,
                                   ).toLocaleDateString()
                                 : "-"}
                             </td>
-                            <td className="truncate px-1 py-2">
+                            <td className="truncate px-2 py-2">
                               ₱{Number(transaction.amount).toLocaleString()}
                             </td>
-                            <td className="truncate px-1 py-2 font-semibold">
+                            <td className="truncate px-2 py-2 font-semibold">
                               {transaction.status === "released"
                                 ? "Released"
                                 : transaction.status === "failed"
@@ -1322,36 +1464,38 @@ function SeniorRecords() {
             );
           })()}
           {viewing && (
-            <div className="mt-5 border-t border-border pt-5">
-              <p className="text-sm font-bold">Submitted files</p>
+            <div className="mt-2 border-t border-border/60 pt-5">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Submitted files
+              </p>
               <div className="mt-3 flex flex-wrap items-start gap-3">
                 {viewing.photoPath && (
                   <a
-                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
+                    href={storageUrl(viewing.photoPath)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     <img
-                      src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.photoPath}`}
+                      src={storageUrl(viewing.photoPath)}
                       alt={`${viewing.name} profile`}
-                      className="h-20 w-20 rounded-xl border border-border object-cover"
+                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                     />
                     <span>Profile photo</span>
                   </a>
                 )}
                 {viewing.idDocumentPath && !viewing.validIdPath && (
                   <a
-                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
+                    href={storageUrl(viewing.idDocumentPath)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.idDocumentPath) && (
                       <img
-                        src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.idDocumentPath}`}
+                        src={storageUrl(viewing.idDocumentPath)}
                         alt="Valid ID"
-                        className="h-20 w-20 rounded-xl border border-border object-cover"
+                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                       />
                     )}
                     <span>Valid ID</span>
@@ -1359,16 +1503,16 @@ function SeniorRecords() {
                 )}
                 {viewing.validIdPath && (
                   <a
-                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`}
+                    href={storageUrl(viewing.validIdPath)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.validIdPath) && (
                       <img
-                        src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.validIdPath}`}
+                        src={storageUrl(viewing.validIdPath)}
                         alt="Valid ID"
-                        className="h-20 w-20 rounded-xl border border-border object-cover"
+                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                       />
                     )}
                     <span>Valid ID</span>
@@ -1376,23 +1520,23 @@ function SeniorRecords() {
                 )}
                 {viewing.birthCertificatePath && (
                   <a
-                    href={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`}
+                    href={storageUrl(viewing.birthCertificatePath)}
                     target="_blank"
                     rel="noreferrer"
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.birthCertificatePath) && (
                       <img
-                        src={`${API_URL.replace(/\/api$/, "")}/storage/${viewing.birthCertificatePath}`}
+                        src={storageUrl(viewing.birthCertificatePath)}
                         alt="Birth Certificate"
-                        className="h-20 w-20 rounded-xl border border-border object-cover"
+                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                       />
                     )}
                     <span>Birth Certificate</span>
                   </a>
                 )}
                 {!viewing.birthCertificatePath && (
-                  <span className="rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
+                  <span className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
                     Birth Certificate not uploaded
                   </span>
                 )}
@@ -1417,9 +1561,9 @@ function SeniorRecords() {
                   toast.error("Unable to download the registration form.");
                 }
               }}
-              className="mt-5 flex w-full items-center justify-center rounded-full bg-navy px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-soft)]"
+              className={`${primaryButtonClass} mt-3 h-12 w-full`}
             >
-              <Download className="mr-2 h-4 w-4" /> Download Registration Form
+              <Download className="h-4 w-4" /> Download Registration Form
             </button>
           )}
         </DialogContent>
