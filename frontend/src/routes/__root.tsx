@@ -24,6 +24,7 @@ import { primaryButtonClass, secondaryButtonClass } from "@/components/design-ki
 import { Home, LayoutGrid, MapPinOff, RotateCw, TriangleAlert } from "lucide-react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import logo from "@/images/logo.png";
 import appCss from "../styles.css?url";
 
@@ -288,6 +289,21 @@ function RootComponent() {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, [router]);
+
+  useEffect(() => {
+    // After a deploy, a page opened earlier still points at the old build's lazily loaded
+    // files (PDF and spreadsheet libraries, page code), which no longer exist on the server.
+    const handlePreloadError = () => {
+      toast.error("A new version of Bulan SeniorCare is available.", {
+        id: "app-updated",
+        description: "Reload the page, then try again.",
+        duration: Infinity,
+        action: { label: "Reload", onClick: () => window.location.reload() },
+      });
+    };
+    window.addEventListener("vite:preloadError", handlePreloadError);
+    return () => window.removeEventListener("vite:preloadError", handlePreloadError);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
