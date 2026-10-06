@@ -32,10 +32,12 @@ import {
   apiFetch,
   getBarangays,
   clearToken,
+  getAuditLogs,
   getStoredUser,
   logout,
   setStoredUser,
   type ApiUser,
+  type AuditLog,
 } from "@/lib/api";
 import coverPhoto from "@/img/CP.jpg";
 import defaultProfileImage from "@/img/Defaut.png";
@@ -60,6 +62,8 @@ function ProfilePage() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [recentActivity, setRecentActivity] = useState<AuditLog[] | null>(null);
+  const isAdmin = user?.role?.toLowerCase() === "admin";
 
   useEffect(() => {
     apiFetch<ApiUser>("/user")
@@ -91,6 +95,16 @@ function ProfilePage() {
         }
       });
   }, []);
+
+  // Only admins can read the audit log, so only they get their own recent entries here.
+  useEffect(() => {
+    if (!isAdmin || !user?.id) return;
+    getAuditLogs(1)
+      .then((result) =>
+        setRecentActivity(result.data.filter((log) => log.actor?.id === user.id).slice(0, 5)),
+      )
+      .catch(() => setRecentActivity([]));
+  }, [isAdmin, user?.id]);
 
   useEffect(() => {
     if (!photo) {
@@ -440,12 +454,14 @@ function ProfilePage() {
               title="Recent Activity"
               subtitle="Your latest actions in the system"
               badge={
-                <button
-                  type="button"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
-                >
-                  View all <ArrowRight className="h-4 w-4" />
-                </button>
+                isAdmin ? (
+                  <Link
+                    to="/audit-logs"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                  >
+                    View all <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : undefined
               }
             />
 
@@ -459,11 +475,34 @@ function ProfilePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t border-border/60">
-                    <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                      No recent activity.
-                    </td>
-                  </tr>
+                  {recentActivity?.map((log) => (
+                    <tr key={log.id} className="border-t border-border/60">
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {new Date(log.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 font-semibold capitalize">
+                        {log.action.replaceAll("_", " ")}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {log.target_type
+                          .split("\\")
+                          .at(-1)
+                          ?.replace(/([a-z])([A-Z])/g, "$1 $2")}{" "}
+                        #{log.target_id}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!recentActivity || recentActivity.length === 0) && (
+                    <tr className="border-t border-border/60">
+                      <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                        {!isAdmin
+                          ? "Your activity history is kept in the audit log, which the OSCA administrator can review."
+                          : recentActivity === null
+                            ? "Loading recent activity..."
+                            : "No recent activity."}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
