@@ -53,6 +53,8 @@ async function requestCurrentUser(token: string) {
     Object.assign(error, { status: response.status });
     throw error;
   }
+  // The body can be missing when the request is cancelled mid-response (e.g. a page reload).
+  if (!body) throw new Error("The session check returned no user.");
   return body as ApiUser;
 }
 
