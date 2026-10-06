@@ -177,9 +177,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         if (getToken() !== token) continue;
 
         if (cachedCurrentUser?.token === token) cachedCurrentUser = null;
-        clearToken();
         const wasUnauthorized = error instanceof Error && "status" in error && error.status === 401;
-        if (wasUnauthorized || !isPublic) broadcastAuthChange();
+        // Only a 401 means the session is gone. Network failures, server errors and
+        // requests cancelled by a page reload must not sign the user out.
+        if (!wasUnauthorized) {
+          if (isPublic) return;
+          throw error;
+        }
+        clearToken();
+        broadcastAuthChange();
         if (isPublic) return;
         throw redirect({ to: "/login" });
       }
