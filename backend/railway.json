@@ -1,6 +1,0 @@
-{
-  "$schema": "https://railway.com/railway.schema.json",
-  "build": {
-    "buildCommand": "php artisan config:clear && php artisan storage:link --force"
-  }
-}
