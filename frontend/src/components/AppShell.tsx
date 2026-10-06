@@ -17,7 +17,7 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   API_URL,
@@ -129,6 +129,7 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<ApiUser | null>(null);
   const [assignedBarangay, setAssignedBarangay] = useState("");
@@ -139,6 +140,22 @@ export function AppShell({
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  // Close the profile menu on an outside click or Escape.
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProfileOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [profileOpen]);
   useEffect(() => {
     setUser(getStoredUser());
     const handleUserUpdated = (event: Event) => {
@@ -403,20 +420,20 @@ export function AppShell({
               onClick={() => setMobileNavOpen(true)}
               aria-label="Open navigation menu"
               title="Open navigation menu"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] sm:h-11 sm:w-11 lg:hidden"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors hover:bg-muted sm:h-11 sm:w-11 lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
             <nav
               aria-label="Breadcrumb"
-              className="flex h-10 w-fit min-w-0 items-center gap-1.5 rounded-[10px] border border-white/70 bg-white/80 pl-1.5 pr-3.5 text-xs leading-none shadow-[0_4px_14px_rgba(23,58,82,0.08)] backdrop-blur-sm sm:h-11 sm:shrink-0 sm:gap-2 sm:pl-2 sm:pr-4 sm:text-sm"
+              className="flex h-10 w-fit min-w-0 items-center gap-1.5 rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm pr-3.5 pl-1.5 text-xs leading-none sm:h-11 sm:shrink-0 sm:gap-2 sm:pr-4 sm:pl-2 sm:text-sm"
             >
               <Link
                 to="/dashboard"
                 aria-label="Go to dashboard"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[#173A52] sm:h-8 sm:w-8 transition hover:bg-[#173A52]/5"
+                className="bg-navy grid h-7 w-7 shrink-0 place-items-center rounded-md text-gold transition-opacity hover:opacity-90 sm:h-8 sm:w-8"
               >
-                <Home className="h-4 w-4 fill-current" />
+                <Home className="h-4 w-4" />
               </Link>
               {breadcrumb.map((crumb, i) => {
                 const destination = NAV.find((item) => item.label === crumb)?.to;
@@ -427,18 +444,18 @@ export function AppShell({
                     key={`${crumb}-${i}`}
                     className={`${isCurrent ? "flex" : "hidden sm:flex"} min-w-0 items-center gap-1.5 sm:gap-2`}
                   >
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#7EA5C5]" />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                     {destination && !isCurrent ? (
                       <Link
                         to={destination}
-                        className="truncate font-medium text-[#466784] transition hover:text-[#173A52]"
+                        className="truncate font-medium text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {crumb}
                       </Link>
                     ) : (
                       <span
                         aria-current={isCurrent ? "page" : undefined}
-                        className={`truncate ${isCurrent ? "font-bold text-[#173A52]" : "font-medium text-[#466784]"}`}
+                        className={`truncate ${isCurrent ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}
                       >
                         {crumb}
                       </span>
@@ -455,7 +472,7 @@ export function AppShell({
                 }
               }}
             >
-              <Search className="absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute top-1/2 left-4 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={globalSearch}
                 onChange={(event) => setGlobalSearch(event.target.value)}
@@ -468,16 +485,16 @@ export function AppShell({
                 aria-expanded={searchOpen && globalSearch.trim().length >= 2}
                 aria-controls="global-search-results"
                 placeholder="Search citizens, records..."
-                className="h-11 w-full rounded-[10px] bg-card pr-4 pl-11 text-sm shadow-[var(--shadow-soft)] outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30"
+                className="h-11 w-full rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm pr-4 pl-11 text-sm outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-ring focus:ring-4 focus:ring-ring/15"
               />
               {searchOpen && normalizedSearch.length >= 2 && (
                 <div
                   id="global-search-results"
-                  className="surface-card absolute top-14 right-0 left-0 z-30 max-h-[min(70vh,28rem)] overflow-y-auto p-2 shadow-xl"
+                  className="surface-card absolute top-[calc(100%+0.375rem)] right-0 left-0 z-30 max-h-[min(70vh,28rem)] overflow-y-auto border border-border/60 p-2 shadow-[var(--shadow-card)]"
                 >
                   {matchingPages.length > 0 && (
                     <div>
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                         Pages
                       </p>
                       {matchingPages.map(({ to, label, icon: Icon }) => (
@@ -488,7 +505,7 @@ export function AppShell({
                             clearGlobalSearch();
                             navigate({ to });
                           }}
-                          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold hover:bg-secondary"
+                          className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold hover:bg-muted"
                         >
                           <Icon className="h-4 w-4 text-muted-foreground" />
                           {label}
@@ -498,7 +515,7 @@ export function AppShell({
                   )}
                   {announcementMatches.length > 0 && (
                     <div>
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                         Announcements
                       </p>
                       {announcementMatches.map((announcement) => (
@@ -506,7 +523,7 @@ export function AppShell({
                           key={announcement.id}
                           type="button"
                           onClick={() => openAnnouncement(announcement)}
-                          className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary"
+                          className="flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted"
                         >
                           <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0">
@@ -523,7 +540,7 @@ export function AppShell({
                   )}
                   {seniorMatches.length > 0 && (
                     <div>
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                         Senior records
                       </p>
                       {seniorMatches.map((senior) => (
@@ -531,7 +548,7 @@ export function AppShell({
                           key={senior.id}
                           type="button"
                           onClick={() => openSenior(senior)}
-                          className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-secondary"
+                          className="flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left hover:bg-muted"
                         >
                           <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0">
@@ -565,17 +582,20 @@ export function AppShell({
                 </div>
               )}
             </div>
-            <div className="relative col-start-3 row-start-1 flex items-center gap-1.5 sm:col-auto sm:row-auto sm:gap-3">
+            <div
+              ref={profileMenuRef}
+              className="relative col-start-3 row-start-1 flex items-center gap-1.5 sm:col-auto sm:row-auto sm:gap-3"
+            >
               {!isAdmin && (
                 <button
                   onClick={() => navigate({ to: "/messages" })}
                   aria-label="Open messages"
                   title="Messages"
-                  className="relative grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] sm:h-11 sm:w-11"
+                  className="relative grid h-10 w-10 place-items-center rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors hover:bg-muted sm:h-11 sm:w-11"
                 >
                   <Mail className="h-5 w-5" />
                   {unreadMessageCount > 0 && (
-                    <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                    <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[10px] leading-none font-bold text-white ring-2 ring-card">
                       {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                     </span>
                   )}
@@ -584,11 +604,11 @@ export function AppShell({
               <button
                 onClick={() => navigate({ to: "/notifications" })}
                 aria-label="Notifications"
-                className="relative grid h-10 w-10 place-items-center rounded-full bg-card shadow-[var(--shadow-soft)] sm:h-11 sm:w-11"
+                className="relative grid h-10 w-10 place-items-center rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors hover:bg-muted sm:h-11 sm:w-11"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+                  <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[10px] leading-none font-bold text-white ring-2 ring-card">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -596,7 +616,8 @@ export function AppShell({
               <button
                 onClick={() => setProfileOpen((open) => !open)}
                 aria-label="Open profile menu"
-                className="bg-navy grid h-10 w-10 overflow-hidden place-items-center rounded-full text-xs font-bold text-white sm:h-11 sm:w-11"
+                aria-expanded={profileOpen}
+                className="bg-navy grid h-10 w-10 place-items-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-gold/60 transition-shadow hover:ring-gold sm:h-11 sm:w-11"
               >
                 {photoUrl ? (
                   <img
@@ -612,9 +633,22 @@ export function AppShell({
                 )}
               </button>
               {profileOpen && (
-                <div className="surface-card absolute top-14 right-0 z-20 w-[min(16rem,calc(100vw-1.5rem))] p-3">
-                  <div className="flex items-center gap-3 border-b border-border px-2 pb-3">
-                    <UserCircle className="h-8 w-8 text-muted-foreground" />
+                <div className="surface-card absolute top-[calc(100%+0.375rem)] right-0 z-30 w-[min(16rem,calc(100vw-1.5rem))] border border-border/60 p-2 shadow-[var(--shadow-card)]">
+                  <div className="flex items-center gap-3 border-b border-border/60 px-2 pt-1 pb-3">
+                    <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-gold/50">
+                      {photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.src = defaultProfileImage;
+                          }}
+                        />
+                      ) : (
+                        initials
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold">{user?.name ?? "User"}</p>
                       <p className="truncate text-xs text-muted-foreground">
@@ -625,19 +659,19 @@ export function AppShell({
                   <Link
                     to="/profile"
                     onClick={() => setProfileOpen(false)}
-                    className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-secondary"
+                    className="mt-2 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold hover:bg-muted"
                   >
                     <UserCircle className="h-4 w-4" /> My profile
                   </Link>
-                  <div className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold">
+                  <div className="flex items-center justify-between rounded-md px-3 py-1.5 text-sm font-semibold">
                     <span className="flex items-center gap-3">
                       <Settings className="h-4 w-4" /> Appearance
                     </span>
-                    <ThemeToggle className="h-9 w-9 shadow-none" />
+                    <ThemeToggle className="h-9 w-9 rounded-lg border border-border/60 shadow-none" />
                   </div>
                   <button
                     onClick={signOut}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"
+                    className="mt-1 flex w-full items-center gap-3 rounded-md border-t border-border/60 px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"
                   >
                     <LogOut className="h-4 w-4" /> Log out
                   </button>
@@ -648,8 +682,12 @@ export function AppShell({
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-3 print:hidden sm:mt-6 sm:gap-4">
             <div className="min-w-0">
-              <h1 className="text-2xl font-extrabold sm:text-4xl">{title}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+              <h1 className="text-2xl font-extrabold sm:text-4xl dark:[text-shadow:0_2px_12px_rgb(0_0_0/0.45)]">
+                {title}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground dark:text-foreground/85 dark:[text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
+                {subtitle}
+              </p>
             </div>
             {actions}
           </div>
