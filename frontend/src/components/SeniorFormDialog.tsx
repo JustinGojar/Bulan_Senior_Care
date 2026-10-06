@@ -582,7 +582,7 @@ export function SeniorFormDialog({
           </button>
           <button
             onClick={submit}
-            className="bg-navy rounded-full px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-card)]"
+            className="bg-navy rounded-full px-6 py-3 text-sm font-semibold text-white shadow-[var(--shadow-card)]"
           >
             {senior ? "Save changes" : "Register senior"}
           </button>

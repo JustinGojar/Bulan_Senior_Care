@@ -293,7 +293,7 @@ function ProfilePage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
               >
                 <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
               </button>
@@ -437,7 +437,7 @@ function ProfilePage() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0d253f] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
                 >
                   <KeyRound className="h-4 w-4" /> {busy ? "Updating..." : "Update password"}
                 </button>

@@ -109,7 +109,7 @@ function Reports() {
     >
       <section className="surface-card p-5 sm:p-7 print:hidden">
         <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-primary-foreground">
+          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-white">
             <FileText className="h-4 w-4" />
           </div>
           <div>
@@ -170,7 +170,7 @@ function Reports() {
             </button>
             <button
               onClick={exportPdf}
-              className="bg-navy inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-primary-foreground print:hidden"
+              className="bg-navy inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white print:hidden"
             >
               <Download className="h-4 w-4" /> Export PDF
             </button>

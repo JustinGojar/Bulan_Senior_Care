@@ -32,7 +32,7 @@ export function AuthLayout({
 
       <div className="surface-card relative grid w-full max-w-5xl overflow-hidden border border-border/60 lg:grid-cols-[1.05fr_1fr]">
         {/* Brand panel */}
-        <aside className="relative hidden overflow-hidden text-primary-foreground lg:flex lg:flex-col">
+        <aside className="relative hidden overflow-hidden text-white lg:flex lg:flex-col">
           <img
             src={seniorCitizensPhoto}
             alt=""

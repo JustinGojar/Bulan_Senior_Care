@@ -18,7 +18,7 @@ function UnauthorizedPage() {
         </p>
         <Link
           to="/dashboard"
-          className="bg-navy mt-7 inline-flex rounded-full px-5 py-3 text-sm font-bold text-primary-foreground"
+          className="bg-navy mt-7 inline-flex rounded-full px-5 py-3 text-sm font-bold text-white"
         >
           Go to dashboard
         </Link>
