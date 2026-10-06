@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import {
   apiFetch,
@@ -225,6 +226,7 @@ function Dashboard() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Link
           to="/seniors"
+          search={{ q: undefined, status: undefined }}
           className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#173A52]/35 bg-white p-4 shadow-[0_8px_24px_rgba(23,58,82,0.14)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#173A52]/[0.04] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#173A52] dark:hover:bg-[#173A52]/80 sm:p-5"
         >
           <Users className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#173A52]/15 sm:h-16 sm:w-16" />
@@ -275,7 +277,7 @@ function Dashboard() {
 
         <Link
           to="/seniors"
-          search={{ status: "active" }}
+          search={{ q: undefined, status: "active" }}
           className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#1B9E70]/40 bg-white p-4 shadow-[0_8px_24px_rgba(27,158,112,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B9E70]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#164B3A] dark:hover:bg-[#164B3A]/80 sm:p-5"
         >
           <UserCheck className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#1B9E70]/25 sm:h-16 sm:w-16" />
@@ -300,7 +302,7 @@ function Dashboard() {
 
         <Link
           to="/seniors"
-          search={{ status: "pending" }}
+          search={{ q: undefined, status: "pending" }}
           className="relative isolate flex min-h-[184px] overflow-hidden rounded-xl border border-[#EB625D]/40 bg-white p-4 shadow-[0_8px_24px_rgba(235,98,93,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#EB625D]/[0.06] hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring dark:bg-[#5C2E2C] dark:hover:bg-[#5C2E2C]/80 sm:p-5"
         >
           <Clock className="pointer-events-none absolute right-4 bottom-5 -z-10 h-14 w-14 text-[#EB625D]/25 sm:h-16 sm:w-16" />
@@ -365,7 +367,7 @@ function Dashboard() {
                   <img
                     src={
                       announcement.image_path
-                        ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`
+                        ? `${import.meta.env["VITE_API_URL"]?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${announcement.image_path}`
                         : announcement.source_image_url!
                     }
                     alt=""
@@ -628,7 +630,7 @@ function Dashboard() {
               <img
                 src={
                   selectedAnnouncement.image_path
-                    ? `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`
+                    ? `${import.meta.env["VITE_API_URL"]?.replace(/\/api\/?$/, "") ?? "http://127.0.0.1:8000"}/storage/${selectedAnnouncement.image_path}`
                     : selectedAnnouncement.source_image_url!
                 }
                 alt=""
