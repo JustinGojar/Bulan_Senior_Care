@@ -278,7 +278,7 @@ export function SeniorFormDialog({
                   value={draft.sex ?? "female"}
                   onValueChange={(value) => set("sex", value as "male" | "female")}
                 >
-                  <SelectTrigger className="mt-1.5">
+                  <SelectTrigger className="mt-1.5 h-9 px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -332,7 +332,7 @@ export function SeniorFormDialog({
                   onValueChange={(v) => set("barangay", v)}
                   disabled={!!leaderBarangay}
                 >
-                  <SelectTrigger className="mt-1.5">
+                  <SelectTrigger className="mt-1.5 h-9 px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -348,7 +348,7 @@ export function SeniorFormDialog({
               <div>
                 <Label>Benefit</Label>
                 <Select value={draft.benefit} onValueChange={(v) => set("benefit", v)}>
-                  <SelectTrigger className="mt-1.5">
+                  <SelectTrigger className="mt-1.5 h-9 px-3">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,7 +411,7 @@ export function SeniorFormDialog({
                 value={draft.status}
                 onValueChange={(v) => set("status", v as Senior["status"])}
               >
-                <SelectTrigger className="mt-1.5">
+                <SelectTrigger className="mt-1.5 h-9 px-3">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

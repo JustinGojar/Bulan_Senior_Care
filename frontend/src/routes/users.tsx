@@ -17,6 +17,13 @@ import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import { badgeClass, fieldClass, iconButtonClass, panelClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import {
   getBarangays,
@@ -478,55 +485,68 @@ function UserManagement() {
                   <label htmlFor="user-role" className={labelClass}>
                     Role
                   </label>
-                  <select
-                    id="user-role"
+                  <Select
+                    name="role"
                     required
                     value={role}
-                    onChange={(event) => setRole(event.target.value as typeof role)}
-                    className={`${fieldClass} h-11`}
+                    onValueChange={(value) => setRole(value as typeof role)}
                   >
-                    <option value="admin">Admin</option>
-                    <option value="head">Head</option>
-                    <option value="leader">BSCA</option>
-                  </select>
+                    <SelectTrigger id="user-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="head">Head</SelectItem>
+                      <SelectItem value="leader">BSCA</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label htmlFor="user-status" className={labelClass}>
                     Status
                   </label>
-                  <select
-                    id="user-status"
+                  <Select
+                    name="status"
                     required
                     value={status}
-                    onChange={(event) => setStatus(event.target.value as typeof status)}
-                    className={`${fieldClass} h-11`}
+                    onValueChange={(value) => setStatus(value as typeof status)}
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                    <SelectTrigger id="user-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>
                 <label htmlFor="user-barangay" className={labelClass}>
                   Barangay
                 </label>
-                <select
-                  id="user-barangay"
+                <Select
+                  name="barangay_id"
                   required={role === "leader"}
-                  value={barangayId}
-                  onChange={(event) => setBarangayId(event.target.value)}
-                  className={`${fieldClass} h-11 disabled:cursor-not-allowed disabled:opacity-60`}
+                  value={role === "leader" ? barangayId : ""}
+                  onValueChange={setBarangayId}
                   disabled={role !== "leader"}
                 >
-                  <option value="">
-                    {role === "leader" ? "Select a barangay" : "No barangay assignment"}
-                  </option>
-                  {barangays.map((barangay) => (
-                    <option key={barangay.id} value={barangay.id}>
-                      {barangay.barangay_name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="user-barangay">
+                    <SelectValue
+                      placeholder={
+                        role === "leader" ? "Select a barangay" : "No barangay assignment"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {barangays.map((barangay) => (
+                      <SelectItem key={barangay.id} value={String(barangay.id)}>
+                        {barangay.barangay_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {!editingUser && (
                 <div className="grid gap-4 sm:grid-cols-2">
