@@ -22,6 +22,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
@@ -80,6 +81,7 @@ type BenefitProgram = {
 const PROGRAM_ICONS = [Coins, Gift, Users, HeartHandshake, Banknote, Award];
 
 function BenefitTracking() {
+  const [confirm, confirmDialog] = useConfirmDialog();
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
   const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
   const [releaseSchedules, setReleaseSchedules] = useState<BenefitRelease[]>([]);
@@ -297,7 +299,13 @@ function BenefitTracking() {
         : null;
     if (status === "released" && !date) return;
     const statusLabel = status === "released" ? "Received" : "Not received";
-    if (!window.confirm(`Mark ${selected.length} selected transactions as ${statusLabel}?`)) return;
+    const confirmed = await confirm({
+      title: `Mark as ${statusLabel.toLowerCase()}?`,
+      description: `${selected.length} selected ${selected.length === 1 ? "transaction" : "transactions"} will be marked as ${statusLabel}.`,
+      confirmLabel: `Mark ${statusLabel.toLowerCase()}`,
+      destructive: status !== "released",
+    });
+    if (!confirmed) return;
 
     setBulkUpdating(true);
     const results = await Promise.allSettled(
@@ -993,6 +1001,7 @@ function BenefitTracking() {
           </form>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </AppShell>
   );
 }
