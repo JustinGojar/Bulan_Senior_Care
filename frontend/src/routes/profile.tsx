@@ -27,6 +27,7 @@ import {
 import {
   API_URL,
   apiFetch,
+  getBarangays,
   clearToken,
   getStoredUser,
   logout,
@@ -70,7 +71,7 @@ function ProfilePage() {
           freshUser.role?.toLowerCase() === "leader" ||
           freshUser.roles?.some((role) => role.name.toLowerCase() === "leader");
         if (isLeader && freshUser.barangay_id) {
-          apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+          getBarangays()
             .then((barangays) =>
               setAssignedBarangay(
                 barangays.find((barangay) => barangay.id === freshUser.barangay_id)

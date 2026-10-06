@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { IconActionButton } from "@/components/IconActionButton";
 import oscaAdminImage from "@/images/osca_admin.jpg";
 import {
-  apiFetch,
+  getBarangays,
   API_URL,
   createManagedUser,
   deleteManagedUser,
@@ -66,7 +66,7 @@ function UserManagement() {
 
   useEffect(() => {
     getManagedUsers().then(setUsers).catch(() => setUsers([]));
-    apiFetch<BarangayOption[]>("/barangays")
+    getBarangays()
       .then(setBarangays)
       .catch(() => setBarangays([]));
   }, []);

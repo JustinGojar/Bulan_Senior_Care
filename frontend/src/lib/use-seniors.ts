@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
+import {
+  apiFetch,
+  clearBarangayCache,
+  getStoredUser,
+  submitSeniorEditRequest,
+  type ApiSenior,
+} from "./api";
 import type { Senior } from "./osca-data";
 
 type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
@@ -25,6 +31,8 @@ async function getCachedSeniors<T>(path: string, signal?: AbortSignal): Promise<
 
 export function clearSeniorCache() {
   seniorCache.clear();
+  // Saving a senior can register a new barangay name.
+  clearBarangayCache();
 }
 
 export type SeniorDraft = Omit<Senior, "id"> & {
