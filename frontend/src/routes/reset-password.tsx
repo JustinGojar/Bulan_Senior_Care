@@ -20,6 +20,7 @@ function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(
     token ? null : "This reset link is missing its token.",
   );
+  const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -27,7 +28,11 @@ function ResetPasswordPage() {
     setSubmitting(true);
     setError(null);
     resetPassword(token, email, password, passwordConfirmation)
-      .then(() => navigate({ to: "/login" }))
+      .then((result) => {
+        setMessage(result.message);
+        // Give the user a moment to read the confirmation before going to log in.
+        window.setTimeout(() => navigate({ to: "/login" }), 2500);
+      })
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setSubmitting(false));
   }
@@ -38,6 +43,7 @@ function ResetPasswordPage() {
       subtitle="Use at least 8 characters for your new password."
     >
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+        {message && <AuthAlert tone="success">{message}</AuthAlert>}
         {error && <AuthAlert tone="error">{error}</AuthAlert>}
 
         <div>
@@ -107,7 +113,11 @@ function ResetPasswordPage() {
           </div>
         </div>
 
-        <button type="submit" disabled={submitting || !token} className={`${authSubmitClass} mt-2`}>
+        <button
+          type="submit"
+          disabled={submitting || !token || message !== null}
+          className={`${authSubmitClass} mt-2`}
+        >
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />

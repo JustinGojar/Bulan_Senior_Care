@@ -99,15 +99,23 @@ class AuthController extends Controller
         } catch (TransportExceptionInterface $exception) {
             report($exception);
 
+            // The token was stored before sending failed; drop it so an immediate retry
+            // is not silently throttled while reporting the link as sent.
+            $user = PasswordBroker::getUser(['email' => $data['email']]);
+            if ($user) {
+                PasswordBroker::deleteToken($user);
+            }
+
             return response()->json([
                 'message' => 'We could not send the reset email right now. Please try again later.',
             ], 503);
         }
 
         logger()->info('Password reset link request processed.', ['status' => $status]);
-        $message = 'If an account exists for that email address, a password reset link has been sent.';
 
-        return response()->json(['message' => $message], $status === PasswordBroker::RESET_LINK_SENT ? 200 : 200);
+        return response()->json([
+            'message' => 'If an account exists for that email address, a password reset link has been sent.',
+        ]);
     }
 
     public function resetPassword(Request $request): JsonResponse
