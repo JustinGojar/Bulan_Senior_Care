@@ -17,10 +17,21 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
+import { SectionHeader } from "@/components/DesignKit";
+import {
+  TONE_BAR,
+  TONE_ICON,
+  badgeClass,
+  fieldClass,
+  iconButtonClass,
+  statCardClass,
+  tileClass,
+  type Tone,
+} from "@/components/design-kit";
 import seniorCitizensPhoto from "@/images/img.webp";
 import {
   apiFetch,
@@ -55,36 +66,6 @@ export const Route = createFileRoute("/dashboard")({
   }),
   component: Dashboard,
 });
-
-type Tone = "navy" | "gold" | "success" | "coral";
-
-const TONE_ICON: Record<Tone, string> = {
-  navy: "bg-navy text-white",
-  gold: "bg-gold text-gold-foreground",
-  success: "bg-success text-success-foreground",
-  coral: "bg-coral text-coral-foreground",
-};
-
-const TONE_BAR: Record<Tone, string> = {
-  navy: "bg-navy",
-  gold: "bg-gold",
-  success: "bg-success",
-  coral: "bg-coral",
-};
-
-const statCardClass =
-  "surface-card group relative flex flex-col overflow-hidden border border-border/60 p-4 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring sm:p-5";
-
-const tileClass = "rounded-lg border border-border/60 bg-background/60 p-4";
-
-const badgeClass =
-  "rounded-full border border-border/60 bg-muted/70 px-3 py-1 text-xs font-semibold text-muted-foreground";
-
-const fieldClass =
-  "w-full rounded-lg border border-input bg-background/60 px-4 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-ring focus:ring-4 focus:ring-ring/15";
-
-const iconButtonClass =
-  "grid h-9 w-9 place-items-center rounded-lg bg-muted text-muted-foreground transition-colors hover:text-foreground";
 
 function announcementImageUrl(announcement: Announcement) {
   return announcement.image_path
@@ -140,7 +121,7 @@ function StatCardBody({
           {label}
         </p>
         <span
-          className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg sm:h-10 sm:w-10 ${TONE_ICON[tone]}`}
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg sm:h-10 sm:w-10 ${TONE_ICON[tone]} ${tone === "navy" ? "dark:ring-1 dark:ring-white/20" : ""}`}
         >
           <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </span>
@@ -155,33 +136,6 @@ function StatCardBody({
         {description}
       </p>
     </>
-  );
-}
-
-function SectionHeader({
-  icon: Icon,
-  title,
-  subtitle,
-  badge,
-}: {
-  icon: LucideIcon;
-  title: string;
-  subtitle?: string;
-  badge?: ReactNode;
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-lg">
-          <Icon className="h-4 w-4 text-gold" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold">{title}</h2>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-        </div>
-      </div>
-      {badge}
-    </div>
   );
 }
 
