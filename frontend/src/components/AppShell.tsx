@@ -38,6 +38,7 @@ import {
 import defaultProfileImage from "@/img/Defaut.png";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
+import { panelClass, tileClass } from "./design-kit";
 import { ThemeToggle } from "./ThemeToggle";
 
 const UNREAD_REFRESH_INTERVAL = 15_000;
@@ -285,44 +286,63 @@ export function AppShell({
     navigate({ to: "/login" });
   }
 
-  return (
-    <div className="bg-app app-shell w-full overflow-x-clip">
-      <div className="flex min-w-0 w-full gap-3 sm:gap-4 lg:gap-6">
-        <aside className="surface-card sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-5 lg:flex print:hidden">
-          <div className="flex items-center gap-3">
-            <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
-            <div>
-              <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
-              <p className="text-xs text-muted-foreground">OSCA Bulan</p>
-            </div>
+  // Shared by the desktop sidebar and the mobile sheet so they stay identical.
+  function renderSidebar(onNavigate?: () => void) {
+    return (
+      <>
+        <div className="flex items-center gap-3 px-1 pr-8 lg:pr-1">
+          <BrandLogo className="h-11 w-11 ring-2 ring-gold/70" />
+          <div className="min-w-0">
+            <p className="font-display truncate text-sm font-bold">Bulan SeniorCare</p>
+            <p className="truncate text-xs text-muted-foreground">OSCA · Bulan, Sorsogon</p>
           </div>
+        </div>
 
-          <nav className="mt-8 flex flex-col gap-1.5">
-            {visibleNav.map(({ to, label, icon: Icon }) => {
-              const active = pathname === to;
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  className={
-                    active
-                      ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-soft)]"
-                      : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
-                  }
-                >
-                  <Icon className="h-5 w-5" />
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
+        <p className="mt-7 px-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          Menu
+        </p>
+        <nav
+          aria-label="Main navigation"
+          className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+        >
+          {visibleNav.map(({ to, label, icon: Icon }) => {
+            const active = pathname === to;
+            return (
+              <Link
+                key={to}
+                to={to}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={
+                  active
+                    ? "bg-navy relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-white shadow-[var(--shadow-soft)] dark:ring-1 dark:ring-white/15"
+                    : "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                }
+              >
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-2 bottom-2 left-0 w-1 rounded-r-full bg-gold"
+                  />
+                )}
+                <Icon
+                  className={`h-[18px] w-[18px] shrink-0 ${active ? "text-gold" : "transition-colors group-hover:text-foreground"}`}
+                />
+                <span className="truncate">{label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-          <div className="mt-auto border-t border-border pt-4">
+        <div className="mt-4 border-t border-border/60 pt-4">
+          <div className={`${tileClass} flex items-center gap-1 p-1.5`}>
             <Link
               to="/profile"
-              className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
+              onClick={onNavigate}
+              title={`${user?.name ?? "User"} · ${roleLabel}`}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1.5 transition-colors hover:bg-muted"
             >
-              <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-white">
+              <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-gold/50">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -341,69 +361,38 @@ export function AppShell({
                 <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
               </div>
             </Link>
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label="Log out"
+              title="Log out"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="bg-app app-shell w-full overflow-x-clip">
+      <div className="flex min-w-0 w-full gap-3 sm:gap-4 lg:gap-6">
+        <aside
+          className={`${panelClass} sticky top-6 hidden h-[calc(100vh-3rem)] w-64 shrink-0 flex-col p-4 lg:flex print:hidden`}
+        >
+          {renderSidebar()}
         </aside>
 
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <SheetContent side="left" className="w-[min(84vw,20rem)] p-5 lg:hidden">
+          <SheetContent side="left" className="w-[min(84vw,20rem)] p-4 lg:hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigation menu</SheetTitle>
+              <SheetDescription>Open a section of Bulan SeniorCare.</SheetDescription>
+            </SheetHeader>
             <div className="flex h-full flex-col">
-              <SheetHeader className="sr-only">
-                <SheetTitle>Navigation menu</SheetTitle>
-                <SheetDescription>Open a section of Bulan SeniorCare.</SheetDescription>
-              </SheetHeader>
-              <div className="flex items-center gap-3 pr-8">
-                <BrandLogo className="h-11 w-11 ring-2 ring-gold/60" />
-                <div>
-                  <p className="font-display text-sm font-bold">Bulan SeniorCare</p>
-                  <p className="text-xs text-muted-foreground">OSCA Bulan</p>
-                </div>
-              </div>
-              <nav className="mt-8 flex flex-col gap-1.5">
-                {visibleNav.map(({ to, label, icon: Icon }) => {
-                  const active = pathname === to;
-                  return (
-                    <Link
-                      key={to}
-                      to={to}
-                      onClick={() => setMobileNavOpen(false)}
-                      className={
-                        active
-                          ? "bg-navy flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-[var(--shadow-soft)]"
-                          : "flex items-center gap-3 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
-                      }
-                    >
-                      <Icon className="h-5 w-5" />
-                      {label}
-                    </Link>
-                  );
-                })}
-              </nav>
-              <div className="mt-auto border-t border-border pt-4">
-                <Link
-                  to="/profile"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2.5 transition-all duration-200 hover:border-[#173A52]/25 hover:bg-[#173A52]/5 hover:text-[#173A52] dark:hover:border-white/15 dark:hover:bg-white/5 dark:hover:text-foreground"
-                >
-                  <div className="bg-navy grid h-10 w-10 shrink-0 overflow-hidden place-items-center rounded-full text-xs font-bold text-white">
-                    {photoUrl ? (
-                      <img
-                        src={photoUrl}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                        onError={(event) => {
-                          event.currentTarget.src = defaultProfileImage;
-                        }}
-                      />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{user?.name ?? "User"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
-                  </div>
-                </Link>
-              </div>
+              {renderSidebar(() => setMobileNavOpen(false))}
             </div>
           </SheetContent>
         </Sheet>
