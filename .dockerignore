@@ -6,7 +6,6 @@
 **/.output
 **/dist
 **/dist-ssr
-backend/backend
 backend/bootstrap/cache/*.php
 backend/public/storage
 backend/storage/logs/*

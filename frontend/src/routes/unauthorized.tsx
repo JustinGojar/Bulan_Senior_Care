@@ -13,7 +13,8 @@ function UnauthorizedPage() {
         <ShieldX className="mx-auto h-14 w-14 text-destructive" />
         <h1 className="mt-5 text-3xl font-extrabold">Not authorized</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          You do not have permission to view this page. Please return to the dashboard or contact an administrator.
+          You do not have permission to view this page. Please return to the dashboard or contact an
+          administrator.
         </p>
         <Link
           to="/dashboard"

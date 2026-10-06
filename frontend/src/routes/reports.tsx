@@ -21,12 +21,15 @@ const REPORTS = [
 function Reports() {
   const { seniors, loading } = useSeniors();
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
-  const summary = useMemo(() => ({
-    total: seniors.length,
-    active: seniors.filter((senior) => senior.status === "Active").length,
-    pending: seniors.filter((senior) => senior.status === "Pending").length,
-    inactive: seniors.filter((senior) => senior.status === "Inactive").length,
-  }), [seniors]);
+  const summary = useMemo(
+    () => ({
+      total: seniors.length,
+      active: seniors.filter((senior) => senior.status === "Active").length,
+      pending: seniors.filter((senior) => senior.status === "Pending").length,
+      inactive: seniors.filter((senior) => senior.status === "Inactive").length,
+    }),
+    [seniors],
+  );
 
   function generateReport() {
     setGeneratedAt(new Date().toLocaleString());
@@ -147,7 +150,10 @@ function Reports() {
       </section>
 
       {generatedAt && (
-        <section className="surface-card mt-6 p-5 sm:p-7 print:mt-0 print:shadow-none" id="generated-report">
+        <section
+          className="surface-card mt-6 p-5 sm:p-7 print:mt-0 print:shadow-none"
+          id="generated-report"
+        >
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
@@ -188,8 +194,10 @@ function Reports() {
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border text-left">
-                  {['Senior ID', 'Name', 'Age', 'Barangay', 'Benefit', 'Status'].map((heading) => (
-                    <th key={heading} className="px-3 py-3 font-bold">{heading}</th>
+                  {["Senior ID", "Name", "Age", "Barangay", "Benefit", "Status"].map((heading) => (
+                    <th key={heading} className="px-3 py-3 font-bold">
+                      {heading}
+                    </th>
                   ))}
                 </tr>
               </thead>

@@ -22,10 +22,12 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   API_URL,
   apiFetch,
+  getBarangays,
   clearToken,
   getAnnouncements,
   getServerUnreadNotificationCount,
   getStoredUser,
+  getToken,
   getUnreadMessageSummary,
   logout,
   type Announcement,
@@ -37,6 +39,67 @@ import defaultProfileImage from "@/img/Defaut.png";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
+
+const UNREAD_REFRESH_INTERVAL = 15_000;
+
+type UnreadKind = "notifications" | "messages";
+// Last known badge counts, kept across page switches so each navigation doesn't refetch them.
+const unreadCache: Record<UnreadKind, { token: string | null; count: number; fetchedAt: number }> =
+  {
+    notifications: { token: null, count: 0, fetchedAt: 0 },
+    messages: { token: null, count: 0, fetchedAt: 0 },
+  };
+
+function cachedUnreadCount(kind: UnreadKind) {
+  if (typeof window === "undefined") return 0;
+  const cached = unreadCache[kind];
+  return cached.token === getToken() ? cached.count : 0;
+}
+
+// Polls a badge count while the tab is visible; background tabs stop hitting the API.
+function watchUnreadCount(
+  kind: UnreadKind,
+  load: () => Promise<{ count: number }>,
+  setCount: (count: number) => void,
+) {
+  let active = true;
+  const refresh = (force: boolean) => {
+    const token = getToken();
+    const cached = unreadCache[kind];
+    if (
+      !force &&
+      cached.token === token &&
+      Date.now() - cached.fetchedAt < UNREAD_REFRESH_INTERVAL
+    ) {
+      setCount(cached.count);
+      return;
+    }
+    load()
+      .then(({ count }) => {
+        unreadCache[kind] = { token, count, fetchedAt: Date.now() };
+        if (active) setCount(count);
+      })
+      .catch(() => {
+        if (active) setCount(0);
+      });
+  };
+  const timer = window.setInterval(() => {
+    if (!document.hidden) refresh(true);
+  }, UNREAD_REFRESH_INTERVAL);
+  const handleVisibilityChange = () => {
+    if (!document.hidden) refresh(false);
+  };
+  const handleUnreadUpdated = () => refresh(true);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("bulan-unread-updated", handleUnreadUpdated);
+  refresh(false);
+  return () => {
+    active = false;
+    window.clearInterval(timer);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("bulan-unread-updated", handleUnreadUpdated);
+  };
+}
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -68,8 +131,8 @@ export function AppShell({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [user, setUser] = useState<ApiUser | null>(null);
   const [assignedBarangay, setAssignedBarangay] = useState("");
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(() => cachedUnreadCount("notifications"));
+  const [unreadMessageCount, setUnreadMessageCount] = useState(() => cachedUnreadCount("messages"));
   const [globalSearch, setGlobalSearch] = useState("");
   const [seniorMatches, setSeniorMatches] = useState<ApiSenior[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -84,16 +147,18 @@ export function AppShell({
     return () => window.removeEventListener("bulan-user-updated", handleUserUpdated);
   }, []);
   useEffect(() => {
+    // Announcements only feed global search, so load them once search is first used.
+    if (!searchOpen) return;
     getAnnouncements()
       .then(setAnnouncements)
       .catch(() => setAnnouncements([]));
-  }, []);
+  }, [searchOpen]);
   useEffect(() => {
     if (user?.role?.toLowerCase() !== "leader" || !user.barangay_id) {
       setAssignedBarangay("");
       return;
     }
-    apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+    getBarangays()
       .then((barangays) =>
         setAssignedBarangay(
           barangays.find((barangay) => barangay.id === user.barangay_id)?.barangay_name ?? "",
@@ -106,38 +171,16 @@ export function AppShell({
       setUnreadMessageCount(0);
       return;
     }
-    const updateUnreadMessageCount = () => {
-      if (!user?.id) {
-        setUnreadMessageCount(0);
-        return;
-      }
-      getUnreadMessageSummary()
-        .then(({ count }) => setUnreadMessageCount(count))
-        .catch(() => setUnreadMessageCount(0));
-    };
-    updateUnreadMessageCount();
-    const refreshTimer = window.setInterval(updateUnreadMessageCount, 15000);
-    window.addEventListener("bulan-unread-updated", updateUnreadMessageCount);
-    return () => {
-      window.clearInterval(refreshTimer);
-      window.removeEventListener("bulan-unread-updated", updateUnreadMessageCount);
-    };
+    if (!user?.id) {
+      setUnreadMessageCount(0);
+      return;
+    }
+    return watchUnreadCount("messages", getUnreadMessageSummary, setUnreadMessageCount);
   }, [user?.id, user?.role]);
-  useEffect(() => {
-    const updateUnreadCount = () => {
-      getServerUnreadNotificationCount()
-        .then(({ count }) => setUnreadCount(count))
-        .catch(() => setUnreadCount(0));
-    };
-    updateUnreadCount();
-    const refreshTimer = window.setInterval(updateUnreadCount, 15000);
-    const handleUnreadUpdated = () => updateUnreadCount();
-    window.addEventListener("bulan-unread-updated", handleUnreadUpdated);
-    return () => {
-      window.clearInterval(refreshTimer);
-      window.removeEventListener("bulan-unread-updated", handleUnreadUpdated);
-    };
-  }, []);
+  useEffect(
+    () => watchUnreadCount("notifications", getServerUnreadNotificationCount, setUnreadCount),
+    [],
+  );
   useEffect(() => {
     const term = globalSearch.trim();
     if (term.length < 2) {
@@ -233,7 +276,7 @@ export function AppShell({
   function openSenior(senior: ApiSenior) {
     const query = senior.osca_id_number;
     clearGlobalSearch();
-    navigate({ to: "/seniors", search: { q: query } });
+    navigate({ to: "/seniors", search: { q: query, status: undefined } });
   }
 
   async function signOut() {

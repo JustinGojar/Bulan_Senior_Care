@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Barangay;
 use App\Models\BenefitTransaction;
 use App\Models\SeniorCitizen;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AnalyticsController extends Controller
 {
+    private const AGE_BRACKETS = [60, 70, 80, 90, 100];
+
     public function __invoke(Request $request): JsonResponse
     {
         $isLeader = $request->user()->role === 'leader';
@@ -22,58 +26,109 @@ class AnalyticsController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        $query = SeniorCitizen::query()->with('barangay:id,barangay_name')->where('status', '!=', 'pending');
+        // All counting happens in the database so the response time stays flat as records grow.
+        $seniors = SeniorCitizen::query()->where('senior_citizens.status', '!=', 'pending');
         if ($isLeader) {
-            $query->where('barangay_id', $request->user()->barangay_id);
+            $seniors->where('senior_citizens.barangay_id', $request->user()->barangay_id);
         } else {
-            $this->applyFilters($query, $data);
+            $this->applyFilters($seniors, $data);
         }
-        $seniors = $query->get(['id', 'barangay_id', 'birthdate', 'sex', 'status', 'registration_date']);
-        $seniorIds = $seniors->pluck('id');
+
+        $ageSelects = [];
+        $ageBindings = [];
+        foreach (self::AGE_BRACKETS as $age) {
+            // Someone is at least N years old when they were born on or before today minus N years.
+            $ageSelects[] = $age === 100
+                ? 'COALESCE(SUM(CASE WHEN birthdate <= ? THEN 1 ELSE 0 END), 0) AS age_'.$age
+                : 'COALESCE(SUM(CASE WHEN birthdate <= ? AND birthdate > ? THEN 1 ELSE 0 END), 0) AS age_'.$age;
+            // End-of-day bounds compare correctly against both DATE columns and SQLite's datetime text.
+            $ageBindings[] = now()->subYearsNoOverflow($age)->toDateString().' 23:59:59';
+            if ($age !== 100) {
+                $ageBindings[] = now()->subYearsNoOverflow($age + 10)->toDateString().' 23:59:59';
+            }
+        }
+        $totals = (clone $seniors)
+            ->selectRaw(
+                'COUNT(*) AS total_registered, '.
+                'COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) AS active, '.
+                'COALESCE(SUM(CASE WHEN sex = ? THEN 1 ELSE 0 END), 0) AS male, '.
+                'COALESCE(SUM(CASE WHEN sex = ? THEN 1 ELSE 0 END), 0) AS female, '.
+                implode(', ', $ageSelects),
+                ['active', 'male', 'female', ...$ageBindings],
+            )
+            ->toBase()
+            ->first();
+
         $transactions = BenefitTransaction::query()
-            ->with(['senior:id,barangay_id', 'benefit:id,benefit_name'])
-            ->whereIn('senior_citizen_id', $seniorIds)
-            ->get(['senior_citizen_id', 'benefit_id', 'status']);
+            ->whereIn('benefit_transactions.senior_citizen_id', (clone $seniors)->select('senior_citizens.id'));
 
-        $barangaySummary = $seniors->groupBy(fn (SeniorCitizen $senior) => $senior->barangay?->barangay_name ?? 'Unassigned')
-            ->map(function ($group, $barangay) use ($transactions) {
-                $ids = $group->pluck('id');
-                return [
-                    'barangay' => $barangay,
-                    'registered' => $group->count(),
-                    'active' => $group->where('status', 'active')->count(),
-                    'released' => $transactions->whereIn('senior_citizen_id', $ids)->where('status', 'released')->count(),
-                ];
-            })->values();
+        $releasedByBarangay = (clone $transactions)
+            ->join('senior_citizens', 'senior_citizens.id', '=', 'benefit_transactions.senior_citizen_id')
+            ->where('benefit_transactions.status', 'released')
+            ->groupBy('senior_citizens.barangay_id')
+            ->selectRaw('senior_citizens.barangay_id, COUNT(*) AS released')
+            ->toBase()
+            ->pluck('released', 'barangay_id');
 
-        $ageDistribution = collect([60, 70, 80, 90, 100])->map(fn (int $age) => [
+        $barangayRows = (clone $seniors)
+            ->selectRaw(
+                'barangay_id, COUNT(*) AS registered, '.
+                'COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) AS active',
+                ['active'],
+            )
+            ->groupBy('barangay_id')
+            ->orderByRaw('MIN(senior_citizens.id)')
+            ->toBase()
+            ->get();
+        $barangayNames = Barangay::query()
+            ->whereIn('id', $barangayRows->pluck('barangay_id')->filter())
+            ->pluck('barangay_name', 'id');
+
+        $barangaySummary = [];
+        foreach ($barangayRows as $row) {
+            $name = $barangayNames[$row->barangay_id] ?? 'Unassigned';
+            $barangaySummary[$name] ??= ['barangay' => $name, 'registered' => 0, 'active' => 0, 'released' => 0];
+            $barangaySummary[$name]['registered'] += (int) $row->registered;
+            $barangaySummary[$name]['active'] += (int) $row->active;
+            $barangaySummary[$name]['released'] += (int) ($releasedByBarangay[$row->barangay_id] ?? 0);
+        }
+        $barangaySummary = collect(array_values($barangaySummary));
+
+        $ageDistribution = collect(self::AGE_BRACKETS)->map(fn (int $age) => [
             'age' => $age === 100 ? '100+' : "{$age}-".($age + 9),
-            'count' => $seniors->filter(function (SeniorCitizen $senior) use ($age): bool {
-                $seniorAge = $senior->birthdate->age;
-                return $seniorAge >= $age && ($age === 100 || $seniorAge < $age + 10);
-            })->count(),
+            'count' => (int) $totals->{'age_'.$age},
         ]);
 
-        $benefitRecords = $transactions->groupBy(fn (BenefitTransaction $transaction) => $transaction->benefit?->benefit_name ?? 'Unknown')
-            ->map(fn ($group, $name) => ['name' => $name, 'value' => $group->count()])->values();
-        $releasedBenefitRecords = $transactions->where('status', 'released')
-            ->groupBy(fn (BenefitTransaction $transaction) => $transaction->benefit?->benefit_name ?? 'Unknown')
-            ->map(fn ($group, $name) => [
-                'name' => $name,
-                'senior_count' => $group->pluck('senior_citizen_id')->unique()->count(),
-            ])->values();
+        $benefitName = "COALESCE(benefits.benefit_name, 'Unknown')";
+        $benefitTotals = (clone $transactions)
+            ->leftJoin('benefits', 'benefits.id', '=', 'benefit_transactions.benefit_id')
+            ->groupByRaw($benefitName)
+            ->orderByRaw('MIN(benefit_transactions.id)');
+        $benefitRecords = (clone $benefitTotals)
+            ->selectRaw("{$benefitName} AS name, COUNT(*) AS value")
+            ->toBase()
+            ->get()
+            ->map(fn ($row) => ['name' => $row->name, 'value' => (int) $row->value]);
+        $releasedBenefitRecords = (clone $benefitTotals)
+            ->where('benefit_transactions.status', 'released')
+            ->selectRaw("{$benefitName} AS name, COUNT(DISTINCT benefit_transactions.senior_citizen_id) AS senior_count")
+            ->toBase()
+            ->get()
+            ->map(fn ($row) => ['name' => $row->name, 'senior_count' => (int) $row->senior_count]);
+
         $runningTotal = 0;
         $trend = $barangaySummary->map(function (array $row) use (&$runningTotal) {
             $runningTotal += $row['registered'];
+
             return [...$row, 'municipal' => $runningTotal];
         });
 
         return response()->json([
             'municipal' => [
-                'total_registered' => $seniors->count(),
-                'active' => $seniors->where('status', 'active')->count(),
-                'male' => $seniors->where('sex', 'male')->count(),
-                'female' => $seniors->where('sex', 'female')->count(),
+                'total_registered' => (int) $totals->total_registered,
+                'active' => (int) $totals->active,
+                'male' => (int) $totals->male,
+                'female' => (int) $totals->female,
             ],
             'barangay_summary' => $barangaySummary,
             'age_distribution' => $ageDistribution,
@@ -83,12 +138,22 @@ class AnalyticsController extends Controller
         ]);
     }
 
-    private function applyFilters($query, array $data): void
+    private function applyFilters(Builder $query, array $data): void
     {
-        if (! empty($data['barangay_id'])) $query->where('barangay_id', $data['barangay_id']);
-        if (! empty($data['gender'])) $query->where('sex', $data['gender']);
-        if (! empty($data['status'])) $query->where('status', $data['status']);
-        if (! empty($data['from'])) $query->whereDate('registration_date', '>=', $data['from']);
-        if (! empty($data['to'])) $query->whereDate('registration_date', '<=', $data['to']);
+        if (! empty($data['barangay_id'])) {
+            $query->where('senior_citizens.barangay_id', $data['barangay_id']);
+        }
+        if (! empty($data['gender'])) {
+            $query->where('senior_citizens.sex', $data['gender']);
+        }
+        if (! empty($data['status'])) {
+            $query->where('senior_citizens.status', $data['status']);
+        }
+        if (! empty($data['from'])) {
+            $query->whereDate('senior_citizens.registration_date', '>=', $data['from']);
+        }
+        if (! empty($data['to'])) {
+            $query->whereDate('senior_citizens.registration_date', '<=', $data['to']);
+        }
     }
 }

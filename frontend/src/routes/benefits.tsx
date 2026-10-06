@@ -23,6 +23,7 @@ import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import {
   API_URL,
   apiFetch,
+  getBarangays,
   getStoredUser,
   type BenefitRelease,
   type BenefitTransaction,
@@ -223,7 +224,7 @@ function BenefitTracking() {
         setTransactionLastPage(result.last_page);
       })
       .catch(() => setTransactions([]));
-    apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+    getBarangays()
       .then((result) => {
         setBarangays(result);
         if (isLeader) {
@@ -568,7 +569,7 @@ function BenefitTracking() {
             iconClass,
             accentClass,
             hoverClass,
-          } = PROGRAM_STYLES[index % PROGRAM_STYLES.length];
+          } = PROGRAM_STYLES[index % PROGRAM_STYLES.length]!;
           const relatedBarangay = selectedBarangay === "All" ? "All barangays" : selectedBarangay;
 
           return (
