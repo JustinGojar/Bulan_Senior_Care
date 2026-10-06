@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   Bell,
   Building2,
   Check,
@@ -15,6 +16,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AuthAlert } from "@/components/AuthLayout";
+import { SectionHeader } from "@/components/DesignKit";
+import { panelClass } from "@/components/design-kit";
 import {
   getNotificationChannelSettings,
   updateNotificationChannelSettings,
@@ -63,7 +67,7 @@ const NOTIFICATION_SETTINGS_KEY = "bulan-notification-settings";
 
 function SettingIcon({ icon: Icon }: { icon: typeof ShieldCheck }) {
   return (
-    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary text-navy">
+    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-muted text-primary">
       <Icon className="h-5 w-5" />
     </div>
   );
@@ -106,19 +110,19 @@ function SettingRow({
         <p className="font-semibold">{title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">{rowDescription}</p>
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </>
   );
   if (!destination)
     return (
-      <div className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4">
+      <div className="flex items-center gap-4 rounded-lg border border-border/60 bg-background/60 px-4 py-3.5">
         {content}
       </div>
     );
   return (
     <Link
       to={destination}
-      className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4 hover:bg-secondary"
+      className="group flex items-center gap-4 rounded-lg border border-border/60 bg-background/60 px-4 py-3.5 transition-colors hover:border-ring/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
     >
       {content}
     </Link>
@@ -228,150 +232,133 @@ function SettingsPage() {
       subtitle="Access control, notifications, and age threshold rules"
       breadcrumb={["Dashboard", "Settings"]}
     >
-      <div className="space-y-5">
-        <main className="min-w-0 space-y-5">
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <SettingIcon icon={ShieldCheck} />
-              <div>
-                <h2 className="text-lg font-bold">System</h2>
-                <p className="text-sm text-muted-foreground">
-                  Core access and registry configuration
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <SettingRow
-                icon={ShieldCheck}
-                title="User roles & access control"
-                description={ROLES.map(([role]) => role).join(" · ")}
-                to="/users"
-              />
-              <SettingRow
-                icon={Building2}
-                title="Barangay management"
-                description="Manage barangay scopes and registered senior coverage"
-              />
-              <SettingRow
-                icon={FileText}
-                title="Senior record settings"
-                description="Required fields, documents, and validation rules"
-              />
-            </div>
-          </section>
+      <div className="grid items-start gap-5 xl:grid-cols-2">
+        <section className={`${panelClass} p-5 sm:p-6`}>
+          <SectionHeader
+            icon={ShieldCheck}
+            title="System"
+            subtitle="Core access and registry configuration"
+          />
+          <div className="mt-5 space-y-2">
+            <SettingRow
+              icon={ShieldCheck}
+              title="User roles & access control"
+              description={ROLES.map(([role]) => role).join(" · ")}
+              to="/users"
+            />
+            <SettingRow
+              icon={Building2}
+              title="Barangay management"
+              description="Manage barangay scopes and registered senior coverage"
+            />
+            <SettingRow
+              icon={FileText}
+              title="Senior record settings"
+              description="Required fields, documents, and validation rules"
+            />
+          </div>
+        </section>
 
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <SettingIcon icon={Bell} />
-              <div>
-                <h2 className="text-lg font-bold">Notifications</h2>
-                <p className="text-sm text-muted-foreground">
-                  Configure delivery channels for system advisories
-                </p>
-              </div>
-            </div>
-            <div className="surface-card divide-y divide-border px-5">
-              {NOTIFS.map(([label, desc]) => (
-                <div key={label} className="flex items-center gap-4 py-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{label}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
-                    {(label === "Email advisories" || label === "SMS advisories") &&
-                      channelReadiness &&
-                      !channelReadiness[
-                        label === "Email advisories" ? "email_advisories" : "sms_advisories"
-                      ] && (
-                        <p className="mt-1 text-xs text-amber-700">
-                          Configure this channel in the backend before enabling it.
-                        </p>
-                      )}
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={notificationSettings[label]}
-                    aria-label={`Toggle ${label}`}
-                    aria-busy={savingNotification === label}
-                    disabled={
-                      savingNotification === label ||
-                      ((label === "Email advisories" || label === "SMS advisories") &&
-                        !notificationSettings[label] &&
-                        (!channelReadiness ||
-                          !channelReadiness[
-                            label === "Email advisories" ? "email_advisories" : "sms_advisories"
-                          ]))
-                    }
-                    onClick={() => void toggleNotification(label)}
-                    className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 disabled:cursor-not-allowed disabled:opacity-50 ${notificationSettings[label] ? "bg-navy" : "bg-secondary"}`}
-                  >
-                    <span
-                      className={`grid h-4 w-4 place-items-center rounded-full bg-card transition-transform ${notificationSettings[label] ? "translate-x-5" : ""}`}
-                    >
-                      {notificationSettings[label] && <Check className="h-3 w-3 text-primary" />}
-                    </span>
-                  </button>
+        <section className={`${panelClass} p-5 sm:p-6`}>
+          <SectionHeader
+            icon={Bell}
+            title="Notifications"
+            subtitle="Configure delivery channels for system advisories"
+          />
+          <div className="mt-3 divide-y divide-border/60">
+            {NOTIFS.map(([label, desc]) => (
+              <div key={label} className="flex items-center gap-4 py-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{label}</p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                  {(label === "Email advisories" || label === "SMS advisories") &&
+                    channelReadiness &&
+                    !channelReadiness[
+                      label === "Email advisories" ? "email_advisories" : "sms_advisories"
+                    ] && (
+                      <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-gold-foreground dark:text-gold">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Configure this channel in the backend before enabling it.
+                      </p>
+                    )}
                 </div>
-              ))}
-            </div>
-            {notificationError && (
-              <p role="alert" className="mt-2 text-sm text-destructive">
-                {notificationError}
-              </p>
-            )}
-          </section>
-
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <SettingIcon icon={SlidersHorizontal} />
-              <div>
-                <h2 className="text-lg font-bold">Registry & benefits</h2>
-                <p className="text-sm text-muted-foreground">
-                  Eligibility rules and benefit program settings
-                </p>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={notificationSettings[label]}
+                  aria-label={`Toggle ${label}`}
+                  aria-busy={savingNotification === label}
+                  disabled={
+                    savingNotification === label ||
+                    ((label === "Email advisories" || label === "SMS advisories") &&
+                      !notificationSettings[label] &&
+                      (!channelReadiness ||
+                        !channelReadiness[
+                          label === "Email advisories" ? "email_advisories" : "sms_advisories"
+                        ]))
+                  }
+                  onClick={() => void toggleNotification(label)}
+                  className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${notificationSettings[label] ? "bg-navy" : "bg-muted ring-1 ring-border"}`}
+                >
+                  <span
+                    className={`grid h-4 w-4 place-items-center rounded-full bg-white shadow-sm transition-transform ${notificationSettings[label] ? "translate-x-5" : ""}`}
+                  >
+                    {notificationSettings[label] && <Check className="h-3 w-3 text-[#173A52]" />}
+                  </span>
+                </button>
               </div>
+            ))}
+          </div>
+          {notificationError && (
+            <div className="mt-3">
+              <AuthAlert tone="error">{notificationError}</AuthAlert>
             </div>
-            <div className="space-y-2">
-              <SettingRow
-                icon={SlidersHorizontal}
-                title="Age threshold rules"
-                description={BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension")
-                  .map((program) => `${program.name}: ${program.minAge}+`)
-                  .join(" · ")}
-                to="/age-threshold"
-              />
-              <SettingRow
-                icon={Gift}
-                title="Benefit & assistance settings"
-                description="Programs, amounts, eligibility, and release frequency"
-                to="/benefits"
-              />
-            </div>
-          </section>
+          )}
+        </section>
 
-          <section>
-            <div className="mb-3 flex items-center gap-3">
-              <SettingIcon icon={LockKeyhole} />
-              <div>
-                <h2 className="text-lg font-bold">Privacy & security</h2>
-                <p className="text-sm text-muted-foreground">
-                  Account protection and system activity
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <SettingRow
-                icon={KeyRound}
-                title="Security settings"
-                description="Change password, two-factor authentication, and session timeout"
-              />
-              <SettingRow
-                icon={ClipboardList}
-                title="Audit logs"
-                description="Recent account, senior record, and benefit activities"
-              />
-            </div>
-          </section>
-        </main>
+        <section className={`${panelClass} p-5 sm:p-6`}>
+          <SectionHeader
+            icon={SlidersHorizontal}
+            title="Registry & benefits"
+            subtitle="Eligibility rules and benefit program settings"
+          />
+          <div className="mt-5 space-y-2">
+            <SettingRow
+              icon={SlidersHorizontal}
+              title="Age threshold rules"
+              description={BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension")
+                .map((program) => `${program.name}: ${program.minAge}+`)
+                .join(" · ")}
+              to="/age-threshold"
+            />
+            <SettingRow
+              icon={Gift}
+              title="Benefit & assistance settings"
+              description="Programs, amounts, eligibility, and release frequency"
+              to="/benefits"
+            />
+          </div>
+        </section>
+
+        <section className={`${panelClass} p-5 sm:p-6`}>
+          <SectionHeader
+            icon={LockKeyhole}
+            title="Privacy & security"
+            subtitle="Account protection and system activity"
+          />
+          <div className="mt-5 space-y-2">
+            <SettingRow
+              icon={KeyRound}
+              title="Security settings"
+              description="Change password, two-factor authentication, and session timeout"
+            />
+            <SettingRow
+              icon={ClipboardList}
+              title="Audit logs"
+              description="Recent account, senior record, and benefit activities"
+            />
+          </div>
+        </section>
       </div>
     </AppShell>
   );

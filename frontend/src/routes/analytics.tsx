@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MapPin, PieChart as PieIcon, TrendingUp, Users } from "lucide-react";
+import {
+  Loader2,
+  MapPin,
+  PieChart as PieIcon,
+  TrendingUp,
+  UserCheck,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -19,6 +28,9 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
+import { AuthAlert } from "@/components/AuthLayout";
+import { SectionHeader } from "@/components/DesignKit";
+import { TONE_BAR, TONE_ICON, panelClass, statCardClass, type Tone } from "@/components/design-kit";
 import { apiFetch, getStoredUser } from "@/lib/api";
 import { useEffect, useState } from "react";
 
@@ -67,13 +79,45 @@ type AnalyticsResponse = {
   trend: Array<{ barangay: string; registered: number; released: number; municipal: number }>;
 };
 
-function CardHead({ icon: Icon, title }: { icon: typeof MapPin; title: string }) {
+// Themed tooltip so it follows light and dark mode instead of recharts' white box.
+const TOOLTIP_PROPS = {
+  contentStyle: {
+    background: "var(--popover)",
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    color: "var(--popover-foreground)",
+    fontSize: 12,
+  },
+  labelStyle: { color: "var(--popover-foreground)", fontWeight: 700 },
+  itemStyle: { color: "var(--popover-foreground)" },
+  cursor: { fill: "var(--muted)", opacity: 0.5 },
+};
+
+function KpiTile({
+  icon: Icon,
+  tone,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  tone: Tone;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-white">
-        <Icon className="h-4 w-4" />
+    <div className={`${statCardClass} hover:translate-y-0`}>
+      <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+          {label}
+        </p>
+        <span
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${TONE_ICON[tone]} ${tone === "navy" ? "dark:ring-1 dark:ring-white/20" : ""}`}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
       </div>
-      <h2 className="text-lg font-bold">{title}</h2>
+      <p className="font-display mt-2 text-2xl leading-none font-extrabold sm:text-3xl">{value}</p>
     </div>
   );
 }
@@ -112,12 +156,40 @@ function Analytics() {
       breadcrumb={["Dashboard", "Analytics"]}
     >
       {error && (
-        <p className="mb-6 rounded-xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p>
+        <div className="mb-6">
+          <AuthAlert tone="error">{error}</AuthAlert>
+        </div>
       )}
-      {loading && <p className="mb-6 text-sm text-muted-foreground">Loading analytics data...</p>}
+      {loading && (
+        <p className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading analytics data...
+        </p>
+      )}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        {(
+          [
+            ["Total registered", analytics?.municipal.total_registered, "navy", Users],
+            ["Active", analytics?.municipal.active, "success", UserCheck],
+            ["Female", analytics?.municipal.female, "coral", UserRound],
+            ["Male", analytics?.municipal.male, "gold", UserRound],
+          ] as const
+        ).map(([label, value, tone, icon]) => (
+          <KpiTile
+            key={label}
+            icon={icon}
+            tone={tone}
+            label={label}
+            value={value === undefined ? "..." : value.toLocaleString()}
+          />
+        ))}
+      </div>
       {!isLeader && (
-        <section className="surface-card p-5 sm:p-7">
-          <CardHead icon={MapPin} title="Total Participants per Zone / Barangay" />
+        <section className={`${panelClass} p-5 sm:p-7`}>
+          <SectionHeader
+            icon={MapPin}
+            title="Total Participants per Zone / Barangay"
+            subtitle="Registered seniors in each barangay."
+          />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={zoneParticipants}>
@@ -133,10 +205,10 @@ function Analytics() {
                   tickLine={false}
                   axisLine={false}
                   fontSize={12}
-                  domain={[0, 200]}
-                  ticks={[0, 50, 100, 150, 200]}
+                  allowDecimals={false}
+                  domain={[0, "auto"]}
                 />
-                <Tooltip />
+                <Tooltip {...TOOLTIP_PROPS} />
                 <Area
                   type="monotone"
                   dataKey="total"
@@ -149,7 +221,9 @@ function Analytics() {
             </ResponsiveContainer>
           </div>
           {loading && (
-            <p className="mt-3 text-sm text-muted-foreground">Loading live analytics...</p>
+            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading live analytics...
+            </p>
           )}
           {!loading && zoneParticipants.length === 0 && (
             <p className="mt-3 text-sm text-muted-foreground">No senior records available.</p>
@@ -158,8 +232,8 @@ function Analytics() {
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="surface-card p-5 sm:p-7">
-          <CardHead icon={Users} title="Age Distribution" />
+        <section className={`${panelClass} p-5 sm:p-7`}>
+          <SectionHeader icon={Users} title="Age Distribution" subtitle="Seniors by age group." />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={ageDistribution}>
@@ -169,12 +243,10 @@ function Analytics() {
                   tickLine={false}
                   axisLine={false}
                   fontSize={12}
-                  domain={isLeader ? [0, "auto"] : [0, 1000]}
-                  {...(isLeader
-                    ? {}
-                    : { ticks: [0, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000] })}
+                  allowDecimals={false}
+                  domain={[0, "auto"]}
                 />
-                <Tooltip />
+                <Tooltip {...TOOLTIP_PROPS} />
                 <Legend />
                 <Bar dataKey="count" name="Seniors" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -182,8 +254,12 @@ function Analytics() {
           </div>
         </section>
 
-        <section className="surface-card p-5 sm:p-7">
-          <CardHead icon={PieIcon} title="Benefit Records" />
+        <section className={`${panelClass} p-5 sm:p-7`}>
+          <SectionHeader
+            icon={PieIcon}
+            title="Benefit Records"
+            subtitle="Seniors assigned to each benefit."
+          />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -206,7 +282,7 @@ function Analytics() {
                     fontWeight={700}
                   />
                 </Pie>
-                <Tooltip />
+                <Tooltip {...TOOLTIP_PROPS} />
                 <Legend formatter={(value) => String(value)} />
               </PieChart>
             </ResponsiveContainer>
@@ -217,20 +293,20 @@ function Analytics() {
         </section>
       </div>
 
-      <section className="surface-card mt-6 p-5 sm:p-7">
-        <CardHead
+      <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
+        <SectionHeader
           icon={TrendingUp}
           title={
             isLeader
               ? "Benefits Released by Program"
               : "Trend and Analytics by Barangay and Municipality"
           }
+          subtitle={
+            isLeader
+              ? "Released benefit counts in your assigned barangay."
+              : "Registered seniors, released benefits, and cumulative municipal registrations."
+          }
         />
-        <p className="mt-2 text-sm text-muted-foreground">
-          {isLeader
-            ? "Released benefit counts in your assigned barangay."
-            : "Registered seniors, released benefits, and cumulative municipal registrations."}
-        </p>
         <div className="mt-6 h-72">
           <ResponsiveContainer width="100%" height="100%">
             {isLeader ? (
@@ -253,7 +329,7 @@ function Analytics() {
                   allowDecimals={false}
                   label={{ value: "Number of seniors", angle: -90, position: "insideLeft" }}
                 />
-                <Tooltip />
+                <Tooltip {...TOOLTIP_PROPS} />
                 <Bar dataKey="senior_count" name="Seniors" radius={[4, 4, 0, 0]}>
                   {releasedBenefitRecords.map((record, index) => (
                     <Cell
@@ -268,7 +344,7 @@ function Analytics() {
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="barangay" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} />
-                <Tooltip />
+                <Tooltip {...TOOLTIP_PROPS} />
                 <Legend />
                 <Line
                   type="monotone"
@@ -329,17 +405,21 @@ function Analytics() {
         )}
       </section>
 
-      <section className="surface-card mt-6 p-5 sm:p-7">
-        <CardHead
+      <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
+        <SectionHeader
           icon={MapPin}
           title={isLeader ? "Your Barangay Summary" : "Barangay-Level Summary"}
+          subtitle="Share of registered seniors who have received a benefit."
         />
-        <div className="mt-6 overflow-x-auto">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="text-left">
+              <tr className="bg-muted text-left">
                 {["Barangay", "Registered", "Benefits Released", "Coverage"].map((h) => (
-                  <th key={h} className="px-4 py-3 font-bold">
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                  >
                     {h}
                   </th>
                 ))}
@@ -349,14 +429,17 @@ function Analytics() {
               {barangaySummary.map((row) => {
                 const pct = Math.round((row.released / row.registered) * 100);
                 return (
-                  <tr key={row.barangay} className="border-t border-border">
-                    <td className="px-4 py-4 font-medium">{row.barangay}</td>
-                    <td className="px-4 py-4 text-muted-foreground">{row.registered}</td>
-                    <td className="px-4 py-4 text-muted-foreground">{row.released}</td>
-                    <td className="px-4 py-4">
+                  <tr key={row.barangay} className="border-t border-border/60">
+                    <td className="px-4 py-3.5 font-semibold">{row.barangay}</td>
+                    <td className="px-4 py-3.5 text-muted-foreground">{row.registered}</td>
+                    <td className="px-4 py-3.5 text-muted-foreground">{row.released}</td>
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="h-2 w-32 rounded-full bg-secondary">
-                          <div className="bg-navy h-2 rounded-full" style={{ width: `${pct}%` }} />
+                        <div className="h-2 w-32 rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-success"
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
                         <span className="text-xs font-bold">{pct}%</span>
                       </div>

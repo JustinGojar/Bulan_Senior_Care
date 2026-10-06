@@ -1,7 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, ArrowRight, Loader2, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AuthAlert } from "@/components/AuthLayout";
+import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import {
+  TONE_BAR,
+  badgeClass,
+  panelClass,
+  statCardClass,
+  tileClass,
+} from "@/components/design-kit";
 import {
   Dialog,
   DialogContent,
@@ -63,24 +72,25 @@ function AgeThresholdPage() {
         .sort((first, second) => first.age - second.age || first.name.localeCompare(second.name))
     : [];
 
+  const inBracket = (program: BenefitProgram) =>
+    seniors.filter(
+      (senior) =>
+        senior.age >= program.minAge &&
+        (program.maxAge === undefined || senior.age <= program.maxAge),
+    ).length;
+
   return (
     <AppShell
       title="Age Threshold"
       subtitle="Review age brackets and newly eligible senior citizens"
       breadcrumb={["Dashboard", "Age Threshold"]}
     >
-      <section className="surface-card p-5 sm:p-7">
-        <div className="flex items-center gap-3">
-          <div className="bg-navy grid h-10 w-10 place-items-center rounded-full text-white">
-            <SlidersHorizontal className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold">Configured age brackets</h2>
-            <p className="text-sm text-muted-foreground">
-              Current benefit thresholds used for eligibility detection.
-            </p>
-          </div>
-        </div>
+      <section className={`${panelClass} p-5 sm:p-7`}>
+        <SectionHeader
+          icon={SlidersHorizontal}
+          title="Configured age brackets"
+          subtitle="Current benefit thresholds used for eligibility detection. Select one to see its seniors."
+        />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {programs.map((program) => (
             <button
@@ -88,44 +98,52 @@ function AgeThresholdPage() {
               type="button"
               onClick={() => setSelectedProgram(program)}
               aria-label={`Show seniors aged ${program.minAge}${program.maxAge ? ` to ${program.maxAge}` : " and older"}`}
-              className="rounded-3xl bg-secondary p-5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={`${statCardClass} text-left`}
             >
-              <p className="font-display text-3xl font-extrabold">{program.minAge}+</p>
-              <p className="mt-2 text-sm font-bold">{program.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {program.maxAge
-                  ? `Eligible ages ${program.minAge}-${program.maxAge}`
-                  : "No upper age limit"}
+              <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR.gold}`} />
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+                  {program.maxAge === undefined
+                    ? "No upper limit"
+                    : program.maxAge === program.minAge
+                      ? `Age ${program.minAge}`
+                      : `Ages ${program.minAge}–${program.maxAge}`}
+                </p>
+                <span className={badgeClass}>
+                  {loading
+                    ? "..."
+                    : `${inBracket(program).toLocaleString()} ${inBracket(program) === 1 ? "senior" : "seniors"}`}
+                </span>
+              </div>
+              <p className="font-display mt-2 text-3xl leading-none font-extrabold">
+                {program.minAge}+
               </p>
-              <p className="mt-3 text-sm font-semibold text-coral">{program.amount}</p>
+              <p className="mt-3 text-sm font-bold">{program.name}</p>
+              <p className="mt-1 text-sm font-semibold text-coral">{program.amount}</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                View seniors
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="surface-card mt-6 p-5 sm:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-gold text-gold-foreground">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">New threshold flags</h2>
-              <p className="text-sm text-muted-foreground">
-                Seniors who currently match a one-time age-based benefit.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full bg-gold/20 px-3 py-1 text-xs font-bold text-gold-foreground">
-            {loading ? "Loading..." : `${flags.length} flags`}
-          </span>
-        </div>
+      <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
+        <SectionHeader
+          icon={AlertTriangle}
+          title="New threshold flags"
+          subtitle="Seniors who currently match a one-time age-based benefit."
+          badge={
+            <StatusPill tone="gold">{loading ? "Loading..." : `${flags.length} flags`}</StatusPill>
+          }
+        />
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {flags.map(({ senior, program, reason }) => (
-            <article key={`${senior.id}-${program.type}`} className="rounded-2xl bg-secondary p-4">
+            <article key={`${senior.id}-${program.type}`} className={tileClass}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold">{senior.name}</p>
-                <span className="shrink-0 text-xs font-bold text-gold-foreground">
+                <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
                   Age {senior.age}
                 </span>
               </div>
@@ -133,8 +151,17 @@ function AgeThresholdPage() {
               <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
             </article>
           ))}
-          {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
-          {!loading && flags.length === 0 && (
+          {loading && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading senior records...
+            </p>
+          )}
+          {!loading && loadError && (
+            <div className="md:col-span-2 xl:col-span-3">
+              <AuthAlert tone="error">Could not load senior records. Please try again.</AuthAlert>
+            </div>
+          )}
+          {!loading && !loadError && flags.length === 0 && (
             <p className="text-sm text-muted-foreground">No new age threshold flags.</p>
           )}
         </div>
@@ -153,27 +180,25 @@ function AgeThresholdPage() {
             </DialogDescription>
           </DialogHeader>
           {loading ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Loading senior records...
+            <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading senior records...
             </p>
           ) : loadError ? (
-            <p className="py-6 text-center text-sm text-destructive">
-              Could not load senior records. Please try again.
-            </p>
+            <AuthAlert tone="error">Could not load senior records. Please try again.</AuthAlert>
           ) : selectedSeniors.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No senior records fall within this age range.
             </p>
           ) : (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {selectedSeniors.length} {selectedSeniors.length === 1 ? "senior" : "seniors"}
               </p>
               <div className="max-h-[55dvh] space-y-2 overflow-y-auto">
                 {selectedSeniors.map((senior) => (
                   <article
                     key={senior.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary p-3"
+                    className={`${tileClass} flex flex-wrap items-center justify-between gap-2 p-3`}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{senior.name}</p>
@@ -181,7 +206,7 @@ function AgeThresholdPage() {
                         {senior.id} · {senior.barangay}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-card px-3 py-1 text-xs font-bold">
+                    <span className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs font-bold text-gold-foreground dark:text-gold">
                       Age {senior.age}
                     </span>
                   </article>
