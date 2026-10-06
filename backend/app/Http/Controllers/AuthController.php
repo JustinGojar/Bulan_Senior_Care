@@ -141,7 +141,7 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->user()->id)],
             'contact_number' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
-            'profile_photo' => ['nullable', 'image', 'max:2048'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
         $user = $request->user();
