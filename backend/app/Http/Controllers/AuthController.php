@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Barangay;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Password as PasswordBroker;
@@ -19,7 +20,8 @@ class AuthController extends Controller
 {
     public function barangays(Request $request): JsonResponse
     {
-        return response()->json(Barangay::query()->orderBy('barangay_name')->get(['id', 'barangay_name']));
+        // Saving a barangay clears this entry.
+        return response()->json(Cache::remember(Barangay::LIST_CACHE_KEY, now()->addHour(), fn () => Barangay::query()->orderBy('barangay_name')->get(['id', 'barangay_name'])->toArray()));
     }
 
     public function createBarangayLeader(Request $request): JsonResponse
