@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AuthController extends Controller
 {
@@ -92,7 +93,17 @@ class AuthController extends Controller
     public function forgotPassword(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => ['required', 'email']]);
-        $status = PasswordBroker::sendResetLink(['email' => $data['email']]);
+
+        try {
+            $status = PasswordBroker::sendResetLink(['email' => $data['email']]);
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'We could not send the reset email right now. Please try again later.',
+            ], 503);
+        }
+
         logger()->info('Password reset link request processed.', ['status' => $status]);
         $message = 'If an account exists for that email address, a password reset link has been sent.';
 

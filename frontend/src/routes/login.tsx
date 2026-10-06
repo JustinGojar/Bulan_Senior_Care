@@ -35,10 +35,10 @@ function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <div className="bg-app relative grid min-h-screen place-items-center px-3 py-4 sm:px-4">
-      <ThemeToggle className="absolute top-5 right-5" />
+    <div className="bg-app relative grid min-h-screen place-items-center px-4 pt-16 pb-6 md:py-4">
+      <ThemeToggle className="absolute top-4 right-4 z-10 sm:top-5 sm:right-5" />
       <div className="surface-card grid w-full max-w-4xl translate-y-0 overflow-hidden md:grid-cols-2 md:translate-y-4">
-        <div className="bg-navy p-5 text-primary-foreground sm:p-8 md:p-10">
+        <div className="bg-navy p-6 text-primary-foreground sm:p-8 md:p-10">
           <div className="flex items-center gap-3">
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/70 sm:h-10 sm:w-10 md:h-11 md:w-11" />
             <div>
@@ -46,19 +46,19 @@ function LoginPage() {
               <p className="text-[10px] opacity-70 sm:text-xs">OSCA · Municipality of Bulan</p>
             </div>
           </div>
-          <h1 className="mt-8 text-3xl leading-tight font-extrabold sm:mt-10 sm:text-4xl md:mt-12">
+          <h1 className="mt-6 text-3xl leading-tight font-extrabold sm:mt-10 sm:text-4xl md:mt-12">
             Welcome, Lolo's and Lola's!
           </h1>
-          <p className="font-display mt-3 text-base text-gold sm:mt-4 sm:text-xl">
+          <p className="font-display mt-2 text-base text-gold sm:mt-4 sm:text-xl">
             Profile. Monitor. Serve better.
           </p>
-          <p className="mt-4 max-w-sm text-xs leading-relaxed opacity-80 sm:text-sm">
+          <p className="mt-3 max-w-sm text-xs leading-relaxed opacity-80 sm:text-sm">
             One portal for senior citizen records, benefits, and services across every barangay in
             Bulan, Sorsogon.
           </p>
-          <div className="mt-6 flex flex-wrap gap-2 text-[11px] font-semibold sm:mt-8 sm:gap-3 sm:text-xs">
+          <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold sm:mt-8 sm:gap-3 sm:text-xs">
             {["Registration", "Eligibility", "Benefits"].map((tag) => (
-              <span key={tag} className="rounded-full bg-white/12 px-3 py-2 sm:px-4">
+              <span key={tag} className="rounded-full bg-white/12 px-3 py-1.5 sm:px-4 sm:py-2">
                 {tag}
               </span>
             ))}
@@ -66,7 +66,7 @@ function LoginPage() {
         </div>
 
         <form
-          className="p-5 sm:p-8 md:p-10"
+          className="p-6 sm:p-8 md:p-10"
           onSubmit={(e) => {
             e.preventDefault();
             setSubmitting(true);
@@ -79,7 +79,7 @@ function LoginPage() {
         >
           <h2 className="text-3xl font-extrabold sm:text-4xl">Log In</h2>
 
-          <label className="mt-6 flex items-center gap-3 border-b border-border pb-3 sm:mt-8">
+          <label className="mt-5 flex items-center gap-3 border-b border-border pb-3 sm:mt-8">
             <input
               required
               type="email"
@@ -119,7 +119,7 @@ function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="bg-navy mt-7 w-full rounded-full py-3 text-sm font-bold text-primary-foreground shadow-[var(--shadow-card)] sm:mt-8 sm:py-4"
+            className="bg-navy mt-6 w-full rounded-full py-3 text-sm font-bold text-primary-foreground shadow-[var(--shadow-card)] sm:mt-8 sm:py-4"
           >
             {submitting ? "Signing in..." : "Log In"}
           </button>
