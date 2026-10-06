@@ -9,6 +9,8 @@ import {
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchMenu } from "./SearchableSelect";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 const TOUCH_TOOLTIP_MS = 1500;
@@ -169,6 +171,7 @@ export function IconSelect({
   onChange,
   prefix,
   disabled,
+  searchable,
   className,
 }: {
   label: string;
@@ -180,11 +183,83 @@ export function IconSelect({
   /** Muted text before the selected value on larger screens, e.g. "Sort by". */
   prefix?: string;
   disabled?: boolean;
+  /** Adds a search box to the menu, for long lists such as barangays. */
+  searchable?: boolean;
   className?: string;
 }) {
   const labelsVisible = useLabelsVisible();
+  const [searchOpen, setSearchOpen] = useState(false);
   const active = value !== defaultValue;
   const current = options.find((option) => option.value === value)?.label ?? value;
+  const triggerClass = cn(
+    "group relative flex h-10 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-input bg-card px-2.5 text-foreground shadow-[0_2px_8px_rgba(23,58,82,0.04)] transition-[border-color,box-shadow,background-color] outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/15 data-[state=open]:border-ring data-[state=open]:ring-4 data-[state=open]:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:gap-2 sm:px-3",
+    active &&
+      "sm:border-gold/60 sm:bg-gold/5 max-sm:border-transparent max-sm:bg-navy max-sm:text-white",
+    className,
+  );
+  const triggerContent = (
+    <>
+      <span
+        className={cn(
+          "shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4",
+          active && "max-sm:text-white sm:text-gold-foreground dark:sm:text-gold",
+        )}
+      >
+        {icon}
+      </span>
+      <span className="hidden min-w-0 flex-1 truncate text-left text-xs font-semibold sm:block">
+        {prefix && (
+          <span className="mr-1.5 text-[10px] font-normal text-muted-foreground">{prefix}</span>
+        )}
+        {current}
+      </span>
+      {active && (
+        <span
+          aria-hidden="true"
+          className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-gold sm:block"
+        />
+      )}
+      <ChevronDown
+        aria-hidden="true"
+        className="h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-180 sm:h-4 sm:w-4"
+      />
+    </>
+  );
+
+  if (searchable) {
+    return (
+      <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+        <TapTooltip label={`${label}: ${current}`} disabled={labelsVisible}>
+          <PopoverTrigger asChild disabled={disabled ?? false}>
+            <button
+              type="button"
+              role="combobox"
+              aria-expanded={searchOpen}
+              aria-label={`Filter by ${label.toLowerCase()}`}
+              className={triggerClass}
+            >
+              {triggerContent}
+            </button>
+          </PopoverTrigger>
+        </TapTooltip>
+        <PopoverContent
+          align="start"
+          sideOffset={6}
+          className="z-[60] w-[max(var(--radix-popover-trigger-width),16rem)] overflow-hidden rounded-lg border-border/60 p-0 shadow-[var(--shadow-card)]"
+        >
+          <SearchMenu
+            label={label}
+            options={options}
+            value={value}
+            onSelect={(next) => {
+              onChange(next);
+              setSearchOpen(false);
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  }
 
   return (
     <SelectPrimitive.Root
@@ -195,37 +270,9 @@ export function IconSelect({
       <TapTooltip label={`${label}: ${current}`} disabled={labelsVisible}>
         <SelectPrimitive.Trigger
           aria-label={`Filter by ${label.toLowerCase()}`}
-          className={cn(
-            "group relative flex h-10 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-input bg-card px-2.5 text-foreground shadow-[0_2px_8px_rgba(23,58,82,0.04)] transition-[border-color,box-shadow,background-color] outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/15 data-[state=open]:border-ring data-[state=open]:ring-4 data-[state=open]:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:gap-2 sm:px-3",
-            active &&
-              "sm:border-gold/60 sm:bg-gold/5 max-sm:border-transparent max-sm:bg-navy max-sm:text-white",
-            className,
-          )}
+          className={triggerClass}
         >
-          <span
-            className={cn(
-              "shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4",
-              active && "max-sm:text-white sm:text-gold-foreground dark:sm:text-gold",
-            )}
-          >
-            {icon}
-          </span>
-          <span className="hidden min-w-0 flex-1 truncate text-left text-xs font-semibold sm:block">
-            {prefix && (
-              <span className="mr-1.5 text-[10px] font-normal text-muted-foreground">{prefix}</span>
-            )}
-            {current}
-          </span>
-          {active && (
-            <span
-              aria-hidden="true"
-              className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-gold sm:block"
-            />
-          )}
-          <ChevronDown
-            aria-hidden="true"
-            className="h-3 w-3 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-180 sm:h-4 sm:w-4"
-          />
+          {triggerContent}
         </SelectPrimitive.Trigger>
       </TapTooltip>
       <SelectPrimitive.Portal>

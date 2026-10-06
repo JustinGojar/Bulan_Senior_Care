@@ -125,6 +125,7 @@ function EligibilityReview() {
           </label>
           <IconSelect
             label="Barangay"
+            searchable
             icon={<MapPin className="h-4 w-4" />}
             value={barangay}
             defaultValue=""

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { AuthAlert } from "@/components/AuthLayout";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { API_URL } from "@/lib/api";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
@@ -326,23 +327,17 @@ export function SeniorFormDialog({
                 />
               </div>
               <div>
-                <Label>Barangay</Label>
-                <Select
+                <Label htmlFor="senior-barangay">Barangay</Label>
+                <SearchableSelect
+                  id="senior-barangay"
+                  label="Barangay"
                   value={draft.barangay}
-                  onValueChange={(v) => set("barangay", v)}
+                  onChange={(v) => set("barangay", v)}
                   disabled={!!leaderBarangay}
-                >
-                  <SelectTrigger className="mt-1.5 h-9 px-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BARANGAYS.map((barangay) => (
-                      <SelectItem key={barangay} value={barangay}>
-                        {barangay}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select a barangay"
+                  className="mt-1.5 h-9 px-3"
+                  options={BARANGAYS.map((barangay) => ({ value: barangay, label: barangay }))}
+                />
               </div>
 
               <div>
