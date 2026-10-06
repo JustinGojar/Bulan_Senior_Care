@@ -40,7 +40,7 @@ import {
   type ApiUser,
   type AuditLog,
 } from "@/lib/api";
-import coverPhoto from "@/img/CP.jpg";
+import coverPhoto from "@/img/CP.webp";
 import defaultProfileImage from "@/img/Defaut.png";
 
 export const Route = createFileRoute("/profile")({

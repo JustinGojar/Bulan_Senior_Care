@@ -18,6 +18,7 @@ import {
   type ApiUser,
 } from "@/lib/api";
 import { THEME_KEY } from "@/lib/theme";
+import { NavigationProgress } from "@/components/NavigationProgress";
 
 import { Toaster } from "@/components/ui/sonner";
 import logo from "@/images/logo.png";
@@ -284,6 +285,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <NavigationProgress />
       <Outlet />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>

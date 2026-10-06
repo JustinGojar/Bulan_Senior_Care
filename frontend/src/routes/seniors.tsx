@@ -29,7 +29,6 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
@@ -138,7 +137,10 @@ function normalizeBulkHeader(header: unknown) {
     .replace(/^_|_$/g, "");
 }
 
-function normalizeBulkDate(value: unknown) {
+// The spreadsheet library is large, so it is only downloaded when a bulk upload starts.
+type XlsxModule = typeof import("xlsx");
+
+function normalizeBulkDate(value: unknown, XLSX: XlsxModule) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
   }
@@ -179,7 +181,7 @@ function splitBulkName(value: unknown) {
   };
 }
 
-async function readBulkRecords(file: File) {
+async function readBulkRecords(file: File, XLSX: XlsxModule) {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]!];
   if (!sheet) return [] as Record<string, unknown>[];
@@ -574,8 +576,10 @@ function SeniorRecords() {
     if (!file) return;
 
     let records: Record<string, unknown>[];
+    let XLSX: XlsxModule;
     try {
-      records = await readBulkRecords(file);
+      XLSX = await import("xlsx");
+      records = await readBulkRecords(file, XLSX);
     } catch {
       toast.error("Unable to read the file. Please upload a valid CSV or Excel file.");
       return;
@@ -588,6 +592,7 @@ function SeniorRecords() {
       const fullName = splitBulkName(record["name"] ?? record["full_name"]);
       const birthdate = normalizeBulkDate(
         record["birthdate"] ?? record["date_of_birth"] ?? record["dob"],
+        XLSX,
       );
       const age = new Date().getFullYear() - Number(birthdate.slice(0, 4));
       const rawBenefit = String(record["benefit"] ?? "").trim();
@@ -628,6 +633,7 @@ function SeniorRecords() {
         association_address: String(record["association_address"] ?? "").trim(),
         association_membership_date: normalizeBulkDate(
           record["date_of_membership"] ?? record["association_membership_date"],
+          XLSX,
         ),
         association_position: String(record["association_position"] ?? "").trim(),
         benefit,
