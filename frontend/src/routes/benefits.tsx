@@ -23,6 +23,7 @@ import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import {
   API_URL,
   apiFetch,
+  getBarangays,
   getStoredUser,
   type BenefitRelease,
   type BenefitTransaction,
@@ -223,7 +224,7 @@ function BenefitTracking() {
         setTransactionLastPage(result.last_page);
       })
       .catch(() => setTransactions([]));
-    apiFetch<Array<{ id: number; barangay_name: string }>>("/barangays")
+    getBarangays()
       .then((result) => {
         setBarangays(result);
         if (isLeader) {

@@ -1,11 +1,15 @@
 const API_URL = (
-  import.meta.env.PROD
-    ? "/api"
-    : (import.meta.env["VITE_API_URL"] ?? "http://127.0.0.1:8000/api")
+  import.meta.env.PROD ? "/api" : (import.meta.env["VITE_API_URL"] ?? "http://127.0.0.1:8000/api")
 ).replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
-let announcementsRequest: { token: string | null; promise: Promise<Announcement[]> } | null = null;
+const ANNOUNCEMENTS_CACHE_TTL = 60_000;
+const BARANGAYS_CACHE_TTL = 5 * 60_000;
+// Shared by every page so switching pages reuses data instead of refetching it.
+const responseCache = new Map<
+  string,
+  { token: string | null; promise: Promise<unknown>; expiresAt: number }
+>();
 
 export type ApiUser = {
   id: number;
@@ -225,6 +229,7 @@ export function getToken() {
 }
 
 export function setToken(token: string) {
+  responseCache.clear();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
@@ -233,6 +238,7 @@ export function setToken(token: string) {
 }
 
 export function clearToken() {
+  responseCache.clear();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
@@ -391,8 +397,8 @@ export async function createManagedUser(data: {
   password: string;
   passwordConfirmation: string;
 }) {
-  const result = await apiFetch<{ user: ManagedUser }>('/admin/users', {
-    method: 'POST',
+  const result = await apiFetch<{ user: ManagedUser }>("/admin/users", {
+    method: "POST",
     body: JSON.stringify({
       first_name: data.firstName,
       middle_name: data.middleName || undefined,
@@ -432,15 +438,31 @@ export function deleteManagedUser(id: number) {
   return apiFetch<void>(`/admin/users/${id}`, { method: "DELETE" });
 }
 
-export function getAnnouncements() {
+function cachedGet<T>(path: string, ttl: number): Promise<T> {
   const token = getToken();
-  if (announcementsRequest?.token === token) return announcementsRequest.promise;
+  const cached = responseCache.get(path);
+  if (cached && cached.token === token && cached.expiresAt > Date.now()) {
+    return cached.promise as Promise<T>;
+  }
 
-  const request = apiFetch<Announcement[]>("/announcements").finally(() => {
-    if (announcementsRequest?.promise === request) announcementsRequest = null;
+  const promise = apiFetch<T>(path);
+  responseCache.set(path, { token, promise, expiresAt: Date.now() + ttl });
+  promise.catch(() => {
+    if (responseCache.get(path)?.promise === promise) responseCache.delete(path);
   });
-  announcementsRequest = { token, promise: request };
-  return request;
+  return promise;
+}
+
+export function getAnnouncements() {
+  return cachedGet<Announcement[]>("/announcements", ANNOUNCEMENTS_CACHE_TTL);
+}
+
+export function getBarangays() {
+  return cachedGet<Array<{ id: number; barangay_name: string }>>("/barangays", BARANGAYS_CACHE_TTL);
+}
+
+export function clearBarangayCache() {
+  responseCache.delete("/barangays");
 }
 
 export function createAnnouncement(title: string, message: string, image?: File | null) {
@@ -451,7 +473,7 @@ export function createAnnouncement(title: string, message: string, image?: File 
   return apiFetch<Announcement>("/announcements", {
     method: "POST",
     body,
-  });
+  }).finally(() => responseCache.delete("/announcements"));
 }
 
 export function createAnnouncementComment(
@@ -462,7 +484,7 @@ export function createAnnouncementComment(
   return apiFetch<AnnouncementComment>(`/announcements/${announcementId}/comments`, {
     method: "POST",
     body: JSON.stringify({ message, parent_comment_id: parentCommentId }),
-  });
+  }).finally(() => responseCache.delete("/announcements"));
 }
 
 export function getMessages(page = 1) {
