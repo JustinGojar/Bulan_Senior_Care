@@ -3,22 +3,22 @@ import {
   AlertTriangle,
   Bell,
   Building2,
+  CalendarDays,
   Check,
   ChevronRight,
   ClipboardList,
   FileText,
   Gift,
+  Hourglass,
   KeyRound,
-  LockKeyhole,
+  Mail,
+  MessageSquare,
   ShieldCheck,
   SlidersHorizontal,
-  UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
-import { panelClass } from "@/components/design-kit";
 import {
   getNotificationChannelSettings,
   updateNotificationChannelSettings,
@@ -63,12 +63,22 @@ const NOTIFS = [
   ["Weekly summary", "Digest of new registrations and released benefits", false],
 ] as const;
 
+const NOTIF_ICONS: Record<string, typeof ShieldCheck> = {
+  "Email advisories": Mail,
+  "SMS advisories": MessageSquare,
+  "Age threshold alerts": Hourglass,
+  "Weekly summary": CalendarDays,
+};
+
+const ROW_CLASS =
+  "flex min-h-[68px] items-center gap-4 rounded-[8px] border border-border/50 bg-card/80 px-4 py-3 sm:px-5";
+
 const NOTIFICATION_SETTINGS_KEY = "bulan-notification-settings";
 
 function SettingIcon({ icon: Icon }: { icon: typeof ShieldCheck }) {
   return (
-    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-muted text-primary">
-      <Icon className="h-5 w-5" />
+    <div className="grid w-6 shrink-0 place-items-center text-foreground/80">
+      <Icon className="h-5 w-5" strokeWidth={1.75} />
     </div>
   );
 }
@@ -107,26 +117,25 @@ function SettingRow({
     <>
       <SettingIcon icon={icon} />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold">{title}</p>
+        <p className="text-sm font-medium">{title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">{rowDescription}</p>
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </>
   );
-  if (!destination)
-    return (
-      <div className="flex items-center gap-4 rounded-lg border border-border/60 bg-background/60 px-4 py-3.5">
-        {content}
-      </div>
-    );
+  if (!destination) return <div className={ROW_CLASS}>{content}</div>;
   return (
     <Link
       to={destination}
-      className="group flex items-center gap-4 rounded-lg border border-border/60 bg-background/60 px-4 py-3.5 transition-colors hover:border-ring/40 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+      className={`group ${ROW_CLASS} transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring`}
     >
       {content}
     </Link>
   );
+}
+
+function SettingsGroupTitle({ children }: { children: string }) {
+  return <h2 className="mb-2 px-1 text-sm font-semibold">{children}</h2>;
 }
 
 function SettingsPage() {
@@ -232,14 +241,10 @@ function SettingsPage() {
       subtitle="Access control, notifications, and age threshold rules"
       breadcrumb={["Dashboard", "Settings"]}
     >
-      <div className="grid items-start gap-5 xl:grid-cols-2">
-        <section className={`${panelClass} p-5 sm:p-6`}>
-          <SectionHeader
-            icon={ShieldCheck}
-            title="System"
-            subtitle="Core access and registry configuration"
-          />
-          <div className="mt-5 space-y-2">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <section>
+          <SettingsGroupTitle>System</SettingsGroupTitle>
+          <div className="space-y-1">
             <SettingRow
               icon={ShieldCheck}
               title="User roles & access control"
@@ -259,17 +264,14 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className={`${panelClass} p-5 sm:p-6`}>
-          <SectionHeader
-            icon={Bell}
-            title="Notifications"
-            subtitle="Configure delivery channels for system advisories"
-          />
-          <div className="mt-3 divide-y divide-border/60">
+        <section>
+          <SettingsGroupTitle>Notifications</SettingsGroupTitle>
+          <div className="space-y-1">
             {NOTIFS.map(([label, desc]) => (
-              <div key={label} className="flex items-center gap-4 py-4">
+              <div key={label} className={ROW_CLASS}>
+                <SettingIcon icon={NOTIF_ICONS[label] ?? Bell} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{label}</p>
+                  <p className="text-sm font-medium">{label}</p>
                   <p className="text-xs text-muted-foreground">{desc}</p>
                   {(label === "Email advisories" || label === "SMS advisories") &&
                     channelReadiness &&
@@ -316,13 +318,9 @@ function SettingsPage() {
           )}
         </section>
 
-        <section className={`${panelClass} p-5 sm:p-6`}>
-          <SectionHeader
-            icon={SlidersHorizontal}
-            title="Registry & benefits"
-            subtitle="Eligibility rules and benefit program settings"
-          />
-          <div className="mt-5 space-y-2">
+        <section>
+          <SettingsGroupTitle>Registry & benefits</SettingsGroupTitle>
+          <div className="space-y-1">
             <SettingRow
               icon={SlidersHorizontal}
               title="Age threshold rules"
@@ -340,13 +338,9 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className={`${panelClass} p-5 sm:p-6`}>
-          <SectionHeader
-            icon={LockKeyhole}
-            title="Privacy & security"
-            subtitle="Account protection and system activity"
-          />
-          <div className="mt-5 space-y-2">
+        <section>
+          <SettingsGroupTitle>Privacy & security</SettingsGroupTitle>
+          <div className="space-y-1">
             <SettingRow
               icon={KeyRound}
               title="Security settings"

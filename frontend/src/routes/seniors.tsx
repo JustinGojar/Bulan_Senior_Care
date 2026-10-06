@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clipboard,
-  Clock,
   Download,
   Eye,
   FilePenLine,
@@ -20,10 +19,7 @@ import {
   Trash2,
   Undo2,
   Upload,
-  UserCheck,
   UserRound,
-  Users,
-  UserX,
   X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -33,15 +29,11 @@ import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import {
-  TONE_BAR,
-  TONE_ICON,
   fieldClass,
   panelClass,
   primaryButtonClass,
   secondaryButtonClass,
-  statCardClass,
   tileClass,
-  type Tone,
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
@@ -719,18 +711,6 @@ function SeniorRecords() {
     }
   }
 
-  const statusTiles: Array<{
-    key: string;
-    label: string;
-    count: number;
-    tone: Tone;
-    icon: typeof Users;
-  }> = [
-    { key: "All", label: "All records", count: totalCount, tone: "navy", icon: Users },
-    { key: "Active", label: "Active", count: activeCount, tone: "success", icon: UserCheck },
-    { key: "Pending", label: "Pending", count: pendingCount, tone: "gold", icon: Clock },
-    { key: "Inactive", label: "Inactive", count: inactiveCount, tone: "coral", icon: UserX },
-  ];
   const storageUrl = (path: string) => `${API_URL.replace(/\/api$/, "")}/storage/${path}`;
   const actionButtonClass =
     "grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground";
@@ -790,45 +770,7 @@ function SeniorRecords() {
         </div>
       }
     >
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        {statusTiles.map(({ key, label, count, tone, icon: Icon }) => {
-          const active = filter === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => {
-                setFilter(key);
-                setPage(1);
-              }}
-              className={`${statCardClass} text-left ${active ? "ring-2 ring-ring/40" : ""}`}
-            >
-              <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
-                  {label}
-                </p>
-                <span
-                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${TONE_ICON[tone]} ${tone === "navy" ? "dark:ring-1 dark:ring-white/20" : ""}`}
-                >
-                  <Icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="font-display mt-1 text-2xl leading-none font-extrabold sm:text-3xl">
-                {loading && count === 0 ? "..." : count.toLocaleString()}
-              </p>
-              <p className="mt-2 text-[11px] text-muted-foreground sm:text-xs">
-                {active ? "Showing in the table below" : "Click to filter the table"}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        className={`${panelClass} mt-5 flex flex-wrap items-center gap-2 p-3 max-sm:flex-nowrap sm:p-4 xl:flex-nowrap`}
-      >
+      <div className="mt-5 flex flex-wrap items-center gap-2 p-3 max-sm:flex-nowrap sm:p-4 xl:flex-nowrap">
         <label className="relative min-w-0 flex-1 sm:basis-full xl:basis-0">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <span className="sr-only">Search senior records</span>
@@ -845,7 +787,7 @@ function SeniorRecords() {
         <IconSelect
           label="Barangay"
           searchable
-          className="sm:flex-1 xl:w-40 xl:flex-none"
+          className="!bg-white disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}
           disabled={isLeader}

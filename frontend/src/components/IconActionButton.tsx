@@ -172,6 +172,7 @@ export function IconSelect({
   prefix,
   disabled,
   searchable,
+  keepWhiteBackground = false,
   className,
 }: {
   label: string;
@@ -185,6 +186,8 @@ export function IconSelect({
   disabled?: boolean;
   /** Adds a search box to the menu, for long lists such as barangays. */
   searchable?: boolean;
+  /** Keeps the trigger white when its selected value is non-default. */
+  keepWhiteBackground?: boolean;
   className?: string;
 }) {
   const labelsVisible = useLabelsVisible();
@@ -194,7 +197,9 @@ export function IconSelect({
   const triggerClass = cn(
     "group relative flex h-10 min-w-0 shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-input bg-card px-2.5 text-foreground shadow-[0_2px_8px_rgba(23,58,82,0.04)] transition-[border-color,box-shadow,background-color] outline-none hover:border-ring/40 focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/15 data-[state=open]:border-ring data-[state=open]:ring-4 data-[state=open]:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:gap-2 sm:px-3",
     active &&
-      "sm:border-gold/60 sm:bg-gold/5 max-sm:border-transparent max-sm:bg-navy max-sm:text-white",
+      (keepWhiteBackground
+        ? "disabled:opacity-100"
+        : "sm:border-gold/60 sm:bg-gold/5 max-sm:border-transparent max-sm:bg-navy max-sm:text-white"),
     className,
   );
   const triggerContent = (
@@ -202,7 +207,9 @@ export function IconSelect({
       <span
         className={cn(
           "shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4",
-          active && "max-sm:text-white sm:text-gold-foreground dark:sm:text-gold",
+          active &&
+            !keepWhiteBackground &&
+            "max-sm:text-white sm:text-gold-foreground dark:sm:text-gold",
         )}
       >
         {icon}
@@ -213,7 +220,7 @@ export function IconSelect({
         )}
         {current}
       </span>
-      {active && (
+      {active && !keepWhiteBackground && (
         <span
           aria-hidden="true"
           className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-gold sm:block"

@@ -455,7 +455,7 @@ function BenefitTracking() {
           <AuthAlert tone="error">{error}</AuthAlert>
         </div>
       )}
-      <div className={`${panelClass} mb-5 flex flex-wrap items-center gap-2 p-3 sm:p-4`}>
+      <div className="mb-5 flex flex-wrap items-center gap-2 p-3 sm:p-4">
         <IconSelect
           label="Program"
           className="sm:flex-1 xl:w-44 xl:flex-none"
@@ -483,6 +483,7 @@ function BenefitTracking() {
         <IconSelect
           label="Barangay"
           searchable
+          keepWhiteBackground
           className="sm:flex-1 xl:w-44 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={selectedBarangay}
