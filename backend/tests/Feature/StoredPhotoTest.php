@@ -66,31 +66,7 @@ class StoredPhotoTest extends TestCase
     public function test_senior_photo_is_restored_and_replaced(): void
     {
         Storage::fake('public');
-        /** @var User $admin */
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        Benefit::create([
-            'benefit_name' => 'Social Pension',
-            'benefit_type' => 'social_pension',
-            'min_age' => 60,
-            'amount' => 3000,
-            'funding_source' => 'national',
-            'schedule' => 'quarterly',
-            'status' => 'active',
-        ]);
-
-        $this->actingAs($admin, 'sanctum')->post('/api/seniors', [
-            'privacy_consent' => true,
-            'privacy_consent_version' => '2026-10-07',
-            'first_name' => 'Juan',
-            'last_name' => 'Dela Cruz',
-            'birthdate' => '1960-01-01',
-            'sex' => 'male',
-            'contact_number' => '09123456789',
-            'barangay' => 'Bulusan',
-            'benefit' => 'Social Pension',
-            'status' => 'pending',
-            'profile_photo' => UploadedFile::fake()->image('juan.jpg'),
-        ], ['Accept' => 'application/json'])->assertCreated();
+        $admin = $this->registerSenior(['profile_photo' => UploadedFile::fake()->image('juan.jpg')]);
 
         $senior = SeniorCitizen::firstOrFail();
         $old = $senior->photo_path;
@@ -115,12 +91,73 @@ class StoredPhotoTest extends TestCase
     public function test_only_backed_up_folders_are_served_from_the_database(): void
     {
         DB::table('stored_photos')->insert([
-            'path' => 'senior-documents/id.jpg',
+            'path' => 'benefit-proofs/proof.jpg',
             'mime_type' => 'image/jpeg',
             'contents' => base64_encode('secret'),
         ]);
 
-        $this->get('/storage/senior-documents/id.jpg')->assertDontSee('secret');
+        $this->get('/storage/benefit-proofs/proof.jpg')->assertDontSee('secret');
         $this->get('/storage/profile-photos/missing.jpg')->assertNotFound();
+    }
+
+    public function test_id_document_is_restored_and_replaced(): void
+    {
+        Storage::fake('public');
+        $admin = $this->registerSenior([
+            'valid_id' => UploadedFile::fake()->create('id.pdf', 100, 'application/pdf'),
+        ]);
+
+        $senior = SeniorCitizen::firstOrFail();
+        $old = $senior->valid_id_path;
+        $this->assertStringEndsWith('.pdf', $old);
+        $original = Storage::disk('public')->get($old);
+        Storage::disk('public')->delete($old);
+
+        $response = $this->get('/storage/'.$old)->assertOk();
+        $this->assertSame($original, $response->getContent());
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        Storage::disk('public')->assertExists($old);
+
+        $this->actingAs($admin, 'sanctum')->post('/api/seniors/'.$senior->osca_id_number, [
+            '_method' => 'PUT',
+            'valid_id' => UploadedFile::fake()->image('id-new.jpg'),
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $new = $senior->fresh()->valid_id_path;
+        $this->assertNotSame($old, $new);
+        Storage::disk('public')->assertMissing($old);
+        $this->assertDatabaseMissing('stored_photos', ['path' => $old]);
+        $this->assertDatabaseHas('stored_photos', ['path' => $new]);
+    }
+
+    /** Registers a senior as a new admin, with the given uploads, and returns the admin. */
+    private function registerSenior(array $files): User
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        Benefit::create([
+            'benefit_name' => 'Social Pension',
+            'benefit_type' => 'social_pension',
+            'min_age' => 60,
+            'amount' => 3000,
+            'funding_source' => 'national',
+            'schedule' => 'quarterly',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')->post('/api/seniors', [
+            'privacy_consent' => true,
+            'privacy_consent_version' => '2026-10-07',
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'birthdate' => '1960-01-01',
+            'sex' => 'male',
+            'contact_number' => '09123456789',
+            'barangay' => 'Bulusan',
+            'benefit' => 'Social Pension',
+            'status' => 'pending',
+            ...$files,
+        ], ['Accept' => 'application/json'])->assertCreated();
+
+        return $admin;
     }
 }
