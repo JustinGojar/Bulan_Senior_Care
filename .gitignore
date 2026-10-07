@@ -31,7 +31,6 @@ dist-ssr
 *.sln
 *.sw?
 claude.exe
-.vercel
 .env*
 
 # Vite dependency cache
