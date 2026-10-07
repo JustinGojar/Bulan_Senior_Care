@@ -244,7 +244,7 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
 
   document.setDrawColor(35, 45, 55);
   document.setLineWidth(0.4);
-  document.rect(left, 12, 40, 58);
+  document.rect(left, 12, 40, 50);
   document.setFont("helvetica", "bold");
   document.setFontSize(6.7);
   document.text("AN KAUPOD PO SANI NA", left + 3, 18);
