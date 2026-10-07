@@ -1,5 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, SlidersHorizontal, CheckCircle2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
@@ -15,6 +23,7 @@ import {
   TONE_BAR,
   badgeClass,
   panelClass,
+  secondaryButtonClass,
   statCardClass,
   tileClass,
 } from "@/components/design-kit";
@@ -26,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getStoredUser } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import {
   BENEFIT_PROGRAMS,
   findNewEligibilityFlags,
@@ -39,6 +49,59 @@ export const Route = createFileRoute("/age-threshold")({
   component: AgeThresholdPage,
 });
 
+const FLAGS_PER_PAGE = 9;
+const SENIORS_PER_PAGE = 10;
+
+function pageCount(total: number, perPage: number) {
+  return Math.max(1, Math.ceil(total / perPage));
+}
+
+function Pager({
+  page,
+  total,
+  perPage,
+  onChange,
+}: {
+  page: number;
+  total: number;
+  perPage: number;
+  onChange: (page: number) => void;
+}) {
+  const lastPage = pageCount(total, perPage);
+  if (lastPage <= 1) return null;
+  return (
+    <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(1, page - 1))}
+        disabled={page === 1}
+        aria-label="Previous page"
+        className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
+      >
+        <ChevronLeft className="h-4 w-4" />
+        <span className="hidden sm:inline">Previous</span>
+      </button>
+      <span className="text-center text-sm text-muted-foreground">
+        Page <span className="font-semibold text-foreground">{page}</span> of{" "}
+        <span className="font-semibold text-foreground">{lastPage}</span>
+        <span className="block text-xs">
+          Showing {(page - 1) * perPage + 1}–{Math.min(page * perPage, total)} of {total}
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(lastPage, page + 1))}
+        disabled={page === lastPage}
+        aria-label="Next page"
+        className={`${secondaryButtonClass} h-10 px-3 sm:px-4`}
+      >
+        <span className="hidden sm:inline">Next</span>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 function AgeThresholdPage() {
   const navigate = useNavigate();
   const currentUser = getStoredUser();
@@ -47,6 +110,8 @@ function AgeThresholdPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<BenefitProgram | null>(null);
+  const [flagsPage, setFlagsPage] = useState(1);
+  const [seniorsPage, setSeniorsPage] = useState(1);
   useEffect(() => {
     if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
   }, [currentUser?.role, navigate]);
@@ -78,6 +143,18 @@ function AgeThresholdPage() {
         )
         .sort((first, second) => first.age - second.age || first.name.localeCompare(second.name))
     : [];
+  const flagsLastPage = pageCount(flags.length, FLAGS_PER_PAGE);
+  const currentFlagsPage = Math.min(flagsPage, flagsLastPage);
+  const visibleFlags = flags.slice(
+    (currentFlagsPage - 1) * FLAGS_PER_PAGE,
+    currentFlagsPage * FLAGS_PER_PAGE,
+  );
+  const seniorsLastPage = pageCount(selectedSeniors.length, SENIORS_PER_PAGE);
+  const currentSeniorsPage = Math.min(seniorsPage, seniorsLastPage);
+  const visibleSeniors = selectedSeniors.slice(
+    (currentSeniorsPage - 1) * SENIORS_PER_PAGE,
+    currentSeniorsPage * SENIORS_PER_PAGE,
+  );
 
   const inBracket = (program: BenefitProgram) =>
     seniors.filter(
@@ -98,39 +175,51 @@ function AgeThresholdPage() {
           title="Configured age brackets"
           subtitle="Current benefit thresholds used for eligibility detection. Select one to see its seniors."
         />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-5">
           {programs.map((program) => (
             <button
               key={program.type}
               type="button"
-              onClick={() => setSelectedProgram(program)}
+              onClick={() => {
+                setSelectedProgram(program);
+                setSeniorsPage(1);
+              }}
               aria-label={`Show seniors aged ${program.minAge}${program.maxAge ? ` to ${program.maxAge}` : " and older"}`}
-              className={`${statCardClass} text-left`}
+              className={cn(statCardClass, "min-w-0 p-2.5 text-left sm:p-4")}
             >
               <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR.gold}`} />
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+              <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
                   {program.maxAge === undefined
                     ? "No upper limit"
                     : program.maxAge === program.minAge
                       ? `Age ${program.minAge}`
                       : `Ages ${program.minAge}–${program.maxAge}`}
                 </p>
-                <span className={badgeClass}>
+                <span className={cn(badgeClass, "max-sm:px-1.5 max-sm:text-[10px]")}>
                   {loading ? (
-                    <SkeletonValue className="h-3 w-12" />
+                    <SkeletonValue className="h-3 w-6 sm:w-12" />
                   ) : (
-                    `${inBracket(program).toLocaleString()} ${inBracket(program) === 1 ? "senior" : "seniors"}`
+                    <>
+                      {inBracket(program).toLocaleString()}
+                      <span className="hidden sm:inline">
+                        {inBracket(program) === 1 ? " senior" : " seniors"}
+                      </span>
+                    </>
                   )}
                 </span>
               </div>
-              <p className="font-display mt-2 text-3xl leading-none font-extrabold">
+              <p className="font-display mt-1.5 text-xl leading-none font-extrabold sm:text-2xl">
                 {program.minAge}+
               </p>
-              <p className="mt-3 text-sm font-bold">{program.name}</p>
-              <p className="mt-1 text-sm font-semibold text-coral">{program.amount}</p>
-              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                View seniors
+              <p className="mt-2 text-xs leading-tight font-bold wrap-break-word sm:text-sm">
+                {program.name}
+              </p>
+              <p className="mt-0.5 text-[11px] font-semibold text-coral sm:text-xs">
+                {program.amount}
+              </p>
+              <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary sm:text-xs">
+                View<span className="hidden sm:inline"> seniors</span>
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </span>
             </button>
@@ -148,7 +237,7 @@ function AgeThresholdPage() {
           }
         />
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {flags.map(({ senior, program, reason }) => (
+          {visibleFlags.map(({ senior, program, reason }) => (
             <article key={`${senior.id}-${program.type}`} className={tileClass}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-bold">{senior.name}</p>
@@ -175,6 +264,12 @@ function AgeThresholdPage() {
             />
           )}
         </div>
+        <Pager
+          page={currentFlagsPage}
+          total={flags.length}
+          perPage={FLAGS_PER_PAGE}
+          onChange={setFlagsPage}
+        />
       </section>
 
       <Dialog
@@ -212,7 +307,7 @@ function AgeThresholdPage() {
                 {selectedSeniors.length} {selectedSeniors.length === 1 ? "senior" : "seniors"}
               </p>
               <div className="max-h-[55dvh] space-y-2 overflow-y-auto">
-                {selectedSeniors.map((senior) => (
+                {visibleSeniors.map((senior) => (
                   <article
                     key={senior.id}
                     className={`${tileClass} flex flex-wrap items-center justify-between gap-2 p-3`}
@@ -229,6 +324,12 @@ function AgeThresholdPage() {
                   </article>
                 ))}
               </div>
+              <Pager
+                page={currentSeniorsPage}
+                total={selectedSeniors.length}
+                perPage={SENIORS_PER_PAGE}
+                onChange={setSeniorsPage}
+              />
             </div>
           )}
         </DialogContent>

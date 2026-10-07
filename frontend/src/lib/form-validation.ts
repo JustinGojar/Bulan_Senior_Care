@@ -131,3 +131,24 @@ export function flagFieldById(id: string, message: string): void {
   showFieldError(field, message);
   focusField(field);
 }
+
+/** Flag several fields from code-side validation at once and focus the first one. */
+export function flagFieldsById(errors: Array<[id: string, message: string]>): void {
+  let first: HTMLElement | null = null;
+  for (const [id, message] of errors) {
+    const field = document.getElementById(id);
+    if (!field) continue;
+    codeErrors.add(field);
+    showFieldError(field, message);
+    first ??= field;
+  }
+  if (first) focusField(first);
+}
+
+/** Clear a code-side error, e.g. when a custom dropdown that fires no input event changes. */
+export function clearFieldById(id: string): void {
+  const field = document.getElementById(id);
+  if (!field) return;
+  codeErrors.delete(field);
+  clearFieldError(field);
+}

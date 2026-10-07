@@ -290,3 +290,11 @@ export const DISTRIBUTION_STATUS = [
   { label: "In Progress", value: 271, total: 1245, tone: "navy" as const },
   { label: "Pending", value: 132, total: 1245, tone: "coral" as const },
 ];
+
+// Milestone benefits apply only to their age bands; every other age 60+ gets Social Pension.
+export function benefitForAge(age: number) {
+  if (age === 100) return "Centenarian Award";
+  if (age >= 90 && age <= 95) return "Nonagenarian Grant";
+  if (age >= 80 && age <= 85) return "Octogenarian Grant";
+  return "Social Pension";
+}
