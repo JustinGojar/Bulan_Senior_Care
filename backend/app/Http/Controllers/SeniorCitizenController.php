@@ -7,6 +7,7 @@ use App\Models\Barangay;
 use App\Models\Benefit;
 use App\Models\SeniorCitizen;
 use App\Support\AdvisoryDispatcher;
+use App\Support\PhotoBackup;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -131,7 +132,7 @@ class SeniorCitizenController extends Controller
             }
         }
         if ($request->hasFile('profile_photo')) {
-            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
+            $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
         if ($request->user()->role === 'leader') {
             // Leaders are always scoped to their own barangay; never let their input
@@ -330,10 +331,14 @@ class SeniorCitizenController extends Controller
                 $data["{$documentField}_path"] = $request->file($documentField)->store('senior-documents', 'public');
             }
         }
+        $oldPhotoPath = $senior->photo_path;
         if ($request->hasFile('profile_photo')) {
-            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
+            $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
         $senior->update($data);
+        if (isset($data['photo_path'])) {
+            PhotoBackup::delete($oldPhotoPath);
+        }
         AuditLog::record(
             $request->user(),
             'updated',
