@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
 import { panelClass, secondaryButtonClass, tileClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import {
@@ -258,13 +258,11 @@ function Notifications() {
             </div>
           ))}
           {serverNotifications.length === 0 && (
-            <div className={`${tileClass} py-10 text-center`}>
-              <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-lg bg-muted text-muted-foreground">
-                <CheckCheck className="h-5 w-5" />
-              </span>
-              <p className="font-semibold">Your inbox is clear.</p>
-              <p className="mt-1 text-sm text-muted-foreground">New alerts will show up here.</p>
-            </div>
+            <EmptyState
+              icon={CheckCheck}
+              title="Your inbox is clear"
+              description="New alerts will show up here."
+            />
           )}
         </div>
       </section>

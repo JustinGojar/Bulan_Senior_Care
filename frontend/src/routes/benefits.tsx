@@ -21,12 +21,13 @@ import {
   Users,
   XCircle,
   RotateCcw,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import {
   Select,
@@ -868,7 +869,13 @@ function BenefitTracking() {
           );
         })}
         {!error && programs.length === 0 && (
-          <p className="text-sm text-muted-foreground">No benefit programs available.</p>
+          <EmptyState
+            icon={Gift}
+            title="No benefit programs yet"
+            description="Programs set up by the OSCA administrator will appear here."
+            bare
+            className={`${panelClass} col-span-3 md:col-span-2 xl:col-span-3`}
+          />
         )}
       </div>
       <section id="release-queue" className={`${panelClass} mt-5 overflow-hidden p-4 sm:p-6`}>
@@ -1095,11 +1102,14 @@ function BenefitTracking() {
               })}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={canUpdateTransactions ? 9 : 7}
-                    className="px-4 py-12 text-center text-muted-foreground"
-                  >
-                    No records available for the selected barangay and Expanded Centenarian program.
+                  <td colSpan={canUpdateTransactions ? 9 : 7}>
+                    <EmptyState
+                      bare
+                      icon={Search}
+                      title="No release records"
+                      description="Nothing matches the selected barangay, benefit and status."
+                      className="py-12"
+                    />
                   </td>
                 </tr>
               )}

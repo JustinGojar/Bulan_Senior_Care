@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, ArrowRight, SlidersHorizontal, CheckCircle2, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import {
+  EmptyState,
   RowSkeletons,
   SectionHeader,
   SkeletonValue,
@@ -166,7 +167,12 @@ function AgeThresholdPage() {
             </div>
           )}
           {!loading && !loadError && flags.length === 0 && (
-            <p className="text-sm text-muted-foreground">No new age threshold flags.</p>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No new age threshold flags"
+              description="Seniors who reach a benefit age will be flagged here."
+              className="md:col-span-2 xl:col-span-3"
+            />
           )}
         </div>
       </section>
@@ -194,9 +200,12 @@ function AgeThresholdPage() {
           ) : loadError ? (
             <AuthAlert tone="error">Could not load senior records. Please try again.</AuthAlert>
           ) : selectedSeniors.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No senior records fall within this age range.
-            </p>
+            <EmptyState
+              compact
+              icon={Users}
+              title="No seniors in this range"
+              description="No senior records fall within this age range."
+            />
           ) : (
             <div className="space-y-2">
               <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">

@@ -16,12 +16,16 @@ import {
   Users,
   X,
   type LucideIcon,
+  CheckCircle2,
+  Clock3,
+  Gift,
+  MessageCircle,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
-import { SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   TONE_BAR,
@@ -417,7 +421,12 @@ function Dashboard() {
               </article>
             ))}
             {!announcements.length && (
-              <p className="text-sm text-muted-foreground">No current announcements.</p>
+              <EmptyState
+                compact
+                icon={Megaphone}
+                title="No current announcements"
+                description="Announcements from the OSCA Head will appear here."
+              />
             )}
           </div>
         </section>
@@ -443,7 +452,13 @@ function Dashboard() {
                 </div>
               ))}
               {overview && overview.received_by_benefit.length === 0 && (
-                <p className="text-sm text-muted-foreground">No released benefits yet.</p>
+                <EmptyState
+                  compact
+                  icon={Gift}
+                  title="No released benefits yet"
+                  description="Counts appear once age-based benefits are released."
+                  className="sm:col-span-2 lg:col-span-4"
+                />
               )}
             </div>
           </section>
@@ -515,7 +530,12 @@ function Dashboard() {
               </span>
             )}
             {overview && distributionTotal === 0 && (
-              <p className="text-sm text-muted-foreground">No benefit transactions recorded yet.</p>
+              <EmptyState
+                compact
+                icon={Clock3}
+                title="No benefit transactions yet"
+                description="Release progress shows here once benefits are recorded."
+              />
             )}
           </div>
         </section>
@@ -547,7 +567,12 @@ function Dashboard() {
           ))}
           {loading && <TileSkeletons label="Loading senior records" />}
           {!loading && eligibilityFlags.length === 0 && (
-            <p className="text-sm text-muted-foreground">No age threshold flags.</p>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No age threshold flags"
+              description="Seniors who reach a benefit age will be flagged here."
+              className="md:col-span-2 xl:col-span-3"
+            />
           )}
         </div>
       </section>
@@ -761,7 +786,12 @@ function Dashboard() {
                     </div>
                   ))}
                   {!selectedAnnouncement.comments?.length && (
-                    <p className="text-sm text-muted-foreground">No comments yet.</p>
+                    <EmptyState
+                      compact
+                      icon={MessageCircle}
+                      title="No comments yet"
+                      description="Be the first to reply to this announcement."
+                    />
                   )}
                 </div>
                 <form onSubmit={handleCreateComment} className="mt-4 flex gap-3">

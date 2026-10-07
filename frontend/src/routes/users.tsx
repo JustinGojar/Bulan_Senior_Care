@@ -9,13 +9,14 @@ import {
   UserCog,
   UserPlus,
   X,
+  UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
 import { badgeClass, fieldClass, iconButtonClass, panelClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import { SearchableSelect } from "@/components/SearchableSelect";
@@ -347,8 +348,14 @@ function UserManagement() {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                    No login accounts to show.
+                  <td colSpan={6}>
+                    <EmptyState
+                      bare
+                      icon={UserRound}
+                      title="No login accounts yet"
+                      description="Accounts you create will be listed here."
+                      className="py-12"
+                    />
                   </td>
                 </tr>
               )}
