@@ -16,12 +16,12 @@ use App\Http\Controllers\SystemDataController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 Route::get('/announcements', [AnnouncementController::class, 'index']);
 
-Route::middleware(['token.idle', 'auth:sanctum'])->group(function () {
+Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/overview', OverviewController::class);

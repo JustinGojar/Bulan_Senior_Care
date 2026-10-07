@@ -40,7 +40,7 @@ class AuthController extends Controller
             'password' => [
                 'required',
                 'confirmed',
-                Password::min(8)->mixedCase()->numbers()->symbols(),
+                Password::defaults(),
             ],
         ]);
 
@@ -78,7 +78,9 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->where('status', 'active')->first();
 
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+        // Hash even for unknown emails so response time does not reveal which accounts exist.
+        $passwordMatches = Hash::check($credentials['password'], $user?->password ?? self::dummyPasswordHash());
+        if (! $user || ! $passwordMatches) {
             RateLimiter::hit($throttleKey, 60);
 
             return response()->json(['message' => 'The provided credentials are incorrect.'], 422);
@@ -90,6 +92,13 @@ class AuthController extends Controller
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 
         return response()->json(['token' => $token, 'user' => $user->load('roles')]);
+    }
+
+    private static function dummyPasswordHash(): string
+    {
+        static $hash;
+
+        return $hash ??= Hash::make(Str::random(32));
     }
 
     public function forgotPassword(Request $request): JsonResponse
@@ -125,7 +134,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $status = PasswordBroker::reset(
@@ -179,7 +188,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $request->user()->update(['password' => $data['password']]);

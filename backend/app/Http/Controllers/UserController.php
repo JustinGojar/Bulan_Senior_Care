@@ -34,7 +34,7 @@ class UserController extends Controller
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
             'role' => ['required', Rule::in(['admin', 'head', 'leader'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         if ($data['role'] === 'leader' && ! $data['barangay_id']) {
@@ -75,7 +75,7 @@ class UserController extends Controller
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
             'role' => ['required', Rule::in(['admin', 'head', 'leader'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-            'password' => ['nullable', 'confirmed', Password::min(8)],
+            'password' => ['nullable', 'confirmed', Password::defaults()],
         ]);
 
         if ($request->user()->is($user) && ($data['role'] !== 'admin' || $data['status'] !== 'active')) {
@@ -97,6 +97,10 @@ class UserController extends Controller
         Role::findOrCreate($data['role'], 'web');
         $user->update($data);
         $user->syncRoles([$data['role']]);
+        if (isset($data['password'])) {
+            // A password set by an admin signs the user out everywhere.
+            $user->tokens()->delete();
+        }
 
         return response()->json($user->fresh());
     }

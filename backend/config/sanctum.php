@@ -50,9 +50,11 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Signs every session out after this many minutes, however active it is.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 720) ?: null,
 
-    'idle_timeout' => 0,
+    // Minutes without any request before EnforceTokenIdleTimeout revokes the token (0 turns it off).
+    'idle_timeout' => (int) env('SANCTUM_IDLE_TIMEOUT', 0),
 
     /*
     |--------------------------------------------------------------------------

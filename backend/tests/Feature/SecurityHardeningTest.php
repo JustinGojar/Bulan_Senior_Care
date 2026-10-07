@@ -118,4 +118,77 @@ class SecurityHardeningTest extends TestCase
 
         $this->assertContains(429, $statuses, 'The endpoint should throttle repeated requests.');
     }
+
+    public function test_login_is_rate_limited_per_address_across_accounts(): void
+    {
+        $statuses = [];
+        for ($i = 0; $i < 25; $i++) {
+            $statuses[] = $this->postJson('/api/login', [
+                'email' => "guess{$i}@example.com",
+                'password' => 'wrong-password',
+            ])->getStatusCode();
+        }
+
+        $this->assertContains(429, $statuses, 'One address should not be able to try unlimited accounts.');
+    }
+
+    public function test_api_responses_include_security_headers(): void
+    {
+        /** @var User $user */
+        $user = User::factory()->create(['status' => 'active']);
+
+        $this->withToken($user->createToken('test')->plainTextToken)
+            ->getJson('/api/user')
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    }
+
+    public function test_idle_token_is_revoked(): void
+    {
+        config(['sanctum.idle_timeout' => 30]);
+        /** @var User $user */
+        $user = User::factory()->create(['status' => 'active']);
+        $token = $user->createToken('test');
+        $token->accessToken->forceFill(['last_used_at' => now()->subMinutes(31)])->save();
+
+        $this->withToken($token->plainTextToken)->getJson('/api/user')->assertUnauthorized();
+    }
+
+    public function test_password_change_requires_a_strong_password(): void
+    {
+        /** @var User $user */
+        $user = User::factory()->create(['status' => 'active', 'password' => 'Current#Pass1']);
+
+        $this->withToken($user->createToken('test')->plainTextToken)
+            ->postJson('/api/profile/password', [
+                'current_password' => 'Current#Pass1',
+                'password' => 'weakpassword',
+                'password_confirmation' => 'weakpassword',
+            ])
+            ->assertUnprocessable();
+    }
+
+    public function test_admin_setting_a_password_signs_the_user_out(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['status' => 'active', 'role' => 'admin']);
+        /** @var User $user */
+        $user = User::factory()->create(['status' => 'active', 'role' => 'head']);
+        $user->createToken('test');
+
+        $this->withToken($admin->createToken('test')->plainTextToken)
+            ->putJson("/api/admin/users/{$user->id}", [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => 'head',
+                'status' => 'active',
+                'password' => 'New#Password1',
+                'password_confirmation' => 'New#Password1',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $user->id]);
+    }
 }

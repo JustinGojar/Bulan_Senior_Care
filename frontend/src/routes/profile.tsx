@@ -427,7 +427,8 @@ function ProfilePage() {
               <DialogHeader>
                 <DialogTitle className="font-display">Change Password</DialogTitle>
                 <DialogDescription>
-                  Enter your current password and choose a new password of at least 8 characters.
+                  Enter your current password and choose a new password of at least 8 characters
+                  with uppercase, lowercase, a number and a symbol.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={savePassword} className="space-y-4">

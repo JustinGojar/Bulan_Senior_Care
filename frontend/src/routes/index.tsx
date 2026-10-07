@@ -20,7 +20,6 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { SectionHeader } from "@/components/DesignKit";
 import { TONE_BAR, panelClass, primaryButtonClass, tileClass } from "@/components/design-kit";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import seniorCitizensPhoto from "@/images/img.webp";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -86,12 +85,6 @@ const ANALYTICS = [
   { icon: Landmark, label: "Municipal-level summary" },
 ];
 
-const HIGHLIGHTS = [
-  { icon: ClipboardList, label: "Registration", detail: "Digital senior profiles" },
-  { icon: BadgeCheck, label: "Eligibility", detail: "Checked against OSCA rules" },
-  { icon: HandCoins, label: "Benefits", detail: "Tracked from release to receipt" },
-];
-
 const OBJECTIVES = [
   "Determine the information requirements: profiling, beneficiary qualification, and the existing OSCA workflow.",
   "Implement registration, eligibility, benefit tracking, reports, access control, notifications, and age thresholds.",
@@ -110,7 +103,7 @@ const BENEFICIARIES = [
 const FAQ = [
   [
     "Can reports be printed or downloaded?",
-    "Reports are viewable on screen. Printing and export are outside the current scope of the study.",
+    "Yes. Senior records and benefit release reports can be exported as PDF or Excel files for printing and filing.",
   ],
   [
     "Does it work offline?",
@@ -122,7 +115,7 @@ const FAQ = [
   ],
   [
     "How is access controlled?",
-    "Three role levels — seniors see only their own record, OSCA staff and admins manage all records.",
+    "Three role levels — Admins manage accounts and all records, the OSCA Head reviews eligibility and releases, and Barangay Leaders work only with seniors in their own barangay.",
   ],
 ] as const;
 
@@ -258,62 +251,30 @@ function Landing() {
           )}
         </header>
 
-        <section className="relative mt-6 overflow-hidden rounded-[calc(var(--radius)+8px)] border border-border/60 text-white shadow-[var(--shadow-card)] sm:mt-8">
-          <img
-            src={seniorCitizensPhoto}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover object-[center_35%]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.2_0.06_258/0.97)] via-[oklch(0.24_0.06_258/0.9)] to-[oklch(0.26_0.06_258/0.55)]" />
-          <div className="relative grid gap-10 px-6 py-14 sm:px-10 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:px-14 lg:py-24">
-            <div>
-              <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold uppercase">
-                Office for Senior Citizens Affairs
-              </span>
-              <h1 className="mt-6 text-3xl leading-tight font-extrabold sm:text-4xl lg:text-5xl xl:text-6xl xl:leading-[1.05]">
-                Caring for every <span className="text-gold">Lolo</span> and{" "}
-                <span className="text-gold">Lola</span> in Bulan
-              </h1>
-              <p className="font-display mt-5 text-lg text-white/90 sm:text-xl">
-                Profile. Monitor. Serve better.
-              </p>
-              <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
-                The Bulan SeniorCare Portal replaces paper-based OSCA records with a single, secure
-                system for registration, eligibility, benefits, and reporting — built for the Office
-                of Senior Citizen Affairs and every barangay leader in the municipality.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to="/login"
-                  className="inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)]"
-                >
-                  Get Started <ArrowRight className="h-4 w-4" />
-                </Link>
-                <a
-                  href="#features"
-                  className="inline-flex h-12 items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
-                >
-                  Explore features
-                </a>
-              </div>
-            </div>
-            <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              {HIGHLIGHTS.map(({ icon: Icon, label, detail }) => (
-                <li
-                  key={label}
-                  className="flex items-center gap-3 rounded-lg border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/10 ring-1 ring-white/15">
-                    <Icon className="h-4 w-4 text-gold" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold">{label}</span>
-                    <span className="block text-xs text-white/70">{detail}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+        <section className="py-12 sm:py-16 lg:py-20">
+          <span className="inline-flex items-center rounded-full bg-card px-4 py-2 text-xs font-semibold shadow-[var(--shadow-soft)] sm:text-sm">
+            Office for Senior Citizens Affairs
+          </span>
+          {/* One line from tablet width up; the size follows the viewport so it never overflows. */}
+          <h1 className="mt-6 text-3xl leading-tight font-extrabold sm:text-4xl md:text-[clamp(1.75rem,3.8vw,3.75rem)] md:leading-[1.05] md:whitespace-nowrap">
+            Caring for every <span className="text-coral">Lolo</span> and{" "}
+            <span className="text-coral">Lola</span> in Bulan
+          </h1>
+          <p className="font-display mt-5 text-lg font-semibold text-foreground/85 sm:text-xl lg:text-2xl dark:text-white">
+            Profile. Monitor. Serve better.
+          </p>
+          <p className="mt-5 max-w-2xl text-sm leading-relaxed text-foreground/80 sm:text-base dark:text-white">
+            The Bulan SeniorCare Portal replaces paper-based OSCA records with a single, secure
+            system for registration, eligibility, benefits, and reporting — built for the Office of
+            Senior Citizen Affairs and every barangay leader in the municipality.
+          </p>
+          <div className="mt-9 flex flex-wrap gap-4">
+            <Link
+              to="/login"
+              className="bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] sm:text-base"
+            >
+              Get Started <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </section>
 

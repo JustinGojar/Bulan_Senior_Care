@@ -41,6 +41,8 @@ $sendFile = static function (string $file, string $cacheControl) use ($types): b
     $etag = '"'.dechex(filemtime($file)).'-'.dechex(filesize($file)).'"';
 
     header('Cache-Control: '.$cacheControl);
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
     header('ETag: '.$etag);
     header('Vary: Accept-Encoding');
     header('Content-Type: '.($types[$extension] ?? (mime_content_type($file) ?: 'application/octet-stream')));
@@ -85,8 +87,8 @@ if ($isUnder('spa-assets') && ! str_ends_with($path, '.php')) {
 }
 
 if ($isUnder('storage') && ! str_ends_with($path, '.php')) {
-    // Uploaded photos and documents: cache for a day, then revalidate by ETag.
-    return $sendFile($path, 'public, max-age=86400');
+    // Uploaded photos and ID documents: only the viewer's browser may keep a copy, never a shared proxy.
+    return $sendFile($path, 'private, max-age=86400');
 }
 
 if ($uri !== '/' && $isFile && str_starts_with($path, $publicPath.DIRECTORY_SEPARATOR) && ! str_ends_with($path, '.php')) {

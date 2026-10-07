@@ -40,7 +40,7 @@ function ResetPasswordPage() {
   return (
     <AuthLayout
       title="Create new password"
-      subtitle="Use at least 8 characters for your new password."
+      subtitle="Use at least 8 characters, including uppercase, lowercase, a number and a symbol."
     >
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         {message && <AuthAlert tone="success">{message}</AuthAlert>}

@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Http\Request;
 use App\Http\Middleware\EnforceTokenIdleTimeout;
+use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn (Request $request) =>
             $request->is('api/*') ? null : route('login')
         );
+        $middleware->append(SecurityHeaders::class);
         $middleware->alias([
             'token.idle' => EnforceTokenIdleTimeout::class,
         ]);
