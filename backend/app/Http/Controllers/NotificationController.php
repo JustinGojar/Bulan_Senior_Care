@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use App\Models\Announcement;
+use App\Support\AgeThresholdNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationController extends Controller
 {
@@ -21,6 +23,14 @@ class NotificationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        // Fallback when the daily scheduler isn't running: check the leader's barangay
+        // for seniors who have reached a benefit age, at most once per day.
+        $user = $request->user();
+        if ($user->role === 'leader' && $user->barangay_id
+            && Cache::add("age-threshold-check:{$user->barangay_id}:".today()->toDateString(), true, now()->endOfDay())) {
+            AgeThresholdNotifier::notifyAll($user->barangay_id);
+        }
+
         $announcements = Announcement::query()->get(['id', 'title']);
         $notifications = Notification::query()
                 ->where('recipient_account_id', $request->user()->id)

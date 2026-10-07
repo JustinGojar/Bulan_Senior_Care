@@ -8,7 +8,7 @@ export const authInputClass =
   "h-12 w-full rounded-lg border border-input bg-background/60 pr-4 pl-11 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-ring focus:ring-4 focus:ring-ring/15";
 
 export const authSubmitClass =
-  "bg-navy group flex h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-[var(--shadow-soft)] disabled:cursor-not-allowed disabled:opacity-70";
+  "bg-navy group flex h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 enabled:hover:-translate-y-0.5 enabled:hover:bg-[oklch(0.45_0.08_258)] enabled:hover:bg-none enabled:hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] enabled:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70";
 
 const highlights = [
   { icon: Users, label: "Senior citizen profiling across every barangay" },

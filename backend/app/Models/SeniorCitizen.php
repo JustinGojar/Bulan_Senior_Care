@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AgeThresholdNotifier;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -20,6 +21,18 @@ class SeniorCitizen extends Model
         'living_arrangement', 'registration_date', 'status',
         'photo_path', 'id_document_path', 'valid_id_path', 'birth_certificate_path',
     ];
+
+    protected static function booted(): void
+    {
+        // Alert the barangay leader as soon as a senior becomes active (e.g. approved)
+        // or has their birthdate corrected, instead of waiting for the daily check.
+        static::saved(function (SeniorCitizen $senior) {
+            if ($senior->status === 'active'
+                && ($senior->wasRecentlyCreated || $senior->wasChanged(['status', 'birthdate']))) {
+                AgeThresholdNotifier::notify($senior);
+            }
+        });
+    }
 
     protected function casts(): array
     {

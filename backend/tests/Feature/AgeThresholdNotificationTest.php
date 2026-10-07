@@ -74,4 +74,72 @@ class AgeThresholdNotificationTest extends TestCase
         $this->assertDatabaseMissing('notifications', ['recipient_account_id' => $inactiveLeader->id]);
         $this->assertDatabaseCount('notifications', 1);
     }
+
+    public function test_leader_is_notified_as_soon_as_a_senior_in_a_benefit_age_becomes_active(): void
+    {
+        [$barangay, $leader] = $this->leaderWithCentenarianProgram();
+        $senior = $this->pendingSenior($barangay, $leader, 100);
+
+        $this->assertDatabaseCount('notifications', 0);
+
+        $senior->update(['status' => 'active']);
+
+        $this->assertDatabaseHas('notifications', [
+            'recipient_account_id' => $leader->id,
+            'message' => 'Lola Reyes is eligible for Centenarian Award.',
+            'source_type' => 'age_threshold',
+        ]);
+    }
+
+    public function test_opening_notifications_checks_the_leaders_barangay_without_the_scheduler(): void
+    {
+        [$barangay, $leader] = $this->leaderWithCentenarianProgram();
+        // Saved quietly, as if the senior turned 100 since the last check.
+        SeniorCitizen::withoutEvents(fn () => $this->pendingSenior($barangay, $leader, 100)
+            ->forceFill(['status' => 'active'])->save());
+
+        $this->actingAs($leader, 'sanctum')
+            ->getJson('/api/notifications')
+            ->assertOk()
+            ->assertJsonFragment(['message' => 'Lola Reyes is eligible for Centenarian Award.']);
+    }
+
+    /** @return array{0: Barangay, 1: User} */
+    private function leaderWithCentenarianProgram(): array
+    {
+        $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
+        /** @var User $leader */
+        $leader = User::factory()->create([
+            'role' => 'leader',
+            'status' => 'active',
+            'barangay_id' => $barangay->id,
+        ]);
+        Benefit::create([
+            'benefit_name' => 'Centenarian Award',
+            'benefit_type' => 'centenarian',
+            'min_age' => 100,
+            'max_age' => 100,
+            'amount' => 100000,
+            'funding_source' => 'national',
+            'schedule' => 'one_time',
+            'status' => 'active',
+        ]);
+
+        return [$barangay, $leader];
+    }
+
+    private function pendingSenior(Barangay $barangay, User $leader, int $age): SeniorCitizen
+    {
+        return SeniorCitizen::create([
+            'osca_id_number' => 'OSCA-AGE-'.$age,
+            'barangay_id' => $barangay->id,
+            'encoded_by' => $leader->id,
+            'first_name' => 'Lola',
+            'last_name' => 'Reyes',
+            'birthdate' => now()->subYears($age)->toDateString(),
+            'sex' => 'female',
+            'registration_date' => now()->toDateString(),
+            'status' => 'pending',
+        ]);
+    }
 }

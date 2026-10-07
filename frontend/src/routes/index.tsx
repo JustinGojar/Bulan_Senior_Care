@@ -213,8 +213,12 @@ function Landing() {
           </nav>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             <ThemeToggle className="hidden sm:grid" />
-            <Link to="/login" className={`${primaryButtonClass} h-9 px-4 sm:h-10 sm:px-5`}>
-              Log in <ArrowRight className="hidden h-4 w-4 sm:block" />
+            <Link
+              to="/login"
+              className={`${primaryButtonClass} group h-9 px-4 transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-[oklch(0.45_0.08_258)] hover:bg-none focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0 sm:h-10 sm:px-5`}
+            >
+              Log in{" "}
+              <ArrowRight className="hidden h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 sm:block" />
             </Link>
             <button
               type="button"
@@ -271,9 +275,10 @@ function Landing() {
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               to="/login"
-              className="bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] sm:text-base"
+              className="group bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-[oklch(0.45_0.08_258)] hover:bg-none hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0 sm:text-base"
             >
-              Get Started <ArrowRight className="h-4 w-4" />
+              Get Started{" "}
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
           </div>
         </section>
@@ -404,9 +409,10 @@ function Landing() {
             </div>
             <Link
               to="/login"
-              className="inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)]"
+              className="group hover:bg-navy inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:text-white hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0"
             >
-              Log in to the portal <ArrowRight className="h-4 w-4" />
+              Log in to the portal{" "}
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
           </div>
         </section>
@@ -436,17 +442,22 @@ function SectionIntro({
   children: ReactNode;
 }) {
   return (
-    <div className="inline-block max-w-full rounded-lg border border-border/60 bg-card/85 px-5 py-4 shadow-[var(--shadow-soft)] backdrop-blur-md">
+    // No card behind it: navy text with a soft white glow stays readable on the photo background.
+    <div className="inline-block max-w-full">
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{children}</p>
+      <h2 className="mt-3 text-2xl font-extrabold text-primary [text-shadow:0_0_14px_rgb(255_255_255/0.9)] dark:[text-shadow:0_2px_12px_rgb(0_0_0/0.6)] sm:text-3xl">
+        {title}
+      </h2>
+      <p className="mt-1 text-sm font-medium text-primary [text-shadow:0_0_10px_rgb(255_255_255/0.95)] dark:[text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">
+        {children}
+      </p>
     </div>
   );
 }
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase dark:text-gold">
+    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase">
       {children}
     </span>
   );

@@ -474,11 +474,14 @@ function SeniorRecords() {
   useEffect(() => {
     if (!isLeader || !currentUser?.barangay_id) return;
     getBarangays()
-      .then((barangays) =>
-        setLeaderBarangay(
-          barangays.find((barangay) => barangay.id === currentUser.barangay_id)?.barangay_name,
-        ),
-      )
+      .then((barangays) => {
+        const name = barangays.find(
+          (barangay) => barangay.id === currentUser.barangay_id,
+        )?.barangay_name;
+        setLeaderBarangay(name);
+        // Leaders only see their own barangay, so show it in the (locked) filter.
+        if (name) setBarangayFilter(name);
+      })
       .catch(() => setLeaderBarangay(undefined));
   }, [isLeader, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
@@ -819,10 +822,16 @@ function SeniorRecords() {
           className="!bg-white disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}
+          // A leader's own barangay is their default, so it isn't marked as an active filter.
+          defaultValue={isLeader ? (leaderBarangay ?? "All") : "All"}
           disabled={isLeader}
           options={[
             { value: "All", label: "All Barangays" },
             ...BARANGAYS.map((barangay) => ({ value: barangay, label: barangay })),
+            // A leader's barangay name from the database may not be in the static list.
+            ...(leaderBarangay && !BARANGAYS.includes(leaderBarangay)
+              ? [{ value: leaderBarangay, label: leaderBarangay }]
+              : []),
           ]}
           onChange={(value) => {
             setBarangayFilter(value);
