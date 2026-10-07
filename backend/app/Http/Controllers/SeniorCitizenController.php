@@ -112,6 +112,7 @@ class SeniorCitizenController extends Controller
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
+        $this->normalizeContact($request);
         $data = $request->validate($this->rules());
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
@@ -127,6 +128,10 @@ class SeniorCitizenController extends Controller
             // create or select a different one.
             abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
             $data['barangay_id'] = $request->user()->barangay_id;
+            // The association address is the leader/BSCA account's own address.
+            if (filled($request->user()->address)) {
+                $data['association_address'] = $request->user()->address;
+            }
         } elseif ($request->filled('barangay')) {
             $barangay = Barangay::firstOrCreate([
                 'barangay_name' => $request->string('barangay'),
@@ -301,6 +306,7 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
         $this->authorizeScope($request, $senior);
+        $this->normalizeContact($request);
         $data = $request->validate($this->rules(true));
         if (array_key_exists('barangay', $data)) {
             $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
@@ -346,14 +352,14 @@ class SeniorCitizenController extends Controller
             'valid_id' => ['sometimes', 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'birth_certificate' => ['sometimes', 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'profile_photo' => [...($sometimes ? ['sometimes', 'nullable'] : ['nullable']), 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'last_name' => [...$optional('string'), 'max:100'],
-            'first_name' => [...$optional('string'), 'max:100'],
+            'last_name' => [...$optional('required'), 'string', 'max:100'],
+            'first_name' => [...$optional('required'), 'string', 'max:100'],
             'middle_name' => [...$optional('nullable'), 'string', 'max:100'],
             'suffix' => [...$optional('nullable'), 'string', 'max:20'],
-            'birthdate' => [...$optional('date'), 'before_or_equal:'.now()->subYears(60)->toDateString()],
+            'birthdate' => [...$optional('required'), 'date', 'before_or_equal:'.now()->subYears(60)->toDateString()],
             'place_of_birth' => [...$optional('nullable'), 'string', 'max:150'],
             'sex' => [...$optional('required'), Rule::in(['male', 'female'])],
-            'contact_number' => [...$optional('nullable'), 'string', 'max:30'],
+            'contact_number' => [...$optional('required'), 'regex:/^\+639\d{9}$/'],
             'address' => [...$optional('nullable'), 'string'],
             'civil_status' => [...$optional('nullable'), 'string', 'max:50'],
             'educational_attainment' => [...$optional('nullable'), 'string', 'max:255'],
@@ -367,6 +373,21 @@ class SeniorCitizenController extends Controller
             'registration_date' => [...$optional('nullable'), 'date'],
             'status' => [...$optional('nullable'), Rule::in(['active', 'pending', 'inactive'])],
         ];
+    }
+
+    /**
+     * Store PH mobile numbers as +639XXXXXXXXX, accepting the local 09XXXXXXXXX form too.
+     */
+    private function normalizeContact(Request $request): void
+    {
+        if (! $request->filled('contact_number')) {
+            return;
+        }
+        $digits = preg_replace('/\D/', '', (string) $request->input('contact_number'));
+        if (str_starts_with($digits, '0')) {
+            $digits = '63'.substr($digits, 1);
+        }
+        $request->merge(['contact_number' => '+'.$digits]);
     }
 
     private function authorizeScope(Request $request, SeniorCitizen $senior): void

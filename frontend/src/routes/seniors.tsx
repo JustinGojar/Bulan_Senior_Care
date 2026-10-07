@@ -55,11 +55,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BARANGAYS, type Senior } from "@/lib/osca-data";
+import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
 import {
   API_URL,
   apiFetch,
   bulkCreateSeniors,
+  getBarangays,
   getStoredUser,
   type ArchivedSenior,
   type BenefitTransaction,
@@ -462,6 +463,18 @@ function SeniorRecords() {
     status ? `${status.charAt(0).toUpperCase()}${status.slice(1)}` : "All",
   );
   const [barangayFilter, setBarangayFilter] = useState("All");
+  // Resolve the leader's barangay by its database id, not by its position in BARANGAYS.
+  const [leaderBarangay, setLeaderBarangay] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!isLeader || !currentUser?.barangay_id) return;
+    getBarangays()
+      .then((barangays) =>
+        setLeaderBarangay(
+          barangays.find((barangay) => barangay.id === currentUser.barangay_id)?.barangay_name,
+        ),
+      )
+      .catch(() => setLeaderBarangay(undefined));
+  }, [isLeader, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
   const [benefitOptions, setBenefitOptions] = useState<string[]>([]);
   const [query, setQuery] = useState(q ?? "");
@@ -606,13 +619,7 @@ function SeniorRecords() {
       const age = new Date().getFullYear() - Number(birthdate.slice(0, 4));
       const rawBenefit = String(record["benefit"] ?? "").trim();
       const benefit = /^(not provided|n\/a|na|none|-)?$/i.test(rawBenefit)
-        ? age >= 100
-          ? "Centenarian Award"
-          : age >= 90
-            ? "Nonagenarian Grant"
-            : age >= 80
-              ? "Octogenarian Grant"
-              : "Social Pension"
+        ? benefitForAge(age)
         : rawBenefit;
       return {
         first_name: String(
@@ -852,9 +859,7 @@ function SeniorRecords() {
           onClick={() => {
             setQuery("");
             setPage(1);
-            setBarangayFilter(
-              isLeader ? (BARANGAYS[(currentUser?.barangay_id ?? 0) - 1] ?? "All") : "All",
-            );
+            setBarangayFilter(isLeader ? (leaderBarangay ?? "All") : "All");
             setFilter("All");
             setBenefitFilter("All");
           }}
@@ -1224,7 +1229,8 @@ function SeniorRecords() {
           onOpenChange={setFormOpen}
           senior={editing}
           isLeader={isLeader}
-          leaderBarangay={isLeader ? BARANGAYS[(currentUser?.barangay_id ?? 0) - 1] : undefined}
+          leaderBarangay={isLeader ? leaderBarangay : undefined}
+          registrarAddress={isLeader ? (currentUser?.address ?? undefined) : undefined}
           onSubmit={async (draft) => {
             try {
               if (editing) {

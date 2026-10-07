@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
-import type { Senior } from "./osca-data";
+import { benefitForAge, type Senior } from "./osca-data";
 
 type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
@@ -32,14 +32,7 @@ function mapSenior(senior: ApiSenior): Senior {
   const age = Number.isNaN(birthdate.getTime())
     ? 0
     : Math.max(0, new Date().getFullYear() - birthdate.getFullYear());
-  const fallbackBenefit =
-    age >= 100
-      ? "Centenarian Award"
-      : age >= 90
-        ? "Nonagenarian Grant"
-        : age >= 80
-          ? "Octogenarian Grant"
-          : "Social Pension";
+  const fallbackBenefit = benefitForAge(age);
   return {
     id: senior.osca_id_number,
     name: [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" "),

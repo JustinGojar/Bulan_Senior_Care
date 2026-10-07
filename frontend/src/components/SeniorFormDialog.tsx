@@ -20,15 +20,8 @@ import { AuthAlert } from "@/components/AuthLayout";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { API_URL } from "@/lib/api";
-import { BARANGAYS, type Senior } from "@/lib/osca-data";
+import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
-
-const BENEFITS = [
-  "Social Pension",
-  "Octogenarian Grant",
-  "Nonagenarian Grant",
-  "Centenarian Award",
-];
 
 const EMPTY: SeniorDraft = {
   name: "",
@@ -41,7 +34,6 @@ const EMPTY: SeniorDraft = {
   address: "",
   contact: "",
   placeOfBirth: "",
-  sex: "female",
   civilStatus: "",
   educationalAttainment: "",
   otherSkills: "",
@@ -54,11 +46,126 @@ const EMPTY: SeniorDraft = {
   status: "Pending",
 };
 
-function benefitForAge(age: number) {
-  if (age >= 100) return "Centenarian Award";
-  if (age >= 90) return "Nonagenarian Grant";
-  if (age >= 80) return "Octogenarian Grant";
-  return "Social Pension";
+const CIVIL_STATUSES = ["Single", "Married", "Widowed", "Separated", "Annulled"];
+
+const RELATIONSHIPS = [
+  "Spouse",
+  "Son",
+  "Daughter",
+  "Grandson",
+  "Granddaughter",
+  "Son-in-law",
+  "Daughter-in-law",
+  "Brother",
+  "Sister",
+  "Nephew",
+  "Niece",
+  "Guardian",
+  "Other relative",
+];
+
+// Matches the four family rows printed on the registration form PDF.
+const FAMILY_ROWS = 4;
+type FamilyRow = [string, string, string, string, string];
+
+// Stored as one "Name | Relationship | Age | Status | Occupation" line per member.
+function parseFamilyRows(value: string): FamilyRow[] {
+  const rows = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, FAMILY_ROWS)
+    .map((line) => {
+      const cells = line.split("|").map((cell) => cell.trim());
+      return Array.from({ length: 5 }, (_, i) => cells[i] ?? "") as FamilyRow;
+    });
+  while (rows.length < FAMILY_ROWS) rows.push(["", "", "", "", ""]);
+  return rows;
+}
+
+function serializeFamilyRows(rows: FamilyRow[]) {
+  return rows
+    .filter((row) => row.some((cell) => cell.trim()))
+    .map((row) => row.map((cell) => cell.trim()).join(" | "))
+    .join("\n");
+}
+
+function FamilySelect({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  // Keep older free-text values selectable so editing doesn't blank them.
+  const all = value && !options.includes(value) ? [...options, value] : options;
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger aria-label={label} className="h-9 w-full px-3">
+        <SelectValue placeholder="Select" />
+      </SelectTrigger>
+      <SelectContent>
+        {all.map((option) => (
+          <SelectItem key={option} value={option}>
+            {option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// Every field except middle name must be filled before the form can be submitted.
+const REQUIRED_FIELDS: [keyof SeniorDraft, string][] = [
+  ["lastName", "Surname"],
+  ["firstName", "First name"],
+  ["placeOfBirth", "Place of birth"],
+  ["birthdate", "Date of birth"],
+  ["sex", "Sex"],
+  ["civilStatus", "Civil status"],
+  ["contact", "Contact number"],
+  ["address", "Complete address"],
+  ["barangay", "Barangay"],
+  ["educationalAttainment", "Educational attainment"],
+  ["otherSkills", "Other skills"],
+  ["familyComposition", "Family composition"],
+  ["associationName", "Name of association"],
+  ["associationMembershipDate", "Date of membership"],
+  ["associationPosition", "Position"],
+];
+
+const EXTRA_FIELDS: [string, string][] = [
+  ["associationAddress", "Address of association"],
+  ["profilePhoto", "Profile picture"],
+  ["validId", "Valid ID"],
+  ["birthCertificate", "Birth certificate"],
+];
+
+// The input holds only the 10 digits after the fixed +63 prefix.
+const PH_MOBILE = /^9\d{9}$/;
+
+// Records may be stored as "0917-123-4567" or "+639171234567"; keep the digits after +63 / 0.
+function toPhMobile(contact: string) {
+  const digits = contact.replace(/\D/g, "");
+  if (digits.startsWith("63")) return digits.slice(2, 12);
+  if (digits.startsWith("0")) return digits.slice(1, 11);
+  return digits.slice(0, 10);
+}
+
+// The barangay part of an address. Also the association address fallback when the
+// registering account has no address on file.
+function associationAddressFor(barangay: string) {
+  return `Brgy. ${barangay}, Bulan, Sorsogon`;
+}
+
+// The form only edits the house number and street; the barangay suffix is added on save.
+function streetFromAddress(address: string, barangay: string) {
+  const suffix = `, ${associationAddressFor(barangay)}`;
+  return address.endsWith(suffix) ? address.slice(0, -suffix.length) : address;
 }
 
 function ageFromBirthdate(birthdate: string) {
@@ -80,6 +187,7 @@ export function SeniorFormDialog({
   senior,
   isLeader,
   leaderBarangay,
+  registrarAddress,
   onSubmit,
 }: {
   open: boolean;
@@ -87,6 +195,8 @@ export function SeniorFormDialog({
   senior?: Senior | null;
   isLeader?: boolean;
   leaderBarangay?: string | undefined;
+  /** Address on the registering leader/BSCA account; becomes the association address. */
+  registrarAddress?: string | undefined;
   onSubmit: (draft: SeniorDraft) => void;
 }) {
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
@@ -96,10 +206,14 @@ export function SeniorFormDialog({
   const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
+  const [familyRows, setFamilyRows] = useState<FamilyRow[]>(() => parseFamilyRows(""));
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setShowErrors(false);
+    setFamilyRows(parseFamilyRows(senior?.familyComposition ?? ""));
     setValidId(null);
     setBirthCertificate(null);
     setProfilePhoto(null);
@@ -113,10 +227,10 @@ export function SeniorFormDialog({
             lastName: senior.name.split(" ").at(-1) ?? "",
             age: senior.birthdate ? ageFromBirthdate(senior.birthdate) : 0,
             barangay: senior.barangay,
-            address: senior.address,
-            contact: senior.contact,
+            address: streetFromAddress(senior.address, senior.barangay),
+            contact: toPhMobile(senior.contact),
             placeOfBirth: senior.placeOfBirth ?? "",
-            sex: senior.sex ?? "female",
+            ...(senior.sex ? { sex: senior.sex } : {}),
             civilStatus: senior.civilStatus ?? "",
             educationalAttainment: senior.educationalAttainment ?? "",
             otherSkills: senior.otherSkills ?? "",
@@ -163,25 +277,69 @@ export function SeniorFormDialog({
   const set = <K extends keyof SeniorDraft>(key: K, value: SeniorDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 
+  function setFamilyCell(rowIndex: number, cellIndex: number, value: string) {
+    const rows = familyRows.map((row, i) =>
+      i === rowIndex ? (row.map((cell, j) => (j === cellIndex ? value : cell)) as FamilyRow) : row,
+    );
+    setFamilyRows(rows);
+    set("familyComposition", serializeFamilyRows(rows));
+  }
+
+  // Existing records keep the address set when they were registered; new ones use the
+  // registering account's address.
+  // Leaders get a locked address; Admin and Head pick one from the barangay list.
+  const associationAddress = isLeader
+    ? senior?.associationAddress?.trim() ||
+      registrarAddress?.trim() ||
+      associationAddressFor(draft.barangay)
+    : (draft.associationAddress ?? "");
+  const associationAddressOptions = BARANGAYS.map(associationAddressFor);
+  if (associationAddress && !associationAddressOptions.includes(associationAddress))
+    associationAddressOptions.push(associationAddress);
+
+  const missing = new Set<string>(
+    REQUIRED_FIELDS.filter(([key]) => !String(draft[key] ?? "").trim()).map(([key]) => key),
+  );
+  if (!associationAddress.trim()) missing.add("associationAddress");
+  if (!senior && !profilePhoto) missing.add("profilePhoto");
+  if (!senior && !validId) missing.add("validId");
+  if (!senior && !birthCertificate) missing.add("birthCertificate");
+  const invalid = (key: string) =>
+    showErrors && missing.has(key) ? "border-destructive focus:border-destructive" : "";
+
   function submit() {
-    if (!draft.firstName?.trim()) return setError("First name is required.");
-    if (!draft.lastName?.trim()) return setError("Last name is required.");
-    if (!draft.birthdate) return setError("Birthday is required.");
-    const age = ageFromBirthdate(draft.birthdate);
+    if (missing.size > 0) {
+      setShowErrors(true);
+      const labels = [...REQUIRED_FIELDS, ...EXTRA_FIELDS]
+        .filter(([key]) => missing.has(key))
+        .map(([, label]) => label);
+      return setError(`Please complete all required fields: ${labels.join(", ")}.`);
+    }
+    const incompleteRow = familyRows.findIndex(
+      (row) => row.some((cell) => cell.trim()) && row.some((cell) => !cell.trim()),
+    );
+    if (incompleteRow !== -1) {
+      setShowErrors(true);
+      return setError(
+        `Complete all columns for family member ${incompleteRow + 1} (name, relationship, age, status, occupation).`,
+      );
+    }
+    const age = ageFromBirthdate(draft.birthdate ?? "");
     if (age < 60 || age > 130)
       return setError("Age must be 60 or older to qualify for OSCA benefits.");
-    if (!draft.contact.trim()) return setError("Contact number is required.");
-    if (!senior && !validId) return setError("A valid ID is required.");
-    if (!senior && !birthCertificate) return setError("A birth certificate is required.");
+    if (!PH_MOBILE.test(draft.contact))
+      return setError("Contact number must be +63 followed by 10 digits starting with 9.");
     onSubmit({
       ...draft,
       age,
       benefit: benefitForAge(age),
       name: [draft.firstName, draft.middleName, draft.lastName].filter(Boolean).join(" ").trim(),
-      firstName: draft.firstName.trim(),
+      firstName: (draft.firstName ?? "").trim(),
       middleName: draft.middleName?.trim() ?? "",
-      lastName: draft.lastName.trim(),
-      contact: draft.contact.trim(),
+      lastName: (draft.lastName ?? "").trim(),
+      contact: `+63${draft.contact}`,
+      address: `${draft.address.trim()}, ${associationAddressFor(draft.barangay)}`,
+      associationAddress,
       validId,
       birthCertificate,
       profilePhoto,
@@ -210,23 +368,23 @@ export function SeniorFormDialog({
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-3">
               <div>
-                <Label htmlFor="senior-last-name">Surname</Label>
+                <Label htmlFor="senior-last-name">Surname *</Label>
                 <Input
                   id="senior-last-name"
                   value={draft.lastName ?? ""}
                   onChange={(e) => set("lastName", e.target.value)}
                   placeholder="Santos"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("lastName")}`}
                 />
               </div>
               <div>
-                <Label htmlFor="senior-first-name">First name</Label>
+                <Label htmlFor="senior-first-name">First name *</Label>
                 <Input
                   id="senior-first-name"
                   value={draft.firstName ?? ""}
                   onChange={(e) => set("firstName", e.target.value)}
                   placeholder="Maria"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("firstName")}`}
                 />
               </div>
               <div>
@@ -240,17 +398,17 @@ export function SeniorFormDialog({
                 />
               </div>
               <div>
-                <Label htmlFor="senior-place-of-birth">Place of birth</Label>
+                <Label htmlFor="senior-place-of-birth">Place of birth *</Label>
                 <Input
                   id="senior-place-of-birth"
                   value={draft.placeOfBirth ?? ""}
                   onChange={(e) => set("placeOfBirth", e.target.value)}
                   placeholder="Municipality, province"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("placeOfBirth")}`}
                 />
               </div>
               <div>
-                <Label htmlFor="senior-birthdate">Date of birth</Label>
+                <Label htmlFor="senior-birthdate">Date of birth *</Label>
                 <Input
                   id="senior-birthdate"
                   type="date"
@@ -260,27 +418,32 @@ export function SeniorFormDialog({
                     const age = ageFromBirthdate(birthdate);
                     setDraft((d) => ({ ...d, birthdate, age, benefit: benefitForAge(age) }));
                   }}
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("birthdate")}`}
                 />
               </div>
               <div>
-                <Label htmlFor="senior-age">Age</Label>
-                <Input
-                  id="senior-age"
-                  value={draft.birthdate ? draft.age : ""}
-                  placeholder="Calculated automatically"
-                  readOnly
-                  className="mt-1.5"
-                />
+                <Label>Age</Label>
+                <p
+                  aria-live="polite"
+                  className="mt-1.5 flex h-9 cursor-not-allowed items-center rounded-lg border border-input bg-muted px-3 text-sm font-medium text-foreground select-none"
+                >
+                  {draft.birthdate ? (
+                    `${draft.age} years old`
+                  ) : (
+                    <span className="font-normal text-muted-foreground">
+                      Based on date of birth
+                    </span>
+                  )}
+                </p>
               </div>
               <div>
-                <Label>Sex</Label>
+                <Label htmlFor="senior-sex">Sex *</Label>
                 <Select
-                  value={draft.sex ?? "female"}
+                  value={draft.sex ?? ""}
                   onValueChange={(value) => set("sex", value as "male" | "female")}
                 >
-                  <SelectTrigger className="mt-1.5 h-9 px-3">
-                    <SelectValue />
+                  <SelectTrigger id="senior-sex" className={`mt-1.5 h-9 px-3 ${invalid("sex")}`}>
+                    <SelectValue placeholder="Select sex" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="female">Female</SelectItem>
@@ -289,24 +452,51 @@ export function SeniorFormDialog({
                 </Select>
               </div>
               <div>
-                <Label htmlFor="senior-civil-status">Civil status</Label>
-                <Input
-                  id="senior-civil-status"
+                <Label htmlFor="senior-civil-status">Civil status *</Label>
+                <Select
                   value={draft.civilStatus ?? ""}
-                  onChange={(e) => set("civilStatus", e.target.value)}
-                  placeholder="Single, married, widowed"
-                  className="mt-1.5"
-                />
+                  onValueChange={(value) => set("civilStatus", value)}
+                >
+                  <SelectTrigger
+                    id="senior-civil-status"
+                    className={`mt-1.5 h-9 px-3 ${invalid("civilStatus")}`}
+                  >
+                    <SelectValue placeholder="Select civil status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Keep older free-text values selectable so editing doesn't blank them. */}
+                    {[
+                      ...CIVIL_STATUSES,
+                      ...(draft.civilStatus && !CIVIL_STATUSES.includes(draft.civilStatus)
+                        ? [draft.civilStatus]
+                        : []),
+                    ].map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label htmlFor="senior-contact">Contact number</Label>
-                <Input
-                  id="senior-contact"
-                  value={draft.contact}
-                  onChange={(e) => set("contact", e.target.value)}
-                  placeholder="0917-123-4567"
-                  className="mt-1.5"
-                />
+                <Label htmlFor="senior-contact">Contact number *</Label>
+                <div className="relative mt-1.5">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                    +63
+                  </span>
+                  <Input
+                    id="senior-contact"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    value={draft.contact}
+                    onChange={(e) => set("contact", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    className={`pl-11 ${invalid("contact")}`}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  10 digits after +63, starting with 9.
+                </p>
               </div>
             </div>
           </section>
@@ -317,17 +507,25 @@ export function SeniorFormDialog({
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Label htmlFor="senior-address">Complete address</Label>
-                <Input
-                  id="senior-address"
-                  value={draft.address}
-                  onChange={(e) => set("address", e.target.value)}
-                  placeholder="House number, street, barangay, Bulan, Sorsogon"
-                  className="mt-1.5"
-                />
+                <Label htmlFor="senior-address">Complete address *</Label>
+                <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="senior-address"
+                    value={draft.address}
+                    onChange={(e) => set("address", e.target.value)}
+                    placeholder="House number and street"
+                    className={`sm:flex-1 ${invalid("address")}`}
+                  />
+                  <p className="flex min-h-9 cursor-not-allowed items-center rounded-lg border border-input bg-muted px-3 py-1.5 text-sm font-medium text-foreground select-none sm:whitespace-nowrap">
+                    {associationAddressFor(draft.barangay)}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Type the house number and street only. The barangay follows the selected barangay.
+                </p>
               </div>
               <div>
-                <Label htmlFor="senior-barangay">Barangay</Label>
+                <Label htmlFor="senior-barangay">Barangay *</Label>
                 <SearchableSelect
                   id="senior-barangay"
                   label="Barangay"
@@ -335,25 +533,29 @@ export function SeniorFormDialog({
                   onChange={(v) => set("barangay", v)}
                   disabled={!!leaderBarangay}
                   placeholder="Select a barangay"
-                  className="mt-1.5 h-9 px-3"
+                  className={`mt-1.5 h-9 px-3 ${invalid("barangay")}`}
                   options={BARANGAYS.map((barangay) => ({ value: barangay, label: barangay }))}
                 />
               </div>
 
               <div>
                 <Label>Benefit</Label>
-                <Select value={draft.benefit} onValueChange={(v) => set("benefit", v)}>
-                  <SelectTrigger className="mt-1.5 h-9 px-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BENEFITS.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p
+                  aria-live="polite"
+                  className="mt-1.5 flex h-9 cursor-not-allowed items-center rounded-lg border border-input bg-muted px-3 text-sm font-medium text-foreground select-none"
+                >
+                  {draft.birthdate ? (
+                    benefitForAge(draft.age)
+                  ) : (
+                    <span className="font-normal text-muted-foreground">
+                      Based on date of birth
+                    </span>
+                  )}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  80–85 Octogenarian · 90–95 Nonagenarian · 100 Centenarian · other ages Social
+                  Pension
+                </p>
               </div>
             </div>
           </section>
@@ -364,36 +566,91 @@ export function SeniorFormDialog({
             </p>
             <div className="mt-4 space-y-4">
               <div>
-                <Label htmlFor="senior-educational-attainment">Educational attainment</Label>
+                <Label htmlFor="senior-educational-attainment">Educational attainment *</Label>
                 <Input
                   id="senior-educational-attainment"
                   value={draft.educationalAttainment ?? ""}
                   onChange={(event) => set("educationalAttainment", event.target.value)}
                   placeholder="Highest educational attainment"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("educationalAttainment")}`}
                 />
               </div>
               <div>
-                <Label htmlFor="senior-other-skills">Other skills</Label>
+                <Label htmlFor="senior-other-skills">Other skills *</Label>
                 <Input
                   id="senior-other-skills"
                   value={draft.otherSkills ?? ""}
                   onChange={(event) => set("otherSkills", event.target.value)}
                   placeholder="Livelihood, trade, or other skills"
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("otherSkills")}`}
                 />
               </div>
               <div>
-                <Label htmlFor="senior-family-composition">Family composition</Label>
-                <textarea
-                  id="senior-family-composition"
-                  value={draft.familyComposition ?? ""}
-                  onChange={(event) => set("familyComposition", event.target.value)}
-                  placeholder="Name | Relationship | Age | Status | Occupation"
-                  className="mt-1.5 min-h-28 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-4 focus:ring-ring/15"
-                />
+                <Label>Family composition *</Label>
+                <div
+                  className={`mt-1.5 overflow-x-auto rounded-lg border border-input ${invalid("familyComposition")}`}
+                >
+                  <table className="w-full min-w-160 text-sm">
+                    <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase">
+                      <tr>
+                        <th className="px-2 py-2 text-left">Name</th>
+                        <th className="px-2 py-2 text-left">Relationship</th>
+                        <th className="w-20 px-2 py-2 text-left">Age</th>
+                        <th className="px-2 py-2 text-left">Status</th>
+                        <th className="px-2 py-2 text-left">Occupation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {familyRows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="border-t border-border/60">
+                          <td className="p-1.5">
+                            <Input
+                              aria-label={`Family member ${rowIndex + 1} name`}
+                              value={row[0]}
+                              onChange={(e) => setFamilyCell(rowIndex, 0, e.target.value)}
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <FamilySelect
+                              label={`Family member ${rowIndex + 1} relationship`}
+                              options={RELATIONSHIPS}
+                              value={row[1]}
+                              onChange={(v) => setFamilyCell(rowIndex, 1, v)}
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <Input
+                              aria-label={`Family member ${rowIndex + 1} age`}
+                              inputMode="numeric"
+                              maxLength={3}
+                              value={row[2]}
+                              onChange={(e) =>
+                                setFamilyCell(rowIndex, 2, e.target.value.replace(/\D/g, ""))
+                              }
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <FamilySelect
+                              label={`Family member ${rowIndex + 1} status`}
+                              options={CIVIL_STATUSES}
+                              value={row[3]}
+                              onChange={(v) => setFamilyCell(rowIndex, 3, v)}
+                            />
+                          </td>
+                          <td className="p-1.5">
+                            <Input
+                              aria-label={`Family member ${rowIndex + 1} occupation`}
+                              value={row[4]}
+                              onChange={(e) => setFamilyCell(rowIndex, 4, e.target.value)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  You may enter one family member per line.
+                  Add at least one family member. Up to {FAMILY_ROWS} members.
                 </p>
               </div>
             </div>
@@ -428,44 +685,63 @@ export function SeniorFormDialog({
             </div>
             <div className="mt-4 space-y-4">
               <div>
-                <Label htmlFor="senior-association-name">Name of association</Label>
+                <Label htmlFor="senior-association-name">Name of association *</Label>
                 <Input
                   id="senior-association-name"
                   value={draft.associationName ?? ""}
                   onChange={(e) => set("associationName", e.target.value)}
                   placeholder="Senior Citizens Association of..."
-                  className="mt-1.5"
+                  className={`mt-1.5 ${invalid("associationName")}`}
                 />
               </div>
               <div>
-                <Label htmlFor="senior-association-address">Address of association</Label>
-                <Input
-                  id="senior-association-address"
-                  value={draft.associationAddress ?? ""}
-                  onChange={(e) => set("associationAddress", e.target.value)}
-                  placeholder="Barangay, municipality, province"
-                  className="mt-1.5"
-                />
+                <Label htmlFor="senior-association-address">Address of association *</Label>
+                {isLeader ? (
+                  <>
+                    <p
+                      id="senior-association-address"
+                      className="mt-1.5 flex h-9 cursor-not-allowed items-center rounded-lg border border-input bg-muted px-3 text-sm font-medium text-foreground select-none"
+                    >
+                      {associationAddress}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Based on the address of the registering leader account.
+                    </p>
+                  </>
+                ) : (
+                  <SearchableSelect
+                    id="senior-association-address"
+                    label="Address of association"
+                    value={associationAddress}
+                    onChange={(v) => set("associationAddress", v)}
+                    placeholder="Select an address"
+                    className={`mt-1.5 h-9 px-3 ${invalid("associationAddress")}`}
+                    options={associationAddressOptions.map((address) => ({
+                      value: address,
+                      label: address,
+                    }))}
+                  />
+                )}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="senior-membership-date">Date of membership</Label>
+                  <Label htmlFor="senior-membership-date">Date of membership *</Label>
                   <Input
                     id="senior-membership-date"
                     type="date"
                     value={draft.associationMembershipDate ?? ""}
                     onChange={(e) => set("associationMembershipDate", e.target.value)}
-                    className="mt-1.5"
+                    className={`mt-1.5 ${invalid("associationMembershipDate")}`}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="senior-association-position">Position</Label>
+                  <Label htmlFor="senior-association-position">Position *</Label>
                   <Input
                     id="senior-association-position"
                     value={draft.associationPosition ?? ""}
                     onChange={(e) => set("associationPosition", e.target.value)}
                     placeholder="Member or officer"
-                    className="mt-1.5"
+                    className={`mt-1.5 ${invalid("associationPosition")}`}
                   />
                 </div>
               </div>
@@ -478,14 +754,14 @@ export function SeniorFormDialog({
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="senior-profile-photo">Profile Picture</Label>
+                <Label htmlFor="senior-profile-photo">Profile Picture{!senior && " *"}</Label>
                 <Input
                   id="senior-profile-photo"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   capture="user"
                   onChange={(event) => setProfilePhoto(event.target.files?.[0] ?? null)}
-                  className="mt-1.5 cursor-pointer"
+                  className={`mt-1.5 cursor-pointer ${invalid("profilePhoto")}`}
                 />
               </div>
 
@@ -501,7 +777,7 @@ export function SeniorFormDialog({
                     const file = event.target.files?.[0] ?? null;
                     setValidId(file);
                   }}
-                  className="mt-1.5 cursor-pointer"
+                  className={`mt-1.5 cursor-pointer ${invalid("validId")}`}
                 />
                 {(validIdPreview || senior?.validIdPath) && (
                   <a
@@ -537,7 +813,7 @@ export function SeniorFormDialog({
                     const file = event.target.files?.[0] ?? null;
                     setBirthCertificate(file);
                   }}
-                  className="mt-1.5 cursor-pointer"
+                  className={`mt-1.5 cursor-pointer ${invalid("birthCertificate")}`}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   PDF, JPG, or PNG up to 5 MB each.
