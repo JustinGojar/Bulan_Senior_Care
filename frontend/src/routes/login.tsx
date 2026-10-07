@@ -2,6 +2,7 @@ import { createFileRoute, Link, useBlocker, useNavigate, useRouter } from "@tans
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
+import { TermsDialog } from "@/components/TermsDialog";
 import { login, takeSessionNotice } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
@@ -35,6 +36,8 @@ function LoginPage() {
   // Why the previous session ended (inactivity or its time limit), if it ended on its own.
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   // The browser back button sends the user to the landing page instead of the previous entry,
   // so a signed-out user can never step back into the account pages they were on before
   // logging out. The blocker first undoes the back step; once that settles, the login entry
@@ -134,6 +137,27 @@ function LoginPage() {
           </div>
         </div>
 
+        <div className="relative flex items-start gap-3">
+          <input
+            id="login-terms"
+            type="checkbox"
+            required
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--navy)]"
+          />
+          <label htmlFor="login-terms" className="text-sm text-muted-foreground">
+            I agree to the{" "}
+            <button
+              type="button"
+              onClick={() => setTermsOpen(true)}
+              className="font-semibold text-primary hover:underline"
+            >
+              Terms and Conditions
+            </button>
+          </label>
+        </div>
+
         <button type="submit" disabled={submitting} className={`${authSubmitClass} mt-2`}>
           {submitting ? (
             <>
@@ -153,6 +177,12 @@ function LoginPage() {
         <ShieldCheck className="h-4 w-4 shrink-0 text-success" />
         <span>Authorized personnel only. Accounts are issued by the OSCA administrator.</span>
       </div>
+
+      <TermsDialog
+        open={termsOpen}
+        onOpenChange={setTermsOpen}
+        onAccept={() => setAcceptedTerms(true)}
+      />
     </AuthLayout>
   );
 }
