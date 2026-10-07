@@ -132,6 +132,7 @@ export type ApiSenior = {
   id_document_path?: string | null;
   valid_id_path?: string | null;
   birth_certificate_path?: string | null;
+  privacy_consent_at?: string | null;
   status: "active" | "pending" | "inactive";
   barangay?: { barangay_name: string } | null;
   benefits?: Array<{

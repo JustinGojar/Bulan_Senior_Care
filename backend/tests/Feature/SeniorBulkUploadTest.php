@@ -40,6 +40,8 @@ class SeniorBulkUploadTest extends TestCase
         ]);
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors', [
+            'privacy_consent' => true,
+            'privacy_consent_version' => '2026-10-07',
             'first_name' => 'Juan',
             'middle_name' => 'A.',
             'last_name' => 'Dela Cruz',

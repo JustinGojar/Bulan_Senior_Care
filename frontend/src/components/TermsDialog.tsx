@@ -1,17 +1,8 @@
-import type { ReactNode } from "react";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { AgreementDialog, type AgreementSection } from "@/components/AgreementDialog";
 import { authSubmitClass } from "@/components/AuthLayout";
 import { TERMS_LAST_UPDATED } from "@/lib/terms";
 
-const SECTIONS: { title: string; body: ReactNode }[] = [
+const SECTIONS: AgreementSection[] = [
   {
     title: "Acceptance of these terms",
     body: (
@@ -125,34 +116,14 @@ export function TermsDialog({
   onAccept: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">Terms and Conditions</DialogTitle>
-          <DialogDescription>Last updated {TERMS_LAST_UPDATED}</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {SECTIONS.map((section, index) => (
-            <section key={section.title}>
-              <h3 className="text-sm font-bold">
-                {index + 1}. {section.title}
-              </h3>
-              <div className="mt-2 space-y-2 text-sm leading-relaxed text-muted-foreground [&_li]:mt-1 [&_ul]:list-disc [&_ul]:pl-5">
-                {section.body}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <button type="button" onClick={onAccept} className={authSubmitClass}>
-              I agree
-            </button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <AgreementDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      onAccept={onAccept}
+      title="Terms and Conditions"
+      lastUpdated={TERMS_LAST_UPDATED}
+      sections={SECTIONS}
+      acceptClassName={authSubmitClass}
+    />
   );
 }
