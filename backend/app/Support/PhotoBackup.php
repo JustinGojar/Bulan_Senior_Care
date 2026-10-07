@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Railway's disk is reset on every deploy, so uploaded photos are also kept in the
- * database and written back to the public disk when their file goes missing.
+ * Railway's disk is reset on every deploy, so uploaded photos and ID documents are also
+ * kept in the database and written back to the public disk when their file goes missing.
  */
 class PhotoBackup
 {
-    /** Folders on the public disk whose photos are backed up. */
-    public const DIRECTORIES = ['profile-photos', 'senior-photos'];
+    /** Folders on the public disk whose files are backed up. */
+    public const DIRECTORIES = ['profile-photos', 'senior-photos', 'senior-documents'];
 
     public static function store(UploadedFile $photo, string $directory): string
     {

@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Response;
 class StoredPhotoController extends Controller
 {
     /**
-     * Serve a photo whose file is gone from storage (Railway's disk is reset on every
+     * Serve a photo or ID document whose file is gone from storage (Railway's disk is reset on every
      * deploy) from the copy kept in the database, and put the file back.
      */
     public function show(string $directory, string $file): Response

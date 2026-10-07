@@ -18,7 +18,7 @@ $spaShell = static function () {
 // Only reached when the file is missing from public storage (see public/router.php).
 Route::get('/storage/{directory}/{file}', [StoredPhotoController::class, 'show'])
     ->whereIn('directory', PhotoBackup::DIRECTORIES)
-    ->where('file', '[A-Za-z0-9]+\\.(jpe?g|png|webp)');
+    ->where('file', '[A-Za-z0-9]+\\.(jpe?g|png|webp|pdf)');
 
 Route::get('/', $spaShell)->name('spa.home');
 Route::get('/{path}', $spaShell)

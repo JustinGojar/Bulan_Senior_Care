@@ -127,8 +127,7 @@ class SeniorCitizenController extends Controller
         $data['privacy_consent_at'] = now();
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
-                $documentPath = $request->file($documentField)->store('senior-documents', 'public');
-                $data["{$documentField}_path"] = $documentPath;
+                $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
             }
         }
         if ($request->hasFile('profile_photo')) {
@@ -326,18 +325,20 @@ class SeniorCitizenController extends Controller
             $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
             unset($data['barangay']);
         }
+        $replacedPaths = [];
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
-                $data["{$documentField}_path"] = $request->file($documentField)->store('senior-documents', 'public');
+                $replacedPaths[] = $senior->{"{$documentField}_path"};
+                $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
             }
         }
-        $oldPhotoPath = $senior->photo_path;
         if ($request->hasFile('profile_photo')) {
+            $replacedPaths[] = $senior->photo_path;
             $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
         $senior->update($data);
-        if (isset($data['photo_path'])) {
-            PhotoBackup::delete($oldPhotoPath);
+        foreach ($replacedPaths as $replacedPath) {
+            PhotoBackup::delete($replacedPath);
         }
         AuditLog::record(
             $request->user(),
