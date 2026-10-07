@@ -38,6 +38,7 @@ import {
 import defaultProfileImage from "@/img/Defaut.png";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
+import { LogoutConfirmDialog } from "./LogoutConfirmDialog";
 import { SessionTimeout } from "./SessionTimeout";
 import { panelClass, tileClass } from "./design-kit";
 import { ThemeToggle } from "./ThemeToggle";
@@ -114,6 +115,24 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+// Pages reached from inside a section keep that section's menu item highlighted.
+const NAV_PARENT: Record<string, string> = {
+  "/audit-logs": "/settings",
+};
+
+function isNavActive(pathname: string, to: string) {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return path === to || path.startsWith(`${to}/`) || NAV_PARENT[path] === to;
+}
+
+function headerIconClass(active: boolean) {
+  return `relative grid h-10 w-10 place-items-center rounded-lg border shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors sm:h-11 sm:w-11 ${
+    active
+      ? "bg-navy border-transparent text-gold dark:ring-1 dark:ring-white/15"
+      : "border-border/60 bg-card/90 hover:bg-muted"
+  }`;
+}
+
 export function AppShell({
   title,
   subtitle,
@@ -141,6 +160,7 @@ export function AppShell({
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   // Close the profile menu on an outside click or Escape.
   useEffect(() => {
     if (!profileOpen) return;
@@ -298,10 +318,16 @@ export function AppShell({
     navigate({ to: "/seniors", search: { q: query, status: undefined } });
   }
 
-  async function signOut() {
+  function signOut() {
     void logout().catch(() => undefined);
     clearToken();
     navigate({ to: "/login", replace: true });
+  }
+
+  function requestSignOut() {
+    setProfileOpen(false);
+    setMobileNavOpen(false);
+    setLogoutConfirmOpen(true);
   }
 
   // Shared by the desktop sidebar and the mobile sheet so they stay identical.
@@ -324,7 +350,7 @@ export function AppShell({
           className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
         >
           {visibleNav.map(({ to, label, icon: Icon }) => {
-            const active = pathname === to;
+            const active = isNavActive(pathname, to);
             return (
               <Link
                 key={to}
@@ -358,7 +384,8 @@ export function AppShell({
               to="/profile"
               onClick={onNavigate}
               title={`${user?.name ?? "User"} · ${roleLabel}`}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1.5 transition-colors hover:bg-muted"
+              aria-current={pathname === "/profile" ? "page" : undefined}
+              className={`flex min-w-0 flex-1 items-center gap-3 rounded-md p-1.5 transition-colors hover:bg-muted ${pathname === "/profile" ? "bg-muted" : ""}`}
             >
               <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-white ring-2 ring-gold/50">
                 {photoUrl ? (
@@ -381,7 +408,7 @@ export function AppShell({
             </Link>
             <button
               type="button"
-              onClick={signOut}
+              onClick={requestSignOut}
               aria-label="Log out"
               title="Log out"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
@@ -591,8 +618,9 @@ export function AppShell({
                 <button
                   onClick={() => navigate({ to: "/messages" })}
                   aria-label="Open messages"
+                  aria-current={isNavActive(pathname, "/messages") ? "page" : undefined}
                   title="Messages"
-                  className="relative grid h-10 w-10 place-items-center rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors hover:bg-muted sm:h-11 sm:w-11"
+                  className={headerIconClass(isNavActive(pathname, "/messages"))}
                 >
                   <Mail className="h-5 w-5" />
                   {unreadMessageCount > 0 && (
@@ -605,7 +633,9 @@ export function AppShell({
               <button
                 onClick={() => navigate({ to: "/notifications" })}
                 aria-label="Notifications"
-                className="relative grid h-10 w-10 place-items-center rounded-lg border border-border/60 bg-card/90 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors hover:bg-muted sm:h-11 sm:w-11"
+                aria-current={isNavActive(pathname, "/notifications") ? "page" : undefined}
+                title="Notifications"
+                className={headerIconClass(isNavActive(pathname, "/notifications"))}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -660,7 +690,8 @@ export function AppShell({
                   <Link
                     to="/profile"
                     onClick={() => setProfileOpen(false)}
-                    className="mt-2 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold hover:bg-muted"
+                    aria-current={pathname === "/profile" ? "page" : undefined}
+                    className={`mt-2 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold hover:bg-muted ${pathname === "/profile" ? "bg-muted" : ""}`}
                   >
                     <UserCircle className="h-4 w-4" /> My profile
                   </Link>
@@ -671,7 +702,7 @@ export function AppShell({
                     <ThemeToggle className="h-9 w-9 rounded-lg border border-border/60 shadow-none" />
                   </div>
                   <button
-                    onClick={signOut}
+                    onClick={requestSignOut}
                     className="mt-1 flex w-full items-center gap-3 rounded-md border-t border-border/60 px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"
                   >
                     <LogOut className="h-4 w-4" /> Log out
@@ -696,6 +727,11 @@ export function AppShell({
           <div className="page-enter mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
+      <LogoutConfirmDialog
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        onConfirm={signOut}
+      />
       <SessionTimeout />
     </div>
   );
