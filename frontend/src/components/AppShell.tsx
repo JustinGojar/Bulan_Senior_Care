@@ -431,7 +431,7 @@ export function AppShell({
               <Link
                 to="/dashboard"
                 aria-label="Go to dashboard"
-                className="bg-navy grid h-7 w-7 shrink-0 place-items-center rounded-md text-gold transition-opacity hover:opacity-90 sm:h-8 sm:w-8"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-primary transition-colors hover:bg-muted sm:h-8 sm:w-8"
               >
                 <Home className="h-4 w-4" />
               </Link>

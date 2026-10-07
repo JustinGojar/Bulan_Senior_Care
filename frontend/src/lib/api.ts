@@ -5,11 +5,80 @@ const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
 const ANNOUNCEMENTS_CACHE_TTL = 60_000;
 const BARANGAYS_CACHE_TTL = 5 * 60_000;
+// GET responses younger than this are reused without a request.
+const DEFAULT_FRESH_TTL = 30_000;
+// Older responses up to this age are shown at once and refreshed in the background.
+const MAX_STALE_AGE = 5 * 60_000;
+const CACHE_STORAGE_KEY = "bulan-api-cache";
+// Polled counters must always reach the server.
+const UNCACHED_PATHS = ["/user", "/messages/unread-summary", "/notifications/unread-count"];
+// Inbox-like data that other people change: reuse briefly, never show it stale.
+const LIVE_PATHS = ["/notifications", "/messages"];
+const LIVE_FRESH_TTL = 10_000;
+
+type CacheEntry = { token: string | null; data: unknown; fetchedAt: number; freshTtl: number };
 // Shared by every page so switching pages reuses data instead of refetching it.
-const responseCache = new Map<
-  string,
-  { token: string | null; promise: Promise<unknown>; expiresAt: number }
->();
+// Kept in sessionStorage too, so reloading the page shows data immediately.
+const responseCache = new Map<string, CacheEntry>();
+const inflightRequests = new Map<string, { token: string | null; promise: Promise<unknown> }>();
+let persistTimer: number | undefined;
+
+function loadPersistedCache() {
+  if (typeof window === "undefined") return;
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(CACHE_STORAGE_KEY) ?? "{}") as Record<
+      string,
+      CacheEntry
+    >;
+    const now = Date.now();
+    for (const [path, entry] of Object.entries(stored)) {
+      if (now - entry.fetchedAt < MAX_STALE_AGE) responseCache.set(path, entry);
+    }
+  } catch {
+    // Unreadable storage only means a cold cache.
+  }
+}
+loadPersistedCache();
+
+function persistCache() {
+  if (typeof window === "undefined") return;
+  window.clearTimeout(persistTimer);
+  persistTimer = window.setTimeout(() => {
+    try {
+      if (responseCache.size === 0) sessionStorage.removeItem(CACHE_STORAGE_KEY);
+      else
+        sessionStorage.setItem(
+          CACHE_STORAGE_KEY,
+          JSON.stringify(Object.fromEntries(responseCache)),
+        );
+    } catch {
+      // Storage full or blocked: the in-memory cache still works.
+    }
+  }, 300);
+}
+
+function clearResponseCache() {
+  responseCache.clear();
+  inflightRequests.clear();
+  if (typeof window === "undefined") return;
+  window.clearTimeout(persistTimer);
+  try {
+    sessionStorage.removeItem(CACHE_STORAGE_KEY);
+  } catch {
+    // Nothing stored.
+  }
+}
+
+function cachePolicy(path: string) {
+  const pathname = path.split("?")[0] ?? path;
+  if (UNCACHED_PATHS.includes(pathname)) return null;
+  const live = LIVE_PATHS.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+  return live
+    ? { freshTtl: LIVE_FRESH_TTL, allowStale: false }
+    : { freshTtl: DEFAULT_FRESH_TTL, allowStale: true };
+}
 
 export type ApiUser = {
   id: number;
@@ -229,7 +298,7 @@ export function getToken() {
 }
 
 export function setToken(token: string) {
-  responseCache.clear();
+  clearResponseCache();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
@@ -238,7 +307,7 @@ export function setToken(token: string) {
 }
 
 export function clearToken() {
-  responseCache.clear();
+  clearResponseCache();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
@@ -275,6 +344,64 @@ export async function getCurrentUser() {
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method ?? "GET").toUpperCase();
+  if (method !== "GET") {
+    // Any write can change what other pages show, so drop every cached read.
+    return requestJson<T>(path, options).finally(clearResponseCache);
+  }
+  const policy = options.cache === "no-store" ? null : cachePolicy(path);
+  if (!policy) return requestJson<T>(path, options);
+
+  const token = getToken();
+  const cached = responseCache.get(path);
+  if (cached && cached.token === token) {
+    const age = Date.now() - cached.fetchedAt;
+    if (age < cached.freshTtl) return cached.data as T;
+    if (policy.allowStale && age < MAX_STALE_AGE) {
+      void cachedRequest(path, options, token, policy.freshTtl).catch(() => undefined);
+      return cached.data as T;
+    }
+  }
+  return withAbort(cachedRequest<T>(path, options, token, policy.freshTtl), options.signal);
+}
+
+/** Fetches a GET once for all callers waiting on the same path, then stores the result. */
+function cachedRequest<T>(
+  path: string,
+  options: RequestInit,
+  token: string | null,
+  freshTtl: number,
+): Promise<T> {
+  const inflight = inflightRequests.get(path);
+  if (inflight && inflight.token === token) return inflight.promise as Promise<T>;
+  // The shared request ignores any one caller's abort signal.
+  const { signal: _signal, ...sharedOptions } = options;
+  const promise = requestJson<T>(path, sharedOptions);
+  inflightRequests.set(path, { token, promise });
+  promise
+    .then((data) => {
+      if (inflightRequests.get(path)?.promise !== promise) return;
+      responseCache.set(path, { token, data, fetchedAt: Date.now(), freshTtl });
+      persistCache();
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      if (inflightRequests.get(path)?.promise === promise) inflightRequests.delete(path);
+    });
+  return promise;
+}
+
+function withAbort<T>(promise: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
+}
+
+async function requestJson<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -438,19 +565,14 @@ export function deleteManagedUser(id: number) {
   return apiFetch<void>(`/admin/users/${id}`, { method: "DELETE" });
 }
 
+/** A GET whose data rarely changes, so it stays fresh for longer than the default. */
 function cachedGet<T>(path: string, ttl: number): Promise<T> {
   const token = getToken();
   const cached = responseCache.get(path);
-  if (cached && cached.token === token && cached.expiresAt > Date.now()) {
-    return cached.promise as Promise<T>;
+  if (cached && cached.token === token && Date.now() - cached.fetchedAt < ttl) {
+    return Promise.resolve(cached.data as T);
   }
-
-  const promise = apiFetch<T>(path);
-  responseCache.set(path, { token, promise, expiresAt: Date.now() + ttl });
-  promise.catch(() => {
-    if (responseCache.get(path)?.promise === promise) responseCache.delete(path);
-  });
-  return promise;
+  return cachedRequest<T>(path, {}, token, ttl);
 }
 
 export function getAnnouncements() {
@@ -461,10 +583,6 @@ export function getBarangays() {
   return cachedGet<Array<{ id: number; barangay_name: string }>>("/barangays", BARANGAYS_CACHE_TTL);
 }
 
-export function clearBarangayCache() {
-  responseCache.delete("/barangays");
-}
-
 export function createAnnouncement(title: string, message: string, image?: File | null) {
   const body = new FormData();
   body.append("title", title);
@@ -473,7 +591,7 @@ export function createAnnouncement(title: string, message: string, image?: File 
   return apiFetch<Announcement>("/announcements", {
     method: "POST",
     body,
-  }).finally(() => responseCache.delete("/announcements"));
+  });
 }
 
 export function createAnnouncementComment(
@@ -484,7 +602,7 @@ export function createAnnouncementComment(
   return apiFetch<AnnouncementComment>(`/announcements/${announcementId}/comments`, {
     method: "POST",
     body: JSON.stringify({ message, parent_comment_id: parentCommentId }),
-  }).finally(() => responseCache.delete("/announcements"));
+  });
 }
 
 export function getMessages(page = 1) {

@@ -67,7 +67,7 @@ import {
 } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
-import { clearSeniorCache, useSeniors, type SeniorDraft } from "@/lib/use-seniors";
+import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -531,7 +531,6 @@ function SeniorRecords() {
     setReviewingRequestId(request.id);
     try {
       await reviewSeniorEditRequest(request.id, status);
-      if (status === "approved") clearSeniorCache();
       setEditRequests((current) => current.filter((item) => item.id !== request.id));
       toast.success(
         status === "approved" ? "Senior record update approved." : "Senior record update declined.",
@@ -573,7 +572,6 @@ function SeniorRecords() {
   async function restoreRecord(oscaId: string) {
     try {
       await apiFetch(`/seniors/archive/${encodeURIComponent(oscaId)}/restore`, { method: "POST" });
-      clearSeniorCache();
       setArchivedRecords((records) => records.filter((record) => record.osca_id_number !== oscaId));
       toast.success(`${oscaId} was restored.`);
     } catch (error) {
@@ -657,7 +655,6 @@ function SeniorRecords() {
     if (!bulkPreview) return;
     try {
       const result = await bulkCreateSeniors(bulkPreview);
-      if (result.created.length > 0) clearSeniorCache();
       const failed = result.failed.length;
       if (failed)
         toast.error(

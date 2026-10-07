@@ -1,39 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  apiFetch,
-  clearBarangayCache,
-  getStoredUser,
-  submitSeniorEditRequest,
-  type ApiSenior,
-} from "./api";
+import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
 import type { Senior } from "./osca-data";
 
 type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
 type SeniorSummaryResponse = { total: number; active: number; pending: number; inactive: number };
-type SeniorCacheEntry = { value: unknown; expiresAt: number };
-const seniorCache = new Map<string, SeniorCacheEntry>();
-const SENIOR_CACHE_TTL = 30_000;
-const SENIOR_CACHE_ROLES = new Set(["admin", "head", "leader"]);
-
-async function getCachedSeniors<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const user = getStoredUser();
-  const role = user?.role?.toLowerCase();
-  const requestOptions = signal ? { signal } : {};
-  if (!role || !SENIOR_CACHE_ROLES.has(role)) return apiFetch<T>(path, requestOptions);
-  const cacheKey = `${user?.id ?? "guest"}:${user?.role ?? "guest"}:${path}`;
-  const cached = seniorCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
-  const value = await apiFetch<T>(path, requestOptions);
-  seniorCache.set(cacheKey, { value, expiresAt: Date.now() + SENIOR_CACHE_TTL });
-  return value;
-}
-
-export function clearSeniorCache() {
-  seniorCache.clear();
-  // Saving a senior can register a new barangay name.
-  clearBarangayCache();
-}
 
 export type SeniorDraft = Omit<Senior, "id"> & {
   id?: string;
@@ -158,7 +129,7 @@ export function useSeniors(
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    getCachedSeniors<PaginatedSeniorsResponse>(listPath, controller.signal)
+    apiFetch<PaginatedSeniorsResponse>(listPath, { signal: controller.signal })
       .then((result) => {
         if (!current) return;
         setSeniors(result.data.map(mapSenior));
@@ -174,7 +145,7 @@ export function useSeniors(
         if (!current) return;
         setLoading(false);
       });
-    void getCachedSeniors<SeniorSummaryResponse>("/seniors?summary_only=1")
+    void apiFetch<SeniorSummaryResponse>("/seniors?summary_only=1")
       .then((result) => {
         if (!current) return;
         setTotalCount(result.total);
@@ -238,7 +209,6 @@ export function useSeniors(
         method: "POST",
         body,
       });
-      clearSeniorCache();
       const mapped = mapSenior(result);
       if (!excludePending || mapped.status !== "Pending") {
         setSeniors((prev) => [mapped, ...prev]);
@@ -309,7 +279,6 @@ export function useSeniors(
         method: "POST",
         body,
       });
-      clearSeniorCache();
       const mapped = mapSenior(result);
       setSeniors((prev) =>
         prev.flatMap((senior) => {
@@ -336,7 +305,6 @@ export function useSeniors(
 
   const deleteSenior = useCallback(async (id: string) => {
     await apiFetch<void>(`/seniors/${id}`, { method: "DELETE" });
-    clearSeniorCache();
     setSeniors((prev) => {
       const deleted = prev.find((senior) => senior.id === id);
       if (deleted?.status === "Active") {
