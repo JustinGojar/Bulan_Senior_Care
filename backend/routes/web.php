@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProfilePhotoController;
 use Illuminate\Support\Facades\Route;
 
 $spaShell = static function () {
@@ -12,6 +13,10 @@ $spaShell = static function () {
         'Cache-Control' => 'no-cache',
     ]);
 };
+
+// Only reached when the file is missing from public storage (see public/router.php).
+Route::get('/storage/profile-photos/{file}', [ProfilePhotoController::class, 'show'])
+    ->where('file', '[A-Za-z0-9]+\\.(jpe?g|png|webp)');
 
 Route::get('/', $spaShell)->name('spa.home');
 Route::get('/{path}', $spaShell)

@@ -4,14 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Middleware\AuthenticateFromCookie;
 use App\Models\AuditLog;
-use App\Models\User;
 use App\Models\Barangay;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -215,11 +217,26 @@ class AuthController extends Controller
         ]);
 
         $user = $request->user();
+        $oldPhotoPath = $user->profile_photo_path;
         if ($request->hasFile('profile_photo')) {
-            $data['profile_photo_path'] = $request->file('profile_photo')->store('profile-photos', 'public');
+            $photo = $request->file('profile_photo');
+            $data['profile_photo_path'] = $photo->store('profile-photos', 'public');
+            // Railway's disk is reset on every deploy; this copy lets the photo be restored.
+            DB::table('profile_photos')->insert([
+                'path' => $data['profile_photo_path'],
+                'mime_type' => $photo->getMimeType(),
+                'contents' => base64_encode($photo->get()),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
         unset($data['profile_photo']);
         $user->update($data);
+
+        if (isset($data['profile_photo_path']) && $oldPhotoPath) {
+            Storage::disk('public')->delete($oldPhotoPath);
+            DB::table('profile_photos')->where('path', $oldPhotoPath)->delete();
+        }
 
         return response()->json($user->fresh()->load('roles'));
     }
