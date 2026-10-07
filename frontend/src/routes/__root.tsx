@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { THEME_KEY } from "@/lib/theme";
 import { NavigationProgress } from "@/components/NavigationProgress";
+import { FormValidation } from "@/components/FormValidation";
 import { StatusPage } from "@/components/StatusPage";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { Home, LayoutGrid, MapPinOff, RotateCw, TriangleAlert } from "lucide-react";
@@ -325,6 +326,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <NavigationProgress />
+      <FormValidation />
       <Outlet />
       <Toaster position="top-right" />
     </QueryClientProvider>

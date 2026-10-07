@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AuthAlert } from "@/components/AuthLayout";
+import { flagFieldById } from "@/lib/form-validation";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { API_URL } from "@/lib/api";
@@ -94,12 +94,10 @@ export function SeniorFormDialog({
   const [birthCertificate, setBirthCertificate] = useState<File | null>(null);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
   const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
     setValidId(null);
     setBirthCertificate(null);
     setProfilePhoto(null);
@@ -164,15 +162,21 @@ export function SeniorFormDialog({
     setDraft((d) => ({ ...d, [key]: value }));
 
   function submit() {
-    if (!draft.firstName?.trim()) return setError("First name is required.");
-    if (!draft.lastName?.trim()) return setError("Last name is required.");
-    if (!draft.birthdate) return setError("Birthday is required.");
+    if (!draft.lastName?.trim()) return flagFieldById("senior-last-name", "Surname is required.");
+    if (!draft.firstName?.trim())
+      return flagFieldById("senior-first-name", "First name is required.");
+    if (!draft.birthdate) return flagFieldById("senior-birthdate", "Date of birth is required.");
     const age = ageFromBirthdate(draft.birthdate);
     if (age < 60 || age > 130)
-      return setError("Age must be 60 or older to qualify for OSCA benefits.");
-    if (!draft.contact.trim()) return setError("Contact number is required.");
-    if (!senior && !validId) return setError("A valid ID is required.");
-    if (!senior && !birthCertificate) return setError("A birth certificate is required.");
+      return flagFieldById(
+        "senior-birthdate",
+        "Age must be 60 or older to qualify for OSCA benefits.",
+      );
+    if (!draft.contact.trim())
+      return flagFieldById("senior-contact", "Contact number is required.");
+    if (!senior && !validId) return flagFieldById("senior-valid-id", "Attach a valid ID.");
+    if (!senior && !birthCertificate)
+      return flagFieldById("senior-birth-certificate", "Attach a birth certificate.");
     onSubmit({
       ...draft,
       age,
@@ -569,8 +573,6 @@ export function SeniorFormDialog({
             </div>
           </section>
         </div>
-
-        {error && <AuthAlert tone="error">{error}</AuthAlert>}
 
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className={secondaryButtonClass}>
