@@ -29,7 +29,7 @@ import { IconActionButton } from "@/components/IconActionButton";
 import {
   getMessageRecipients,
   getMessages,
-  getToken,
+  getSessionId,
   getStoredUser,
   deleteConversation as deleteConversationApi,
   markMessageRead,
@@ -68,7 +68,7 @@ function MessagesPage() {
   const [contextConversation, setContextConversation] = useState<Message | null>(null);
 
   useEffect(() => {
-    if (!currentUserId || !getToken()) {
+    if (!currentUserId || !getSessionId()) {
       window.location.href = "/login";
       return;
     }
@@ -80,7 +80,7 @@ function MessagesPage() {
       })
       .catch(() => {
         setMessages([]);
-        if (!getToken()) window.location.href = "/login";
+        if (!getSessionId()) window.location.href = "/login";
       })
       .finally(() => setMessagesLoading(false));
   }, [currentPage, currentUserId]);

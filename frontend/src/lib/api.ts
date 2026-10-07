@@ -1,8 +1,11 @@
+// Same origin in every environment (the dev server proxies /api), so the API's
+// SameSite=Strict session cookie is always sent.
 const API_URL = (
-  import.meta.env.PROD ? "/api" : (import.meta.env["VITE_API_URL"] ?? "http://127.0.0.1:8000/api")
+  import.meta.env.PROD ? "/api" : (import.meta.env["VITE_API_URL"] ?? "/api")
 ).replace(/\/$/, "");
-const TOKEN_KEY = "bulan-api-token";
-const USER_KEY = "bulan-api-user";
+// Names a sign-in so tabs and caches can tell sessions apart. It is a random id, not a
+// credential: the API token lives in an HttpOnly cookie that page scripts cannot read.
+export const SESSION_ID_KEY = "bulan-session-id";
 const SESSION_KEY = "bulan-api-session";
 const SESSION_NOTICE_KEY = "bulan-session-notice";
 // Used for sessions signed in before the server reported its limits.
@@ -13,64 +16,38 @@ const BARANGAYS_CACHE_TTL = 5 * 60_000;
 const DEFAULT_FRESH_TTL = 30_000;
 // Older responses up to this age are shown at once and refreshed in the background.
 const MAX_STALE_AGE = 5 * 60_000;
-const CACHE_STORAGE_KEY = "bulan-api-cache";
+// Where older builds kept the API token, the signed-in profile and cached API responses.
+const LEGACY_STORAGE_KEYS = ["bulan-api-token", "bulan-api-user", "bulan-api-cache"];
 // Polled counters must always reach the server.
 const UNCACHED_PATHS = ["/user", "/messages/unread-summary", "/notifications/unread-count"];
 // Inbox-like data that other people change: reuse briefly, never show it stale.
 const LIVE_PATHS = ["/notifications", "/messages"];
 const LIVE_FRESH_TTL = 10_000;
 
-type CacheEntry = { token: string | null; data: unknown; fetchedAt: number; freshTtl: number };
+type CacheEntry = { session: string | null; data: unknown; fetchedAt: number; freshTtl: number };
 // Shared by every page so switching pages reuses data instead of refetching it.
-// Kept in sessionStorage too, so reloading the page shows data immediately.
+// Memory only: responses hold personal records, which must not linger in browser storage.
 const responseCache = new Map<string, CacheEntry>();
-const inflightRequests = new Map<string, { token: string | null; promise: Promise<unknown> }>();
-let persistTimer: number | undefined;
+const inflightRequests = new Map<string, { session: string | null; promise: Promise<unknown> }>();
+// The signed-in profile, also kept in memory only; a reload fetches it again.
+let currentUser: ApiUser | null = null;
 
-function loadPersistedCache() {
+function removeLegacyStorage() {
   if (typeof window === "undefined") return;
-  try {
-    const stored = JSON.parse(sessionStorage.getItem(CACHE_STORAGE_KEY) ?? "{}") as Record<
-      string,
-      CacheEntry
-    >;
-    const now = Date.now();
-    for (const [path, entry] of Object.entries(stored)) {
-      if (now - entry.fetchedAt < MAX_STALE_AGE) responseCache.set(path, entry);
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    } catch {
+      // Storage is blocked, so nothing was kept there either.
     }
-  } catch {
-    // Unreadable storage only means a cold cache.
   }
 }
-loadPersistedCache();
-
-function persistCache() {
-  if (typeof window === "undefined") return;
-  window.clearTimeout(persistTimer);
-  persistTimer = window.setTimeout(() => {
-    try {
-      if (responseCache.size === 0) sessionStorage.removeItem(CACHE_STORAGE_KEY);
-      else
-        sessionStorage.setItem(
-          CACHE_STORAGE_KEY,
-          JSON.stringify(Object.fromEntries(responseCache)),
-        );
-    } catch {
-      // Storage full or blocked: the in-memory cache still works.
-    }
-  }, 300);
-}
+removeLegacyStorage();
 
 function clearResponseCache() {
   responseCache.clear();
   inflightRequests.clear();
-  if (typeof window === "undefined") return;
-  window.clearTimeout(persistTimer);
-  try {
-    sessionStorage.removeItem(CACHE_STORAGE_KEY);
-  } catch {
-    // Nothing stored.
-  }
 }
 
 function cachePolicy(path: string) {
@@ -298,28 +275,33 @@ export type ServerNotification = {
   sender?: { name: string; role: string };
 };
 
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+/** The current sign-in's id, or null when signed out. */
+export function getSessionId() {
+  try {
+    return localStorage.getItem(SESSION_ID_KEY);
+  } catch {
+    return null;
+  }
 }
 
-export function setToken(token: string) {
+function startSession() {
   clearResponseCache();
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  currentUser = null;
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem(SESSION_NOTICE_KEY);
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
-  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(SESSION_ID_KEY, crypto.randomUUID());
 }
 
-export function clearToken() {
+export function clearSession() {
   clearResponseCache();
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(USER_KEY);
+  currentUser = null;
+  removeLegacyStorage();
+  try {
+    localStorage.removeItem(SESSION_ID_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Nothing stored.
+  }
 }
 
 export type SessionLimits = {
@@ -391,16 +373,11 @@ export function broadcastAuthChange() {
 }
 
 export function getStoredUser(): ApiUser | null {
-  try {
-    const value = localStorage.getItem(USER_KEY);
-    return value ? (JSON.parse(value) as ApiUser) : null;
-  } catch {
-    return null;
-  }
+  return currentUser;
 }
 
 export function setStoredUser(user: ApiUser) {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  currentUser = user;
   window.dispatchEvent(new CustomEvent("bulan-user-updated", { detail: user }));
 }
 
@@ -419,37 +396,36 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const policy = options.cache === "no-store" ? null : cachePolicy(path);
   if (!policy) return requestJson<T>(path, options);
 
-  const token = getToken();
+  const session = getSessionId();
   const cached = responseCache.get(path);
-  if (cached && cached.token === token) {
+  if (cached && cached.session === session) {
     const age = Date.now() - cached.fetchedAt;
     if (age < cached.freshTtl) return cached.data as T;
     if (policy.allowStale && age < MAX_STALE_AGE) {
-      void cachedRequest(path, options, token, policy.freshTtl).catch(() => undefined);
+      void cachedRequest(path, options, session, policy.freshTtl).catch(() => undefined);
       return cached.data as T;
     }
   }
-  return withAbort(cachedRequest<T>(path, options, token, policy.freshTtl), options.signal);
+  return withAbort(cachedRequest<T>(path, options, session, policy.freshTtl), options.signal);
 }
 
 /** Fetches a GET once for all callers waiting on the same path, then stores the result. */
 function cachedRequest<T>(
   path: string,
   options: RequestInit,
-  token: string | null,
+  session: string | null,
   freshTtl: number,
 ): Promise<T> {
   const inflight = inflightRequests.get(path);
-  if (inflight && inflight.token === token) return inflight.promise as Promise<T>;
+  if (inflight && inflight.session === session) return inflight.promise as Promise<T>;
   // The shared request ignores any one caller's abort signal.
   const { signal: _signal, ...sharedOptions } = options;
   const promise = requestJson<T>(path, sharedOptions);
-  inflightRequests.set(path, { token, promise });
+  inflightRequests.set(path, { session, promise });
   promise
     .then((data) => {
       if (inflightRequests.get(path)?.promise !== promise) return;
-      responseCache.set(path, { token, data, fetchedAt: Date.now(), freshTtl });
-      persistCache();
+      responseCache.set(path, { session, data, fetchedAt: Date.now(), freshTtl });
     })
     .catch(() => undefined)
     .finally(() => {
@@ -474,12 +450,17 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const token = getToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  // The API only accepts its HttpOnly session cookie alongside this header.
+  headers.set("X-Requested-With", "XMLHttpRequest");
+  const session = getSessionId();
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, { ...options, headers });
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      credentials: "same-origin",
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new Error(
@@ -489,10 +470,10 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   const body = (await response.json().catch(() => null)) as
     { message?: string; errors?: Record<string, string[]> } | T | null;
   if (!response.ok) {
-    // A 401 for a token that was already replaced or cleared must not end the current session.
-    if (response.status === 401 && path !== "/login" && token && getToken() === token) {
+    // A 401 for a session that was already replaced or ended must not end the current one.
+    if (response.status === 401 && path !== "/login" && session && getSessionId() === session) {
       noteSessionEnded((body as { message?: string } | null)?.message);
-      clearToken();
+      clearSession();
       broadcastAuthChange();
       throw new Error("Your session has expired. Please log in again before saving your profile.");
     }
@@ -508,19 +489,17 @@ export function getAuditLogs(page = 1) {
 }
 
 export async function login(email: string, password: string, termsVersion: string) {
-  const result = await apiFetch<{ token: string; user: ApiUser; session?: ServerSessionLimits }>(
-    "/login",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        email,
-        password,
-        accepted_terms: true,
-        terms_version: termsVersion,
-      }),
-    },
-  );
-  setToken(result.token);
+  // The server sets the API token as an HttpOnly cookie; it is not in the response body.
+  const result = await apiFetch<{ user: ApiUser; session?: ServerSessionLimits }>("/login", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      password,
+      accepted_terms: true,
+      terms_version: termsVersion,
+    }),
+  });
+  startSession();
   setStoredUser(result.user);
   setSessionLimits(result.session);
   return result.user;
@@ -623,7 +602,7 @@ export async function createManagedUser(data: {
 
 export function logout() {
   return apiFetch<void>("/logout", { method: "POST" }).finally(() => {
-    clearToken();
+    clearSession();
     broadcastAuthChange();
   });
 }
@@ -645,12 +624,12 @@ export function deleteManagedUser(id: number) {
 
 /** A GET whose data rarely changes, so it stays fresh for longer than the default. */
 function cachedGet<T>(path: string, ttl: number): Promise<T> {
-  const token = getToken();
+  const session = getSessionId();
   const cached = responseCache.get(path);
-  if (cached && cached.token === token && Date.now() - cached.fetchedAt < ttl) {
+  if (cached && cached.session === session && Date.now() - cached.fetchedAt < ttl) {
     return Promise.resolve(cached.data as T);
   }
-  return cachedRequest<T>(path, {}, token, ttl);
+  return cachedRequest<T>(path, {}, session, ttl);
 }
 
 export function getAnnouncements() {

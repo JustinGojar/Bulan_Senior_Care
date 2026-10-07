@@ -18,6 +18,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
 import { EmptyState, SectionHeader, TableSkeletonRows } from "@/components/DesignKit";
 import { fieldClass, panelClass, tileClass } from "@/components/design-kit";
@@ -33,7 +34,7 @@ import {
   API_URL,
   apiFetch,
   getBarangays,
-  clearToken,
+  clearSession,
   getAuditLogs,
   getStoredUser,
   logout,
@@ -66,6 +67,7 @@ function ProfilePage() {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [recentActivity, setRecentActivity] = useState<AuditLog[] | null>(null);
   const isAdmin = user?.role?.toLowerCase() === "admin";
@@ -191,9 +193,9 @@ function ProfilePage() {
     }
   }
 
-  async function signOut() {
+  function signOut() {
     void logout().catch(() => undefined);
-    clearToken();
+    clearSession();
     window.location.href = "/login";
   }
 
@@ -348,7 +350,8 @@ function ProfilePage() {
               </button>
             </form>
             <button
-              onClick={signOut}
+              type="button"
+              onClick={() => setLogoutConfirmOpen(true)}
               className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 text-sm font-bold text-destructive transition-colors hover:bg-destructive/15"
             >
               <LogOut className="h-4 w-4" /> Log out
@@ -564,6 +567,11 @@ function ProfilePage() {
           setPhoto(edited);
           setEditingPhoto(null);
         }}
+      />
+      <LogoutConfirmDialog
+        open={logoutConfirmOpen}
+        onOpenChange={setLogoutConfirmOpen}
+        onConfirm={signOut}
       />
     </AppShell>
   );
