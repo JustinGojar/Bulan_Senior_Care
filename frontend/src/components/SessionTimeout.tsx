@@ -22,7 +22,7 @@ import {
 
 // Shared through localStorage so activity in any open tab keeps every tab signed in.
 const ACTIVITY_KEY = "bulan-last-activity";
-const WARNING_MS = 60_000;
+const WARNING_MS = 2 * 60_000;
 // Writing on every mouse move would be wasteful; this is precise enough for a minutes-long limit.
 const ACTIVITY_WRITE_INTERVAL = 5_000;
 const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"] as const;
@@ -53,7 +53,7 @@ function formatCountdown(seconds: number) {
 
 /**
  * Signs the user out after a stretch without mouse, keyboard or touch input, and when the
- * sign-in reaches its absolute limit, with a one-minute warning first. Background polling
+ * sign-in reaches its absolute limit, with a two-minute warning first. Background polling
  * keeps the server token fresh while a tab is visible, so this is what ends an unattended
  * session; the server's own idle timeout covers closed tabs.
  */
