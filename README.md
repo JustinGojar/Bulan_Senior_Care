@@ -19,7 +19,7 @@ php artisan migrate --seed
 php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Configure local MySQL in `backend/.env`. In development the frontend API client defaults to `http://127.0.0.1:8000/api`; `VITE_API_URL` can override that development URL. Seeded demo accounts and the password `password` are for local development only.
+Configure local MySQL in `backend/.env`. In development the Vite server proxies `/api` and `/storage` to `http://127.0.0.1:8000` (override with `VITE_API_PROXY_TARGET`), so the API's HttpOnly, SameSite=Strict session cookie works. The API token is never exposed to page scripts or kept in browser storage, and the signed-in profile and API responses are held in memory only. Seeded demo accounts and the password `password` are for local development only.
 
 ## Railway deployment
 

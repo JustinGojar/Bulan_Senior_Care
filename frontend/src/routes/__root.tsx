@@ -12,9 +12,10 @@ import { useEffect, type ReactNode } from "react";
 import {
   API_URL,
   broadcastAuthChange,
-  clearToken,
-  getToken,
+  clearSession,
+  getSessionId,
   noteSessionEnded,
+  SESSION_ID_KEY,
   setStoredUser,
   type ApiUser,
 } from "@/lib/api";
@@ -33,16 +34,18 @@ import appCss from "../styles.css?url";
 const PUBLIC_PATHS = new Set(["/", "/login", "/forgot-password", "/reset-password"]);
 const CURRENT_USER_CACHE_DURATION = 60_000;
 
-let cachedCurrentUser: { token: string; user: ApiUser; expiresAt: number } | null = null;
+let cachedCurrentUser: { session: string; user: ApiUser; expiresAt: number } | null = null;
 const currentUserRequests = new Map<string, Promise<ApiUser>>();
 
-async function requestCurrentUser(token: string) {
+async function requestCurrentUser() {
   let response: Response;
   try {
+    // Authenticated by the HttpOnly session cookie, which the API accepts with this header.
     response = await fetch(`${API_URL}/user`, {
+      credentials: "same-origin",
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${token}`,
+        "X-Requested-With": "XMLHttpRequest",
       },
     });
   } catch {
@@ -66,32 +69,32 @@ async function requestCurrentUser(token: string) {
   return body as ApiUser;
 }
 
-function loadCurrentUser(token: string) {
-  if (cachedCurrentUser?.token === token && cachedCurrentUser.expiresAt > Date.now()) {
+function loadCurrentUser(session: string) {
+  if (cachedCurrentUser?.session === session && cachedCurrentUser.expiresAt > Date.now()) {
     return Promise.resolve(cachedCurrentUser.user);
   }
 
-  const existingRequest = currentUserRequests.get(token);
+  const existingRequest = currentUserRequests.get(session);
   if (existingRequest) return existingRequest;
 
-  const promise = requestCurrentUser(token)
+  const promise = requestCurrentUser()
     .then((user) => {
-      if (getToken() !== token) {
+      if (getSessionId() !== session) {
         throw new Error("Authentication changed while validating the session.");
       }
 
       setStoredUser(user);
       cachedCurrentUser = {
-        token,
+        session,
         user,
         expiresAt: Date.now() + CURRENT_USER_CACHE_DURATION,
       };
       return user;
     })
     .finally(() => {
-      if (currentUserRequests.get(token) === promise) currentUserRequests.delete(token);
+      if (currentUserRequests.get(session) === promise) currentUserRequests.delete(session);
     });
-  currentUserRequests.set(token, promise);
+  currentUserRequests.set(session, promise);
   return promise;
 }
 
@@ -168,9 +171,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       "/age-threshold": ["admin", "head"],
     };
     const isPublic = PUBLIC_PATHS.has(location.pathname);
-    const token = getToken();
+    const session = getSessionId();
 
-    if (!token) {
+    if (!session) {
       cachedCurrentUser = null;
       if (!isPublic) throw redirect({ to: "/login" });
       return;
@@ -178,19 +181,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
     let user: ApiUser;
     while (true) {
-      const token = getToken();
-      if (!token) {
+      const session = getSessionId();
+      if (!session) {
         cachedCurrentUser = null;
         if (!isPublic) throw redirect({ to: "/login" });
         return;
       }
 
       try {
-        user = await loadCurrentUser(token);
+        user = await loadCurrentUser(session);
       } catch (error) {
-        if (getToken() !== token) continue;
+        if (getSessionId() !== session) continue;
 
-        if (cachedCurrentUser?.token === token) cachedCurrentUser = null;
+        if (cachedCurrentUser?.session === session) cachedCurrentUser = null;
         const wasUnauthorized = error instanceof Error && "status" in error && error.status === 401;
         // Only a 401 means the session is gone. Network failures, server errors and
         // requests cancelled by a page reload must not sign the user out.
@@ -199,13 +202,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           throw error;
         }
         noteSessionEnded(error.message);
-        clearToken();
+        clearSession();
         broadcastAuthChange();
         if (isPublic) return;
         throw redirect({ to: "/login" });
       }
 
-      if (getToken() === token) break;
+      if (getSessionId() === session) break;
     }
 
     if (location.pathname === "/login") {
@@ -274,24 +277,24 @@ function RootComponent() {
 
   useEffect(() => {
     // On a full page load the root beforeLoad runs on the server, where it cannot see the
-    // stored token, and hydration does not run it again. Re-run it here so a signed-out
+    // stored session, and hydration does not run it again. Re-run it here so a signed-out
     // visitor (a typed URL, a reload, or the back button after logout) is sent to login.
     void router.invalidate();
   }, [router]);
 
   useEffect(() => {
     const handleAuthChange = () => {
-      clearToken();
+      clearSession();
       if (PUBLIC_PATHS.has(router.state.location.pathname)) return;
       void router.navigate({ to: "/login", replace: true });
     };
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === "bulan-api-token" && event.newValue === null) handleAuthChange();
+      if (event.key === SESSION_ID_KEY && event.newValue === null) handleAuthChange();
     };
     // The back-forward cache can restore a snapshot of an account page after logout;
     // send that snapshot to the login page instead of showing it.
     const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted && !getToken()) handleAuthChange();
+      if (event.persisted && !getSessionId()) handleAuthChange();
     };
     const channel =
       typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;

@@ -34,7 +34,7 @@ import {
   API_URL,
   apiFetch,
   getBarangays,
-  clearToken,
+  clearSession,
   getAuditLogs,
   getStoredUser,
   logout,
@@ -195,7 +195,7 @@ function ProfilePage() {
 
   function signOut() {
     void logout().catch(() => undefined);
-    clearToken();
+    clearSession();
     window.location.href = "/login";
   }
 

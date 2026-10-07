@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   broadcastAuthChange,
-  clearToken,
+  clearSession,
   getCurrentUser,
   getSessionLimits,
-  getToken,
+  getSessionId,
   logout,
   setSessionNotice,
 } from "@/lib/api";
@@ -87,12 +87,12 @@ export function SessionTimeout() {
       show(null);
       setSessionNotice(message);
       void logout().catch(() => undefined);
-      clearToken();
+      clearSession();
       broadcastAuthChange();
     };
 
     const check = () => {
-      if (ended || !getToken()) return;
+      if (ended || !getSessionId()) return;
       const { idleTimeoutMinutes, expiresAt } = getSessionLimits();
       const now = Date.now();
       const idleDeadline =
@@ -142,7 +142,7 @@ export function SessionTimeout() {
     warningRef.current = null;
     setWarning(null);
     void logout().catch(() => undefined);
-    clearToken();
+    clearSession();
     broadcastAuthChange();
   }
 

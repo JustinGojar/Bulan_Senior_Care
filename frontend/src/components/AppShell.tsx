@@ -23,11 +23,11 @@ import {
   API_URL,
   apiFetch,
   getBarangays,
-  clearToken,
+  clearSession,
   getAnnouncements,
   getServerUnreadNotificationCount,
   getStoredUser,
-  getToken,
+  getSessionId,
   getUnreadMessageSummary,
   logout,
   type Announcement,
@@ -47,16 +47,18 @@ const UNREAD_REFRESH_INTERVAL = 15_000;
 
 type UnreadKind = "notifications" | "messages";
 // Last known badge counts, kept across page switches so each navigation doesn't refetch them.
-const unreadCache: Record<UnreadKind, { token: string | null; count: number; fetchedAt: number }> =
-  {
-    notifications: { token: null, count: 0, fetchedAt: 0 },
-    messages: { token: null, count: 0, fetchedAt: 0 },
-  };
+const unreadCache: Record<
+  UnreadKind,
+  { session: string | null; count: number; fetchedAt: number }
+> = {
+  notifications: { session: null, count: 0, fetchedAt: 0 },
+  messages: { session: null, count: 0, fetchedAt: 0 },
+};
 
 function cachedUnreadCount(kind: UnreadKind) {
   if (typeof window === "undefined") return 0;
   const cached = unreadCache[kind];
-  return cached.token === getToken() ? cached.count : 0;
+  return cached.session === getSessionId() ? cached.count : 0;
 }
 
 // Polls a badge count while the tab is visible; background tabs stop hitting the API.
@@ -67,11 +69,11 @@ function watchUnreadCount(
 ) {
   let active = true;
   const refresh = (force: boolean) => {
-    const token = getToken();
+    const session = getSessionId();
     const cached = unreadCache[kind];
     if (
       !force &&
-      cached.token === token &&
+      cached.session === session &&
       Date.now() - cached.fetchedAt < UNREAD_REFRESH_INTERVAL
     ) {
       setCount(cached.count);
@@ -79,7 +81,7 @@ function watchUnreadCount(
     }
     load()
       .then(({ count }) => {
-        unreadCache[kind] = { token, count, fetchedAt: Date.now() };
+        unreadCache[kind] = { session, count, fetchedAt: Date.now() };
         if (active) setCount(count);
       })
       .catch(() => {
@@ -320,7 +322,7 @@ export function AppShell({
 
   function signOut() {
     void logout().catch(() => undefined);
-    clearToken();
+    clearSession();
     navigate({ to: "/login", replace: true });
   }
 

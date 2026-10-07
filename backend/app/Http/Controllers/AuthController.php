@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\AuthenticateFromCookie;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\Barangay;
@@ -111,11 +112,11 @@ class AuthController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 
+        // The token goes in an HttpOnly cookie, never the body, so page scripts cannot read it.
         return response()->json([
-            'token' => $token,
             'user' => $user->load('roles'),
             'session' => self::sessionLimits(),
-        ]);
+        ])->withCookie(AuthenticateFromCookie::issue($request, $token));
     }
 
     /**
@@ -194,7 +195,8 @@ class AuthController extends Controller
     {
         $request->user()->tokens()->delete();
 
-        return response()->json(['message' => 'Logged out successfully.']);
+        return response()->json(['message' => 'Logged out successfully.'])
+            ->withCookie(AuthenticateFromCookie::forget($request));
     }
 
     public function user(Request $request): JsonResponse
