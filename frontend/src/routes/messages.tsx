@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { authSubmitClass } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
+import { EmptyState, RowSkeletons, SectionHeader } from "@/components/DesignKit";
 import {
   fieldClass,
   iconButtonClass,
@@ -384,11 +384,7 @@ function MessagesPage() {
             </div>
           </div>
           <div className="mt-4 divide-y divide-border/60 rounded-lg border border-border/60">
-            {messagesLoading && (
-              <p className="flex items-center justify-center gap-2 px-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading conversations...
-              </p>
-            )}
+            {messagesLoading && <RowSkeletons count={5} label="Loading conversations" />}
             {visibleMessages.map((item) => {
               const received = item.recipient.id === currentUser?.id;
               const other = received ? item.sender : item.recipient;
@@ -448,15 +444,13 @@ function MessagesPage() {
               );
             })}
             {!messagesLoading && !visibleMessages.length && (
-              <div className="px-2 py-12 text-center">
-                <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-lg bg-muted text-muted-foreground">
-                  <MessagesSquare className="h-5 w-5" />
-                </span>
-                <p className="font-semibold">No conversations found.</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Start one with the New message button.
-                </p>
-              </div>
+              <EmptyState
+                bare
+                icon={MessagesSquare}
+                title="No conversations found"
+                description="Start one with the New message button."
+                className="py-12"
+              />
             )}
           </div>
           {lastPage > 1 && (
@@ -593,9 +587,13 @@ function ConversationDetail({
           );
         })}
         {!conversation.length && (
-          <p className="text-center text-sm text-muted-foreground">
-            No messages in this conversation yet.
-          </p>
+          <EmptyState
+            bare
+            compact
+            icon={MessagesSquare}
+            title="No messages yet"
+            description="Send the first message below."
+          />
         )}
       </div>
       <form

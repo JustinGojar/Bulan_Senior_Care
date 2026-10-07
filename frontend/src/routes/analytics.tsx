@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Loader2,
   MapPin,
   PieChart as PieIcon,
   TrendingUp,
@@ -8,6 +7,7 @@ import {
   UserRound,
   Users,
   type LucideIcon,
+  Gift,
 } from "lucide-react";
 import {
   Area,
@@ -29,10 +29,11 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, SkeletonValue } from "@/components/DesignKit";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TONE_BAR, TONE_ICON, panelClass, statCardClass, type Tone } from "@/components/design-kit";
 import { apiFetch, getStoredUser } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -102,7 +103,7 @@ function KpiTile({
   icon: LucideIcon;
   tone: Tone;
   label: string;
-  value: string;
+  value: ReactNode;
 }) {
   return (
     <div className={`${statCardClass} hover:translate-y-0`}>
@@ -160,11 +161,6 @@ function Analytics() {
           <AuthAlert tone="error">{error}</AuthAlert>
         </div>
       )}
-      {loading && (
-        <p className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading analytics data...
-        </p>
-      )}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(
           [
@@ -179,7 +175,7 @@ function Analytics() {
             icon={icon}
             tone={tone}
             label={label}
-            value={value === undefined ? "..." : value.toLocaleString()}
+            value={value === undefined ? <SkeletonValue /> : value.toLocaleString()}
           />
         ))}
       </div>
@@ -191,43 +187,46 @@ function Analytics() {
             subtitle="Registered seniors in each barangay."
           />
           <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={zoneParticipants}>
-                <defs>
-                  <linearGradient id="zoneFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={12}
-                  allowDecimals={false}
-                  domain={[0, "auto"]}
-                />
-                <Tooltip {...TOOLTIP_PROPS} />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="var(--chart-1)"
-                  strokeWidth={2.5}
-                  fill="url(#zoneFill)"
-                  dot={{ r: 4, fill: "var(--chart-1)" }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <Skeleton className="h-full w-full rounded-lg" />
+            ) : zoneParticipants.length === 0 ? (
+              <EmptyState
+                icon={MapPin}
+                title="No senior records yet"
+                description="Barangay totals appear here once seniors are registered."
+                className="h-full"
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={zoneParticipants}>
+                  <defs>
+                    <linearGradient id="zoneFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={12}
+                    allowDecimals={false}
+                    domain={[0, "auto"]}
+                  />
+                  <Tooltip {...TOOLTIP_PROPS} />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    stroke="var(--chart-1)"
+                    strokeWidth={2.5}
+                    fill="url(#zoneFill)"
+                    dot={{ r: 4, fill: "var(--chart-1)" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {loading && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading live analytics...
-            </p>
-          )}
-          {!loading && zoneParticipants.length === 0 && (
-            <p className="mt-3 text-sm text-muted-foreground">No senior records available.</p>
-          )}
         </section>
       )}
 
@@ -261,35 +260,41 @@ function Analytics() {
             subtitle="Seniors assigned to each benefit."
           />
           <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={benefitRecords}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius={70}
-                  outerRadius={110}
-                  paddingAngle={2}
-                >
-                  {benefitRecords.map((entry, i) => (
-                    <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                  <LabelList
+            {!loading && benefitRecords.length === 0 ? (
+              <EmptyState
+                icon={PieIcon}
+                title="No benefit records yet"
+                description="Benefit assignments will be charted here."
+                className="h-full"
+              />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={benefitRecords}
                     dataKey="value"
-                    position="inside"
-                    fill="white"
-                    fontSize={14}
-                    fontWeight={700}
-                  />
-                </Pie>
-                <Tooltip {...TOOLTIP_PROPS} />
-                <Legend formatter={(value) => String(value)} />
-              </PieChart>
-            </ResponsiveContainer>
+                    nameKey="name"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={2}
+                  >
+                    {benefitRecords.map((entry, i) => (
+                      <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                    <LabelList
+                      dataKey="value"
+                      position="inside"
+                      fill="white"
+                      fontSize={14}
+                      fontWeight={700}
+                    />
+                  </Pie>
+                  <Tooltip {...TOOLTIP_PROPS} />
+                  <Legend formatter={(value) => String(value)} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {!loading && benefitRecords.length === 0 && (
-            <p className="mt-3 text-sm text-muted-foreground">No benefit records available.</p>
-          )}
         </section>
       </div>
 
@@ -393,9 +398,13 @@ function Analytics() {
               </div>
             )}
             {!loading && releasedBenefitRecords.length === 0 && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                No benefits have been released in this barangay.
-              </p>
+              <EmptyState
+                compact
+                icon={Gift}
+                title="No releases yet"
+                description="No benefits have been released in this barangay."
+                className="mt-3"
+              />
             )}
           </>
         ) : (
@@ -449,8 +458,14 @@ function Analytics() {
               })}
               {!loading && barangaySummary.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    No barangay records available.
+                  <td colSpan={4}>
+                    <EmptyState
+                      bare
+                      compact
+                      icon={MapPin}
+                      title="No barangay records yet"
+                      description="Each barangay's totals appear here once seniors are registered."
+                    />
                   </td>
                 </tr>
               )}

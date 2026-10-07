@@ -28,7 +28,13 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import {
+  EmptyState,
+  RowSkeletons,
+  SectionHeader,
+  StatusPill,
+  TableSkeletonRows,
+} from "@/components/DesignKit";
 import {
   fieldClass,
   panelClass,
@@ -967,12 +973,12 @@ function SeniorRecords() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="px-5 py-14 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-                  Loading senior records...
-                </td>
-              </tr>
+              <TableSkeletonRows
+                rows={6}
+                columns={8}
+                label="Loading senior records"
+                cellClassName="px-4 py-[19px]"
+              />
             ) : error ? (
               <tr>
                 <td colSpan={8} className="px-5 py-12">
@@ -1082,14 +1088,14 @@ function SeniorRecords() {
             )}
             {!loading && !error && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-5 py-14 text-center">
-                  <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-lg bg-muted text-muted-foreground">
-                    <Search className="h-5 w-5" />
-                  </span>
-                  <p className="font-semibold">No records match this filter.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Try a different search or reset the filters.
-                  </p>
+                <td colSpan={8}>
+                  <EmptyState
+                    bare
+                    icon={Search}
+                    title="No records match this filter"
+                    description="Try a different search or reset the filters."
+                    className="py-14"
+                  />
                 </td>
               </tr>
             )}
@@ -1187,12 +1193,21 @@ function SeniorRecords() {
             <DialogDescription>OSCA IDs for records deleted by an administrator.</DialogDescription>
           </DialogHeader>
           {archiveLoading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-              Loading archive...
-            </p>
+            <div className="space-y-2">
+              <RowSkeletons
+                count={3}
+                avatar={false}
+                label="Loading archive"
+                className={`${tileClass} py-3`}
+              />
+            </div>
           ) : archivedRecords.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No deleted records.</p>
+            <EmptyState
+              compact
+              icon={Archive}
+              title="No deleted records"
+              description="Records an administrator deletes are kept here by OSCA ID."
+            />
           ) : (
             <div className="max-h-80 space-y-2 overflow-y-auto">
               {archivedRecords.map((record) => (

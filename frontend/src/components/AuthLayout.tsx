@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, HeartHandshake, ShieldCheck, Users } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, HeartHandshake, ShieldCheck, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -104,12 +104,20 @@ export function AuthLayout({
   );
 }
 
-export function AuthAlert({ tone, children }: { tone: "error" | "success"; children: ReactNode }) {
-  const Icon = tone === "error" ? AlertCircle : CheckCircle2;
+export function AuthAlert({
+  tone,
+  children,
+}: {
+  tone: "error" | "success" | "info";
+  children: ReactNode;
+}) {
+  const Icon = tone === "error" ? AlertCircle : tone === "info" ? Clock : CheckCircle2;
   const toneClass =
     tone === "error"
       ? "border-destructive/30 bg-destructive/10 text-destructive"
-      : "border-success/30 bg-success/10 text-success";
+      : tone === "info"
+        ? "border-gold/40 bg-gold/15 text-gold-foreground dark:text-gold"
+        : "border-success/30 bg-success/10 text-success";
 
   return (
     <div

@@ -14,6 +14,7 @@ import {
   broadcastAuthChange,
   clearToken,
   getToken,
+  noteSessionEnded,
   setStoredUser,
   type ApiUser,
 } from "@/lib/api";
@@ -196,6 +197,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           if (isPublic) return;
           throw error;
         }
+        noteSessionEnded(error.message);
         clearToken();
         broadcastAuthChange();
         if (isPublic) return;
@@ -270,6 +272,13 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    // On a full page load the root beforeLoad runs on the server, where it cannot see the
+    // stored token, and hydration does not run it again. Re-run it here so a signed-out
+    // visitor (a typed URL, a reload, or the back button after logout) is sent to login.
+    void router.invalidate();
+  }, [router]);
+
+  useEffect(() => {
     const handleAuthChange = () => {
       clearToken();
       if (PUBLIC_PATHS.has(router.state.location.pathname)) return;
@@ -278,15 +287,22 @@ function RootComponent() {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === "bulan-api-token" && event.newValue === null) handleAuthChange();
     };
+    // The back-forward cache can restore a snapshot of an account page after logout;
+    // send that snapshot to the login page instead of showing it.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && !getToken()) handleAuthChange();
+    };
     const channel =
       typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("bulan-auth") : null;
     channel?.addEventListener("message", handleAuthChange);
     window.addEventListener("bulan-auth-changed", handleAuthChange);
     window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("pageshow", handlePageShow);
     return () => {
       channel?.close();
       window.removeEventListener("bulan-auth-changed", handleAuthChange);
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, [router]);
 
@@ -310,7 +326,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <NavigationProgress />
       <Outlet />
-      <Toaster richColors position="top-right" />
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }

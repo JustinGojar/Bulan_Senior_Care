@@ -16,12 +16,17 @@ import {
   Users,
   X,
   type LucideIcon,
+  CheckCircle2,
+  Clock3,
+  Gift,
+  MessageCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   TONE_BAR,
   TONE_ICON,
@@ -109,7 +114,7 @@ function StatCardBody({
   icon: LucideIcon;
   tone: Tone;
   label: string;
-  value: string;
+  value: ReactNode;
   change: number | null | undefined;
   description: string;
 }) {
@@ -333,7 +338,7 @@ function Dashboard() {
             icon={Users}
             tone="navy"
             label="Total Registered"
-            value={loading ? "..." : totalCount.toLocaleString()}
+            value={loading ? <SkeletonValue /> : totalCount.toLocaleString()}
             change={overview?.monthly_change.total_registered}
             description="Total number of senior citizens in the system."
           />
@@ -343,7 +348,13 @@ function Dashboard() {
             icon={ShieldCheck}
             tone="gold"
             label="Benefits Distributed"
-            value={overview ? `₱${overview.benefits_distributed_amount.toLocaleString()}` : "..."}
+            value={
+              overview ? (
+                `₱${overview.benefits_distributed_amount.toLocaleString()}`
+              ) : (
+                <SkeletonValue className="h-7 w-24" />
+              )
+            }
             change={overview?.monthly_change.benefits_distributed_amount}
             description="Total amount of benefits released to senior citizens."
           />
@@ -353,7 +364,7 @@ function Dashboard() {
             icon={UserCheck}
             tone="success"
             label="Active Seniors"
-            value={loading ? "..." : activeCount.toLocaleString()}
+            value={loading ? <SkeletonValue /> : activeCount.toLocaleString()}
             change={overview?.monthly_change.active_seniors}
             description="Seniors with active records and benefits."
           />
@@ -363,7 +374,7 @@ function Dashboard() {
             icon={Clock}
             tone="coral"
             label="Pending Applications"
-            value={loading ? "..." : pendingCount.toLocaleString()}
+            value={loading ? <SkeletonValue /> : pendingCount.toLocaleString()}
             change={overview?.monthly_change.pending_applications}
             description="Applications awaiting verification or approval."
           />
@@ -410,7 +421,12 @@ function Dashboard() {
               </article>
             ))}
             {!announcements.length && (
-              <p className="text-sm text-muted-foreground">No current announcements.</p>
+              <EmptyState
+                compact
+                icon={Megaphone}
+                title="No current announcements"
+                description="Announcements from the OSCA Head will appear here."
+              />
             )}
           </div>
         </section>
@@ -436,7 +452,13 @@ function Dashboard() {
                 </div>
               ))}
               {overview && overview.received_by_benefit.length === 0 && (
-                <p className="text-sm text-muted-foreground">No released benefits yet.</p>
+                <EmptyState
+                  compact
+                  icon={Gift}
+                  title="No released benefits yet"
+                  description="Counts appear once age-based benefits are released."
+                  className="sm:col-span-2 lg:col-span-4"
+                />
               )}
             </div>
           </section>
@@ -483,8 +505,14 @@ function Dashboard() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold">{item.label}</span>
                     <span className="text-muted-foreground">
-                      <span className={`font-bold ${item.text}`}>{item.value}</span>
-                      <span className="ml-1.5 text-xs">({percentage}%)</span>
+                      {overview ? (
+                        <>
+                          <span className={`font-bold ${item.text}`}>{item.value}</span>
+                          <span className="ml-1.5 text-xs">({percentage}%)</span>
+                        </>
+                      ) : (
+                        <Skeleton className="inline-block h-3.5 w-14 align-middle" />
+                      )}
                     </span>
                   </div>
                   <div className="mt-2 h-2 rounded-full bg-muted">
@@ -497,10 +525,17 @@ function Dashboard() {
               );
             })}
             {!overview && (
-              <p className="text-sm text-muted-foreground">Loading distribution data...</p>
+              <span role="status" className="sr-only">
+                Loading distribution data
+              </span>
             )}
             {overview && distributionTotal === 0 && (
-              <p className="text-sm text-muted-foreground">No benefit transactions recorded yet.</p>
+              <EmptyState
+                compact
+                icon={Clock3}
+                title="No benefit transactions yet"
+                description="Release progress shows here once benefits are recorded."
+              />
             )}
           </div>
         </section>
@@ -530,9 +565,14 @@ function Dashboard() {
               <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
             </div>
           ))}
-          {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
+          {loading && <TileSkeletons label="Loading senior records" />}
           {!loading && eligibilityFlags.length === 0 && (
-            <p className="text-sm text-muted-foreground">No age threshold flags.</p>
+            <EmptyState
+              icon={CheckCircle2}
+              title="No age threshold flags"
+              description="Seniors who reach a benefit age will be flagged here."
+              className="md:col-span-2 xl:col-span-3"
+            />
           )}
         </div>
       </section>
@@ -746,7 +786,12 @@ function Dashboard() {
                     </div>
                   ))}
                   {!selectedAnnouncement.comments?.length && (
-                    <p className="text-sm text-muted-foreground">No comments yet.</p>
+                    <EmptyState
+                      compact
+                      icon={MessageCircle}
+                      title="No comments yet"
+                      description="Be the first to reply to this announcement."
+                    />
                   )}
                 </div>
                 <form onSubmit={handleCreateComment} className="mt-4 flex gap-3">

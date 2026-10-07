@@ -1,8 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
-import { login } from "@/lib/api";
+import { login, takeSessionNotice } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -27,11 +27,40 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Why the previous session ended (inactivity or its time limit), if it ended on its own.
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // The browser back button sends the user to the landing page instead of the previous entry,
+  // so a signed-out user can never step back into the account pages they were on before
+  // logging out. The blocker first undoes the back step; once that settles, the login entry
+  // is replaced with the landing page.
+  useBlocker({
+    shouldBlockFn: ({ action }) => {
+      if (action !== "BACK" && action !== "GO") return false;
+      window.addEventListener("popstate", () => navigate({ to: "/", replace: true }), {
+        once: true,
+      });
+      return true;
+    },
+    enableBeforeUnload: false,
+  });
+  // When the login page was opened by a full page load there is no earlier entry the app can
+  // intercept, so slip a landing page entry in beneath it for the back button to land on.
+  useEffect(() => {
+    if (router.history.location.state.__TSR_index !== 0) return;
+    const { href, state } = router.history.location;
+    router.history.replace("/");
+    router.history.push(href, state);
+  }, [router]);
+  useEffect(() => {
+    const message = takeSessionNotice();
+    if (message) setNotice(message);
+  }, []);
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to your account to continue to the portal.">
@@ -41,8 +70,9 @@ function LoginPage() {
           e.preventDefault();
           setSubmitting(true);
           setError(null);
+          setNotice(null);
           login(email, password)
-            .then(() => navigate({ to: "/dashboard" }))
+            .then(() => navigate({ to: "/dashboard", replace: true }))
             .catch((reason: Error) => setError(reason.message))
             .finally(() => setSubmitting(false));
         }}
@@ -66,6 +96,7 @@ function LoginPage() {
           </div>
         </div>
 
+        {notice && !error && <AuthAlert tone="info">{notice}</AuthAlert>}
         {error && <AuthAlert tone="error">{error}</AuthAlert>}
 
         <div>

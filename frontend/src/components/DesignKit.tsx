@@ -1,5 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { tileClass } from "@/components/design-kit";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /** Shared building blocks for app pages, matching the login and dashboard design. */
 
@@ -50,6 +52,151 @@ export function SectionHeader({
         </div>
       </div>
       {badge}
+    </div>
+  );
+}
+
+/** Inline placeholder for a stat number that is still loading. */
+export function SkeletonValue({ className = "h-7 w-16" }: { className?: string }) {
+  return (
+    <>
+      <Skeleton className={`inline-block align-middle ${className}`} />
+      <span className="sr-only">Loading</span>
+    </>
+  );
+}
+
+/** Card placeholders shaped like the record tiles (name, pill, two lines). */
+export function TileSkeletons({ count = 3, label }: { count?: number; label: string }) {
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {label}
+      </span>
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className={tileClass}>
+          <div className="flex items-start justify-between gap-3">
+            <Skeleton className="h-4 w-2/5" />
+            <Skeleton className="h-5 w-14 rounded-full" />
+          </div>
+          <Skeleton className="mt-3 h-3 w-3/5" />
+          <Skeleton className="mt-2 h-3 w-4/5" />
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** List row placeholders with a round avatar, for conversations and short lists. */
+export function RowSkeletons({
+  count = 4,
+  label,
+  avatar = true,
+  className = "flex items-center gap-3 px-3 py-3.5 sm:gap-4 sm:px-4",
+}: {
+  count?: number;
+  label: string;
+  avatar?: boolean;
+  className?: string;
+}) {
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {label}
+      </span>
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className={className}>
+          {avatar && <Skeleton className="h-11 w-11 shrink-0 rounded-full" />}
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-4" style={{ width: `${45 - (index % 3) * 8}%` }} />
+              <Skeleton className="h-3 w-10" />
+            </div>
+            <Skeleton className="h-3" style={{ width: `${75 - (index % 2) * 15}%` }} />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Table row placeholders; render inside <tbody>. */
+export function TableSkeletonRows({
+  rows = 5,
+  columns,
+  label,
+  cellClassName = "px-4 py-4",
+}: {
+  rows?: number;
+  columns: number;
+  label: string;
+  cellClassName?: string;
+}) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, row) => (
+        <tr key={row} className="border-t border-border/60">
+          {Array.from({ length: columns }, (_, column) => (
+            <td key={column} className={cellClassName}>
+              {row === 0 && column === 0 && (
+                <span role="status" className="sr-only">
+                  {label}
+                </span>
+              )}
+              <Skeleton
+                className="h-3.5"
+                style={{ width: `${column === 0 ? 70 : 40 + ((row + column) % 3) * 15}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Shown when a list, table or chart has nothing to display: icon tile, short
+ * title, optional hint and action. `bare` drops the dashed frame for spots that
+ * already sit inside a bordered box or table cell; `compact` is for small panels.
+ */
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  bare = false,
+  compact = false,
+  className = "",
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  bare?: boolean;
+  compact?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center text-center ${
+        compact ? "px-4 py-6" : "px-6 py-10"
+      } ${bare ? "" : "rounded-lg border border-dashed border-border bg-background/40"} ${className}`}
+    >
+      <span
+        className={`grid shrink-0 place-items-center rounded-xl border border-gold/40 bg-gold/15 text-gold-foreground ring-4 ring-gold/5 dark:text-gold ${
+          compact ? "h-10 w-10" : "h-12 w-12"
+        }`}
+      >
+        <Icon className={compact ? "h-4 w-4" : "h-5 w-5"} />
+      </span>
+      <p className={`font-display font-bold text-foreground ${compact ? "mt-3 text-sm" : "mt-4"}`}>
+        {title}
+      </p>
+      {description && (
+        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+      )}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

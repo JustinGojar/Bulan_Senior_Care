@@ -38,6 +38,7 @@ import {
 import defaultProfileImage from "@/img/Defaut.png";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
+import { SessionTimeout } from "./SessionTimeout";
 import { panelClass, tileClass } from "./design-kit";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -300,7 +301,7 @@ export function AppShell({
   async function signOut() {
     void logout().catch(() => undefined);
     clearToken();
-    navigate({ to: "/login" });
+    navigate({ to: "/login", replace: true });
   }
 
   // Shared by the desktop sidebar and the mobile sheet so they stay identical.
@@ -695,6 +696,7 @@ export function AppShell({
           <div className="page-enter mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
+      <SessionTimeout />
     </div>
   );
 }
