@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Loader2,
   MapPin,
   PieChart as PieIcon,
   TrendingUp,
@@ -29,10 +28,11 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
+import { SectionHeader, SkeletonValue } from "@/components/DesignKit";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TONE_BAR, TONE_ICON, panelClass, statCardClass, type Tone } from "@/components/design-kit";
 import { apiFetch, getStoredUser } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -102,7 +102,7 @@ function KpiTile({
   icon: LucideIcon;
   tone: Tone;
   label: string;
-  value: string;
+  value: ReactNode;
 }) {
   return (
     <div className={`${statCardClass} hover:translate-y-0`}>
@@ -160,11 +160,6 @@ function Analytics() {
           <AuthAlert tone="error">{error}</AuthAlert>
         </div>
       )}
-      {loading && (
-        <p className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading analytics data...
-        </p>
-      )}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {(
           [
@@ -179,7 +174,7 @@ function Analytics() {
             icon={icon}
             tone={tone}
             label={label}
-            value={value === undefined ? "..." : value.toLocaleString()}
+            value={value === undefined ? <SkeletonValue /> : value.toLocaleString()}
           />
         ))}
       </div>
@@ -191,40 +186,39 @@ function Analytics() {
             subtitle="Registered seniors in each barangay."
           />
           <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={zoneParticipants}>
-                <defs>
-                  <linearGradient id="zoneFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={12}
-                  allowDecimals={false}
-                  domain={[0, "auto"]}
-                />
-                <Tooltip {...TOOLTIP_PROPS} />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="var(--chart-1)"
-                  strokeWidth={2.5}
-                  fill="url(#zoneFill)"
-                  dot={{ r: 4, fill: "var(--chart-1)" }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <Skeleton className="h-full w-full rounded-lg" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={zoneParticipants}>
+                  <defs>
+                    <linearGradient id="zoneFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="zone" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={12}
+                    allowDecimals={false}
+                    domain={[0, "auto"]}
+                  />
+                  <Tooltip {...TOOLTIP_PROPS} />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    stroke="var(--chart-1)"
+                    strokeWidth={2.5}
+                    fill="url(#zoneFill)"
+                    dot={{ r: 4, fill: "var(--chart-1)" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {loading && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading live analytics...
-            </p>
-          )}
           {!loading && zoneParticipants.length === 0 && (
             <p className="mt-3 text-sm text-muted-foreground">No senior records available.</p>
           )}

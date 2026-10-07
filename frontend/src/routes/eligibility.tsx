@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { SectionHeader, StatusPill, TileSkeletons } from "@/components/DesignKit";
 import {
   fieldClass,
   panelClass,
@@ -246,11 +246,7 @@ function EligibilityReview() {
           </div>
         )}
         <div className="mt-6 space-y-3">
-          {loading && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading pending registrations...
-            </p>
-          )}
+          {loading && <TileSkeletons count={3} label="Loading pending registrations" />}
           {error && (
             <AuthAlert tone="error">
               Unable to load pending registrations. Please refresh and try again.
