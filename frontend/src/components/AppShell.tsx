@@ -120,6 +120,7 @@ const NAV = [
 // Pages reached from inside a section keep that section's menu item highlighted.
 const NAV_PARENT: Record<string, string> = {
   "/audit-logs": "/settings",
+  "/reports": "/analytics",
 };
 
 function isNavActive(pathname: string, to: string) {
