@@ -66,7 +66,7 @@ class TokenIdleTimeoutTest extends TestCase
     {
         User::factory()->create(['email' => 'leader@example.com', 'password' => 'secret-password']);
 
-        $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'secret-password'])
+        $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'secret-password', 'accepted_terms' => true, 'terms_version' => '2026-10-07'])
             ->assertOk()
             ->assertJsonPath('session.idle_timeout_minutes', 15)
             ->assertJsonPath('session.expires_in_seconds', 720 * 60);

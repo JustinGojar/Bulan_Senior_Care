@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
 import { TermsDialog } from "@/components/TermsDialog";
 import { login, takeSessionNotice } from "@/lib/api";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -74,7 +75,7 @@ function LoginPage() {
           setSubmitting(true);
           setError(null);
           setNotice(null);
-          login(email, password)
+          login(email, password, TERMS_VERSION)
             .then(() => navigate({ to: "/dashboard", replace: true }))
             .catch((reason: Error) => setError(reason.message))
             .finally(() => setSubmitting(false));

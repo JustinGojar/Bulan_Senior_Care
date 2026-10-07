@@ -9,8 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { authSubmitClass } from "@/components/AuthLayout";
-
-const LAST_UPDATED = "October 7, 2026";
+import { TERMS_LAST_UPDATED } from "@/lib/terms";
 
 const SECTIONS: { title: string; body: ReactNode }[] = [
   {
@@ -130,7 +129,7 @@ export function TermsDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Terms and Conditions</DialogTitle>
-          <DialogDescription>Last updated {LAST_UPDATED}</DialogDescription>
+          <DialogDescription>Last updated {TERMS_LAST_UPDATED}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

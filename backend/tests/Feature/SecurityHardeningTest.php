@@ -126,6 +126,8 @@ class SecurityHardeningTest extends TestCase
             $statuses[] = $this->postJson('/api/login', [
                 'email' => "guess{$i}@example.com",
                 'password' => 'wrong-password',
+                'accepted_terms' => true,
+                'terms_version' => '2026-10-07',
             ])->getStatusCode();
         }
 
