@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AuthAlert } from "@/components/AuthLayout";
+import { clearFieldById, flagFieldById, flagFieldsById } from "@/lib/form-validation";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { API_URL } from "@/lib/api";
@@ -91,11 +91,13 @@ function serializeFamilyRows(rows: FamilyRow[]) {
 }
 
 function FamilySelect({
+  id,
   label,
   options,
   value,
   onChange,
 }: {
+  id: string;
   label: string;
   options: string[];
   value: string;
@@ -105,7 +107,7 @@ function FamilySelect({
   const all = value && !options.includes(value) ? [...options, value] : options;
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label={label} className="h-9 w-full px-3">
+      <SelectTrigger id={id} aria-label={label} className="h-9 w-full px-3">
         <SelectValue placeholder="Select" />
       </SelectTrigger>
       <SelectContent>
@@ -119,31 +121,62 @@ function FamilySelect({
   );
 }
 
-// Every field except middle name must be filled before the form can be submitted.
-const REQUIRED_FIELDS: [keyof SeniorDraft, string][] = [
-  ["lastName", "Surname"],
-  ["firstName", "First name"],
-  ["placeOfBirth", "Place of birth"],
-  ["birthdate", "Date of birth"],
-  ["sex", "Sex"],
-  ["civilStatus", "Civil status"],
-  ["contact", "Contact number"],
-  ["address", "Complete address"],
-  ["barangay", "Barangay"],
-  ["educationalAttainment", "Educational attainment"],
-  ["otherSkills", "Other skills"],
-  ["familyComposition", "Family composition"],
-  ["associationName", "Name of association"],
-  ["associationMembershipDate", "Date of membership"],
-  ["associationPosition", "Position"],
-];
+const familyCellId = (row: number, cell: number) => `senior-family-${row}-${cell}`;
 
-const EXTRA_FIELDS: [string, string][] = [
-  ["associationAddress", "Address of association"],
-  ["profilePhoto", "Profile picture"],
-  ["validId", "Valid ID"],
-  ["birthCertificate", "Birth certificate"],
+// Every field except middle name must be filled before the form can be submitted.
+// Listed in form order so the first missing field gets focus.
+const REQUIRED_FIELDS: Array<{ key: string; id: string; message: string }> = [
+  { key: "lastName", id: "senior-last-name", message: "Surname is required." },
+  { key: "firstName", id: "senior-first-name", message: "First name is required." },
+  { key: "placeOfBirth", id: "senior-place-of-birth", message: "Place of birth is required." },
+  { key: "birthdate", id: "senior-birthdate", message: "Date of birth is required." },
+  { key: "sex", id: "senior-sex", message: "Choose sex." },
+  { key: "civilStatus", id: "senior-civil-status", message: "Choose civil status." },
+  { key: "contact", id: "senior-contact", message: "Contact number is required." },
+  { key: "address", id: "senior-address", message: "House number and street are required." },
+  { key: "barangay", id: "senior-barangay", message: "Choose a barangay." },
+  {
+    key: "educationalAttainment",
+    id: "senior-educational-attainment",
+    message: "Educational attainment is required.",
+  },
+  { key: "otherSkills", id: "senior-other-skills", message: "Other skills are required." },
+  {
+    key: "familyComposition",
+    id: familyCellId(0, 0),
+    message: "Add at least one family member.",
+  },
+  {
+    key: "associationName",
+    id: "senior-association-name",
+    message: "Name of association is required.",
+  },
+  {
+    key: "associationAddress",
+    id: "senior-association-address",
+    message: "Choose the address of association.",
+  },
+  {
+    key: "associationMembershipDate",
+    id: "senior-membership-date",
+    message: "Date of membership is required.",
+  },
+  {
+    key: "associationPosition",
+    id: "senior-association-position",
+    message: "Position is required.",
+  },
+  { key: "profilePhoto", id: "senior-profile-photo", message: "Attach a profile picture." },
+  { key: "validId", id: "senior-valid-id", message: "Attach a valid ID." },
+  {
+    key: "birthCertificate",
+    id: "senior-birth-certificate",
+    message: "Attach a birth certificate.",
+  },
 ];
+const FIELD_IDS: Record<string, string> = Object.fromEntries(
+  REQUIRED_FIELDS.map(({ key, id }) => [key, id]),
+);
 
 // The input holds only the 10 digits after the fixed +63 prefix.
 const PH_MOBILE = /^9\d{9}$/;
@@ -204,15 +237,11 @@ export function SeniorFormDialog({
   const [birthCertificate, setBirthCertificate] = useState<File | null>(null);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
   const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
-  const [showErrors, setShowErrors] = useState(false);
   const [familyRows, setFamilyRows] = useState<FamilyRow[]>(() => parseFamilyRows(""));
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
-    setShowErrors(false);
     setFamilyRows(parseFamilyRows(senior?.familyComposition ?? ""));
     setValidId(null);
     setBirthCertificate(null);
@@ -274,8 +303,12 @@ export function SeniorFormDialog({
     };
   }, [birthCertificate]);
 
-  const set = <K extends keyof SeniorDraft>(key: K, value: SeniorDraft[K]) =>
+  const set = <K extends keyof SeniorDraft>(key: K, value: SeniorDraft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
+    // Dropdowns fire no input event, so clear their inline error here.
+    const id = FIELD_IDS[key];
+    if (id) clearFieldById(id);
+  };
 
   function setFamilyCell(rowIndex: number, cellIndex: number, value: string) {
     const rows = familyRows.map((row, i) =>
@@ -283,6 +316,7 @@ export function SeniorFormDialog({
     );
     setFamilyRows(rows);
     set("familyComposition", serializeFamilyRows(rows));
+    clearFieldById(familyCellId(rowIndex, cellIndex));
   }
 
   // Existing records keep the address set when they were registered; new ones use the
@@ -297,38 +331,37 @@ export function SeniorFormDialog({
   if (associationAddress && !associationAddressOptions.includes(associationAddress))
     associationAddressOptions.push(associationAddress);
 
-  const missing = new Set<string>(
-    REQUIRED_FIELDS.filter(([key]) => !String(draft[key] ?? "").trim()).map(([key]) => key),
-  );
-  if (!associationAddress.trim()) missing.add("associationAddress");
-  if (!senior && !profilePhoto) missing.add("profilePhoto");
-  if (!senior && !validId) missing.add("validId");
-  if (!senior && !birthCertificate) missing.add("birthCertificate");
-  const invalid = (key: string) =>
-    showErrors && missing.has(key) ? "border-destructive focus:border-destructive" : "";
-
   function submit() {
-    if (missing.size > 0) {
-      setShowErrors(true);
-      const labels = [...REQUIRED_FIELDS, ...EXTRA_FIELDS]
-        .filter(([key]) => missing.has(key))
-        .map(([, label]) => label);
-      return setError(`Please complete all required fields: ${labels.join(", ")}.`);
-    }
-    const incompleteRow = familyRows.findIndex(
-      (row) => row.some((cell) => cell.trim()) && row.some((cell) => !cell.trim()),
-    );
-    if (incompleteRow !== -1) {
-      setShowErrors(true);
-      return setError(
-        `Complete all columns for family member ${incompleteRow + 1} (name, relationship, age, status, occupation).`,
-      );
-    }
+    const values: Record<string, unknown> = {
+      ...draft,
+      associationAddress,
+      profilePhoto: senior ? true : profilePhoto,
+      validId: senior ? true : validId,
+      birthCertificate: senior ? true : birthCertificate,
+    };
+    const errors: Array<[string, string]> = REQUIRED_FIELDS.filter(({ key }) => {
+      const value = values[key];
+      return value instanceof File ? false : !String(value ?? "").trim();
+    }).map(({ id, message }) => [id, message]);
+    // A started family row must have every column filled.
+    familyRows.forEach((row, rowIndex) => {
+      if (!row.some((cell) => cell.trim())) return;
+      const emptyCell = row.findIndex((cell) => !cell.trim());
+      if (emptyCell !== -1)
+        errors.push([
+          familyCellId(rowIndex, emptyCell),
+          `Complete all columns for family member ${rowIndex + 1}.`,
+        ]);
+    });
+    if (errors.length > 0) return flagFieldsById(errors);
     const age = ageFromBirthdate(draft.birthdate ?? "");
     if (age < 60 || age > 130)
-      return setError("Age must be 60 or older to qualify for OSCA benefits.");
+      return flagFieldById(
+        "senior-birthdate",
+        "Age must be 60 or older to qualify for OSCA benefits.",
+      );
     if (!PH_MOBILE.test(draft.contact))
-      return setError("Contact number must be +63 followed by 10 digits starting with 9.");
+      return flagFieldById("senior-contact", "Enter 10 digits after +63, starting with 9.");
     onSubmit({
       ...draft,
       age,
@@ -374,7 +407,7 @@ export function SeniorFormDialog({
                   value={draft.lastName ?? ""}
                   onChange={(e) => set("lastName", e.target.value)}
                   placeholder="Santos"
-                  className={`mt-1.5 ${invalid("lastName")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -384,7 +417,7 @@ export function SeniorFormDialog({
                   value={draft.firstName ?? ""}
                   onChange={(e) => set("firstName", e.target.value)}
                   placeholder="Maria"
-                  className={`mt-1.5 ${invalid("firstName")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -404,7 +437,7 @@ export function SeniorFormDialog({
                   value={draft.placeOfBirth ?? ""}
                   onChange={(e) => set("placeOfBirth", e.target.value)}
                   placeholder="Municipality, province"
-                  className={`mt-1.5 ${invalid("placeOfBirth")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -418,7 +451,7 @@ export function SeniorFormDialog({
                     const age = ageFromBirthdate(birthdate);
                     setDraft((d) => ({ ...d, birthdate, age, benefit: benefitForAge(age) }));
                   }}
-                  className={`mt-1.5 ${invalid("birthdate")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -442,7 +475,7 @@ export function SeniorFormDialog({
                   value={draft.sex ?? ""}
                   onValueChange={(value) => set("sex", value as "male" | "female")}
                 >
-                  <SelectTrigger id="senior-sex" className={`mt-1.5 h-9 px-3 ${invalid("sex")}`}>
+                  <SelectTrigger id="senior-sex" className="mt-1.5 h-9 px-3">
                     <SelectValue placeholder="Select sex" />
                   </SelectTrigger>
                   <SelectContent>
@@ -457,10 +490,7 @@ export function SeniorFormDialog({
                   value={draft.civilStatus ?? ""}
                   onValueChange={(value) => set("civilStatus", value)}
                 >
-                  <SelectTrigger
-                    id="senior-civil-status"
-                    className={`mt-1.5 h-9 px-3 ${invalid("civilStatus")}`}
-                  >
+                  <SelectTrigger id="senior-civil-status" className="mt-1.5 h-9 px-3">
                     <SelectValue placeholder="Select civil status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -491,7 +521,7 @@ export function SeniorFormDialog({
                     maxLength={10}
                     value={draft.contact}
                     onChange={(e) => set("contact", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    className={`pl-11 ${invalid("contact")}`}
+                    className="pl-11"
                   />
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -508,13 +538,13 @@ export function SeniorFormDialog({
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label htmlFor="senior-address">Complete address *</Label>
-                <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                <div className="relative mt-1.5 flex flex-col gap-2 sm:flex-row">
                   <Input
                     id="senior-address"
                     value={draft.address}
                     onChange={(e) => set("address", e.target.value)}
                     placeholder="House number and street"
-                    className={`sm:flex-1 ${invalid("address")}`}
+                    className="sm:flex-1"
                   />
                   <p className="flex min-h-9 cursor-not-allowed items-center rounded-lg border border-input bg-muted px-3 py-1.5 text-sm font-medium text-foreground select-none sm:whitespace-nowrap">
                     {associationAddressFor(draft.barangay)}
@@ -533,7 +563,7 @@ export function SeniorFormDialog({
                   onChange={(v) => set("barangay", v)}
                   disabled={!!leaderBarangay}
                   placeholder="Select a barangay"
-                  className={`mt-1.5 h-9 px-3 ${invalid("barangay")}`}
+                  className="mt-1.5 h-9 px-3"
                   options={BARANGAYS.map((barangay) => ({ value: barangay, label: barangay }))}
                 />
               </div>
@@ -572,7 +602,7 @@ export function SeniorFormDialog({
                   value={draft.educationalAttainment ?? ""}
                   onChange={(event) => set("educationalAttainment", event.target.value)}
                   placeholder="Highest educational attainment"
-                  className={`mt-1.5 ${invalid("educationalAttainment")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -582,14 +612,12 @@ export function SeniorFormDialog({
                   value={draft.otherSkills ?? ""}
                   onChange={(event) => set("otherSkills", event.target.value)}
                   placeholder="Livelihood, trade, or other skills"
-                  className={`mt-1.5 ${invalid("otherSkills")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
                 <Label>Family composition *</Label>
-                <div
-                  className={`mt-1.5 overflow-x-auto rounded-lg border border-input ${invalid("familyComposition")}`}
-                >
+                <div className="mt-1.5 overflow-x-auto rounded-lg border border-input">
                   <table className="w-full min-w-160 text-sm">
                     <thead className="bg-muted/50 text-xs font-semibold text-muted-foreground uppercase">
                       <tr>
@@ -605,6 +633,7 @@ export function SeniorFormDialog({
                         <tr key={rowIndex} className="border-t border-border/60">
                           <td className="p-1.5">
                             <Input
+                              id={familyCellId(rowIndex, 0)}
                               aria-label={`Family member ${rowIndex + 1} name`}
                               value={row[0]}
                               onChange={(e) => setFamilyCell(rowIndex, 0, e.target.value)}
@@ -612,6 +641,7 @@ export function SeniorFormDialog({
                           </td>
                           <td className="p-1.5">
                             <FamilySelect
+                              id={familyCellId(rowIndex, 1)}
                               label={`Family member ${rowIndex + 1} relationship`}
                               options={RELATIONSHIPS}
                               value={row[1]}
@@ -620,6 +650,7 @@ export function SeniorFormDialog({
                           </td>
                           <td className="p-1.5">
                             <Input
+                              id={familyCellId(rowIndex, 2)}
                               aria-label={`Family member ${rowIndex + 1} age`}
                               inputMode="numeric"
                               maxLength={3}
@@ -631,6 +662,7 @@ export function SeniorFormDialog({
                           </td>
                           <td className="p-1.5">
                             <FamilySelect
+                              id={familyCellId(rowIndex, 3)}
                               label={`Family member ${rowIndex + 1} status`}
                               options={CIVIL_STATUSES}
                               value={row[3]}
@@ -639,6 +671,7 @@ export function SeniorFormDialog({
                           </td>
                           <td className="p-1.5">
                             <Input
+                              id={familyCellId(rowIndex, 4)}
                               aria-label={`Family member ${rowIndex + 1} occupation`}
                               value={row[4]}
                               onChange={(e) => setFamilyCell(rowIndex, 4, e.target.value)}
@@ -691,7 +724,7 @@ export function SeniorFormDialog({
                   value={draft.associationName ?? ""}
                   onChange={(e) => set("associationName", e.target.value)}
                   placeholder="Senior Citizens Association of..."
-                  className={`mt-1.5 ${invalid("associationName")}`}
+                  className="mt-1.5"
                 />
               </div>
               <div>
@@ -715,7 +748,7 @@ export function SeniorFormDialog({
                     value={associationAddress}
                     onChange={(v) => set("associationAddress", v)}
                     placeholder="Select an address"
-                    className={`mt-1.5 h-9 px-3 ${invalid("associationAddress")}`}
+                    className="mt-1.5 h-9 px-3"
                     options={associationAddressOptions.map((address) => ({
                       value: address,
                       label: address,
@@ -731,7 +764,7 @@ export function SeniorFormDialog({
                     type="date"
                     value={draft.associationMembershipDate ?? ""}
                     onChange={(e) => set("associationMembershipDate", e.target.value)}
-                    className={`mt-1.5 ${invalid("associationMembershipDate")}`}
+                    className="mt-1.5"
                   />
                 </div>
                 <div>
@@ -741,7 +774,7 @@ export function SeniorFormDialog({
                     value={draft.associationPosition ?? ""}
                     onChange={(e) => set("associationPosition", e.target.value)}
                     placeholder="Member or officer"
-                    className={`mt-1.5 ${invalid("associationPosition")}`}
+                    className="mt-1.5"
                   />
                 </div>
               </div>
@@ -761,7 +794,7 @@ export function SeniorFormDialog({
                   accept="image/jpeg,image/png,image/webp"
                   capture="user"
                   onChange={(event) => setProfilePhoto(event.target.files?.[0] ?? null)}
-                  className={`mt-1.5 cursor-pointer ${invalid("profilePhoto")}`}
+                  className="mt-1.5 cursor-pointer"
                 />
               </div>
 
@@ -777,7 +810,7 @@ export function SeniorFormDialog({
                     const file = event.target.files?.[0] ?? null;
                     setValidId(file);
                   }}
-                  className={`mt-1.5 cursor-pointer ${invalid("validId")}`}
+                  className="mt-1.5 cursor-pointer"
                 />
                 {(validIdPreview || senior?.validIdPath) && (
                   <a
@@ -813,7 +846,7 @@ export function SeniorFormDialog({
                     const file = event.target.files?.[0] ?? null;
                     setBirthCertificate(file);
                   }}
-                  className={`mt-1.5 cursor-pointer ${invalid("birthCertificate")}`}
+                  className="mt-1.5 cursor-pointer"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   PDF, JPG, or PNG up to 5 MB each.
@@ -845,8 +878,6 @@ export function SeniorFormDialog({
             </div>
           </section>
         </div>
-
-        {error && <AuthAlert tone="error">{error}</AuthAlert>}
 
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className={secondaryButtonClass}>
