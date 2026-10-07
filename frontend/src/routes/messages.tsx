@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { authSubmitClass } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
+import { RowSkeletons, SectionHeader } from "@/components/DesignKit";
 import {
   fieldClass,
   iconButtonClass,
@@ -384,11 +384,7 @@ function MessagesPage() {
             </div>
           </div>
           <div className="mt-4 divide-y divide-border/60 rounded-lg border border-border/60">
-            {messagesLoading && (
-              <p className="flex items-center justify-center gap-2 px-2 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading conversations...
-              </p>
-            )}
+            {messagesLoading && <RowSkeletons count={5} label="Loading conversations" />}
             {visibleMessages.map((item) => {
               const received = item.recipient.id === currentUser?.id;
               const other = received ? item.sender : item.recipient;

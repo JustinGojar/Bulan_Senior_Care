@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { RowSkeletons, SectionHeader, StatusPill, TableSkeletonRows } from "@/components/DesignKit";
 import {
   fieldClass,
   panelClass,
@@ -962,12 +962,12 @@ function SeniorRecords() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="px-5 py-14 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-                  Loading senior records...
-                </td>
-              </tr>
+              <TableSkeletonRows
+                rows={6}
+                columns={8}
+                label="Loading senior records"
+                cellClassName="px-4 py-[19px]"
+              />
             ) : error ? (
               <tr>
                 <td colSpan={8} className="px-5 py-12">
@@ -1182,10 +1182,14 @@ function SeniorRecords() {
             <DialogDescription>OSCA IDs for records deleted by an administrator.</DialogDescription>
           </DialogHeader>
           {archiveLoading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-              Loading archive...
-            </p>
+            <div className="space-y-2">
+              <RowSkeletons
+                count={3}
+                avatar={false}
+                label="Loading archive"
+                className={`${tileClass} py-3`}
+              />
+            </div>
           ) : archivedRecords.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No deleted records.</p>
           ) : (

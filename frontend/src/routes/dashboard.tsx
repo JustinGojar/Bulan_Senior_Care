@@ -17,11 +17,12 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
-import { SectionHeader } from "@/components/DesignKit";
+import { SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   TONE_BAR,
   TONE_ICON,
@@ -109,7 +110,7 @@ function StatCardBody({
   icon: LucideIcon;
   tone: Tone;
   label: string;
-  value: string;
+  value: ReactNode;
   change: number | null | undefined;
   description: string;
 }) {
@@ -333,7 +334,7 @@ function Dashboard() {
             icon={Users}
             tone="navy"
             label="Total Registered"
-            value={loading ? "..." : totalCount.toLocaleString()}
+            value={loading ? <SkeletonValue /> : totalCount.toLocaleString()}
             change={overview?.monthly_change.total_registered}
             description="Total number of senior citizens in the system."
           />
@@ -343,7 +344,13 @@ function Dashboard() {
             icon={ShieldCheck}
             tone="gold"
             label="Benefits Distributed"
-            value={overview ? `₱${overview.benefits_distributed_amount.toLocaleString()}` : "..."}
+            value={
+              overview ? (
+                `₱${overview.benefits_distributed_amount.toLocaleString()}`
+              ) : (
+                <SkeletonValue className="h-7 w-24" />
+              )
+            }
             change={overview?.monthly_change.benefits_distributed_amount}
             description="Total amount of benefits released to senior citizens."
           />
@@ -353,7 +360,7 @@ function Dashboard() {
             icon={UserCheck}
             tone="success"
             label="Active Seniors"
-            value={loading ? "..." : activeCount.toLocaleString()}
+            value={loading ? <SkeletonValue /> : activeCount.toLocaleString()}
             change={overview?.monthly_change.active_seniors}
             description="Seniors with active records and benefits."
           />
@@ -363,7 +370,7 @@ function Dashboard() {
             icon={Clock}
             tone="coral"
             label="Pending Applications"
-            value={loading ? "..." : pendingCount.toLocaleString()}
+            value={loading ? <SkeletonValue /> : pendingCount.toLocaleString()}
             change={overview?.monthly_change.pending_applications}
             description="Applications awaiting verification or approval."
           />
@@ -483,8 +490,14 @@ function Dashboard() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-semibold">{item.label}</span>
                     <span className="text-muted-foreground">
-                      <span className={`font-bold ${item.text}`}>{item.value}</span>
-                      <span className="ml-1.5 text-xs">({percentage}%)</span>
+                      {overview ? (
+                        <>
+                          <span className={`font-bold ${item.text}`}>{item.value}</span>
+                          <span className="ml-1.5 text-xs">({percentage}%)</span>
+                        </>
+                      ) : (
+                        <Skeleton className="inline-block h-3.5 w-14 align-middle" />
+                      )}
                     </span>
                   </div>
                   <div className="mt-2 h-2 rounded-full bg-muted">
@@ -497,7 +510,9 @@ function Dashboard() {
               );
             })}
             {!overview && (
-              <p className="text-sm text-muted-foreground">Loading distribution data...</p>
+              <span role="status" className="sr-only">
+                Loading distribution data
+              </span>
             )}
             {overview && distributionTotal === 0 && (
               <p className="text-sm text-muted-foreground">No benefit transactions recorded yet.</p>
@@ -530,7 +545,7 @@ function Dashboard() {
               <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
             </div>
           ))}
-          {loading && <p className="text-sm text-muted-foreground">Loading senior records...</p>}
+          {loading && <TileSkeletons label="Loading senior records" />}
           {!loading && eligibilityFlags.length === 0 && (
             <p className="text-sm text-muted-foreground">No age threshold flags.</p>
           )}

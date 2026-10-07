@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
-import { SectionHeader } from "@/components/DesignKit";
+import { SectionHeader, TableSkeletonRows } from "@/components/DesignKit";
 import { fieldClass, panelClass, tileClass } from "@/components/design-kit";
 import { authSubmitClass } from "@/components/AuthLayout";
 import {
@@ -528,14 +528,15 @@ function ProfilePage() {
                       </td>
                     </tr>
                   ))}
-                  {(!recentActivity || recentActivity.length === 0) && (
+                  {isAdmin && recentActivity === null && (
+                    <TableSkeletonRows rows={3} columns={3} label="Loading recent activity" />
+                  )}
+                  {(!isAdmin || recentActivity?.length === 0) && (
                     <tr className="border-t border-border/60">
                       <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
                         {!isAdmin
                           ? "Your activity history is kept in the audit log, which the OSCA administrator can review."
-                          : recentActivity === null
-                            ? "Loading recent activity..."
-                            : "No recent activity."}
+                          : "No recent activity."}
                       </td>
                     </tr>
                   )}

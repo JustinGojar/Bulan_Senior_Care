@@ -3,7 +3,7 @@ import { CheckCircle2, Download, FileText, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import { SectionHeader, SkeletonValue, StatusPill } from "@/components/DesignKit";
 import {
   TONE_BAR,
   panelClass,
@@ -191,7 +191,7 @@ function Reports() {
                   {label}
                 </p>
                 <p className="font-display mt-2 text-2xl font-extrabold">
-                  {loading ? "..." : value.toLocaleString()}
+                  {loading ? <SkeletonValue /> : value.toLocaleString()}
                 </p>
               </div>
             ))}

@@ -1,9 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, ArrowRight, Loader2, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, ArrowRight, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader, StatusPill } from "@/components/DesignKit";
+import {
+  RowSkeletons,
+  SectionHeader,
+  SkeletonValue,
+  StatusPill,
+  TileSkeletons,
+} from "@/components/DesignKit";
 import {
   TONE_BAR,
   badgeClass,
@@ -110,9 +116,11 @@ function AgeThresholdPage() {
                       : `Ages ${program.minAge}–${program.maxAge}`}
                 </p>
                 <span className={badgeClass}>
-                  {loading
-                    ? "..."
-                    : `${inBracket(program).toLocaleString()} ${inBracket(program) === 1 ? "senior" : "seniors"}`}
+                  {loading ? (
+                    <SkeletonValue className="h-3 w-12" />
+                  ) : (
+                    `${inBracket(program).toLocaleString()} ${inBracket(program) === 1 ? "senior" : "seniors"}`
+                  )}
                 </span>
               </div>
               <p className="font-display mt-2 text-3xl leading-none font-extrabold">
@@ -151,11 +159,7 @@ function AgeThresholdPage() {
               <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
             </article>
           ))}
-          {loading && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading senior records...
-            </p>
-          )}
+          {loading && <TileSkeletons label="Loading senior records" />}
           {!loading && loadError && (
             <div className="md:col-span-2 xl:col-span-3">
               <AuthAlert tone="error">Could not load senior records. Please try again.</AuthAlert>
@@ -180,9 +184,13 @@ function AgeThresholdPage() {
             </DialogDescription>
           </DialogHeader>
           {loading ? (
-            <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading senior records...
-            </p>
+            <div className="space-y-2">
+              <RowSkeletons
+                count={4}
+                label="Loading senior records"
+                className={`${tileClass} flex items-center gap-3 py-3`}
+              />
+            </div>
           ) : loadError ? (
             <AuthAlert tone="error">Could not load senior records. Please try again.</AuthAlert>
           ) : selectedSeniors.length === 0 ? (
