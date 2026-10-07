@@ -300,7 +300,7 @@ export function AppShell({
   async function signOut() {
     void logout().catch(() => undefined);
     clearToken();
-    navigate({ to: "/login" });
+    navigate({ to: "/login", replace: true });
   }
 
   // Shared by the desktop sidebar and the mobile sheet so they stay identical.

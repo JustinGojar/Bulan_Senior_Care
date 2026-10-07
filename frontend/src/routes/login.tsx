@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
@@ -32,6 +32,12 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // The browser back button must not leave the login page, so a signed-out user can never
+  // step back into the account pages they were on before logging out.
+  useBlocker({
+    shouldBlockFn: ({ action }) => action === "BACK" || action === "GO",
+    enableBeforeUnload: false,
+  });
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to your account to continue to the portal.">
@@ -42,7 +48,7 @@ function LoginPage() {
           setSubmitting(true);
           setError(null);
           login(email, password)
-            .then(() => navigate({ to: "/dashboard" }))
+            .then(() => navigate({ to: "/dashboard", replace: true }))
             .catch((reason: Error) => setError(reason.message))
             .finally(() => setSubmitting(false));
         }}
