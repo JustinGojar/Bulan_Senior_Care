@@ -91,6 +91,21 @@
   --chart-3: oklch(0.62 0.19 26);
   --chart-4: oklch(0.66 0.11 165);
   --chart-5: oklch(0.55 0.07 250);
+  /* Benefit release progress: one navy hue, dark → light by stage. */
+  --release-done: oklch(0.32 0.062 258);
+  --release-pending: oklch(0.62 0.08 255);
+  --release-failed: oklch(0.86 0.02 255);
+  /* Benefit categories: one fixed hue per benefit (validated for color-blind separation). */
+  --benefit-social: oklch(0.32 0.062 258);
+  --benefit-octo: oklch(0.62 0.17 30);
+  --benefit-nona: oklch(0.72 0.14 75);
+  --benefit-cent: oklch(0.58 0.11 165);
+  /* Age groups: one navy hue, light (60s) → dark (100+). */
+  --age-1: oklch(0.78 0.06 250);
+  --age-2: oklch(0.66 0.08 252);
+  --age-3: oklch(0.54 0.09 255);
+  --age-4: oklch(0.43 0.08 257);
+  --age-5: oklch(0.32 0.062 258);
   --sidebar: oklch(0.995 0.002 250);
   --sidebar-foreground: oklch(0.24 0.045 258);
   --sidebar-primary: oklch(0.32 0.062 258);
@@ -142,6 +157,18 @@
   --chart-3: oklch(0.68 0.17 26);
   --chart-4: oklch(0.7 0.12 165);
   --chart-5: oklch(0.6 0.06 250);
+  --release-done: oklch(0.86 0.05 250);
+  --release-pending: oklch(0.62 0.08 255);
+  --release-failed: oklch(0.42 0.035 255);
+  --benefit-social: oklch(0.58 0.1 260);
+  --benefit-octo: oklch(0.58 0.19 22);
+  --benefit-nona: oklch(0.66 0.14 95);
+  --benefit-cent: oklch(0.64 0.13 170);
+  --age-1: oklch(0.42 0.06 255);
+  --age-2: oklch(0.52 0.08 255);
+  --age-3: oklch(0.62 0.09 253);
+  --age-4: oklch(0.73 0.08 251);
+  --age-5: oklch(0.84 0.06 250);
   --sidebar: oklch(0.22 0.035 258);
   --sidebar-foreground: oklch(0.96 0.005 250);
   --sidebar-primary: oklch(0.88 0.03 250);

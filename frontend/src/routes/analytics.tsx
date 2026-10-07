@@ -56,15 +56,13 @@ export const Route = createFileRoute("/analytics")({
   component: Analytics,
 });
 
-const PIE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
-const BENEFIT_CHART_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--success)",
-];
+// Color follows the benefit, never its rank, so a missing benefit doesn't repaint the rest.
+const BENEFIT_COLORS: Record<string, string> = {
+  "Social Pension": "var(--benefit-social)",
+  "Octogenarian Grant": "var(--benefit-octo)",
+  "Nonagenarian Grant": "var(--benefit-nona)",
+  "Centenarian Award": "var(--benefit-cent)",
+};
 
 type AnalyticsResponse = {
   municipal: { total_registered: number; active: number; male: number; female: number };
@@ -77,6 +75,7 @@ type AnalyticsResponse = {
   age_distribution: Array<{ age: string; count: number }>;
   benefit_records: Array<{ name: string; value: number }>;
   released_benefit_records: Array<{ name: string; senior_count: number }>;
+  benefit_status_records?: ReleaseStatusRecord[];
   trend: Array<{ barangay: string; registered: number; released: number; municipal: number }>;
 };
 
@@ -123,6 +122,141 @@ function KpiTile({
   );
 }
 
+type ReleaseStatusRecord = {
+  name: string;
+  released: number;
+  pending: number;
+  not_released: number;
+};
+
+const RELEASE_STAGES = [
+  { key: "released", label: "Released", color: "var(--release-done)" },
+  { key: "pending", label: "Pending", color: "var(--release-pending)" },
+  { key: "not_released", label: "Not released", color: "var(--release-failed)" },
+] as const;
+
+function percent(part: number, whole: number) {
+  return whole > 0 ? Math.round((part / whole) * 100) : 0;
+}
+
+/**
+ * Release progress per program: a headline row, then one bar per program split into
+ * released / pending / not released. Bars share one scale so volume is comparable;
+ * the text on each row carries the exact counts and rate.
+ */
+function ReleaseProgress({ records }: { records: ReleaseStatusRecord[] }) {
+  const rows = records
+    .map((record) => ({
+      ...record,
+      total: record.released + record.pending + record.not_released,
+    }))
+    .filter((row) => row.total > 0)
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const totals = rows.reduce(
+    (sum, row) => ({
+      released: sum.released + row.released,
+      pending: sum.pending + row.pending,
+      not_released: sum.not_released + row.not_released,
+      total: sum.total + row.total,
+    }),
+    { released: 0, pending: 0, not_released: 0, total: 0 },
+  );
+  const maxTotal = Math.max(...rows.map((row) => row.total), 1);
+  const stages = RELEASE_STAGES.filter((stage) => totals[stage.key] > 0);
+
+  return (
+    <div className="mt-6">
+      <dl className="grid grid-cols-3 gap-2 sm:gap-3">
+        {[
+          ["Released", totals.released.toLocaleString()],
+          ["Pending", totals.pending.toLocaleString()],
+          ["Release rate", `${percent(totals.released, totals.total)}%`],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5">
+            <dt className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-[11px]">
+              {label}
+            </dt>
+            <dd className="font-display mt-1 text-xl leading-none font-extrabold sm:text-2xl">
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2" aria-label="Legend">
+        {stages.map((stage) => (
+          <li key={stage.key} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span
+              aria-hidden="true"
+              className="h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: stage.color }}
+            />
+            {stage.label}
+          </li>
+        ))}
+      </ul>
+
+      <ul className="mt-4 space-y-4">
+        {rows.map((row) => (
+          <li
+            key={row.name}
+            tabIndex={0}
+            className="group relative rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+              <span className="text-sm font-semibold">{row.name}</span>
+              <span className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{row.released}</span> of {row.total}{" "}
+                released ·{" "}
+                <span className="font-semibold text-foreground">
+                  {percent(row.released, row.total)}%
+                </span>
+              </span>
+            </div>
+            {/* Track spans the busiest program; segments sit on it with 2px gaps. */}
+            <div className="mt-2 h-3 w-full rounded-full bg-muted">
+              <div
+                className="flex h-full gap-0.5 overflow-hidden rounded-full"
+                style={{ width: `${(row.total / maxTotal) * 100}%` }}
+              >
+                {RELEASE_STAGES.map(
+                  (stage) =>
+                    row[stage.key] > 0 && (
+                      <span
+                        key={stage.key}
+                        className="h-full first:rounded-l-full last:rounded-r-full"
+                        style={{ flexGrow: row[stage.key], backgroundColor: stage.color }}
+                      />
+                    ),
+                )}
+              </div>
+            </div>
+            <div
+              role="tooltip"
+              className="pointer-events-none absolute right-0 bottom-full z-10 mb-1 hidden min-w-44 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-[var(--shadow-soft)] group-hover:block group-focus-visible:block"
+            >
+              <p className="font-bold">{row.name}</p>
+              {RELEASE_STAGES.map((stage) => (
+                <p key={stage.key} className="mt-1 flex items-center justify-between gap-4">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 rounded-sm"
+                      style={{ backgroundColor: stage.color }}
+                    />
+                    {stage.label}
+                  </span>
+                  <span className="font-semibold">{row[stage.key]}</span>
+                </p>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Analytics() {
   const currentUser = getStoredUser();
   const isLeader = currentUser?.role === "leader";
@@ -142,7 +276,7 @@ function Analytics() {
   }));
   const ageDistribution = analytics?.age_distribution ?? [];
   const benefitRecords = analytics?.benefit_records ?? [];
-  const releasedBenefitRecords = analytics?.released_benefit_records ?? [];
+  const releaseStatusRecords = analytics?.benefit_status_records ?? [];
   const municipalTotal = analytics?.municipal.total_registered ?? 0;
   const trendData = analytics?.trend ?? [];
 
@@ -235,7 +369,7 @@ function Analytics() {
           <SectionHeader icon={Users} title="Age Distribution" subtitle="Seniors by age group." />
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ageDistribution}>
+              <BarChart data={ageDistribution} margin={{ top: 20 }}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="age" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis
@@ -246,8 +380,19 @@ function Analytics() {
                   domain={[0, "auto"]}
                 />
                 <Tooltip {...TOOLTIP_PROPS} />
-                <Legend />
-                <Bar dataKey="count" name="Seniors" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="Seniors" radius={[4, 4, 0, 0]}>
+                  {/* Ordered groups: one navy hue, lighter for younger, darker for older. */}
+                  {ageDistribution.map((group, index) => (
+                    <Cell key={group.age} fill={`var(--age-${Math.min(index + 1, 5)})`} />
+                  ))}
+                  <LabelList
+                    dataKey="count"
+                    position="top"
+                    fill="var(--foreground)"
+                    fontSize={12}
+                    fontWeight={700}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -257,7 +402,7 @@ function Analytics() {
           <SectionHeader
             icon={PieIcon}
             title="Benefit Records"
-            subtitle="Seniors assigned to each benefit."
+            subtitle="Seniors per benefit, based on their age."
           />
           <div className="mt-6 h-72">
             {!loading && benefitRecords.length === 0 ? (
@@ -274,23 +419,39 @@ function Analytics() {
                     data={benefitRecords}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={70}
-                    outerRadius={110}
+                    innerRadius={60}
+                    outerRadius={92}
                     paddingAngle={2}
+                    stroke="var(--card)"
+                    strokeWidth={2}
                   >
-                    {benefitRecords.map((entry, i) => (
-                      <Cell key={entry.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    {benefitRecords.map((entry) => (
+                      <Cell
+                        key={entry.name}
+                        fill={BENEFIT_COLORS[entry.name] ?? "var(--muted-foreground)"}
+                      />
                     ))}
                     <LabelList
                       dataKey="value"
-                      position="inside"
-                      fill="white"
-                      fontSize={14}
+                      position="outside"
+                      offset={10}
+                      fill="var(--foreground)"
+                      stroke="none"
+                      fontSize={13}
                       fontWeight={700}
                     />
                   </Pie>
                   <Tooltip {...TOOLTIP_PROPS} />
-                  <Legend formatter={(value) => String(value)} />
+                  <Legend
+                    formatter={(value) => (
+                      <span style={{ color: "var(--muted-foreground)" }}>
+                        {String(value)} ·{" "}
+                        <strong style={{ color: "var(--foreground)" }}>
+                          {benefitRecords.find((record) => record.name === value)?.value ?? 0}
+                        </strong>
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -312,39 +473,25 @@ function Analytics() {
               : "Registered seniors, released benefits, and cumulative municipal registrations."
           }
         />
-        <div className="mt-6 h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            {isLeader ? (
-              <BarChart data={releasedBenefitRecords}>
-                <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={11}
-                  interval={0}
-                  angle={-25}
-                  textAnchor="end"
-                  height={70}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={12}
-                  allowDecimals={false}
-                  label={{ value: "Number of seniors", angle: -90, position: "insideLeft" }}
-                />
-                <Tooltip {...TOOLTIP_PROPS} />
-                <Bar dataKey="senior_count" name="Seniors" radius={[4, 4, 0, 0]}>
-                  {releasedBenefitRecords.map((record, index) => (
-                    <Cell
-                      key={record.name}
-                      fill={BENEFIT_CHART_COLORS[index % BENEFIT_CHART_COLORS.length]}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            ) : (
+        {isLeader ? (
+          loading ? (
+            <Skeleton className="mt-6 h-56 w-full rounded-lg" />
+          ) : releaseStatusRecords.some(
+              (record) => record.released + record.pending + record.not_released > 0,
+            ) ? (
+            <ReleaseProgress records={releaseStatusRecords} />
+          ) : (
+            <EmptyState
+              compact
+              icon={Gift}
+              title="No releases yet"
+              description="Benefit releases in this barangay will be tracked here."
+              className="mt-6"
+            />
+          )
+        ) : (
+          <div className="mt-6 h-72">
+            <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="barangay" tickLine={false} axisLine={false} fontSize={12} />
@@ -373,41 +520,10 @@ function Analytics() {
                   strokeWidth={2}
                 />
               </LineChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-        {isLeader ? (
-          <>
-            {releasedBenefitRecords.length > 0 && (
-              <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-2">
-                {releasedBenefitRecords.map((record, index) => (
-                  <div
-                    key={record.name}
-                    className="flex items-center gap-2 text-xs text-muted-foreground"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                      style={{
-                        backgroundColor: BENEFIT_CHART_COLORS[index % BENEFIT_CHART_COLORS.length],
-                      }}
-                    />
-                    {record.name}
-                  </div>
-                ))}
-              </div>
-            )}
-            {!loading && releasedBenefitRecords.length === 0 && (
-              <EmptyState
-                compact
-                icon={Gift}
-                title="No releases yet"
-                description="No benefits have been released in this barangay."
-                className="mt-3"
-              />
-            )}
-          </>
-        ) : (
+            </ResponsiveContainer>
+          </div>
+        )}
+        {!isLeader && (
           <p className="mt-3 text-xs text-muted-foreground">
             Municipal registered total: {municipalTotal.toLocaleString()}
           </p>

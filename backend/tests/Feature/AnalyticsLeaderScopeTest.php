@@ -66,9 +66,16 @@ class AnalyticsLeaderScopeTest extends TestCase
             ->assertJsonPath('barangay_summary.0.released', 2)
             ->assertJsonPath('age_distribution.1.count', 1)
             ->assertJsonPath('age_distribution.4.count', 0)
-            ->assertJsonPath('benefit_records.0.value', 3)
+            // Benefit records count seniors by age rule, not transactions.
+            ->assertJsonPath('benefit_records.0.name', 'Social Pension')
+            ->assertJsonPath('benefit_records.0.value', 1)
+            ->assertJsonCount(1, 'benefit_records')
             ->assertJsonPath('released_benefit_records.0.name', 'Social Pension')
-            ->assertJsonPath('released_benefit_records.0.senior_count', 1);
+            ->assertJsonPath('released_benefit_records.0.senior_count', 1)
+            ->assertJsonPath('benefit_status_records.0.name', 'Social Pension')
+            ->assertJsonPath('benefit_status_records.0.released', 2)
+            ->assertJsonPath('benefit_status_records.0.pending', 1)
+            ->assertJsonPath('benefit_status_records.0.not_released', 0);
     }
 
     public function test_age_brackets_use_exact_birthdays_and_skip_pending_and_archived_seniors(): void
@@ -92,6 +99,34 @@ class AnalyticsLeaderScopeTest extends TestCase
             ->assertJsonPath('age_distribution.4.count', 1)
             ->assertJsonPath('barangay_summary.0.registered', 3)
             ->assertJsonPath('trend.0.municipal', 3);
+    }
+
+    public function test_benefit_records_follow_the_expanded_centenarian_age_bands(): void
+    {
+        $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        // Social Pension: 79, 86 (between bands), 96 and 101.
+        foreach ([79, 86, 96, 101] as $age) {
+            $this->createSenior($admin, $barangay, "SP-{$age}", $age);
+        }
+        // Turns 80 tomorrow, so still 79 today.
+        $this->createSenior($admin, $barangay, 'SP-80-TOMORROW', 80, now()->subYears(80)->addDay());
+        $this->createSenior($admin, $barangay, 'OCTO-80', 80);
+        $this->createSenior($admin, $barangay, 'OCTO-85', 85);
+        $this->createSenior($admin, $barangay, 'NONA-90', 90);
+        $this->createSenior($admin, $barangay, 'NONA-95', 95);
+        $this->createSenior($admin, $barangay, 'CENT-100', 100);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/analytics')
+            ->assertOk()
+            ->assertJsonPath('benefit_records', [
+                ['name' => 'Social Pension', 'value' => 5],
+                ['name' => 'Octogenarian Grant', 'value' => 2],
+                ['name' => 'Nonagenarian Grant', 'value' => 2],
+                ['name' => 'Centenarian Award', 'value' => 1],
+            ]);
     }
 
     private function createSenior(

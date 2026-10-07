@@ -14,6 +14,13 @@ class AnalyticsController extends Controller
 {
     private const AGE_BRACKETS = [60, 70, 80, 90, 100];
 
+    /** Column alias => [first age, last age] for each milestone benefit. */
+    private const MILESTONE_BENEFITS = [
+        'octogenarian' => [80, 85],
+        'nonagenarian' => [90, 95],
+        'centenarian' => [100, 100],
+    ];
+
     public function __invoke(Request $request): JsonResponse
     {
         $isLeader = $request->user()->role === 'leader';
@@ -58,6 +65,14 @@ class AnalyticsController extends Controller
                 $ageBindings[] = now()->subYearsNoOverflow($age + 10)->toDateString().' 23:59:59';
             }
         }
+        // Expanded Centenarians Act age bands; every other age gets Social Pension.
+        // Mirrors benefitForAge() in the frontend so charts match the registration form.
+        foreach (self::MILESTONE_BENEFITS as $column => [$from, $to]) {
+            $ageSelects[] = "COALESCE(SUM(CASE WHEN birthdate <= ? AND birthdate > ? THEN 1 ELSE 0 END), 0) AS {$column}";
+            $ageBindings[] = now()->subYearsNoOverflow($from)->toDateString().' 23:59:59';
+            $ageBindings[] = now()->subYearsNoOverflow($to + 1)->toDateString().' 23:59:59';
+        }
+
         $totals = (clone $seniors)
             ->selectRaw(
                 'COUNT(*) AS total_registered, '.
@@ -115,17 +130,39 @@ class AnalyticsController extends Controller
             ->leftJoin('benefits', 'benefits.id', '=', 'benefit_transactions.benefit_id')
             ->groupByRaw($benefitName)
             ->orderByRaw('MIN(benefit_transactions.id)');
-        $benefitRecords = (clone $benefitTotals)
-            ->selectRaw("{$benefitName} AS name, COUNT(*) AS value")
-            ->toBase()
-            ->get()
-            ->map(fn ($row) => ['name' => $row->name, 'value' => (int) $row->value]);
+        // Seniors per benefit by the age rule, so records always match each senior's age.
+        $octogenarian = (int) $totals->octogenarian;
+        $nonagenarian = (int) $totals->nonagenarian;
+        $centenarian = (int) $totals->centenarian;
+        $benefitRecords = collect([
+            ['name' => 'Social Pension', 'value' => (int) $totals->total_registered - $octogenarian - $nonagenarian - $centenarian],
+            ['name' => 'Octogenarian Grant', 'value' => $octogenarian],
+            ['name' => 'Nonagenarian Grant', 'value' => $nonagenarian],
+            ['name' => 'Centenarian Award', 'value' => $centenarian],
+        ])->filter(fn (array $record) => $record['value'] > 0)->values();
         $releasedBenefitRecords = (clone $benefitTotals)
             ->where('benefit_transactions.status', 'released')
             ->selectRaw("{$benefitName} AS name, COUNT(DISTINCT benefit_transactions.senior_citizen_id) AS senior_count")
             ->toBase()
             ->get()
             ->map(fn ($row) => ['name' => $row->name, 'senior_count' => (int) $row->senior_count]);
+        // Release progress per program: benefit releases (transactions) in each status.
+        $benefitStatusRecords = (clone $benefitTotals)
+            ->selectRaw(
+                "{$benefitName} AS name, ".
+                'COALESCE(SUM(CASE WHEN benefit_transactions.status = ? THEN 1 ELSE 0 END), 0) AS released, '.
+                'COALESCE(SUM(CASE WHEN benefit_transactions.status = ? THEN 1 ELSE 0 END), 0) AS pending, '.
+                'COALESCE(SUM(CASE WHEN benefit_transactions.status = ? THEN 1 ELSE 0 END), 0) AS not_released',
+                ['released', 'pending', 'failed'],
+            )
+            ->toBase()
+            ->get()
+            ->map(fn ($row) => [
+                'name' => $row->name,
+                'released' => (int) $row->released,
+                'pending' => (int) $row->pending,
+                'not_released' => (int) $row->not_released,
+            ]);
 
         $runningTotal = 0;
         $trend = $barangaySummary->map(function (array $row) use (&$runningTotal) {
@@ -145,6 +182,7 @@ class AnalyticsController extends Controller
             'age_distribution' => $ageDistribution->all(),
             'benefit_records' => $benefitRecords->all(),
             'released_benefit_records' => $releasedBenefitRecords->all(),
+            'benefit_status_records' => $benefitStatusRecords->all(),
             'trend' => $trend->values()->all(),
         ];
     }

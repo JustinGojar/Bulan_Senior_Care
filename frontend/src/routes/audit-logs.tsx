@@ -21,6 +21,120 @@ function formatTarget(targetType: string) {
   );
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  barangay_id: "Barangay",
+  benefit_id: "Benefit",
+  contact_number: "Contact number",
+  ip_address: "IP address",
+  osca_id_number: "Senior Citizen ID",
+  period_label: "Period",
+  privacy_consent_version: "Privacy consent version",
+  terms_version: "Terms version",
+};
+
+// Bookkeeping columns that change on every save and mean nothing to a reader.
+const HIDDEN_FIELDS = new Set(["updated_at", "created_at"]);
+
+function fieldLabel(key: string) {
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  const words = key.replace(/_id$/, "").replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "None";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) return value.map(formatValue).join(", ");
+  if (typeof value === "object") return JSON.stringify(value);
+  const text = String(value);
+  return /^[a-z]+(_[a-z]+)*$/.test(text) ? fieldLabel(text) : text;
+}
+
+function fieldList(value: Record<string, unknown> | null) {
+  const fields = value?.["fields"];
+  return Array.isArray(fields) ? fields.map(String).filter((f) => !HIDDEN_FIELDS.has(f)) : null;
+}
+
+function FieldChips({ fields, tone }: { fields: string[]; tone: "changed" | "muted" }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {fields.map((field) => (
+        <span
+          key={field}
+          className={
+            tone === "changed"
+              ? "rounded-full bg-primary/10 px-2.5 py-0.5 font-semibold text-primary"
+              : "rounded-full bg-muted px-2.5 py-0.5 text-muted-foreground"
+          }
+        >
+          {fieldLabel(field)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Readable summary of what an audit entry recorded, instead of raw JSON. */
+function RecordedChanges({ log }: { log: AuditLog }) {
+  const submitted = fieldList(log.before_value);
+  const changed = fieldList(log.after_value);
+
+  // Record updates store which fields were sent and which actually changed.
+  if (submitted && changed) {
+    const unchanged = submitted.filter((field) => !changed.includes(field));
+    return (
+      <div className="mt-2 space-y-3 rounded-lg border border-border/60 bg-card p-3">
+        <div>
+          <p className="font-semibold text-foreground">Changed</p>
+          {changed.length > 0 ? (
+            <FieldChips fields={changed} tone="changed" />
+          ) : (
+            <p className="mt-1 text-muted-foreground">No values changed.</p>
+          )}
+        </div>
+        {unchanged.length > 0 && (
+          <div>
+            <p className="font-semibold text-foreground">Reviewed, no change</p>
+            <FieldChips fields={unchanged} tone="muted" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const before = log.before_value ?? {};
+  const after = log.after_value ?? {};
+  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
+    (key) => !HIDDEN_FIELDS.has(key),
+  );
+  const showBefore = log.before_value !== null;
+  const showAfter = log.after_value !== null;
+  return (
+    <div className="mt-2 overflow-x-auto rounded-lg border border-border/60 bg-card">
+      <table className="w-full text-left">
+        <thead className="bg-muted/50 text-[11px] tracking-wider text-muted-foreground uppercase">
+          <tr>
+            <th className="px-3 py-2 font-semibold">Field</th>
+            {showBefore && <th className="px-3 py-2 font-semibold">Before</th>}
+            {showAfter && <th className="px-3 py-2 font-semibold">After</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {keys.map((key) => (
+            <tr key={key} className="border-t border-border/60">
+              <td className="px-3 py-2 font-semibold text-foreground">{fieldLabel(key)}</td>
+              {showBefore && (
+                <td className="px-3 py-2 text-muted-foreground">{formatValue(before[key])}</td>
+              )}
+              {showAfter && <td className="px-3 py-2">{formatValue(after[key])}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [page, setPage] = useState(1);
@@ -111,9 +225,7 @@ function AuditLogsPage() {
                   <summary className="cursor-pointer font-semibold text-primary">
                     View recorded changes
                   </summary>
-                  <pre className="mt-2 overflow-x-auto rounded-lg border border-border/60 bg-card p-3 whitespace-pre-wrap">
-                    {JSON.stringify({ before: log.before_value, after: log.after_value }, null, 2)}
-                  </pre>
+                  <RecordedChanges log={log} />
                 </details>
               )}
             </article>

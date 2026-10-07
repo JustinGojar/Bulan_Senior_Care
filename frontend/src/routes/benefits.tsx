@@ -799,8 +799,9 @@ function BenefitTracking() {
                       {program.name}
                     </h2>
                     <span className="hidden shrink-0 md:inline-flex">
+                      {/* Funding source (National, Provincial, ...); inactive programs still say so. */}
                       <StatusPill tone={program.status === "active" ? "success" : "neutral"}>
-                        {program.status === "active" ? "Active" : "Inactive"}
+                        {program.status === "active" ? program.funding : "Inactive"}
                       </StatusPill>
                     </span>
                   </div>
