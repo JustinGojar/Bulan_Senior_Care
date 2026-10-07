@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ClipboardList, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
-import { SectionHeader, TileSkeletons } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, TileSkeletons } from "@/components/DesignKit";
 import { badgeClass, panelClass, secondaryButtonClass, tileClass } from "@/components/design-kit";
 import { getAuditLogs, getStoredUser, type AuditLog, type PaginatedResponse } from "@/lib/api";
 
@@ -75,9 +75,12 @@ function AuditLogsPage() {
           </div>
         )}
         {isAdmin && !loading && !error && logs.length === 0 && (
-          <p className={`${tileClass} mt-6 text-center text-sm text-muted-foreground`}>
-            No audit activity has been recorded yet.
-          </p>
+          <EmptyState
+            icon={ClipboardList}
+            title="No activity recorded yet"
+            description="Account, senior record and benefit changes will be listed here."
+            className="mt-6"
+          />
         )}
 
         <div className="mt-5 space-y-3">

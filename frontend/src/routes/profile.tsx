@@ -13,12 +13,13 @@ import {
   ShieldCheck,
   UserCircle,
   Users,
+  History,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
-import { SectionHeader, TableSkeletonRows } from "@/components/DesignKit";
+import { EmptyState, SectionHeader, TableSkeletonRows } from "@/components/DesignKit";
 import { fieldClass, panelClass, tileClass } from "@/components/design-kit";
 import { authSubmitClass } from "@/components/AuthLayout";
 import {
@@ -533,10 +534,20 @@ function ProfilePage() {
                   )}
                   {(!isAdmin || recentActivity?.length === 0) && (
                     <tr className="border-t border-border/60">
-                      <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                        {!isAdmin
-                          ? "Your activity history is kept in the audit log, which the OSCA administrator can review."
-                          : "No recent activity."}
+                      <td colSpan={3}>
+                        <EmptyState
+                          bare
+                          compact
+                          icon={History}
+                          title={
+                            isAdmin ? "No recent activity" : "Activity is kept in the audit log"
+                          }
+                          description={
+                            isAdmin
+                              ? "Your changes to accounts and records will be listed here."
+                              : "The OSCA administrator can review your activity history."
+                          }
+                        />
                       </td>
                     </tr>
                   )}

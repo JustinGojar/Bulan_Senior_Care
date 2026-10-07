@@ -154,3 +154,49 @@ export function TableSkeletonRows({
     </>
   );
 }
+
+/**
+ * Shown when a list, table or chart has nothing to display: icon tile, short
+ * title, optional hint and action. `bare` drops the dashed frame for spots that
+ * already sit inside a bordered box or table cell; `compact` is for small panels.
+ */
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  bare = false,
+  compact = false,
+  className = "",
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  bare?: boolean;
+  compact?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center text-center ${
+        compact ? "px-4 py-6" : "px-6 py-10"
+      } ${bare ? "" : "rounded-lg border border-dashed border-border bg-background/40"} ${className}`}
+    >
+      <span
+        className={`grid shrink-0 place-items-center rounded-xl border border-gold/40 bg-gold/15 text-gold-foreground ring-4 ring-gold/5 dark:text-gold ${
+          compact ? "h-10 w-10" : "h-12 w-12"
+        }`}
+      >
+        <Icon className={compact ? "h-4 w-4" : "h-5 w-5"} />
+      </span>
+      <p className={`font-display font-bold text-foreground ${compact ? "mt-3 text-sm" : "mt-4"}`}>
+        {title}
+      </p>
+      {description && (
+        <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+      )}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
