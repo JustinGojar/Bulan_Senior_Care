@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
 import { benefitForAge, type Senior } from "./osca-data";
+import { PRIVACY_CONSENT_VERSION } from "./terms";
 
 type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
@@ -25,6 +26,8 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   validId?: File | null;
   birthCertificate?: File | null;
   profilePhoto?: File | null;
+  /** The senior agreed to the Data Privacy Consent; sent with new registrations. */
+  privacyConsent?: boolean;
 };
 
 function mapSenior(senior: ApiSenior): Senior {
@@ -58,6 +61,7 @@ function mapSenior(senior: ApiSenior): Senior {
     idDocumentPath: senior.id_document_path ?? null,
     validIdPath: senior.valid_id_path ?? senior.id_document_path ?? null,
     birthCertificatePath: senior.birth_certificate_path ?? null,
+    privacyConsentAt: senior.privacy_consent_at ?? null,
   };
 }
 
@@ -197,6 +201,8 @@ export function useSeniors(
       body.append("status", "pending");
       body.append("barangay", draft.barangay);
       body.append("benefit", draft.benefit);
+      body.append("privacy_consent", draft.privacyConsent ? "1" : "0");
+      body.append("privacy_consent_version", PRIVACY_CONSENT_VERSION);
       if (draft.validId) body.append("valid_id", draft.validId);
       if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
       if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\Barangay;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +68,10 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'accepted_terms' => ['accepted'],
+            'terms_version' => ['required', 'string', 'max:20'],
+        ], [
+            'accepted_terms.accepted' => 'You must agree to the Terms and Conditions to sign in.',
         ]);
         $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
@@ -87,7 +92,22 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        $user->update(['last_login' => now()]);
+        $previousTermsVersion = $user->terms_version;
+        $user->forceFill([
+            'last_login' => now(),
+            'terms_version' => $credentials['terms_version'],
+            'terms_accepted_at' => now(),
+        ])->save();
+        // The user agrees on every sign-in; the audit log keeps the first agreement to each version.
+        if ($previousTermsVersion !== $credentials['terms_version']) {
+            AuditLog::record(
+                $user,
+                'accepted_terms',
+                $user,
+                $previousTermsVersion === null ? null : ['terms_version' => $previousTermsVersion],
+                ['terms_version' => $credentials['terms_version'], 'ip_address' => $request->ip()],
+            );
+        }
         $user->tokens()->delete();
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 

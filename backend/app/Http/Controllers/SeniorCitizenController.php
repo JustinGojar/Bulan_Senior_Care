@@ -114,6 +114,16 @@ class SeniorCitizenController extends Controller
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
         $this->normalizeContact($request);
         $data = $request->validate($this->rules());
+        // The senior, or their representative, agrees to the data privacy notice before
+        // their personal information is registered.
+        $consent = $request->validate([
+            'privacy_consent' => ['accepted'],
+            'privacy_consent_version' => ['required', 'string', 'max:20'],
+        ], [
+            'privacy_consent.accepted' => 'The senior must agree to the Data Privacy Consent before registering.',
+        ]);
+        $data['privacy_consent_version'] = $consent['privacy_consent_version'];
+        $data['privacy_consent_at'] = now();
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
                 $documentPath = $request->file($documentField)->store('senior-documents', 'public');
@@ -171,7 +181,10 @@ class SeniorCitizenController extends Controller
             'status' => 'pending',
             'period_label' => 'Registration '.today()->toDateString(),
         ]);
-        AuditLog::record($request->user(), 'created', $senior, afterValue: ['status' => $senior->status]);
+        AuditLog::record($request->user(), 'created', $senior, afterValue: [
+            'status' => $senior->status,
+            'privacy_consent_version' => $senior->privacy_consent_version,
+        ]);
         AdvisoryDispatcher::forPendingSenior($senior);
 
         return response()->json($senior->load(['barangay', 'benefits']), 201);

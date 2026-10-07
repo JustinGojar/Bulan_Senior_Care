@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { clearFieldById, flagFieldById, flagFieldsById } from "@/lib/form-validation";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
+import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { API_URL } from "@/lib/api";
 import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
@@ -239,6 +240,8 @@ export function SeniorFormDialog({
   const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [familyRows, setFamilyRows] = useState<FamilyRow[]>(() => parseFamilyRows(""));
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -246,6 +249,7 @@ export function SeniorFormDialog({
     setValidId(null);
     setBirthCertificate(null);
     setProfilePhoto(null);
+    setPrivacyConsent(false);
     setDraft(
       senior
         ? {
@@ -353,6 +357,11 @@ export function SeniorFormDialog({
           `Complete all columns for family member ${rowIndex + 1}.`,
         ]);
     });
+    if (!senior && !privacyConsent)
+      errors.push([
+        "senior-privacy-consent",
+        "The senior must agree to the Data Privacy Consent before registering.",
+      ]);
     if (errors.length > 0) return flagFieldsById(errors);
     const age = ageFromBirthdate(draft.birthdate ?? "");
     if (age < 60 || age > 130)
@@ -376,6 +385,7 @@ export function SeniorFormDialog({
       validId,
       birthCertificate,
       profilePhoto,
+      privacyConsent: !senior && privacyConsent,
     });
     onOpenChange(false);
   }
@@ -877,7 +887,60 @@ export function SeniorFormDialog({
               </div>
             </div>
           </section>
+
+          <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
+            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Data privacy consent
+            </p>
+            {senior ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                {senior.privacyConsentAt
+                  ? `The senior agreed to the Data Privacy Consent on ${new Date(
+                      senior.privacyConsentAt,
+                    ).toLocaleDateString("en-PH", { dateStyle: "long" })}.`
+                  : "No data privacy consent is on record for this senior."}
+              </p>
+            ) : (
+              <>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Read the consent to the senior, or let them read it, before registering them.
+                </p>
+                <div className="relative mt-4 flex items-start gap-3">
+                  <input
+                    id="senior-privacy-consent"
+                    type="checkbox"
+                    checked={privacyConsent}
+                    onChange={(event) => {
+                      setPrivacyConsent(event.target.checked);
+                      clearFieldById("senior-privacy-consent");
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--navy)]"
+                  />
+                  <label htmlFor="senior-privacy-consent" className="text-sm">
+                    The senior, or their authorized representative, agrees to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setConsentOpen(true)}
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Data Privacy Consent
+                    </button>{" "}
+                    *
+                  </label>
+                </div>
+              </>
+            )}
+          </section>
         </div>
+
+        <PrivacyConsentDialog
+          open={consentOpen}
+          onOpenChange={setConsentOpen}
+          onAccept={() => {
+            setPrivacyConsent(true);
+            clearFieldById("senior-privacy-consent");
+          }}
+        />
 
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className={secondaryButtonClass}>

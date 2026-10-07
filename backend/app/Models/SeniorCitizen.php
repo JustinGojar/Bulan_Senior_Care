@@ -20,6 +20,7 @@ class SeniorCitizen extends Model
         'association_name', 'association_address', 'association_membership_date', 'association_position',
         'living_arrangement', 'registration_date', 'status',
         'photo_path', 'id_document_path', 'valid_id_path', 'birth_certificate_path',
+        'privacy_consent_version', 'privacy_consent_at',
     ];
 
     protected static function booted(): void
@@ -36,7 +37,7 @@ class SeniorCitizen extends Model
 
     protected function casts(): array
     {
-        return ['birthdate' => 'date', 'registration_date' => 'date'];
+        return ['birthdate' => 'date', 'registration_date' => 'date', 'privacy_consent_at' => 'datetime'];
     }
 
     public function getRouteKeyName(): string
