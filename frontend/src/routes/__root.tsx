@@ -14,6 +14,7 @@ import {
   broadcastAuthChange,
   clearToken,
   getToken,
+  noteSessionEnded,
   setStoredUser,
   type ApiUser,
 } from "@/lib/api";
@@ -196,6 +197,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           if (isPublic) return;
           throw error;
         }
+        noteSessionEnded(error.message);
         clearToken();
         broadcastAuthChange();
         if (isPublic) return;

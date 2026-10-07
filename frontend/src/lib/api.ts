@@ -3,6 +3,10 @@ const API_URL = (
 ).replace(/\/$/, "");
 const TOKEN_KEY = "bulan-api-token";
 const USER_KEY = "bulan-api-user";
+const SESSION_KEY = "bulan-api-session";
+const SESSION_NOTICE_KEY = "bulan-session-notice";
+// Used for sessions signed in before the server reported its limits.
+const DEFAULT_IDLE_TIMEOUT_MINUTES = 15;
 const ANNOUNCEMENTS_CACHE_TTL = 60_000;
 const BARANGAYS_CACHE_TTL = 5 * 60_000;
 // GET responses younger than this are reused without a request.
@@ -301,6 +305,8 @@ export function setToken(token: string) {
   clearResponseCache();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_NOTICE_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
   localStorage.setItem(TOKEN_KEY, token);
@@ -310,8 +316,68 @@ export function clearToken() {
   clearResponseCache();
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
+}
+
+export type SessionLimits = {
+  /** Sign out after this many minutes without activity; 0 means never. */
+  idleTimeoutMinutes: number;
+  /** Epoch milliseconds when the sign-in ends however active it is, or null for no cap. */
+  expiresAt: number | null;
+};
+
+type ServerSessionLimits = { idle_timeout_minutes: number; expires_in_seconds: number | null };
+
+function setSessionLimits(limits: ServerSessionLimits | undefined) {
+  if (!limits) return;
+  const stored: SessionLimits = {
+    idleTimeoutMinutes: limits.idle_timeout_minutes,
+    expiresAt: limits.expires_in_seconds ? Date.now() + limits.expires_in_seconds * 1000 : null,
+  };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(stored));
+}
+
+export function getSessionLimits(): SessionLimits {
+  try {
+    const value = localStorage.getItem(SESSION_KEY);
+    if (value) return JSON.parse(value) as SessionLimits;
+  } catch {
+    // Fall back to the defaults below.
+  }
+  return { idleTimeoutMinutes: DEFAULT_IDLE_TIMEOUT_MINUTES, expiresAt: null };
+}
+
+/** Remembers why the session ended, for the login page to explain. */
+export function setSessionNotice(message: string) {
+  try {
+    localStorage.setItem(SESSION_NOTICE_KEY, message);
+  } catch {
+    // The login page just shows no explanation.
+  }
+}
+
+/** Records why the server rejected the session; its bare "Unauthenticated." says nothing useful. */
+export function noteSessionEnded(serverMessage?: string | null) {
+  setSessionNotice(
+    serverMessage &&
+      serverMessage !== "Unauthenticated." &&
+      !serverMessage.startsWith("Request failed")
+      ? serverMessage
+      : "Your session has expired. Please log in again.",
+  );
+}
+
+/** Returns the reason the last session ended, once. */
+export function takeSessionNotice() {
+  try {
+    const message = localStorage.getItem(SESSION_NOTICE_KEY);
+    localStorage.removeItem(SESSION_NOTICE_KEY);
+    return message;
+  } catch {
+    return null;
+  }
 }
 
 export function broadcastAuthChange() {
@@ -422,7 +488,9 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   const body = (await response.json().catch(() => null)) as
     { message?: string; errors?: Record<string, string[]> } | T | null;
   if (!response.ok) {
-    if (response.status === 401 && path !== "/login" && token) {
+    // A 401 for a token that was already replaced or cleared must not end the current session.
+    if (response.status === 401 && path !== "/login" && token && getToken() === token) {
+      noteSessionEnded((body as { message?: string } | null)?.message);
       clearToken();
       broadcastAuthChange();
       throw new Error("Your session has expired. Please log in again before saving your profile.");
@@ -439,12 +507,16 @@ export function getAuditLogs(page = 1) {
 }
 
 export async function login(email: string, password: string) {
-  const result = await apiFetch<{ token: string; user: ApiUser }>("/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+  const result = await apiFetch<{ token: string; user: ApiUser; session?: ServerSessionLimits }>(
+    "/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    },
+  );
   setToken(result.token);
   setStoredUser(result.user);
+  setSessionLimits(result.session);
   return result.user;
 }
 
