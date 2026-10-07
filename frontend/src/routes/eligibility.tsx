@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { SectionHeader, StatusPill } from "@/components/DesignKit";
 import {
   fieldClass,
@@ -55,6 +56,7 @@ function EligibilityReview() {
     lastPage,
     loading,
     error,
+    reload,
     updateSenior,
   } = useSeniors({
     pendingOnly: true,
@@ -64,6 +66,11 @@ function EligibilityReview() {
     barangay,
   });
   const [viewing, setViewing] = useState<Senior | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkReviewing, setBulkReviewing] = useState(false);
+  const [confirm, confirmDialog] = useConfirmDialog();
+  const selectedSeniors = pendingSeniors.filter((senior) => selectedIds.includes(senior.id));
+  const allSelected = pendingSeniors.length > 0 && selectedSeniors.length === pendingSeniors.length;
 
   useEffect(() => {
     if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
@@ -86,6 +93,50 @@ function EligibilityReview() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update eligibility.");
     }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  function toggleAllSelected() {
+    setSelectedIds(allSelected ? [] : pendingSeniors.map((senior) => senior.id));
+  }
+
+  async function reviewSelected(status: "Active" | "Inactive") {
+    const selected = selectedSeniors;
+    if (!selected.length) return;
+    const label = status === "Active" ? "eligible" : "not eligible";
+    const confirmed = await confirm({
+      title: `Mark ${selected.length} as ${label}?`,
+      description: `${selected.length} selected ${selected.length === 1 ? "registration" : "registrations"} will be marked ${label}.`,
+      confirmLabel: `Mark ${label}`,
+      destructive: status === "Inactive",
+    });
+    if (!confirmed) return;
+
+    setBulkReviewing(true);
+    const results = await Promise.allSettled(
+      selected.map((senior) => updateSenior(senior.id, { ...senior, status })),
+    );
+    setBulkReviewing(false);
+    const failedIds = selected
+      .filter((_, index) => results[index]?.status === "rejected")
+      .map((senior) => senior.id);
+    setSelectedIds(failedIds);
+    const updatedCount = selected.length - failedIds.length;
+    if (failedIds.length)
+      toast.error(
+        `${updatedCount} marked ${label}; ${failedIds.length} could not be updated. Please retry the rest.`,
+      );
+    else
+      toast.success(
+        `${updatedCount} ${updatedCount === 1 ? "registration" : "registrations"} marked ${label}.`,
+      );
+    // Bring the next registrations into the emptied page and refresh the waiting count.
+    reload();
   }
 
   return (
@@ -118,6 +169,7 @@ function EligibilityReview() {
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
+                setSelectedIds([]);
               }}
               placeholder="Search name or OSCA ID"
               className={`${fieldClass} h-10 pl-10 sm:h-11`}
@@ -137,6 +189,7 @@ function EligibilityReview() {
             onChange={(value) => {
               setBarangay(value);
               setPage(1);
+              setSelectedIds([]);
             }}
           />
           {(search || barangay) && (
@@ -149,10 +202,49 @@ function EligibilityReview() {
                 setSearch("");
                 setBarangay("");
                 setPage(1);
+                setSelectedIds([]);
               }}
             />
           )}
         </div>
+        {pendingSeniors.length > 0 && (
+          <div className={`${tileClass} mt-5 flex flex-wrap items-center gap-3 py-3`}>
+            <label className="inline-flex items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAllSelected}
+                disabled={bulkReviewing}
+                className="h-4 w-4 accent-[var(--navy)]"
+              />
+              Select all on this page
+            </label>
+            <span className="text-xs text-muted-foreground">{selectedSeniors.length} selected</span>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => reviewSelected("Inactive")}
+                disabled={bulkReviewing || selectedSeniors.length === 0}
+                className={`${secondaryButtonClass} h-9 px-3 text-xs text-destructive hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40`}
+              >
+                <X className="h-3.5 w-3.5" /> Not eligible
+              </button>
+              <button
+                type="button"
+                onClick={() => reviewSelected("Active")}
+                disabled={bulkReviewing || selectedSeniors.length === 0}
+                className={`${primaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+              >
+                {bulkReviewing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
+                Eligible
+              </button>
+            </div>
+          </div>
+        )}
         <div className="mt-6 space-y-3">
           {loading && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -170,24 +262,34 @@ function EligibilityReview() {
                 key={senior.id}
                 className={`${tileClass} flex flex-wrap items-center justify-between gap-4`}
               >
-                <div className="min-w-0">
-                  <p className="font-bold">
-                    {senior.name}{" "}
-                    <span className="ml-1 text-xs font-semibold text-muted-foreground">
-                      {senior.id}
-                    </span>
-                  </p>
-                  <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-                    <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
-                      Age {senior.age}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" /> {senior.barangay}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Review this registration before it becomes an active record.
-                  </p>
+                <div className="flex min-w-0 items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(senior.id)}
+                    onChange={() => toggleSelected(senior.id)}
+                    disabled={bulkReviewing}
+                    aria-label={`Select ${senior.name}`}
+                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--navy)]"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-bold">
+                      {senior.name}{" "}
+                      <span className="ml-1 text-xs font-semibold text-muted-foreground">
+                        {senior.id}
+                      </span>
+                    </p>
+                    <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+                      <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
+                        Age {senior.age}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5" /> {senior.barangay}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Review this registration before it becomes an active record.
+                    </p>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -234,7 +336,10 @@ function EligibilityReview() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                onClick={() => {
+                  setPage((current) => Math.max(1, current - 1));
+                  setSelectedIds([]);
+                }}
                 disabled={page <= 1 || loading}
                 aria-label="Previous page"
                 className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
@@ -247,7 +352,10 @@ function EligibilityReview() {
               </span>
               <button
                 type="button"
-                onClick={() => setPage((current) => Math.min(lastPage, current + 1))}
+                onClick={() => {
+                  setPage((current) => Math.min(lastPage, current + 1));
+                  setSelectedIds([]);
+                }}
                 disabled={page >= lastPage || loading}
                 aria-label="Next page"
                 className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
@@ -325,6 +433,7 @@ function EligibilityReview() {
           </div>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </AppShell>
   );
 }

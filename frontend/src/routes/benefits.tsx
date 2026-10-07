@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Coins,
   Download,
+  FileSpreadsheet,
   Gift,
   Grid2X2,
   HeartHandshake,
@@ -21,6 +22,7 @@ import {
   XCircle,
   RotateCcw,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
@@ -78,6 +80,12 @@ type BenefitProgram = {
   status: "active" | "inactive";
 };
 
+/** Today's date as YYYY-MM-DD in the user's own time zone. */
+function localToday() {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
 const PROGRAM_ICONS = [Coins, Gift, Users, HeartHandshake, Banknote, Award];
 
 function BenefitTracking() {
@@ -100,6 +108,12 @@ function BenefitTracking() {
   const [sortProgramsBy, setSortProgramsBy] = useState("name");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<number[]>([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [exportingQueue, setExportingQueue] = useState<"pdf" | "excel" | null>(null);
+  // Transactions waiting for a release date before they are marked received.
+  const [releaseDateRequest, setReleaseDateRequest] = useState<{
+    transactions: BenefitTransaction[];
+    date: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -255,23 +269,72 @@ function BenefitTracking() {
     });
   }
 
-  async function updateTransaction(transaction: BenefitTransaction, status: "released" | "failed") {
-    const date =
-      status === "released"
-        ? window.prompt(
-            "Enter the actual release date (YYYY-MM-DD):",
-            transaction.date_distributed ?? "",
-          )
-        : null;
-    if (status === "released" && !date) return;
-    try {
-      const updated = await saveTransactionStatus(transaction, status, date);
-      setTransactions((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
+  async function applyTransactionStatus(
+    selected: BenefitTransaction[],
+    status: "released" | "failed",
+    date: string | null,
+  ) {
+    setBulkUpdating(true);
+    const results = await Promise.allSettled(
+      selected.map((transaction) => saveTransactionStatus(transaction, status, date)),
+    );
+    setBulkUpdating(false);
+    const updated = results.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    );
+    const updatedIds = new Set(updated.map((transaction) => transaction.id));
+    setTransactions((current) =>
+      current.map(
+        (transaction) => updated.find((item) => item.id === transaction.id) ?? transaction,
+      ),
+    );
+    setSelectedTransactionIds((current) => current.filter((id) => !updatedIds.has(id)));
+
+    const statusLabel = status === "released" ? "received" : "not received";
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) {
+      const reason =
+        failure.reason instanceof Error
+          ? failure.reason.message
+          : "Unable to update benefit status.";
+      toast.error(
+        updated.length > 0
+          ? `${updated.length} marked ${statusLabel}; ${results.length - updated.length} failed: ${reason}`
+          : reason,
       );
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to update benefit status.");
+    } else {
+      toast.success(
+        `${updated.length} ${updated.length === 1 ? "transaction" : "transactions"} marked ${statusLabel}.`,
+      );
     }
+  }
+
+  function requestReleaseDate(selected: BenefitTransaction[]) {
+    if (!selected.length) return;
+    const existingDate = selected.length === 1 ? selected[0]?.date_distributed : null;
+    setReleaseDateRequest({
+      transactions: selected,
+      date: existingDate?.slice(0, 10) || localToday(),
+    });
+  }
+
+  async function confirmReleaseDate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!releaseDateRequest?.date) return;
+    const { transactions: selected, date } = releaseDateRequest;
+    setReleaseDateRequest(null);
+    await applyTransactionStatus(selected, "released", date);
+  }
+
+  async function markNotReceived(selected: BenefitTransaction[]) {
+    if (!selected.length) return;
+    const confirmed = await confirm({
+      title: "Mark as not received?",
+      description: `${selected.length} ${selected.length === 1 ? "transaction" : "transactions"} will be marked as Not received.`,
+      confirmLabel: "Mark not received",
+      destructive: true,
+    });
+    if (confirmed) await applyTransactionStatus(selected, "failed", null);
   }
 
   function toggleAllPendingTransactions() {
@@ -283,53 +346,9 @@ function BenefitTracking() {
     );
   }
 
-  async function updateSelectedTransactions(status: "released" | "failed") {
-    const selected = filteredTransactions.filter(
-      (transaction) =>
-        selectedTransactionIds.includes(transaction.id) && transaction.status === "pending",
-    );
-    if (!selected.length) return;
-
-    const date =
-      status === "released"
-        ? window.prompt(
-            `Enter the actual release date (YYYY-MM-DD) for all ${selected.length} selected transactions:`,
-            new Date().toISOString().slice(0, 10),
-          )
-        : null;
-    if (status === "released" && !date) return;
-    const statusLabel = status === "released" ? "Received" : "Not received";
-    const confirmed = await confirm({
-      title: `Mark as ${statusLabel.toLowerCase()}?`,
-      description: `${selected.length} selected ${selected.length === 1 ? "transaction" : "transactions"} will be marked as ${statusLabel}.`,
-      confirmLabel: `Mark ${statusLabel.toLowerCase()}`,
-      destructive: status !== "released",
-    });
-    if (!confirmed) return;
-
-    setBulkUpdating(true);
-    const results = await Promise.allSettled(
-      selected.map((transaction) => saveTransactionStatus(transaction, status, date)),
-    );
-    const updated = results.flatMap((result) =>
-      result.status === "fulfilled" ? [result.value] : [],
-    );
-    const updatedIds = new Set(updated.map((transaction) => transaction.id));
-    setTransactions((current) =>
-      current.map((transaction) =>
-        updatedIds.has(transaction.id)
-          ? updated.find((item) => item.id === transaction.id)!
-          : transaction,
-      ),
-    );
-    setSelectedTransactionIds((current) => current.filter((id) => !updatedIds.has(id)));
-    const failedCount = results.length - updated.length;
-    if (failedCount > 0)
-      setError(
-        `${updated.length} updated; ${failedCount} failed. Refresh and retry the remaining transactions.`,
-      );
-    setBulkUpdating(false);
-  }
+  const selectedPendingTransactions = pendingTransactions.filter((transaction) =>
+    selectedTransactionIds.includes(transaction.id),
+  );
 
   async function saveRelease(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -429,6 +448,204 @@ function BenefitTracking() {
       setError(null);
     } catch {
       setError("Unable to export benefit records.");
+    }
+  }
+
+  function matchesQueueFilters(transaction: BenefitTransaction) {
+    return (
+      (selectedBarangay === "All" ||
+        (transaction.senior.barangay?.barangay_name ?? "Unassigned") === selectedBarangay) &&
+      (selectedBenefit === "All" || transaction.benefit.benefit_name === selectedBenefit) &&
+      (selectedStatus === "All" || transaction.status === selectedStatus)
+    );
+  }
+
+  /** Every transaction matching the current filters, across all pages of the queue. */
+  async function loadReleaseQueueReportRows() {
+    const all: BenefitTransaction[] = [];
+    for (let page = 1, lastPage = 1; page <= lastPage; page += 1) {
+      const result = await apiFetch<PaginatedResponse<BenefitTransaction>>(
+        `/benefit-transactions?page=${page}&per_page=1000`,
+      );
+      all.push(...result.data);
+      lastPage = result.last_page;
+    }
+    return all.filter(matchesQueueFilters).map((transaction) => ({
+      senior: [
+        transaction.senior.first_name,
+        transaction.senior.middle_name,
+        transaction.senior.last_name,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      oscaId: transaction.senior.osca_id_number,
+      program: transaction.benefit.benefit_name,
+      barangay: transaction.senior.barangay?.barangay_name ?? "Unassigned",
+      amount: Number(transaction.amount) || 0,
+      period: transaction.period_label ?? "",
+      releaseDate: transaction.date_distributed ? formatDate(transaction.date_distributed) : "",
+      status:
+        transaction.status === "released"
+          ? "Received"
+          : transaction.status === "failed"
+            ? "Not received"
+            : "Pending",
+      distributedBy: transaction.distributor?.name ?? "",
+    }));
+  }
+
+  function releaseQueueFilterSummary() {
+    const statusLabel =
+      selectedStatus === "released"
+        ? "Received"
+        : selectedStatus === "failed"
+          ? "Not received"
+          : selectedStatus === "pending"
+            ? "Pending"
+            : "All statuses";
+    return [
+      selectedBenefit === "All" ? "All programs" : selectedBenefit,
+      statusLabel,
+      selectedBarangay === "All" ? "All barangays" : selectedBarangay,
+    ].join(" / ");
+  }
+
+  async function exportReleaseQueue(format: "pdf" | "excel") {
+    setExportingQueue(format);
+    try {
+      const rows = await loadReleaseQueueReportRows();
+      if (rows.length === 0) {
+        toast.error("There are no release queue records matching these filters.");
+        return;
+      }
+      const generatedDate = new Date();
+      const fileDate = localToday();
+      const count = (status: string) => rows.filter((row) => row.status === status).length;
+      const receivedAmount = rows
+        .filter((row) => row.status === "Received")
+        .reduce((sum, row) => sum + row.amount, 0);
+      const peso = (value: number) =>
+        `PHP ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const summary: Array<[string, string]> = [
+        ["Filters", releaseQueueFilterSummary()],
+        ["Records", String(rows.length)],
+        ["Received", String(count("Received"))],
+        ["Pending", String(count("Pending"))],
+        ["Not received", String(count("Not received"))],
+        ["Amount received", peso(receivedAmount)],
+      ];
+
+      if (format === "excel") {
+        const XLSX = await import("xlsx");
+        const sheet = XLSX.utils.aoa_to_sheet([
+          ["Bulan SeniorCare - Release Queue Report"],
+          [`Generated: ${generatedDate.toLocaleString()}`],
+          ...summary,
+          [],
+          [
+            "Senior",
+            "OSCA ID",
+            "Program",
+            "Barangay",
+            "Amount",
+            "Period",
+            "Release date",
+            "Status",
+            "Distributed by",
+          ],
+          ...rows.map((row) => [
+            row.senior,
+            row.oscaId,
+            row.program,
+            row.barangay,
+            row.amount,
+            row.period,
+            row.releaseDate,
+            row.status,
+            row.distributedBy,
+          ]),
+        ]);
+        sheet["!cols"] = [28, 16, 24, 20, 12, 24, 14, 14, 22].map((wch) => ({ wch }));
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, sheet, "Release queue");
+        XLSX.writeFile(workbook, `bulan-seniorcare-release-queue-${fileDate}.xlsx`);
+      } else {
+        const { jsPDF } = await import("jspdf");
+        const document = new jsPDF({ orientation: "landscape" });
+        const logoDataUrl = await loadPdfLogo();
+        document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
+        document.setFontSize(18);
+        document.text("Bulan SeniorCare", 32, 18);
+        document.setFontSize(13);
+        document.text("Release Queue Report", 14, 30);
+        document.setFontSize(9);
+        document.text(`Generated: ${generatedDate.toLocaleString()}`, 14, 37);
+        summary.forEach(([label, value], index) => {
+          const x = 14 + (index % 3) * 90;
+          const y = 45 + Math.floor(index / 3) * 6;
+          document.setFont("helvetica", "bold");
+          document.text(`${label}:`, x, y);
+          document.setFont("helvetica", "normal");
+          document.text(value, x + 30, y);
+        });
+
+        const columns: Array<[string, number, number]> = [
+          ["Senior", 14, 50],
+          ["OSCA ID", 66, 28],
+          ["Program", 96, 42],
+          ["Barangay", 140, 34],
+          ["Amount", 176, 24],
+          ["Period", 202, 34],
+          ["Release date", 238, 24],
+          ["Status", 264, 22],
+        ];
+        const drawHeader = (y: number) => {
+          document.setFont("helvetica", "bold");
+          columns.forEach(([label, x]) => document.text(label, x, y));
+          document.line(14, y + 2, 283, y + 2);
+          document.setFont("helvetica", "normal");
+        };
+        let y = 66;
+        drawHeader(y);
+        y += 8;
+        rows.forEach((row) => {
+          if (y > 195) {
+            document.addPage();
+            y = 18;
+            drawHeader(y);
+            y += 8;
+          }
+          const values = [
+            row.senior,
+            row.oscaId,
+            row.program,
+            row.barangay,
+            peso(row.amount),
+            row.period,
+            row.releaseDate || "-",
+            row.status,
+          ];
+          columns.forEach(([, x, width], index) => {
+            const value = values[index] ?? "";
+            document.text(document.splitTextToSize(value, width - 2)[0] ?? value, x, y);
+          });
+          y += 7;
+        });
+        const pageCount = document.getNumberOfPages();
+        for (let page = 1; page <= pageCount; page += 1) {
+          document.setPage(page);
+          document.setFontSize(8);
+          document.text(`Page ${page} of ${pageCount}`, 283, 205, { align: "right" });
+        }
+        document.save(`bulan-seniorcare-release-queue-${fileDate}.pdf`);
+      }
+      toast.success(
+        `Exported ${rows.length} release queue ${rows.length === 1 ? "record" : "records"}.`,
+      );
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Unable to export the release queue.");
+    } finally {
+      setExportingQueue(null);
     }
   }
 
@@ -659,6 +876,36 @@ function BenefitTracking() {
           icon={ShieldCheck}
           title="Release queue"
           subtitle="Transactions are linked to a senior and program; one-time grants cannot be duplicated."
+          badge={
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => exportReleaseQueue("pdf")}
+                disabled={exportingQueue !== null}
+                className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+              >
+                {exportingQueue === "pdf" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                Export PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => exportReleaseQueue("excel")}
+                disabled={exportingQueue !== null}
+                className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+              >
+                {exportingQueue === "excel" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                )}
+                Export Excel
+              </button>
+            </div>
+          }
         />
         {canUpdateTransactions && (
           <div className={`${tileClass} mt-5 flex flex-wrap items-center gap-3 py-3`}>
@@ -673,42 +920,21 @@ function BenefitTracking() {
               Select all pending on this page
             </label>
             <span className="text-xs text-muted-foreground">
-              {
-                filteredTransactions.filter(
-                  (transaction) =>
-                    selectedTransactionIds.includes(transaction.id) &&
-                    transaction.status === "pending",
-                ).length
-              }{" "}
-              selected
+              {selectedPendingTransactions.length} selected
             </span>
             <div className="ml-auto flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => updateSelectedTransactions("released")}
-                disabled={
-                  bulkUpdating ||
-                  !filteredTransactions.some(
-                    (transaction) =>
-                      selectedTransactionIds.includes(transaction.id) &&
-                      transaction.status === "pending",
-                  )
-                }
+                onClick={() => requestReleaseDate(selectedPendingTransactions)}
+                disabled={bulkUpdating || selectedPendingTransactions.length === 0}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-success/30 bg-success/10 px-3 text-xs font-bold text-success transition-colors hover:bg-success/20 disabled:opacity-40"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" /> Received
               </button>
               <button
                 type="button"
-                onClick={() => updateSelectedTransactions("failed")}
-                disabled={
-                  bulkUpdating ||
-                  !filteredTransactions.some(
-                    (transaction) =>
-                      selectedTransactionIds.includes(transaction.id) &&
-                      transaction.status === "pending",
-                  )
-                }
+                onClick={() => markNotReceived(selectedPendingTransactions)}
+                disabled={bulkUpdating || selectedPendingTransactions.length === 0}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 text-xs font-bold text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
               >
                 <XCircle className="h-3.5 w-3.5" /> Not received
@@ -837,14 +1063,14 @@ function BenefitTracking() {
                           <div className="flex flex-nowrap gap-2">
                             <button
                               type="button"
-                              onClick={() => updateTransaction(transaction, "released")}
+                              onClick={() => requestReleaseDate([transaction])}
                               className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-success/30 bg-success/10 px-2.5 text-xs font-bold text-success transition-colors hover:bg-success/20"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" /> Received
                             </button>
                             <button
                               type="button"
-                              onClick={() => updateTransaction(transaction, "failed")}
+                              onClick={() => markNotReceived([transaction])}
                               className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 text-xs font-bold text-destructive transition-colors hover:bg-destructive/20"
                             >
                               <XCircle className="h-3.5 w-3.5" /> Not received
@@ -997,6 +1223,52 @@ function BenefitTracking() {
               <button type="submit" disabled={savingRelease} className={primaryButtonClass}>
                 {savingRelease && <Loader2 className="h-4 w-4 animate-spin" />}
                 {savingRelease ? "Saving..." : "Save release"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={releaseDateRequest !== null}
+        onOpenChange={(open) => !open && setReleaseDateRequest(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Mark as received</DialogTitle>
+            <DialogDescription>
+              Enter the actual release date for{" "}
+              {releaseDateRequest?.transactions.length === 1
+                ? "this transaction"
+                : `all ${releaseDateRequest?.transactions.length} selected transactions`}
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={confirmReleaseDate} className="space-y-5">
+            <label className="block text-sm font-semibold">
+              Release date
+              <input
+                type="date"
+                required
+                value={releaseDateRequest?.date ?? ""}
+                max={localToday()}
+                onChange={(event) =>
+                  setReleaseDateRequest((current) =>
+                    current ? { ...current, date: event.target.value } : current,
+                  )
+                }
+                className={`${fieldClass} mt-2 h-11`}
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setReleaseDateRequest(null)}
+                className={`${secondaryButtonClass} h-10 px-4`}
+              >
+                Cancel
+              </button>
+              <button type="submit" className={`${primaryButtonClass} h-10 px-4`}>
+                <CheckCircle2 className="h-4 w-4" /> Mark received
               </button>
             </div>
           </form>

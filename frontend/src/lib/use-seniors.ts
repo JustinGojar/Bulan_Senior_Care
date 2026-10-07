@@ -100,6 +100,8 @@ export function useSeniors(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 500);
@@ -160,7 +162,7 @@ export function useSeniors(
       current = false;
       controller.abort();
     };
-  }, [listPath]);
+  }, [listPath, reloadKey]);
 
   const loadAllSeniors = useCallback(async () => {
     const firstPage = await apiFetch<PaginatedSeniorsResponse>(makeListPath(1));
@@ -328,6 +330,7 @@ export function useSeniors(
     lastPage,
     loading,
     error,
+    reload,
     loadAllSeniors,
     createSenior,
     updateSenior,
