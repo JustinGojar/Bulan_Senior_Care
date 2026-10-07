@@ -324,7 +324,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <NavigationProgress />
       <Outlet />
-      <Toaster richColors position="top-right" />
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }
