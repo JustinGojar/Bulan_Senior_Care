@@ -506,12 +506,17 @@ export function getAuditLogs(page = 1) {
   return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?page=${page}&per_page=25`);
 }
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, termsVersion: string) {
   const result = await apiFetch<{ token: string; user: ApiUser; session?: ServerSessionLimits }>(
     "/login",
     {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        accepted_terms: true,
+        terms_version: termsVersion,
+      }),
     },
   );
   setToken(result.token);

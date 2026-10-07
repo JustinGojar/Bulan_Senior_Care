@@ -21,12 +21,16 @@ class LoginRateLimitTest extends TestCase
             $this->postJson('/api/login', [
                 'email' => 'staff@example.com',
                 'password' => 'incorrect-password',
+                'accepted_terms' => true,
+                'terms_version' => '2026-10-07',
             ])->assertStatus(422);
         }
 
         $this->postJson('/api/login', [
             'email' => 'staff@example.com',
             'password' => 'StrongPassword123!',
+            'accepted_terms' => true,
+            'terms_version' => '2026-10-07',
         ])->assertStatus(429);
     }
 }

@@ -40,7 +40,7 @@ class PasswordResetTest extends TestCase
         ])->assertOk();
 
         $this->assertTrue(Hash::check('NewPass#2026', $user->fresh()->password));
-        $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'NewPass#2026'])->assertOk();
+        $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'NewPass#2026', 'accepted_terms' => true, 'terms_version' => '2026-10-07'])->assertOk();
 
         // A used link cannot be reused.
         $this->postJson('/api/reset-password', [
