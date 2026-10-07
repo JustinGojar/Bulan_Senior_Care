@@ -54,7 +54,7 @@ return [
     'expiration' => (int) env('SANCTUM_EXPIRATION', 720) ?: null,
 
     // Minutes without any request before EnforceTokenIdleTimeout revokes the token (0 turns it off).
-    'idle_timeout' => (int) env('SANCTUM_IDLE_TIMEOUT', 30),
+    'idle_timeout' => (int) env('SANCTUM_IDLE_TIMEOUT', 15),
 
     /*
     |--------------------------------------------------------------------------
