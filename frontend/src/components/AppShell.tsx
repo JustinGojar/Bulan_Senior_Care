@@ -38,6 +38,7 @@ import {
 import defaultProfileImage from "@/img/Defaut.png";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet";
 import { BrandLogo } from "./BrandLogo";
+import { SessionTimeout } from "./SessionTimeout";
 import { panelClass, tileClass } from "./design-kit";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -695,6 +696,7 @@ export function AppShell({
           <div className="page-enter mt-5 pb-10 sm:mt-6">{children}</div>
         </main>
       </div>
+      <SessionTimeout />
     </div>
   );
 }

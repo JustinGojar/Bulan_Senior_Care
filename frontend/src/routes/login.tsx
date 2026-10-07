@@ -2,7 +2,7 @@ import { createFileRoute, Link, useBlocker, useNavigate, useRouter } from "@tans
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
-import { login } from "@/lib/api";
+import { login, takeSessionNotice } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -32,6 +32,8 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Why the previous session ended (inactivity or its time limit), if it ended on its own.
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // The browser back button sends the user to the landing page instead of the previous entry,
   // so a signed-out user can never step back into the account pages they were on before
@@ -55,6 +57,10 @@ function LoginPage() {
     router.history.replace("/");
     router.history.push(href, state);
   }, [router]);
+  useEffect(() => {
+    const message = takeSessionNotice();
+    if (message) setNotice(message);
+  }, []);
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to your account to continue to the portal.">
@@ -64,6 +70,7 @@ function LoginPage() {
           e.preventDefault();
           setSubmitting(true);
           setError(null);
+          setNotice(null);
           login(email, password)
             .then(() => navigate({ to: "/dashboard", replace: true }))
             .catch((reason: Error) => setError(reason.message))
@@ -89,6 +96,7 @@ function LoginPage() {
           </div>
         </div>
 
+        {notice && !error && <AuthAlert tone="info">{notice}</AuthAlert>}
         {error && <AuthAlert tone="error">{error}</AuthAlert>}
 
         <div>

@@ -91,7 +91,25 @@ class AuthController extends Controller
         $user->tokens()->delete();
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 
-        return response()->json(['token' => $token, 'user' => $user->load('roles')]);
+        return response()->json([
+            'token' => $token,
+            'user' => $user->load('roles'),
+            'session' => self::sessionLimits(),
+        ]);
+    }
+
+    /**
+     * Sign-in limits the portal mirrors so it can warn before signing the user out.
+     * Lengths rather than timestamps, so a wrong clock on the user's device does not matter.
+     */
+    private static function sessionLimits(): array
+    {
+        $expiration = (int) config('sanctum.expiration');
+
+        return [
+            'idle_timeout_minutes' => max(0, (int) config('sanctum.idle_timeout', 0)),
+            'expires_in_seconds' => $expiration > 0 ? $expiration * 60 : null,
+        ];
     }
 
     private static function dummyPasswordHash(): string
