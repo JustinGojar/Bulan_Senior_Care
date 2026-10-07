@@ -22,6 +22,7 @@ export type Senior = {
   idDocumentPath?: string | null;
   validIdPath?: string | null;
   birthCertificatePath?: string | null;
+  privacyConsentAt?: string | null;
 };
 
 export type BenefitProgram = {

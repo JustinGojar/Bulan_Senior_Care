@@ -91,6 +91,8 @@ class SecurityHardeningTest extends TestCase
         ]);
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors', [
+            'privacy_consent' => true,
+            'privacy_consent_version' => '2026-10-07',
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
             'birthdate' => '1960-01-01',
