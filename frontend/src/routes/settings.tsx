@@ -12,7 +12,6 @@ import {
   Hourglass,
   KeyRound,
   Mail,
-  MessageSquare,
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
@@ -58,14 +57,12 @@ const ROLES = [
 
 const NOTIFS = [
   ["Email advisories", "Distribution schedules and validation reminders", true],
-  ["SMS advisories", "Short reminders sent to registered mobile numbers", true],
   ["Age threshold alerts", "Flags octogenarian, nonagenarian, and centenarian milestones", true],
   ["Weekly summary", "Digest of new registrations and released benefits", false],
 ] as const;
 
 const NOTIF_ICONS: Record<string, typeof ShieldCheck> = {
   "Email advisories": Mail,
-  "SMS advisories": MessageSquare,
   "Age threshold alerts": Hourglass,
   "Weekly summary": CalendarDays,
 };
@@ -141,10 +138,7 @@ function SettingsGroupTitle({ children }: { children: string }) {
 function SettingsPage() {
   const [notificationSettings, setNotificationSettings] = useState<Record<string, boolean>>(
     Object.fromEntries(
-      NOTIFS.map(([label, , enabled]) => [
-        label,
-        label === "Email advisories" || label === "SMS advisories" ? false : enabled,
-      ]),
+      NOTIFS.map(([label, , enabled]) => [label, label === "Email advisories" ? false : enabled]),
     ),
   );
   const [channelReadiness, setChannelReadiness] = useState<NotificationChannelSettings | null>(
@@ -176,7 +170,6 @@ function SettingsPage() {
         setNotificationSettings((current) => ({
           ...current,
           "Email advisories": settings.email_advisories,
-          "SMS advisories": settings.sms_advisories,
         }));
         setChannelReadiness(configured);
       })
@@ -196,11 +189,7 @@ function SettingsPage() {
   async function toggleNotification(label: string) {
     const nextValue = !notificationSettings[label];
     const settingKey: keyof NotificationChannelSettings | undefined =
-      label === "Email advisories"
-        ? "email_advisories"
-        : label === "SMS advisories"
-          ? "sms_advisories"
-          : undefined;
+      label === "Email advisories" ? "email_advisories" : undefined;
 
     setSavingNotification(label);
     setNotificationError("");
@@ -273,11 +262,9 @@ function SettingsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{label}</p>
                   <p className="text-xs text-muted-foreground">{desc}</p>
-                  {(label === "Email advisories" || label === "SMS advisories") &&
+                  {label === "Email advisories" &&
                     channelReadiness &&
-                    !channelReadiness[
-                      label === "Email advisories" ? "email_advisories" : "sms_advisories"
-                    ] && (
+                    !channelReadiness.email_advisories && (
                       <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-gold-foreground dark:text-gold">
                         <AlertTriangle className="h-3.5 w-3.5" />
                         Configure this channel in the backend before enabling it.
@@ -292,12 +279,9 @@ function SettingsPage() {
                   aria-busy={savingNotification === label}
                   disabled={
                     savingNotification === label ||
-                    ((label === "Email advisories" || label === "SMS advisories") &&
+                    (label === "Email advisories" &&
                       !notificationSettings[label] &&
-                      (!channelReadiness ||
-                        !channelReadiness[
-                          label === "Email advisories" ? "email_advisories" : "sms_advisories"
-                        ]))
+                      (!channelReadiness || !channelReadiness.email_advisories))
                   }
                   onClick={() => void toggleNotification(label)}
                   className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${notificationSettings[label] ? "bg-navy" : "bg-muted ring-1 ring-border"}`}
