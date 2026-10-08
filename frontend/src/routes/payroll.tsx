@@ -141,8 +141,9 @@ function isCredited(result: string) {
 
 function PayrollPage() {
   const user = getStoredUser();
-  const isAdmin = user?.role === "admin";
-  const canView = isAdmin || user?.role === "head";
+  // ATM payrolls are handled by the OSCA Head.
+  const canManage = user?.role === "head";
+  const canView = canManage;
   const [confirm, confirmDialog] = useConfirmDialog();
   const [batches, setBatches] = useState<PayrollBatchSummary[]>([]);
   const [selected, setSelected] = useState<PayrollBatch | null>(null);
@@ -314,7 +315,7 @@ function PayrollPage() {
       subtitle="Track ATM payouts from payroll to the bank's crediting report"
       breadcrumb={["Dashboard", "Benefit Tracking", "ATM Payroll"]}
       actions={
-        isAdmin && (
+        canManage && (
           <div className="flex items-center gap-2 sm:gap-3">
             <IconActionButton
               label="New Payroll"
@@ -345,9 +346,7 @@ function PayrollPage() {
       }
     >
       {confirmDialog}
-      {!canView && (
-        <AuthAlert tone="error">Only Admin and Head accounts can view ATM payrolls.</AuthAlert>
-      )}
+      {!canView && <AuthAlert tone="error">Only the Head account can open ATM payrolls.</AuthAlert>}
       {error && (
         <div className="mb-4">
           <AuthAlert tone="error">{error}</AuthAlert>
@@ -391,7 +390,7 @@ function PayrollPage() {
                   icon={Landmark}
                   title="No ATM payrolls yet"
                   description={
-                    isAdmin
+                    canManage
                       ? "Import the bank's ATM enrollment list, then create a payroll."
                       : "Payrolls appear here once OSCA creates them."
                   }
@@ -488,7 +487,7 @@ function PayrollPage() {
                   >
                     <Download className="h-4 w-4" /> Export payroll
                   </button>
-                  {isAdmin && selected.status === "draft" && (
+                  {canManage && selected.status === "draft" && (
                     <>
                       <button
                         type="button"
@@ -506,7 +505,7 @@ function PayrollPage() {
                       </button>
                     </>
                   )}
-                  {isAdmin && selected.status !== "draft" && (
+                  {canManage && selected.status !== "draft" && (
                     <button
                       type="button"
                       onClick={() => setCreditingOpen(true)}
@@ -537,7 +536,7 @@ function PayrollPage() {
                           "Amount",
                           "Bank",
                           "Received",
-                          ...(isAdmin && selected.status !== "draft" ? ["Action"] : []),
+                          ...(canManage && selected.status !== "draft" ? ["Action"] : []),
                         ].map((heading) => (
                           <th
                             key={heading}
@@ -583,7 +582,7 @@ function PayrollPage() {
                                 <StatusPill tone="neutral">Not yet</StatusPill>
                               )}
                             </td>
-                            {isAdmin && selected.status !== "draft" && (
+                            {canManage && selected.status !== "draft" && (
                               <td className="px-3 py-3">
                                 {item.status !== "released" && (
                                   <div className="flex flex-nowrap gap-1.5">

@@ -23,7 +23,7 @@ class PayrollBatchController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $this->authorizeViewer($request);
+        $this->authorizeHead($request);
 
         $batches = PayrollBatch::with(['benefit:id,benefit_name', 'creator:id,name,role'])
             ->withCount([
@@ -41,7 +41,7 @@ class PayrollBatchController extends Controller
 
     public function show(Request $request, PayrollBatch $payrollBatch): JsonResponse
     {
-        $this->authorizeViewer($request);
+        $this->authorizeHead($request);
 
         return response()->json($payrollBatch->load($this->relations()));
     }
@@ -49,7 +49,7 @@ class PayrollBatchController extends Controller
     /** Builds the payroll from active seniors on the benefit who have an ATM account on file. */
     public function store(Request $request): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeHead($request);
         $data = $request->validate([
             'benefit_id' => ['required', 'integer', 'exists:benefits,id'],
             'period_label' => ['required', 'string', 'max:100'],
@@ -111,7 +111,7 @@ class PayrollBatchController extends Controller
     /** A draft made by mistake can be thrown away before it goes to the bank. */
     public function destroy(Request $request, PayrollBatch $payrollBatch): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeHead($request);
         abort_unless($payrollBatch->status === 'draft', 422, 'Only a payroll that has not been sent to the bank can be deleted.');
 
         DB::transaction(function () use ($payrollBatch) {
@@ -125,7 +125,7 @@ class PayrollBatchController extends Controller
 
     public function markSent(Request $request, PayrollBatch $payrollBatch): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeHead($request);
         abort_unless($payrollBatch->status === 'draft', 422, 'This payroll was already sent to the bank.');
         $data = $request->validate([
             'sent_at' => ['required', 'date', 'before_or_equal:today'],
@@ -154,7 +154,7 @@ class PayrollBatchController extends Controller
      */
     public function recordCrediting(Request $request, PayrollBatch $payrollBatch): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeHead($request);
         abort_if($payrollBatch->status === 'draft', 422, 'Mark the payroll as sent to the bank before recording the crediting report.');
         $data = $request->validate([
             'results' => ['required', 'array', 'min:1', 'max:5000'],
@@ -209,7 +209,7 @@ class PayrollBatchController extends Controller
     /** Sets one senior's crediting result by hand, for rows the report could not match. */
     public function updateItem(Request $request, PayrollBatch $payrollBatch, BenefitTransaction $benefitTransaction): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeHead($request);
         abort_unless($benefitTransaction->payroll_batch_id === $payrollBatch->id, 404);
         abort_if($payrollBatch->status === 'draft', 422, 'Mark the payroll as sent to the bank first.');
         abort_if($benefitTransaction->status === 'released', 422, 'This senior already confirmed receiving the benefit.');
@@ -230,7 +230,7 @@ class PayrollBatchController extends Controller
 
     public function report(Request $request, PayrollBatch $payrollBatch): StreamedResponse
     {
-        $this->authorizeViewer($request);
+        $this->authorizeHead($request);
         $path = $payrollBatch->crediting_report_path;
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk(SeniorCitizen::FILE_DISK);
@@ -245,7 +245,7 @@ class PayrollBatchController extends Controller
      */
     public function importAccounts(Request $request): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeHead($request);
         $data = $request->validate([
             'accounts' => ['required', 'array', 'min:1', 'max:5000'],
             'accounts.*.osca_id_number' => ['required', 'string', 'max:50'],
@@ -310,13 +310,9 @@ class PayrollBatchController extends Controller
         ];
     }
 
-    private function authorizeViewer(Request $request): void
+    /** ATM payrolls are handled by the OSCA Head, who also schedules benefit releases. */
+    private function authorizeHead(Request $request): void
     {
-        abort_unless(in_array($request->user()->role, ['admin', 'head'], true), 403, 'Only Admin and Head accounts can view ATM payrolls.');
-    }
-
-    private function authorizeAdmin(Request $request): void
-    {
-        abort_unless($request->user()->role === 'admin', 403, 'Only Admin accounts can manage ATM payrolls.');
+        abort_unless($request->user()->role === 'head', 403, 'Only the Head account can manage ATM payrolls.');
     }
 }

@@ -17,7 +17,7 @@ class AtmPayrollTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $admin;
+    private User $head;
 
     private User $leader;
 
@@ -31,7 +31,7 @@ class AtmPayrollTest extends TestCase
         Storage::fake('local');
 
         $this->barangay = Barangay::create(['barangay_name' => 'Calpi']);
-        $this->admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $this->head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         $this->leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->barangay->id]);
         $this->pension = Benefit::create([
             'benefit_name' => 'Social Pension',
@@ -67,7 +67,7 @@ class AtmPayrollTest extends TestCase
     {
         $senior = $this->senior('OSCA-1');
 
-        $this->actingAs($this->admin, 'sanctum')->postJson('/api/atm-accounts', ['accounts' => [
+        $this->actingAs($this->head, 'sanctum')->postJson('/api/atm-accounts', ['accounts' => [
             ['osca_id_number' => 'OSCA-1', 'account_last4' => '1234'],
             ['osca_id_number' => 'MISSING', 'account_last4' => '9999'],
         ]])
@@ -84,7 +84,7 @@ class AtmPayrollTest extends TestCase
         $this->senior('OSCA-2');
         $this->senior('OSCA-3', ['atm_account_last4' => '3333', 'status' => 'inactive']);
 
-        $response = $this->actingAs($this->admin, 'sanctum')->postJson('/api/payroll-batches', [
+        $response = $this->actingAs($this->head, 'sanctum')->postJson('/api/payroll-batches', [
             'benefit_id' => $this->pension->id,
             'period_label' => 'Q1 2027',
         ])->assertCreated();
@@ -95,7 +95,7 @@ class AtmPayrollTest extends TestCase
             ->assertJsonPath('transactions.0.payout_method', 'atm');
 
         // The same period cannot be put on a second payroll.
-        $this->actingAs($this->admin, 'sanctum')->postJson('/api/payroll-batches', [
+        $this->actingAs($this->head, 'sanctum')->postJson('/api/payroll-batches', [
             'benefit_id' => $this->pension->id,
             'period_label' => 'Q1 2027',
         ])->assertStatus(422);
@@ -105,16 +105,16 @@ class AtmPayrollTest extends TestCase
     {
         $this->senior('OSCA-1', ['atm_account_last4' => '1111']);
         $this->senior('OSCA-2', ['atm_account_last4' => '2222']);
-        $batchId = $this->actingAs($this->admin, 'sanctum')->postJson('/api/payroll-batches', [
+        $batchId = $this->actingAs($this->head, 'sanctum')->postJson('/api/payroll-batches', [
             'benefit_id' => $this->pension->id,
             'period_label' => 'Q1 2027',
         ])->json('id');
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->head, 'sanctum')
             ->postJson("/api/payroll-batches/{$batchId}/crediting", ['results' => [['osca_id_number' => 'OSCA-1', 'credited' => true]]])
             ->assertStatus(422);
 
-        $this->actingAs($this->admin, 'sanctum')
+        $this->actingAs($this->head, 'sanctum')
             ->postJson("/api/payroll-batches/{$batchId}/sent", ['sent_at' => now()->toDateString(), 'bank_reference' => 'LBP-TR-001'])
             ->assertOk()
             ->assertJsonPath('status', 'sent_to_bank');
@@ -125,7 +125,7 @@ class AtmPayrollTest extends TestCase
             'status' => 'released', 'amount' => 3000, 'period_label' => 'Q1 2027', 'date_distributed' => now()->toDateString(),
         ])->assertStatus(422);
 
-        $this->actingAs($this->admin, 'sanctum')->post("/api/payroll-batches/{$batchId}/crediting", [
+        $this->actingAs($this->head, 'sanctum')->post("/api/payroll-batches/{$batchId}/crediting", [
             'results' => [
                 ['osca_id_number' => 'OSCA-1', 'credited' => '1'],
                 ['osca_id_number' => 'OSCA-2', 'credited' => '0', 'reason' => 'Closed account'],
@@ -154,23 +154,28 @@ class AtmPayrollTest extends TestCase
     public function test_only_draft_payrolls_can_be_deleted(): void
     {
         $this->senior('OSCA-1', ['atm_account_last4' => '1111']);
-        $batchId = $this->actingAs($this->admin, 'sanctum')->postJson('/api/payroll-batches', [
+        $batchId = $this->actingAs($this->head, 'sanctum')->postJson('/api/payroll-batches', [
             'benefit_id' => $this->pension->id,
             'period_label' => 'Q1 2027',
         ])->json('id');
 
-        $this->actingAs($this->admin, 'sanctum')->deleteJson("/api/payroll-batches/{$batchId}")->assertNoContent();
+        $this->actingAs($this->head, 'sanctum')->deleteJson("/api/payroll-batches/{$batchId}")->assertNoContent();
         $this->assertSame(0, BenefitTransaction::where('period_label', 'Q1 2027')->count());
     }
 
-    public function test_leaders_and_heads_cannot_manage_payrolls(): void
+    public function test_only_the_head_can_open_or_manage_payrolls(): void
     {
-        $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $body = ['benefit_id' => $this->pension->id, 'period_label' => 'Q1 2027'];
 
-        $this->actingAs($this->leader, 'sanctum')->getJson('/api/payroll-batches')->assertForbidden();
-        $this->actingAs($this->leader, 'sanctum')->postJson('/api/payroll-batches', $body)->assertForbidden();
-        $this->actingAs($head, 'sanctum')->getJson('/api/payroll-batches')->assertOk();
-        $this->actingAs($head, 'sanctum')->postJson('/api/payroll-batches', $body)->assertForbidden();
+        foreach ([$admin, $this->leader] as $user) {
+            $this->actingAs($user, 'sanctum')->getJson('/api/payroll-batches')->assertForbidden();
+            $this->actingAs($user, 'sanctum')->postJson('/api/payroll-batches', $body)->assertForbidden();
+            $this->actingAs($user, 'sanctum')->postJson('/api/atm-accounts', ['accounts' => [
+                ['osca_id_number' => 'X', 'account_last4' => '1234'],
+            ]])->assertForbidden();
+        }
+        $this->actingAs($this->head, 'sanctum')->getJson('/api/payroll-batches')->assertOk();
     }
 }

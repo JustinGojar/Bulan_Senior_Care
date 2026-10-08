@@ -19,6 +19,8 @@ class BenefitReleaseBatchTest extends TestCase
 
     private User $admin;
 
+    private User $head;
+
     private Benefit $pension;
 
     private Barangay $calpi;
@@ -32,6 +34,7 @@ class BenefitReleaseBatchTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $this->head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         $this->calpi = Barangay::create(['barangay_name' => 'Calpi']);
         $this->gate = Barangay::create(['barangay_name' => 'Gate']);
         $this->sigad = Barangay::create(['barangay_name' => 'Sigad']);
@@ -48,7 +51,7 @@ class BenefitReleaseBatchTest extends TestCase
 
     private function schedule(array $barangayIds, string $date = '2027-01-15')
     {
-        return $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-releases', [
+        return $this->actingAs($this->head, 'sanctum')->postJson('/api/benefit-releases', [
             'benefit_id' => $this->pension->id,
             'period_label' => 'January 2027',
             'barangay_ids' => $barangayIds,
@@ -74,6 +77,17 @@ class BenefitReleaseBatchTest extends TestCase
         $this->schedule([$this->gate->id, $this->calpi->id], '2027-01-22')
             ->assertStatus(422)
             ->assertJsonPath('message', 'Already in another release batch for January 2027: Calpi.');
+    }
+
+    public function test_only_the_head_schedules_releases(): void
+    {
+        $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-releases', [
+            'benefit_id' => $this->pension->id,
+            'period_label' => 'January 2027',
+            'barangay_ids' => [$this->calpi->id],
+            'release_date' => '2027-01-15',
+            'status' => 'scheduled',
+        ])->assertForbidden();
     }
 
     public function test_at_least_one_barangay_is_required(): void
@@ -175,7 +189,7 @@ class BenefitReleaseBatchTest extends TestCase
             'period_label' => 'March 2026',
         ]);
 
-        $releaseId = $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-releases', [
+        $releaseId = $this->actingAs($this->head, 'sanctum')->postJson('/api/benefit-releases', [
             'benefit_id' => $octogenarian->id,
             'period_label' => 'January 2027',
             'barangay_ids' => [$this->calpi->id],
@@ -197,7 +211,7 @@ class BenefitReleaseBatchTest extends TestCase
     {
         $this->senior('CALPI-1', $this->calpi);
         $this->schedule([$this->calpi->id], '2027-01-15')->assertCreated();
-        $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-releases', [
+        $this->actingAs($this->head, 'sanctum')->postJson('/api/benefit-releases', [
             'benefit_id' => $this->pension->id,
             'period_label' => 'February 2027',
             'barangay_ids' => [$this->calpi->id],
@@ -226,7 +240,7 @@ class BenefitReleaseBatchTest extends TestCase
             'schedule' => 'one_time',
             'status' => 'active',
         ]);
-        $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-releases', [
+        $this->actingAs($this->head, 'sanctum')->postJson('/api/benefit-releases', [
             'benefit_id' => $other->id,
             'period_label' => 'January 2027',
             'barangay_ids' => [$this->sigad->id],

@@ -155,7 +155,8 @@ function BenefitTracking() {
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
-  const canManageReleases = currentUser?.role === "admin" || currentUser?.role === "head";
+  // The OSCA Head schedules releases and handles ATM payrolls.
+  const canManageReleases = currentUser?.role === "head";
   const canUpdateTransactions = currentUser?.role === "leader";
 
   function formatDate(date: string) {

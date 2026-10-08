@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  MapPin,
   SlidersHorizontal,
   Users,
 } from "lucide-react";
@@ -27,6 +28,7 @@ import {
   statCardClass,
   tileClass,
 } from "@/components/design-kit";
+import { IconSelect } from "@/components/IconActionButton";
 import {
   Dialog,
   DialogContent,
@@ -112,6 +114,7 @@ function AgeThresholdPage() {
   const [selectedProgram, setSelectedProgram] = useState<BenefitProgram | null>(null);
   const [flagsPage, setFlagsPage] = useState(1);
   const [seniorsPage, setSeniorsPage] = useState(1);
+  const [selectedBarangay, setSelectedBarangay] = useState("All");
   useEffect(() => {
     if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
   }, [currentUser?.role, navigate]);
@@ -132,10 +135,18 @@ function AgeThresholdPage() {
     };
   }, [loadAllSeniors]);
   if (currentUser?.role === "leader") return null;
-  const flags = findNewEligibilityFlags(seniors);
+  const barangayOptions = [
+    ...new Set(seniors.map((senior) => senior.barangay).filter(Boolean)),
+  ].sort((first, second) => first.localeCompare(second));
+  // Brackets, flags and senior lists all follow the selected barangay.
+  const scopedSeniors =
+    selectedBarangay === "All"
+      ? seniors
+      : seniors.filter((senior) => senior.barangay === selectedBarangay);
+  const flags = findNewEligibilityFlags(scopedSeniors);
   const programs = BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension");
   const selectedSeniors = selectedProgram
-    ? seniors
+    ? scopedSeniors
         .filter(
           (senior) =>
             senior.age >= selectedProgram.minAge &&
@@ -157,7 +168,7 @@ function AgeThresholdPage() {
   );
 
   const inBracket = (program: BenefitProgram) =>
-    seniors.filter(
+    scopedSeniors.filter(
       (senior) =>
         senior.age >= program.minAge &&
         (program.maxAge === undefined || senior.age <= program.maxAge),
@@ -174,6 +185,24 @@ function AgeThresholdPage() {
           icon={SlidersHorizontal}
           title="Configured age brackets"
           subtitle="Current benefit thresholds used for eligibility detection. Select one to see its seniors."
+          badge={
+            <IconSelect
+              label="Barangay"
+              searchable
+              className="w-full sm:w-56"
+              icon={<MapPin className="h-4 w-4" />}
+              value={selectedBarangay}
+              options={[
+                { value: "All", label: "All Barangays" },
+                ...barangayOptions.map((barangay) => ({ value: barangay, label: barangay })),
+              ]}
+              onChange={(barangay) => {
+                setSelectedBarangay(barangay);
+                setFlagsPage(1);
+                setSeniorsPage(1);
+              }}
+            />
+          }
         />
         <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-5">
           {programs.map((program) => (
