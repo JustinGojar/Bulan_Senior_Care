@@ -5,9 +5,11 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
 const apiProxyTarget = process.env["VITE_API_PROXY_TARGET"] ?? "http://127.0.0.1:8000";
+// Set on Vercel: the Laravel API's public URL (e.g. https://bulan-api.up.railway.app).
+const backendUrl = process.env["BACKEND_URL"]?.replace(/\/$/, "");
 
 export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "/spa-assets/" : "/",
+  base: mode === "production" && !process.env["VERCEL"] ? "/spa-assets/" : "/",
   resolve: { tsconfigPaths: true },
   plugins: [
     tanstackStart({
@@ -23,6 +25,14 @@ export default defineConfig(({ mode }) => ({
         "/api/**": apiProxyTarget,
         "/storage/**": apiProxyTarget,
       },
+      // On Vercel the browser still calls /api on the site's own origin, which Vercel forwards
+      // to Laravel, so the API's SameSite=Strict session cookie keeps working.
+      routeRules: backendUrl
+        ? {
+            "/api/**": { proxy: `${backendUrl}/api/**` },
+            "/storage/**": { proxy: `${backendUrl}/storage/**` },
+          }
+        : {},
     }),
     react(),
     tailwindcss(),
