@@ -49,6 +49,12 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
         ],
 
+        // HTTPS API mailer; use this on Railway, which blocks outbound SMTP below the Pro plan.
+        'mailjet' => [
+            'transport' => 'mailjet',
+            'timeout' => env('MAIL_TIMEOUT', 10),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

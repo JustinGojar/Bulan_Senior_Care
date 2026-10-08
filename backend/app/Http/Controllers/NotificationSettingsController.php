@@ -58,6 +58,9 @@ class NotificationSettingsController extends Controller
                 && filled(config('mail.mailers.smtp.username'))
                 && filled(config('mail.mailers.smtp.password'));
         }
+        if ($mailer === 'mailjet') {
+            return filled(config('services.mailjet.key')) && filled(config('services.mailjet.secret'));
+        }
 
         return true;
     }

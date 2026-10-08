@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -75,5 +77,50 @@ class PasswordResetTest extends TestCase
         Notification::fake();
         $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
         Notification::assertSentTo(User::where('email', 'leader@example.com')->first(), ResetPasswordNotification::class);
+    }
+
+    public function test_reset_email_is_sent_through_the_mailjet_api(): void
+    {
+        config([
+            'mail.default' => 'mailjet',
+            'services.mailjet.key' => 'test-key',
+            'services.mailjet.secret' => 'test-secret',
+            'mail.from.address' => 'office@example.com',
+            'mail.from.name' => 'Bulan SeniorCare',
+            'app.frontend_url' => 'https://seniorcare.example',
+        ]);
+        Http::fake(['api.mailjet.com/*' => Http::response(['Messages' => [[
+            'Status' => 'success',
+            'To' => [['Email' => 'leader@example.com', 'MessageID' => 123]],
+        ]]])]);
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+
+        Http::assertSent(function (Request $request) {
+            $message = $request['Messages'][0];
+
+            return $request->url() === 'https://api.mailjet.com/v3.1/send'
+                && $request->hasHeader('Authorization', 'Basic '.base64_encode('test-key:test-secret'))
+                && $message['From']['Email'] === 'office@example.com'
+                && $message['To'][0]['Email'] === 'leader@example.com'
+                && $message['Subject'] === 'Reset your Bulan SeniorCare password'
+                && str_contains($message['HTMLPart'], 'https://seniorcare.example/reset-password?token=');
+        });
+    }
+
+    public function test_mailjet_rejection_reports_the_email_could_not_be_sent(): void
+    {
+        config([
+            'mail.default' => 'mailjet',
+            'services.mailjet.key' => 'bad-key',
+            'services.mailjet.secret' => 'bad-secret',
+            'mail.from.address' => 'office@example.com',
+        ]);
+        Http::fake(['api.mailjet.com/*' => Http::response(['ErrorMessage' => 'API key authentication/authorization failure'], 401)]);
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertStatus(503);
+        $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
 }
