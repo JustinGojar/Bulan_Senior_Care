@@ -65,6 +65,14 @@ class BenefitTransactionController extends Controller
         ]);
         $senior = \App\Models\SeniorCitizen::findOrFail($data['senior_citizen_id']);
         $this->authorizeScope($request, $senior);
+        // A one-time grant is given once per senior, whatever period label it is filed under;
+        // only a failed attempt leaves room for another.
+        $oneTimeGrantExists = \App\Models\Benefit::whereKey($data['benefit_id'])->where('schedule', 'one_time')->exists()
+            && BenefitTransaction::where('senior_citizen_id', $senior->id)
+                ->where('benefit_id', $data['benefit_id'])
+                ->where('status', '!=', 'failed')
+                ->exists();
+        abort_if($oneTimeGrantExists, 422, 'This senior already has this one-time grant on record.');
         $data['distributed_by'] = $request->user()->id;
         $data['created_by'] = $request->user()->id;
         $data['updated_by'] = $request->user()->id;

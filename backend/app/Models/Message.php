@@ -10,7 +10,7 @@ class Message extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sender_id', 'recipient_id', 'subject', 'message', 'read_at'];
+    protected $fillable = ['sender_id', 'recipient_id', 'subject', 'message', 'attachment_path', 'attachment_name', 'attachment_mime', 'read_at'];
 
     protected function casts(): array
     {

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
 {
@@ -69,14 +70,25 @@ class MessageController extends Controller
 
         $data = $request->validate([
             'subject' => ['required', 'string', 'max:180'],
-            'message' => ['required', 'string', 'max:5000'],
+            // A message may be only a photo or file, so text is required only without one.
+            'message' => ['nullable', 'required_without:attachment', 'string', 'max:5000'],
             'recipient_id' => ['required', 'integer', 'exists:users,id'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx', 'max:5120'],
         ]);
         $recipient = User::whereKey($data['recipient_id'])
             ->whereIn('role', ['leader', 'head'])
             ->where('status', 'active')
             ->first();
         abort_unless($recipient, 422, 'The selected account is not available.');
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $data['attachment_path'] = $file->store('message-attachments', 'public');
+            $data['attachment_name'] = mb_substr($file->getClientOriginalName(), 0, 255);
+            $data['attachment_mime'] = $file->getMimeType();
+        }
+        unset($data['attachment']);
+        $data['message'] ??= '';
 
         $message = Message::create([
             ...$data,
@@ -101,11 +113,12 @@ class MessageController extends Controller
     {
         abort_if($user->id === $request->user()->id, 422, 'You cannot delete a conversation with yourself.');
 
-        Message::query()
+        $conversation = Message::query()
             ->where(fn ($query) => $query
                 ->where(fn ($pair) => $pair->where('sender_id', $request->user()->id)->where('recipient_id', $user->id))
-                ->orWhere(fn ($pair) => $pair->where('sender_id', $user->id)->where('recipient_id', $request->user()->id)))
-            ->delete();
+                ->orWhere(fn ($pair) => $pair->where('sender_id', $user->id)->where('recipient_id', $request->user()->id)));
+        Storage::disk('public')->delete($conversation->clone()->whereNotNull('attachment_path')->pluck('attachment_path')->all());
+        $conversation->delete();
         $this->invalidateMessagesCache($request->user()->id, $user->id);
 
         return response()->json(status: 204);

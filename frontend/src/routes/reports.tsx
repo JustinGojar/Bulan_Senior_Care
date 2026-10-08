@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, Download, FileText, Printer } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CheckCircle2, Download, FileText, Printer, Send } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SectionHeader, SkeletonValue, StatusPill } from "@/components/DesignKit";
@@ -13,6 +13,7 @@ import {
   type Tone,
 } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import { apiFetch, getStoredUser, type AnalyticsReport } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
 
@@ -21,15 +22,24 @@ export const Route = createFileRoute("/reports")({
   component: Reports,
 });
 
-const REPORTS = [
-  ["Q2 2026 Benefit Distribution", "Draft", "Apr 18, 2026"],
-  ["Municipal Senior Citizen Registry", "Published", "Apr 15, 2026"],
-  ["Barangay Participation Summary", "Approved", "Apr 10, 2026"],
-];
+const REPORT_TITLE = "Municipal Senior Citizen Registry";
+const STATUS_LABEL = { draft: "Draft", approved: "Approved", published: "Published" } as const;
 
 function Reports() {
   const { seniors, loading } = useSeniors();
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const [reports, setReports] = useState<AnalyticsReport[] | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const role = getStoredUser()?.role;
+
+  useEffect(() => {
+    apiFetch<AnalyticsReport[]>("/reports")
+      .then(setReports)
+      .catch((error: Error) => {
+        setReports([]);
+        toast.error(error.message);
+      });
+  }, []);
   const summary = useMemo(
     () => ({
       total: seniors.length,
@@ -40,13 +50,44 @@ function Reports() {
     [seniors],
   );
 
-  function generateReport() {
+  async function generateReport() {
     setGeneratedAt(new Date().toLocaleString());
-    toast.success("Report generated from the latest senior records.");
+    if (role !== "admin") {
+      toast.success("Report generated from the latest senior records.");
+      return;
+    }
+    try {
+      const report = await apiFetch<AnalyticsReport>("/reports", {
+        method: "POST",
+        body: JSON.stringify({ report_type: REPORT_TITLE }),
+      });
+      setReports((current) => [report, ...(current ?? [])]);
+      toast.success("Report drafted and sent to the Head for approval.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save the report draft.");
+    }
+  }
+
+  async function changeStatus(report: AnalyticsReport, status: "approved" | "published") {
+    setBusyId(report.id);
+    try {
+      const updated = await apiFetch<AnalyticsReport>(`/reports/${report.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      setReports((current) =>
+        (current ?? []).map((item) => (item.id === updated.id ? updated : item)),
+      );
+      toast.success(`${updated.report_type} ${status === "approved" ? "approved" : "published"}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the report.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   function printReport() {
-    if (!generatedAt) generateReport();
+    if (!generatedAt) setGeneratedAt(new Date().toLocaleString());
     window.setTimeout(() => window.print(), 0);
   }
 
@@ -123,29 +164,65 @@ function Reports() {
           subtitle="Admin drafts, Head approves, and approved reports can be published or exported."
         />
         <div className="mt-6 space-y-3">
-          {REPORTS.map(([name, status, date]) => (
+          {reports === null && <SkeletonValue />}
+          {reports?.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No reports yet.{" "}
+              {role === "admin"
+                ? "Use Generate report to draft one."
+                : "Drafts from Admin appear here for approval."}
+            </p>
+          )}
+          {reports?.map((report) => (
             <div
-              key={name}
+              key={report.id}
               className={`${tileClass} flex flex-wrap items-center justify-between gap-4`}
             >
               <div>
-                <p className="font-bold">{name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Generated {date}</p>
+                <p className="font-bold">{report.report_type}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Generated {new Date(report.generated_date).toLocaleDateString()}
+                  {report.generator && ` by ${report.generator.name}`} ·{" "}
+                  {report.total_registered.toLocaleString()} registered
+                  {report.approver && ` · Approved by ${report.approver.name}`}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <StatusPill
                   tone={
-                    status === "Published" ? "success" : status === "Approved" ? "neutral" : "gold"
+                    report.status === "published"
+                      ? "success"
+                      : report.status === "approved"
+                        ? "neutral"
+                        : "gold"
                   }
                 >
-                  {status === "Published" && <CheckCircle2 className="h-3 w-3" />}
-                  {status}
+                  {report.status === "published" && <CheckCircle2 className="h-3 w-3" />}
+                  {STATUS_LABEL[report.status]}
                 </StatusPill>
+                {role === "head" && report.status === "draft" && (
+                  <button
+                    onClick={() => changeStatus(report, "approved")}
+                    disabled={busyId === report.id}
+                    className={`${primaryButtonClass} print:hidden`}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </button>
+                )}
+                {role === "admin" && report.status === "approved" && (
+                  <button
+                    onClick={() => changeStatus(report, "published")}
+                    disabled={busyId === report.id}
+                    className={`${primaryButtonClass} print:hidden`}
+                  >
+                    <Send className="h-4 w-4" /> Publish
+                  </button>
+                )}
                 <button
                   onClick={printReport}
                   title="Print report"
                   className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground print:hidden"
-                  aria-label={`Print ${name}`}
+                  aria-label={`Print ${report.report_type}`}
                 >
                   <Printer className="h-4 w-4" />
                 </button>
@@ -165,7 +242,7 @@ function Reports() {
               <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Generated report
               </p>
-              <h2 className="mt-2 text-2xl font-extrabold">Municipal Senior Citizen Registry</h2>
+              <h2 className="mt-2 text-2xl font-extrabold">{REPORT_TITLE}</h2>
               <p className="mt-1 text-sm text-muted-foreground">Generated {generatedAt}</p>
             </div>
             <button onClick={printReport} className={`${secondaryButtonClass} print:hidden`}>

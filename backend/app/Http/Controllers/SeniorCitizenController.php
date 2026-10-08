@@ -7,6 +7,7 @@ use App\Models\Barangay;
 use App\Models\Benefit;
 use App\Models\SeniorCitizen;
 use App\Support\AdvisoryDispatcher;
+use App\Support\PhotoBackup;
 use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
@@ -130,12 +131,11 @@ class SeniorCitizenController extends Controller
         $data['privacy_consent_at'] = now();
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
-                $documentPath = $request->file($documentField)->store('senior-documents', SeniorCitizen::FILE_DISK);
-                $data["{$documentField}_path"] = $documentPath;
+                $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
             }
         }
         if ($request->hasFile('profile_photo')) {
-            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', SeniorCitizen::FILE_DISK);
+            $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
         if ($request->user()->role === 'leader') {
             // Leaders are always scoped to their own barangay; never let their input
@@ -330,7 +330,8 @@ class SeniorCitizenController extends Controller
         }
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk(SeniorCitizen::FILE_DISK);
-        abort_unless($path && $disk->exists($path), 404, 'This file is not available.');
+        // A redeploy wipes the disk; bring the file back from its database copy first.
+        abort_unless(PhotoBackup::restoreIfMissing($path) && $disk->exists($path), 404, 'This file is not available.');
 
         // Personal records: never kept by shared caches or on disk by the browser.
         return $disk->response($path, headers: ['Cache-Control' => 'private, no-store']);
@@ -346,15 +347,21 @@ class SeniorCitizenController extends Controller
             $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
             unset($data['barangay']);
         }
+        $replacedPaths = [];
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
-                $data["{$documentField}_path"] = $request->file($documentField)->store('senior-documents', SeniorCitizen::FILE_DISK);
+                $replacedPaths[] = $senior->{"{$documentField}_path"};
+                $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
             }
         }
         if ($request->hasFile('profile_photo')) {
-            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', SeniorCitizen::FILE_DISK);
+            $replacedPaths[] = $senior->photo_path;
+            $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
         $senior->update($data);
+        foreach ($replacedPaths as $replacedPath) {
+            PhotoBackup::delete($replacedPath);
+        }
         AuditLog::record(
             $request->user(),
             'updated',
