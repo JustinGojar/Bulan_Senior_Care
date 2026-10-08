@@ -69,6 +69,11 @@ import {
 } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/benefits")({
+  // `release` opens that release batch, e.g. from a release notification.
+  validateSearch: (search: Record<string, unknown>): { release?: number } => {
+    const release = Number(search["release"]);
+    return Number.isInteger(release) && release > 0 ? { release } : {};
+  },
   head: () => ({ meta: [{ title: "Benefit Tracking — Bulan SeniorCare" }] }),
   component: BenefitTracking,
 });
@@ -123,10 +128,20 @@ function BenefitTracking() {
   const [savingRelease, setSavingRelease] = useState(false);
   // The release batch whose list of receiving seniors is open.
   const [rosterReleaseId, setRosterReleaseId] = useState<number | null>(null);
+  const { release: linkedReleaseId } = Route.useSearch();
+  useEffect(() => {
+    if (!linkedReleaseId) return;
+    setRosterReleaseId(linkedReleaseId);
+    // Drop it from the address so closing the batch and refreshing does not reopen it.
+    void navigate({ to: "/benefits", search: {}, replace: true });
+  }, [linkedReleaseId, navigate]);
   const [transactionsVersion, setTransactionsVersion] = useState(0);
   const [selectedBarangay, setSelectedBarangay] = useState("All");
   const [selectedBenefit, setSelectedBenefit] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
+  // The release period, e.g. "October 2026"; filtered on the server so it covers every page.
+  const [selectedPeriod, setSelectedPeriod] = useState("All");
+  const [periods, setPeriods] = useState<string[]>([]);
   const [sortProgramsBy, setSortProgramsBy] = useState("name");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<number[]>([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
@@ -246,12 +261,15 @@ function BenefitTracking() {
         ),
       )
       .catch((reason: Error) => setError(reason.message));
-    apiFetch<PaginatedResponse<BenefitTransaction>>(
-      `/benefit-transactions?page=${transactionPage}&per_page=25`,
+    apiFetch<PaginatedResponse<BenefitTransaction> & { periods?: string[] }>(
+      `/benefit-transactions?page=${transactionPage}&per_page=25${
+        selectedPeriod === "All" ? "" : `&period=${encodeURIComponent(selectedPeriod)}`
+      }`,
     )
       .then((result) => {
         setTransactions(result.data);
         setTransactionLastPage(result.last_page);
+        setPeriods(result.periods ?? []);
       })
       .catch(() => setTransactions([]));
     getBarangays()
@@ -268,7 +286,7 @@ function BenefitTracking() {
     apiFetch<PaginatedResponse<BenefitRelease>>("/benefit-releases?page=1&per_page=50")
       .then((result) => setReleaseSchedules(result.data))
       .catch(() => setReleaseSchedules([]));
-  }, [currentUser?.barangay_id, isLeader, transactionPage, transactionsVersion]);
+  }, [currentUser?.barangay_id, isLeader, transactionPage, transactionsVersion, selectedPeriod]);
 
   function resetReleaseForm() {
     setSelectedBenefitId("");
@@ -761,6 +779,20 @@ function BenefitTracking() {
           onChange={setSelectedStatus}
         />
         <IconSelect
+          label="Period"
+          className="sm:flex-1 xl:w-44 xl:flex-none"
+          icon={<CalendarDays className="h-4 w-4" />}
+          value={selectedPeriod}
+          options={[
+            { value: "All", label: "All Periods" },
+            ...periods.map((period) => ({ value: period, label: period })),
+          ]}
+          onChange={(period) => {
+            setSelectedPeriod(period);
+            setTransactionPage(1);
+          }}
+        />
+        <IconSelect
           label="Barangay"
           searchable
           keepWhiteBackground
@@ -789,7 +821,8 @@ function BenefitTracking() {
         />
         {((!isLeader && selectedBarangay !== "All") ||
           selectedBenefit !== "All" ||
-          selectedStatus !== "All") && (
+          selectedStatus !== "All" ||
+          selectedPeriod !== "All") && (
           <IconActionButton
             label="Clear filters"
             variant="outline"
@@ -799,6 +832,8 @@ function BenefitTracking() {
               if (!isLeader) setSelectedBarangay("All");
               setSelectedBenefit("All");
               setSelectedStatus("All");
+              setSelectedPeriod("All");
+              setTransactionPage(1);
             }}
           />
         )}
@@ -1039,7 +1074,7 @@ function BenefitTracking() {
           </div>
         )}
         <div className="mt-5 overflow-x-auto rounded-lg border border-border/60">
-          <table className="w-full min-w-[940px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead>
               <tr className="bg-muted text-left">
                 {canUpdateTransactions && (
@@ -1050,6 +1085,7 @@ function BenefitTracking() {
                 {[
                   "Senior",
                   "Program",
+                  "Period",
                   "Barangay",
                   "Source",
                   "Release date",
@@ -1105,6 +1141,9 @@ function BenefitTracking() {
                     )}
                     <td className="px-4 py-3.5 font-semibold">{seniorName}</td>
                     <td className="px-4 py-3.5">{transaction.benefit.benefit_name}</td>
+                    <td className="px-4 py-3.5 whitespace-nowrap text-muted-foreground">
+                      {transaction.period_label ?? "-"}
+                    </td>
                     <td className="px-4 py-3.5 text-muted-foreground">
                       {transaction.senior.barangay?.barangay_name ?? "Unassigned"}
                     </td>
@@ -1198,7 +1237,7 @@ function BenefitTracking() {
               })}
               {filteredTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={canUpdateTransactions ? 9 : 7}>
+                  <td colSpan={canUpdateTransactions ? 10 : 8}>
                     <EmptyState
                       bare
                       icon={Search}

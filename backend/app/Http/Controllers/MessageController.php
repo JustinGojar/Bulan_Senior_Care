@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class MessageController extends Controller
 {
@@ -15,6 +16,7 @@ class MessageController extends Controller
     {
         $count = Message::query()
             ->where('recipient_id', $request->user()->id)
+            ->whereNull('recipient_deleted_at')
             ->whereNull('read_at')
             ->distinct('sender_id')
             ->count('sender_id');
@@ -32,16 +34,56 @@ class MessageController extends Controller
 
         $messages = Cache::remember($cacheKey, now()->addSeconds(3), fn () => Message::query()
             ->with(['sender:id,name,role,email', 'recipient:id,name,role,email'])
-            ->where(fn ($query) => $query
-                ->where('sender_id', $userId)
-                ->orWhere('recipient_id', $userId))
+            ->visibleTo($userId)
             ->whereHas('sender')
             ->whereHas('recipient')
             ->latest()
             ->paginate($perPage, ['*'], 'page', $page)
             ->toArray());
 
-        return response()->json($messages);
+        $partnerIds = collect($messages['data'])
+            ->flatMap(fn (array $message) => [$message['sender_id'], $message['recipient_id']])
+            ->reject(fn (int $id) => $id === $userId)
+            ->unique()
+            ->values()
+            ->all();
+
+        return response()->json([...$messages, 'online_user_ids' => $this->onlineUserIds($partnerIds)]);
+    }
+
+    /** Which of the given accounts are online now, so the inbox can show who is active. */
+    public function presence(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'max:100'],
+            'ids.*' => ['integer'],
+        ]);
+
+        return response()->json(['online_user_ids' => $this->onlineUserIds($data['ids'])]);
+    }
+
+    /**
+     * An account is online while it holds a login token used in the last two minutes. An open
+     * portal checks in every 15 seconds, and signing out deletes the token.
+     *
+     * @param  array<int, int>  $userIds
+     * @return array<int, int>
+     */
+    private function onlineUserIds(array $userIds): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        return PersonalAccessToken::query()
+            ->where('tokenable_type', User::class)
+            ->whereIn('tokenable_id', $userIds)
+            ->where('last_used_at', '>=', now()->subMinutes(2))
+            ->distinct()
+            ->pluck('tokenable_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 
     public function recipients(Request $request): JsonResponse
@@ -109,17 +151,26 @@ class MessageController extends Controller
         return response()->json($message->fresh(['sender:id,name,role,email', 'recipient:id,name,role,email']));
     }
 
+    /**
+     * Removes the conversation from this account's inbox only; the other person keeps it.
+     * Messages both people have deleted are removed for good, with their attachments.
+     */
     public function destroyConversation(Request $request, User $user): JsonResponse
     {
-        abort_if($user->id === $request->user()->id, 422, 'You cannot delete a conversation with yourself.');
+        $me = $request->user()->id;
+        abort_if($user->id === $me, 422, 'You cannot delete a conversation with yourself.');
 
         $conversation = Message::query()
             ->where(fn ($query) => $query
-                ->where(fn ($pair) => $pair->where('sender_id', $request->user()->id)->where('recipient_id', $user->id))
-                ->orWhere(fn ($pair) => $pair->where('sender_id', $user->id)->where('recipient_id', $request->user()->id)));
-        Storage::disk('public')->delete($conversation->clone()->whereNotNull('attachment_path')->pluck('attachment_path')->all());
-        $conversation->delete();
-        $this->invalidateMessagesCache($request->user()->id, $user->id);
+                ->where(fn ($pair) => $pair->where('sender_id', $me)->where('recipient_id', $user->id))
+                ->orWhere(fn ($pair) => $pair->where('sender_id', $user->id)->where('recipient_id', $me)));
+        $conversation->clone()->where('sender_id', $me)->whereNull('sender_deleted_at')->update(['sender_deleted_at' => now()]);
+        $conversation->clone()->where('recipient_id', $me)->whereNull('recipient_deleted_at')->update(['recipient_deleted_at' => now()]);
+
+        $goneForBoth = $conversation->clone()->whereNotNull('sender_deleted_at')->whereNotNull('recipient_deleted_at');
+        Storage::disk('public')->delete($goneForBoth->clone()->whereNotNull('attachment_path')->pluck('attachment_path')->all());
+        $goneForBoth->delete();
+        $this->invalidateMessagesCache($me);
 
         return response()->json(status: 204);
     }

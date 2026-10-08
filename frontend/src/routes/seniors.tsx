@@ -454,8 +454,9 @@ function changedFields(request: SeniorEditRequest) {
     fields.push(["Contact", senior.contact_number || "None", changes.contact_number || "None"]);
   if (senior && senior.barangay?.barangay_name !== changes.barangay)
     fields.push(["Barangay", senior.barangay?.barangay_name || "None", changes.barangay]);
-  if (senior && senior.benefits?.[0]?.benefit_name !== changes.benefit)
-    fields.push(["Benefit", senior.benefits?.[0]?.benefit_name || "None", changes.benefit]);
+  const enrolledBenefit = senior?.benefit?.benefit_name ?? senior?.benefits?.[0]?.benefit_name;
+  if (senior && enrolledBenefit !== changes.benefit)
+    fields.push(["Benefit", enrolledBenefit || "None", changes.benefit]);
   if (senior && (senior.address ?? "") !== (changes.address ?? ""))
     fields.push(["Address", senior.address || "None", changes.address || "None"]);
   return fields;
@@ -845,6 +846,13 @@ function SeniorRecords() {
           className="sm:flex-1 xl:w-40 xl:flex-none"
           icon={<UserRound className="h-4 w-4" />}
           value={filter}
+          dotClassName={
+            filter === "Active"
+              ? "bg-success"
+              : filter === "Pending"
+                ? "bg-orange-500"
+                : "bg-destructive"
+          }
           options={filters.map((item) => ({
             value: item.key,
             label: item.key === "All" ? "All Status" : item.key,
@@ -859,6 +867,7 @@ function SeniorRecords() {
           className="sm:flex-1 xl:w-40 xl:flex-none"
           icon={<HandCoins className="h-4 w-4" />}
           value={benefitFilter}
+          dotClassName={null}
           options={[
             { value: "All", label: "All Benefits" },
             ...benefitOptions.map((benefit) => ({ value: benefit, label: benefit })),

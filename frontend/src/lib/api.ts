@@ -151,6 +151,8 @@ export type ApiSenior = {
   privacy_consent_at?: string | null;
   status: "active" | "pending" | "inactive";
   barangay?: { barangay_name: string } | null;
+  /** The program the senior is enrolled in. */
+  benefit?: { id: number; benefit_name: string } | null;
   benefits?: Array<{
     benefit_name: string;
     pivot?: { status: string; amount: string; date_distributed?: string | null };
@@ -369,7 +371,10 @@ export type AuditLog = {
   actor: { id: number; name: string; role: string } | null;
 };
 
-export type PaginatedMessages = PaginatedResponse<Message>;
+export type PaginatedMessages = PaginatedResponse<Message> & {
+  /** Conversation partners on this page who are signed in and active right now. */
+  online_user_ids?: number[];
+};
 
 export type ServerNotification = {
   id: number;
@@ -903,6 +908,15 @@ export function createAnnouncementComment(
 
 export function getMessages(page = 1) {
   return apiFetch<PaginatedMessages>(`/messages?page=${page}&per_page=25`);
+}
+
+/** Which of these accounts are online now. */
+export function getMessagePresence(userIds: number[]) {
+  const query = new URLSearchParams();
+  userIds.forEach((id) => query.append("ids[]", String(id)));
+  return apiFetch<{ online_user_ids: number[] }>(`/messages/presence?${query}`, {
+    cache: "no-store",
+  });
 }
 
 export function getUnreadMessageSummary() {

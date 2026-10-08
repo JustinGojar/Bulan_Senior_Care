@@ -54,15 +54,10 @@ class AtmPayrollTest extends TestCase
             'last_name' => $oscaId,
             'birthdate' => '1950-01-01',
             'sex' => 'female',
+            'benefit_id' => $this->pension->id,
             'registration_date' => '2026-01-01',
             'status' => 'active',
             ...$attributes,
-        ]);
-        $senior->benefits()->attach($this->pension->id, [
-            'distributed_by' => $this->leader->id,
-            'amount' => 3000,
-            'status' => 'pending',
-            'period_label' => 'Registration 2026-01-01',
         ]);
 
         return $senior;

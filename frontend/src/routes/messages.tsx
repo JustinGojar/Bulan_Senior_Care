@@ -13,12 +13,14 @@ import {
   Search,
   Send,
   Smile,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { authSubmitClass } from "@/components/AuthLayout";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState, RowSkeletons, SectionHeader } from "@/components/DesignKit";
 import {
   fieldClass,
@@ -27,10 +29,17 @@ import {
   secondaryButtonClass,
 } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   API_URL,
   getMessageRecipients,
+  getMessagePresence,
   getMessages,
   getSessionId,
   getStoredUser,
@@ -41,12 +50,15 @@ import {
   type MessageRecipient,
 } from "@/lib/api";
 
+const PRESENCE_REFRESH_INTERVAL = 30_000;
+
 export const Route = createFileRoute("/messages")({
   head: () => ({ meta: [{ title: "Inbox — Bulan SeniorCare" }] }),
   component: MessagesPage,
 });
 
 function MessagesPage() {
+  const [confirm, confirmDialog] = useConfirmDialog();
   const currentUser = getStoredUser();
   const currentUserId = currentUser?.id;
   const isLeader = currentUser?.role === "leader";
@@ -70,6 +82,39 @@ function MessagesPage() {
   const [sendingReply, setSendingReply] = useState(false);
   const [replyFile, setReplyFile] = useState<File | null>(null);
   const [contextConversation, setContextConversation] = useState<Message | null>(null);
+  // Conversation partners signed in and active right now; drives the green dot.
+  const [onlineIds, setOnlineIds] = useState<Set<number>>(new Set());
+  const partnerIds = useMemo(
+    () =>
+      [
+        ...new Set(
+          messages.map((item) =>
+            item.sender.id === currentUserId ? item.recipient.id : item.sender.id,
+          ),
+        ),
+      ].sort((first, second) => first - second),
+    [currentUserId, messages],
+  );
+  const partnerKey = partnerIds.join(",");
+
+  // Keep the dots current while the inbox is open and visible.
+  useEffect(() => {
+    if (partnerIds.length === 0) return;
+    const refresh = () => {
+      if (document.hidden) return;
+      getMessagePresence(partnerIds)
+        .then((result) => setOnlineIds(new Set(result.online_user_ids)))
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(refresh, PRESENCE_REFRESH_INTERVAL);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+    // partnerKey stands in for partnerIds, which is a new array on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerKey]);
 
   useEffect(() => {
     if (!currentUserId || !getSessionId()) {
@@ -81,6 +126,7 @@ function MessagesPage() {
       .then((result) => {
         setMessages(result.data.filter((item) => item.sender?.id && item.recipient?.id));
         setLastPage(result.last_page);
+        setOnlineIds(new Set(result.online_user_ids ?? []));
       })
       .catch(() => {
         setMessages([]);
@@ -246,6 +292,7 @@ function MessagesPage() {
         </div>
       }
     >
+      {confirmDialog}
       {composerOpen && canMessage && (
         <form onSubmit={handleSend} className={`${panelClass} mb-5 p-5 sm:p-6`}>
           <SectionHeader
@@ -355,6 +402,7 @@ function MessagesPage() {
           selected={selectedConversation}
           messages={messages}
           currentUserId={currentUser?.id}
+          onlineIds={onlineIds}
           reply={reply}
           setReply={setReply}
           file={replyFile}
@@ -363,6 +411,19 @@ function MessagesPage() {
           onBack={() => {
             setSelectedConversation(null);
             setReplyFile(null);
+          }}
+          onDelete={async () => {
+            const other =
+              selectedConversation.sender.id === currentUser?.id
+                ? selectedConversation.recipient
+                : selectedConversation.sender;
+            const ok = await confirm({
+              title: "Delete this conversation?",
+              description: `The conversation with ${other.name} will be removed from your inbox. ${other.name} will still see it.`,
+              confirmLabel: "Delete conversation",
+              destructive: true,
+            });
+            if (ok) await removeConversation(selectedConversation);
           }}
           onSubmit={sendReply}
         />
@@ -415,7 +476,12 @@ function MessagesPage() {
                 >
                   <div className="bg-navy relative grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold text-white ring-2 ring-gold/40 sm:h-12 sm:w-12">
                     {avatarLabel(other.name)}
-                    <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
+                    {onlineIds.has(other.id) && (
+                      <span
+                        className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success"
+                        aria-label="Online"
+                      />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-3">
@@ -506,12 +572,14 @@ type ConversationDetailProps = {
   selected: Message;
   messages: Message[];
   currentUserId?: number | undefined;
+  onlineIds: Set<number>;
   reply: string;
   setReply: (value: string) => void;
   file: File | null;
   setFile: (file: File | null) => void;
   sending: boolean;
   onBack: () => void;
+  onDelete: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 };
 
@@ -519,12 +587,14 @@ function ConversationDetail({
   selected,
   messages,
   currentUserId,
+  onlineIds,
   reply,
   setReply,
   file,
   setFile,
   sending,
   onBack,
+  onDelete,
   onSubmit,
 }: ConversationDetailProps) {
   const attachmentInput = useRef<HTMLInputElement>(null);
@@ -542,6 +612,7 @@ function ConversationDetail({
   }
 
   const other = selected.sender.id === currentUserId ? selected.recipient : selected.sender;
+  const online = onlineIds.has(other.id);
   const conversation = messages
     .filter((item) => {
       const participants = [item.sender.id, item.recipient.id];
@@ -573,21 +644,43 @@ function ConversationDetail({
             .join("")
             .slice(0, 2)
             .toUpperCase()}
-          <span className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
+          {online && (
+            <span
+              className="absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success"
+              aria-label="Online"
+            />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-extrabold">{other.name}</h2>
-          <p className="text-xs text-muted-foreground">Active now</p>
+          <p
+            className={`text-xs ${online ? "font-semibold text-success" : "text-muted-foreground"}`}
+          >
+            {online ? "Active now" : "Offline"}
+          </p>
         </div>
         <div className="flex items-center gap-1 text-foreground">
-          <button
-            type="button"
-            aria-label="More options"
-            title="More options"
-            className={iconButtonClass}
-          >
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="More options"
+                title="More options"
+                className={iconButtonClass}
+              >
+                <MoreHorizontal className="h-5 w-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onSelect={onDelete}
+                className="font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete conversation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       <div className="flex-1 space-y-3 overflow-y-auto bg-card px-4 py-6 sm:px-8">

@@ -279,7 +279,7 @@ class BenefitReleaseController extends Controller
                     ->whereDoesntHave('benefits', fn ($received) => $received
                         ->where('benefits.id', $release->benefit_id)
                         ->where('benefit_transactions.status', 'released')),
-                fn ($query) => $query->whereHas('benefits', fn ($assigned) => $assigned->where('benefits.id', $release->benefit_id)),
+                fn ($query) => $query->where('benefit_id', $release->benefit_id),
             )
             ->whereDoesntHave('benefits', fn ($query) => $query
                 ->where('benefits.id', $release->benefit_id)

@@ -17,7 +17,7 @@ class SeniorEditRequestController extends Controller
 
         return response()->json(SeniorEditRequest::with([
             'senior.barangay',
-            'senior.benefits',
+            'senior.benefit:id,benefit_name',
             'requester:id,name,role',
         ])->where('status', 'pending')->latest()->get());
     }
@@ -84,14 +84,7 @@ class SeniorEditRequestController extends Controller
                     'barangay_id' => \App\Models\Barangay::where('barangay_name', $changes['barangay'])->value('id'),
                 ]);
                 $benefit = Benefit::where('benefit_name', $changes['benefit'])->where('status', 'active')->firstOrFail();
-                $senior->benefits()->wherePivot('status', 'pending')->syncWithoutDetaching([
-                    $benefit->id => [
-                        'distributed_by' => $request->user()->id,
-                        'amount' => $benefit->amount ?? 0,
-                        'period_label' => 'Registration '.today()->toDateString(),
-                        'status' => 'pending',
-                    ],
-                ]);
+                $senior->update(['benefit_id' => $benefit->id]);
             }
             $seniorEditRequest->update([
                 ...$data,

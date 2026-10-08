@@ -19,29 +19,44 @@ class BenefitTransactionController extends Controller
     {
         $page = max(1, $request->integer('page', 1));
         $perPage = min(1000, max(10, $request->integer('per_page', 25)));
-        $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}";
-        $loadTransactions = function () use ($request, $page, $perPage) {
-        $query = BenefitTransaction::with([
-            'senior.barangay',
-            'senior.encoder:id,name,role',
-            'benefit:id,benefit_name,amount',
-                        'distributor:id,name,role',
-                        'creator:id,name,role',
-                        'updater:id,name,role',
-        ])->latest();
-        $query->whereHas('senior')->whereHas('benefit');
+        // The release period, e.g. "October 2026", so each month's records can be seen on their own.
+        $period = $request->string('period')->trim()->toString();
+        $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}:".sha1($period);
+        $visible = function () use ($request) {
+            $query = BenefitTransaction::query()->whereHas('senior')->whereHas('benefit');
+            if ($request->user()->role === 'leader') {
+                $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $request->user()->barangay_id));
+            }
 
-        if ($request->user()->role === 'leader') {
-            $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $request->user()->barangay_id));
-        }
-
-        return $query->paginate($perPage, ['*'], 'page', $page)->toArray();
+            return $query;
+        };
+        $loadTransactions = function () use ($visible, $period, $page, $perPage) {
+            return $visible()
+                ->with([
+                    'senior.barangay',
+                    'senior.encoder:id,name,role',
+                    'benefit:id,benefit_name,amount',
+                    'distributor:id,name,role',
+                    'creator:id,name,role',
+                    'updater:id,name,role',
+                ])
+                ->when($period !== '', fn ($query) => $query->where('period_label', $period))
+                ->latest()
+                ->paginate($perPage, ['*'], 'page', $page)
+                ->toArray();
         };
         $transactions = $perPage >= 500
             ? $loadTransactions()
             : Cache::remember($cacheKey, now()->addSeconds(3), $loadTransactions);
 
-        return response()->json($transactions);
+        // Every period this account has records for, newest first, for the period filter.
+        $periods = $visible()
+            ->whereNotNull('period_label')
+            ->groupBy('period_label')
+            ->orderByRaw('MAX(id) DESC')
+            ->pluck('period_label');
+
+        return response()->json([...$transactions, 'periods' => $periods]);
     }
 
     public function store(Request $request): JsonResponse

@@ -28,7 +28,7 @@ class SeniorCitizen extends Model
     ];
 
     protected $fillable = [
-        'osca_id_number', 'barangay_id', 'encoded_by', 'last_name', 'first_name',
+        'osca_id_number', 'barangay_id', 'benefit_id', 'encoded_by', 'last_name', 'first_name',
         'middle_name', 'suffix', 'birthdate', 'place_of_birth', 'sex', 'contact_number', 'address',
         'civil_status', 'educational_attainment', 'other_skills', 'family_composition',
         'association_name', 'association_address', 'association_membership_date', 'association_position',
@@ -70,6 +70,13 @@ class SeniorCitizen extends Model
         return $this->belongsTo(User::class, 'encoded_by');
     }
 
+    /** The program the senior is enrolled in. */
+    public function benefit(): BelongsTo
+    {
+        return $this->belongsTo(Benefit::class);
+    }
+
+    /** Benefit records: one per release the senior was listed for. */
     public function benefits(): BelongsToMany
     {
         return $this->belongsToMany(Benefit::class, 'benefit_transactions')->withPivot(['amount', 'status', 'period_label', 'date_distributed']);

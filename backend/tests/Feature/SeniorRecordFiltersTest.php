@@ -42,22 +42,17 @@ class SeniorRecordFiltersTest extends TestCase
         ]);
         $seniorInZoneOne = $this->createSenior($admin, $zoneOne, 'OSCA-ZONE-1', 'Maria', 'Santos');
         $seniorInZoneTwo = $this->createSenior($admin, $zoneTwo, 'OSCA-ZONE-2', 'Juan', 'Reyes');
+        $seniorInZoneOne->update(['benefit_id' => $grant->id]);
+        $seniorInZoneTwo->update(['benefit_id' => $socialPension->id]);
 
+        // A payment record for another program does not change the program the senior is enrolled in.
         BenefitTransaction::create([
-            'senior_citizen_id' => $seniorInZoneOne->id,
+            'senior_citizen_id' => $seniorInZoneTwo->id,
             'benefit_id' => $grant->id,
             'distributed_by' => $admin->id,
             'amount' => 10000,
             'period_label' => '2026',
-            'status' => 'pending',
-        ]);
-        BenefitTransaction::create([
-            'senior_citizen_id' => $seniorInZoneTwo->id,
-            'benefit_id' => $socialPension->id,
-            'distributed_by' => $admin->id,
-            'amount' => 3000,
-            'period_label' => '2026-Q1',
-            'status' => 'pending',
+            'status' => 'released',
         ]);
 
         $this->actingAs($admin, 'sanctum')
@@ -71,6 +66,22 @@ class SeniorRecordFiltersTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.osca_id_number', 'OSCA-ZONE-1');
+    }
+
+    public function test_senior_search_finds_a_full_name(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $this->createSenior($admin, $zone, 'OSCA-1', 'Juan', 'Dela Cruz');
+        $this->createSenior($admin, $zone, 'OSCA-2', 'Juan', 'Reyes');
+        $this->createSenior($admin, $zone, 'OSCA-3', 'Maria', 'Dela Cruz');
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/seniors?per_page=100&search='.urlencode('Juan Dela Cruz'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.osca_id_number', 'OSCA-1');
     }
 
     private function createSenior(

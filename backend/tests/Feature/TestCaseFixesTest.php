@@ -105,7 +105,16 @@ class TestCaseFixesTest extends TestCase
         $this->postJson('/api/messages', ['recipient_id' => $this->head->id, 'subject' => 'Bad', 'attachment' => UploadedFile::fake()->create('run.exe', 10)])
             ->assertStatus(422)->assertJsonValidationErrors('attachment');
 
+        // Deleting hides the conversation for the leader only; the head still has it.
         $this->deleteJson("/api/messages/conversations/{$this->head->id}")->assertNoContent();
+        $this->getJson('/api/messages')->assertJsonCount(0, 'data');
+        Storage::disk('public')->assertExists($sent->json('attachment_path'));
+        $this->actingAs($this->head, 'sanctum')->getJson('/api/messages')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.attachment_name', 'list.jpg');
+
+        // Once both have deleted it, the message and its attachment are gone.
+        $this->deleteJson("/api/messages/conversations/{$this->leader->id}")->assertNoContent();
         Storage::disk('public')->assertMissing($sent->json('attachment_path'));
         $this->assertSame(0, Message::count());
     }

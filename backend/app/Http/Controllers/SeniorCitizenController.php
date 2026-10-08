@@ -25,7 +25,7 @@ class SeniorCitizenController extends Controller
     {
         $query = SeniorCitizen::with([
             'barangay:id,barangay_name',
-            'benefits:id,benefit_name',
+            'benefit:id,benefit_name',
             'encoder:id,name,role',
         ]);
         if ($request->user()->role === 'leader') {
@@ -40,8 +40,22 @@ class SeniorCitizenController extends Controller
             $query->where('status', '!=', 'pending');
         }
         if ($request->filled('search')) {
-            $search = $request->string('search');
-            $query->where(fn ($q) => $q->where('osca_id_number', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('first_name', 'like', "%{$search}%")->orWhereHas('barangay', fn ($barangayQuery) => $barangayQuery->where('barangay_name', 'like', "%{$search}%")));
+            $search = $request->string('search')->trim()->toString();
+            $matchesAnyField = fn ($q, string $term) => $q->where('osca_id_number', 'like', "%{$term}%")
+                ->orWhere('last_name', 'like', "%{$term}%")
+                ->orWhere('first_name', 'like', "%{$term}%")
+                ->orWhere('middle_name', 'like', "%{$term}%")
+                ->orWhereHas('barangay', fn ($barangayQuery) => $barangayQuery->where('barangay_name', 'like', "%{$term}%"));
+            $words = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY);
+            // The whole phrase in one field (an OSCA ID or barangay), or every word somewhere,
+            // so a full name such as "Juan Dela Cruz" finds the senior.
+            $query->where(fn ($q) => $q
+                ->where(fn ($phrase) => $matchesAnyField($phrase, $search))
+                ->orWhere(function ($allWords) use ($words, $matchesAnyField) {
+                    foreach ($words as $word) {
+                        $allWords->where(fn ($wordQuery) => $matchesAnyField($wordQuery, $word));
+                    }
+                }));
         }
         if ($request->filled('barangay')) {
             $barangay = $request->string('barangay')->toString();
@@ -49,7 +63,7 @@ class SeniorCitizenController extends Controller
         }
         if ($request->filled('benefit')) {
             $benefit = $request->string('benefit')->toString();
-            $query->whereHas('benefits', fn ($benefitQuery) => $benefitQuery->where('benefit_name', $benefit));
+            $query->whereHas('benefit', fn ($benefitQuery) => $benefitQuery->where('benefit_name', $benefit));
         }
 
         $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
@@ -100,7 +114,7 @@ class SeniorCitizenController extends Controller
         $senior->restore();
         AuditLog::record($request->user(), 'restored', $senior, ['deleted' => true], ['deleted' => false]);
 
-        return response()->json($senior->fresh()->load(['barangay', 'benefits']));
+        return response()->json($senior->fresh()->load(['barangay', 'benefit']));
     }
 
     public function archiveRecord(Request $request, SeniorCitizen $senior): JsonResponse
@@ -164,6 +178,7 @@ class SeniorCitizenController extends Controller
             ->where('status', 'active')
             ->first();
         abort_if(! $benefit, 422, 'A valid benefit is required.');
+        $data['benefit_id'] = $benefit->id;
         $data['encoded_by'] = $request->user()->id;
         $data['registration_date'] ??= today();
         $data['status'] = 'pending';
@@ -179,19 +194,13 @@ class SeniorCitizenController extends Controller
                 }
             }
         }
-        $senior->benefits()->attach($benefit->id, [
-            'distributed_by' => $request->user()->id,
-            'amount' => $benefit->amount ?? 0,
-            'status' => 'pending',
-            'period_label' => 'Registration '.today()->toDateString(),
-        ]);
         AuditLog::record($request->user(), 'created', $senior, afterValue: [
             'status' => $senior->status,
             'privacy_consent_version' => $senior->privacy_consent_version,
         ]);
         AdvisoryDispatcher::forPendingSenior($senior);
 
-        return response()->json($senior->load(['barangay', 'benefits']), 201);
+        return response()->json($senior->load(['barangay', 'benefit']), 201);
     }
 
     public function bulkStore(Request $request): JsonResponse
@@ -283,16 +292,10 @@ class SeniorCitizenController extends Controller
                         'association_membership_date' => $data['association_membership_date'] ?? null,
                         'association_position' => $data['association_position'] ?? null,
                         'barangay_id' => $barangayId,
-                        'benefit' => $data['benefit'],
+                        'benefit_id' => $benefit->id,
                         'encoded_by' => $request->user()->id,
                         'registration_date' => today(),
                         'status' => 'pending',
-                    ]);
-                    $senior->benefits()->attach($benefit->id, [
-                        'distributed_by' => $request->user()->id,
-                        'amount' => $benefit->amount ?? 0,
-                        'status' => 'pending',
-                        'period_label' => 'Registration '.today()->toDateString(),
                     ]);
                     AuditLog::record($request->user(), 'created', $senior, afterValue: ['status' => $senior->status]);
 
@@ -317,7 +320,7 @@ class SeniorCitizenController extends Controller
     {
         $this->authorizeScope(request(), $senior);
 
-        return response()->json($senior->load(['barangay', 'benefits']));
+        return response()->json($senior->load(['barangay', 'benefit']));
     }
 
     public function file(Request $request, SeniorCitizen $senior, string $kind): StreamedResponse
@@ -347,6 +350,12 @@ class SeniorCitizenController extends Controller
             $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
             unset($data['barangay']);
         }
+        if (array_key_exists('benefit', $data)) {
+            $benefitId = Benefit::where('benefit_name', $data['benefit'])->where('status', 'active')->value('id');
+            abort_unless($benefitId, 422, 'A valid benefit is required.');
+            $data['benefit_id'] = $benefitId;
+            unset($data['benefit']);
+        }
         $replacedPaths = [];
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
@@ -370,7 +379,7 @@ class SeniorCitizenController extends Controller
             ['fields' => array_keys($senior->getChanges())],
         );
 
-        return response()->json($senior->fresh()->load('barangay'));
+        return response()->json($senior->fresh()->load(['barangay', 'benefit']));
     }
 
     public function destroy(Request $request, SeniorCitizen $senior): JsonResponse

@@ -8,6 +8,7 @@ import { IconActionButton } from "@/components/IconActionButton";
 import {
   deleteServerNotification,
   getServerNotifications,
+  getStoredUser,
   markServerNotificationRead,
   type ServerNotification,
 } from "@/lib/api";
@@ -33,24 +34,13 @@ function Notifications() {
     return "System notification";
   }
 
+  // Opening the inbox does not mark anything read; that happens when a notification is
+  // opened or marked read, so unread ones stay highlighted until the user deals with them.
   useEffect(() => {
     getServerNotifications()
       .then((notifications) => {
         setServerNotifications(notifications);
         setSelectedNotificationIds([]);
-        const unread = notifications.filter((notification) => notification.status === "unread");
-        if (unread.length === 0) return;
-        return Promise.all(
-          unread.map((notification) => markServerNotificationRead(notification.id)),
-        );
-      })
-      .then((updated) => {
-        if (!updated) return;
-        const updatedById = new Map(updated.map((notification) => [notification.id, notification]));
-        setServerNotifications((current) =>
-          current.map((notification) => updatedById.get(notification.id) ?? notification),
-        );
-        window.dispatchEvent(new Event("bulan-unread-updated"));
       })
       .catch(() => setServerNotifications([]));
   }, []);
@@ -118,13 +108,29 @@ function Notifications() {
             )
             .catch(() => undefined)
         : Promise.resolve();
-    const destination =
-      notification.source_type === "announcement" && notification.source_id
-        ? { to: "/dashboard" as const, hash: `announcement-${notification.source_id}` }
-        : notification.source_type === "benefit_release" && notification.source_id
-          ? { to: "/benefits" as const, search: { release: String(notification.source_id) } }
-          : { to: "/dashboard" as const };
-    void markRead.then(() => navigate(destination));
+    void markRead.then(() => openSource(notification));
+  }
+
+  /** Goes to the page the notification is about. */
+  function openSource(notification: ServerNotification) {
+    const sourceId = notification.source_id;
+    if (notification.source_type === "announcement" && sourceId) {
+      return navigate({ to: "/dashboard", hash: `announcement-${sourceId}` });
+    }
+    if (notification.source_type === "benefit_release" && sourceId) {
+      return navigate({ to: "/benefits", search: { release: sourceId } });
+    }
+    if (notification.source_type === "age_threshold") {
+      // Admin and Head review flags on the Age Threshold page; BSCA Presidents cannot open it,
+      // so they go to the senior's record instead. The message starts with the senior's name.
+      if (getStoredUser()?.role !== "leader") return navigate({ to: "/age-threshold" });
+      const seniorName = notification.message.split(" is eligible for ")[0]?.trim();
+      return navigate({
+        to: "/seniors",
+        search: { q: seniorName || undefined, status: undefined },
+      });
+    }
+    return navigate({ to: "/dashboard" });
   }
 
   return (

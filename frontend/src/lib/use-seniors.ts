@@ -54,7 +54,7 @@ function mapSenior(senior: ApiSenior): Senior {
     barangay: senior.barangay?.barangay_name ?? "Unassigned",
     address: senior.address ?? "",
     contact: senior.contact_number ?? "Not provided",
-    benefit: senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
+    benefit: senior.benefit?.benefit_name ?? senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
     status:
       senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
     photoPath: senior.photo_path ?? null,

@@ -61,7 +61,7 @@ class PayrollBatchController extends Controller
         $seniors = SeniorCitizen::query()
             ->where('status', 'active')
             ->whereNotNull('atm_account_last4')
-            ->whereHas('benefits', fn ($query) => $query->where('benefits.id', $benefit->id))
+            ->where('benefit_id', $benefit->id)
             // Seniors already paid or listed for this period, by ATM or cash, are left out.
             ->whereDoesntHave('benefits', fn ($query) => $query
                 ->where('benefits.id', $benefit->id)

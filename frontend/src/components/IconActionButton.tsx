@@ -173,6 +173,7 @@ export function IconSelect({
   disabled,
   searchable,
   keepWhiteBackground = false,
+  dotClassName = "bg-gold",
   className,
 }: {
   label: string;
@@ -188,6 +189,11 @@ export function IconSelect({
   searchable?: boolean;
   /** Keeps the trigger white when its selected value is non-default. */
   keepWhiteBackground?: boolean;
+  /**
+   * Color of the dot shown while a non-default value is selected, e.g. by status;
+   * `null` shows no dot.
+   */
+  dotClassName?: string | null;
   className?: string;
 }) {
   const labelsVisible = useLabelsVisible();
@@ -199,7 +205,7 @@ export function IconSelect({
     active &&
       (keepWhiteBackground
         ? "disabled:opacity-100"
-        : "sm:border-gold/60 sm:bg-gold/5 max-sm:border-transparent max-sm:bg-navy max-sm:text-white"),
+        : "sm:border-primary max-sm:border-transparent max-sm:bg-navy max-sm:text-white"),
     className,
   );
   const triggerContent = (
@@ -207,9 +213,7 @@ export function IconSelect({
       <span
         className={cn(
           "shrink-0 text-muted-foreground [&>svg]:h-4 [&>svg]:w-4",
-          active &&
-            !keepWhiteBackground &&
-            "max-sm:text-white sm:text-gold-foreground dark:sm:text-gold",
+          active && !keepWhiteBackground && "max-sm:text-white sm:text-primary",
         )}
       >
         {icon}
@@ -220,10 +224,10 @@ export function IconSelect({
         )}
         {current}
       </span>
-      {active && !keepWhiteBackground && (
+      {active && !keepWhiteBackground && dotClassName && (
         <span
           aria-hidden="true"
-          className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-gold sm:block"
+          className={cn("hidden h-1.5 w-1.5 shrink-0 rounded-full sm:block", dotClassName)}
         />
       )}
       <ChevronDown

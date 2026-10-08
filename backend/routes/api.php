@@ -70,6 +70,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::post('/announcements/{announcement}/comments', [AnnouncementController::class, 'comment']);
     Route::get('/messages/unread-summary', [MessageController::class, 'unreadSummary']);
+    Route::get('/messages/presence', [MessageController::class, 'presence']);
     Route::get('/messages', [MessageController::class, 'index']);
     Route::get('/messages/recipients', [MessageController::class, 'recipients']);
     Route::post('/messages', [MessageController::class, 'store']);

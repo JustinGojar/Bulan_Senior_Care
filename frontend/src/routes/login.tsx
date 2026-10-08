@@ -63,7 +63,10 @@ function LoginPage() {
   }, []);
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to your account to continue to the portal.">
+    <AuthLayout
+      title="Sign in to SeniorCare"
+      subtitle="Use the account issued to you by OSCA Bulan."
+    >
       <form
         className="mt-8 space-y-5"
         onSubmit={(e) => {

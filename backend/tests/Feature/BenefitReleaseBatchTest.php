@@ -91,14 +91,9 @@ class BenefitReleaseBatchTest extends TestCase
             'last_name' => $oscaId,
             'birthdate' => '1950-01-01',
             'sex' => 'female',
+            'benefit_id' => $this->pension->id,
             'registration_date' => '2026-01-01',
             'status' => $status,
-        ]);
-        $senior->benefits()->attach($this->pension->id, [
-            'distributed_by' => $this->admin->id,
-            'amount' => 3000,
-            'status' => 'pending',
-            'period_label' => 'Registration 2026-01-01',
         ]);
 
         return $senior;
@@ -196,6 +191,26 @@ class BenefitReleaseBatchTest extends TestCase
             ->values()
             ->all();
         $this->assertSame(['AGE-80', 'AGE-85'], $listed);
+    }
+
+    public function test_release_queue_filters_by_period_and_lists_periods(): void
+    {
+        $this->senior('CALPI-1', $this->calpi);
+        $this->schedule([$this->calpi->id], '2027-01-15')->assertCreated();
+        $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-releases', [
+            'benefit_id' => $this->pension->id,
+            'period_label' => 'February 2027',
+            'barangay_ids' => [$this->calpi->id],
+            'release_date' => '2027-02-15',
+            'status' => 'scheduled',
+        ])->assertCreated();
+
+        $this->actingAs($this->admin, 'sanctum')->getJson('/api/benefit-transactions')
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('periods', ['February 2027', 'January 2027']);
+        $this->actingAs($this->admin, 'sanctum')->getJson('/api/benefit-transactions?period='.urlencode('January 2027'))
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.period_label', 'January 2027');
     }
 
     public function test_release_history_filters_by_program_and_date(): void
