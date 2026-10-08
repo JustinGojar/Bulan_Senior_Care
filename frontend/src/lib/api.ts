@@ -230,10 +230,25 @@ export type Message = {
   id: number;
   subject: string;
   message: string;
+  attachment_path?: string | null;
+  attachment_name?: string | null;
+  attachment_mime?: string | null;
   read_at: string | null;
   created_at: string;
   sender: { id: number; name: string; role: string; email: string };
   recipient: { id: number; name: string; role: string; email: string };
+};
+
+export type AnalyticsReport = {
+  id: number;
+  report_type: string;
+  generated_date: string;
+  total_registered: number;
+  remarks: string | null;
+  status: "draft" | "approved" | "published";
+  published_at: string | null;
+  generator: { id: number; name: string; role: string } | null;
+  approver: { id: number; name: string; role: string } | null;
 };
 
 export type MessageRecipient = {
@@ -692,7 +707,20 @@ export function getMessageRecipients(search: string) {
   return apiFetch<MessageRecipient[]>(`/messages/recipients?search=${encodeURIComponent(search)}`);
 }
 
-export function sendMessage(recipientId: number, subject: string, message: string) {
+export function sendMessage(
+  recipientId: number,
+  subject: string,
+  message: string,
+  attachment?: File | null,
+) {
+  if (attachment) {
+    const body = new FormData();
+    body.append("recipient_id", String(recipientId));
+    body.append("subject", subject);
+    if (message) body.append("message", message);
+    body.append("attachment", attachment);
+    return apiFetch<Message>("/messages", { method: "POST", body });
+  }
   return apiFetch<Message>("/messages", {
     method: "POST",
     body: JSON.stringify({ recipient_id: recipientId, subject, message }),

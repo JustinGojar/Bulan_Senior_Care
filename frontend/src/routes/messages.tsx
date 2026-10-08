@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   Image,
   MoreHorizontal,
+  Paperclip,
   PenLine,
   Plus,
   Search,
@@ -14,7 +15,7 @@ import {
   Smile,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { authSubmitClass } from "@/components/AuthLayout";
@@ -26,7 +27,9 @@ import {
   secondaryButtonClass,
 } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  API_URL,
   getMessageRecipients,
   getMessages,
   getSessionId,
@@ -65,6 +68,7 @@ function MessagesPage() {
   const [selectedConversation, setSelectedConversation] = useState<Message | null>(null);
   const [reply, setReply] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+  const [replyFile, setReplyFile] = useState<File | null>(null);
   const [contextConversation, setContextConversation] = useState<Message | null>(null);
 
   useEffect(() => {
@@ -131,17 +135,23 @@ function MessagesPage() {
 
   async function sendReply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedConversation || !reply.trim()) return;
+    if (!selectedConversation || (!reply.trim() && !replyFile)) return;
     const other =
       selectedConversation.sender.id === currentUser?.id
         ? selectedConversation.recipient
         : selectedConversation.sender;
     setSendingReply(true);
     try {
-      const sent = await sendMessage(other.id, selectedConversation.subject, reply.trim());
+      const sent = await sendMessage(
+        other.id,
+        selectedConversation.subject,
+        reply.trim(),
+        replyFile,
+      );
       setMessages((current) => [sent, ...current]);
       setSelectedConversation(sent);
       setReply("");
+      setReplyFile(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to send reply.");
     } finally {
@@ -347,8 +357,13 @@ function MessagesPage() {
           currentUserId={currentUser?.id}
           reply={reply}
           setReply={setReply}
+          file={replyFile}
+          setFile={setReplyFile}
           sending={sendingReply}
-          onBack={() => setSelectedConversation(null)}
+          onBack={() => {
+            setSelectedConversation(null);
+            setReplyFile(null);
+          }}
           onSubmit={sendReply}
         />
       ) : (
@@ -420,7 +435,7 @@ function MessagesPage() {
                       className={`mt-1 truncate text-sm ${received && !item.read_at ? "font-semibold text-foreground" : "text-muted-foreground"}`}
                     >
                       <span className="font-medium">{item.subject}: </span>
-                      {item.message}
+                      {item.message || (item.attachment_name ? `📎 ${item.attachment_name}` : "")}
                     </p>
                   </div>
                   {received && !item.read_at && (
@@ -493,6 +508,8 @@ type ConversationDetailProps = {
   currentUserId?: number | undefined;
   reply: string;
   setReply: (value: string) => void;
+  file: File | null;
+  setFile: (file: File | null) => void;
   sending: boolean;
   onBack: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -504,10 +521,26 @@ function ConversationDetail({
   currentUserId,
   reply,
   setReply,
+  file,
+  setFile,
   sending,
   onBack,
   onSubmit,
 }: ConversationDetailProps) {
+  const attachmentInput = useRef<HTMLInputElement>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
+  function pickFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (picked && picked.size > MAX_ATTACHMENT_BYTES) {
+      toast.error("Attachments must be 5 MB or smaller.");
+      return;
+    }
+    setFile(picked);
+  }
+
   const other = selected.sender.id === currentUserId ? selected.recipient : selected.sender;
   const conversation = messages
     .filter((item) => {
@@ -573,7 +606,8 @@ function ConversationDetail({
                 {!mine && (
                   <p className="mb-1 text-xs font-bold text-muted-foreground">{item.sender.name}</p>
                 )}
-                <p className="whitespace-pre-wrap">{item.message}</p>
+                {item.attachment_path && <MessageAttachment item={item} mine={mine} />}
+                {item.message && <p className="whitespace-pre-wrap">{item.message}</p>}
                 <p
                   className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}
                 >
@@ -596,52 +630,159 @@ function ConversationDetail({
           />
         )}
       </div>
-      <form
-        onSubmit={onSubmit}
-        className="flex items-center gap-2 border-t border-border/60 bg-card px-3 py-3 sm:px-5"
-      >
-        <button
-          type="button"
-          aria-label="Add attachment"
-          title="Add attachment"
-          className={`${iconButtonClass} shrink-0`}
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Add photo"
-          title="Add photo"
-          className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground transition-colors hover:text-foreground sm:grid"
-        >
-          <Image className="h-5 w-5" />
-        </button>
-        <div className="flex min-w-0 flex-1 items-center rounded-lg border border-input bg-background/60 px-4 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/15">
+      <form onSubmit={onSubmit} className="border-t border-border/60 bg-card px-3 py-3 sm:px-5">
+        {file && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/60 px-3 py-2 text-sm">
+            <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{file.name}</span>
+            <button
+              type="button"
+              onClick={() => setFile(null)}
+              aria-label="Remove attachment"
+              title="Remove attachment"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
           <input
-            value={reply}
-            onChange={(event) => setReply(event.target.value)}
-            placeholder="Aa"
-            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            ref={attachmentInput}
+            type="file"
+            accept={ATTACHMENT_ACCEPT}
+            className="hidden"
+            onChange={pickFile}
+          />
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={pickFile}
           />
           <button
             type="button"
-            aria-label="Add emoji"
-            title="Add emoji"
-            className="text-muted-foreground hover:text-foreground"
+            onClick={() => attachmentInput.current?.click()}
+            aria-label="Add attachment"
+            title="Add attachment"
+            className={`${iconButtonClass} shrink-0`}
           >
-            <Smile className="h-5 w-5" />
+            <Plus className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => photoInput.current?.click()}
+            aria-label="Add photo"
+            title="Add photo"
+            className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground transition-colors hover:text-foreground sm:grid"
+          >
+            <Image className="h-5 w-5" />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center rounded-lg border border-input bg-background/60 px-4 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-4 focus-within:ring-ring/15">
+            <input
+              value={reply}
+              onChange={(event) => setReply(event.target.value)}
+              placeholder="Aa"
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+            <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Add emoji"
+                  title="Add emoji"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Smile className="h-5 w-5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="grid w-64 grid-cols-8 gap-1 p-2">
+                {EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      setReply(reply + emoji);
+                      setEmojiOpen(false);
+                    }}
+                    className="grid h-7 w-7 place-items-center rounded text-lg hover:bg-muted"
+                    aria-label={`Insert ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+          </div>
+          <button
+            type="submit"
+            disabled={sending || (!reply.trim() && !file)}
+            aria-label="Send reply"
+            title="Send reply"
+            className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Send className="h-4 w-4" />
           </button>
         </div>
-        <button
-          type="submit"
-          disabled={sending || !reply.trim()}
-          aria-label="Send reply"
-          title="Send reply"
-          className="bg-navy grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <Send className="h-4 w-4" />
-        </button>
       </form>
     </section>
+  );
+}
+
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx";
+const EMOJIS = [
+  "😀",
+  "😂",
+  "😊",
+  "😍",
+  "🙂",
+  "😉",
+  "😢",
+  "😮",
+  "👍",
+  "👏",
+  "🙏",
+  "👋",
+  "💪",
+  "🤝",
+  "✅",
+  "❌",
+  "❤️",
+  "🎉",
+  "📌",
+  "📎",
+  "📅",
+  "⏰",
+  "💰",
+  "🏥",
+];
+
+function MessageAttachment({ item, mine }: { item: Message; mine: boolean }) {
+  const url = `${API_URL.replace(/\/api$/, "")}/storage/${item.attachment_path}`;
+  const name = item.attachment_name ?? "Attachment";
+  if (item.attachment_mime?.startsWith("image/")) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="mb-1.5 block">
+        <img
+          src={url}
+          alt={name}
+          loading="lazy"
+          className="max-h-60 w-full rounded-lg object-cover"
+        />
+      </a>
+    );
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className={`mb-1.5 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold underline-offset-2 hover:underline ${mine ? "bg-white/15" : "bg-card"}`}
+    >
+      <Paperclip className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 truncate">{name}</span>
+    </a>
   );
 }
