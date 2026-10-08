@@ -44,7 +44,7 @@ import {
   getSessionId,
   getStoredUser,
   deleteConversation as deleteConversationApi,
-  markMessageRead,
+  markConversationRead,
   sendMessage,
   type Message,
   type MessageRecipient,
@@ -167,15 +167,24 @@ function MessagesPage() {
 
   async function openMessage(item: Message) {
     setSelectedConversation(item);
-    if (item.recipient.id !== currentUser?.id || item.read_at) return;
+    const other = item.sender.id === currentUser?.id ? item.recipient : item.sender;
+    const isUnreadFromOther = (messageItem: Message) =>
+      messageItem.sender.id === other.id &&
+      messageItem.recipient.id === currentUser?.id &&
+      !messageItem.read_at;
+    if (!messages.some(isUnreadFromOther)) return;
+    // Show the conversation as read right away; the badge refreshes once the server confirms.
+    const readAt = new Date().toISOString();
+    setMessages((current) =>
+      current.map((messageItem) =>
+        isUnreadFromOther(messageItem) ? { ...messageItem, read_at: readAt } : messageItem,
+      ),
+    );
     try {
-      const updated = await markMessageRead(item.id);
-      setMessages((current) =>
-        current.map((messageItem) => (messageItem.id === updated.id ? updated : messageItem)),
-      );
+      await markConversationRead(other.id);
       window.dispatchEvent(new Event("bulan-unread-updated"));
     } catch {
-      toast.error("Unable to mark message as read.");
+      toast.error("Unable to mark conversation as read.");
     }
   }
 

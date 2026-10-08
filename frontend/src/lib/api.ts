@@ -965,6 +965,12 @@ export function sendMessage(
   });
 }
 
+export function markConversationRead(userId: number) {
+  return apiFetch<{ updated: number }>(`/messages/conversations/${userId}/read`, {
+    method: "POST",
+  });
+}
+
 export function markMessageRead(id: number) {
   return apiFetch<Message>(`/messages/${id}/read`, { method: "POST" });
 }
