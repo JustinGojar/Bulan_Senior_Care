@@ -50,8 +50,8 @@ return [
         ],
 
         // HTTPS API mailer; use this on Railway, which blocks outbound SMTP below the Pro plan.
-        'brevo' => [
-            'transport' => 'brevo',
+        'mailjet' => [
+            'transport' => 'mailjet',
             'timeout' => env('MAIL_TIMEOUT', 10),
         ],
 

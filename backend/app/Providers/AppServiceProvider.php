@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Mail\Transport\BrevoTransport;
+use App\Mail\Transport\MailjetTransport;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -37,8 +37,9 @@ class AppServiceProvider extends ServiceProvider
             ->by($request->user()?->id ?: $request->ip()));
 
         // Mail over HTTPS for hosts that block SMTP (Railway outside the Pro plan).
-        Mail::extend('brevo', fn (array $config) => new BrevoTransport(
-            (string) config('services.brevo.key'),
+        Mail::extend('mailjet', fn (array $config) => new MailjetTransport(
+            (string) config('services.mailjet.key'),
+            (string) config('services.mailjet.secret'),
             (int) ($config['timeout'] ?? 10),
         ));
 

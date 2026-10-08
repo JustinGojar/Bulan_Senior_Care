@@ -14,8 +14,9 @@ return [
     |
     */
 
-    'brevo' => [
-        'key' => env('BREVO_API_KEY'),
+    'mailjet' => [
+        'key' => env('MAILJET_API_KEY'),
+        'secret' => env('MAILJET_SECRET_KEY'),
     ],
 
     'postmark' => [
