@@ -25,7 +25,8 @@ import {
   tileClass,
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
-import { API_URL, getStoredUser } from "@/lib/api";
+import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
+import { getStoredUser, seniorFileUrl, type SeniorFileKind } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
 import { BARANGAYS, type Senior } from "@/lib/osca-data";
 import {
@@ -398,22 +399,20 @@ function EligibilityReview() {
             <div className="mt-3 grid grid-cols-2 gap-4">
               {(
                 [
-                  ["Valid ID", viewing?.validIdPath ?? viewing?.idDocumentPath],
-                  ["Birth Certificate", viewing?.birthCertificatePath],
-                ] as [string, string | null | undefined][]
-              ).map(([label, path]) => (
+                  ["Valid ID", "valid_id", viewing?.validIdPath ?? viewing?.idDocumentPath],
+                  ["Birth Certificate", "birth_certificate", viewing?.birthCertificatePath],
+                ] as [string, SeniorFileKind, string | null | undefined][]
+              ).map(([label, kind, path]) => (
                 <div key={label} className="min-w-0">
                   <p className="text-xs text-muted-foreground">{label}</p>
-                  {path ? (
-                    <a
-                      href={`${API_URL.replace(/\/api$/, "")}/storage/${path}`}
-                      target="_blank"
-                      rel="noreferrer"
+                  {path && viewing ? (
+                    <PrivateFileLink
+                      path={seniorFileUrl(viewing.id, kind, path)}
                       className="mt-2 block text-sm font-semibold"
                     >
                       {isImageDocument(path) ? (
-                        <img
-                          src={`${API_URL.replace(/\/api$/, "")}/storage/${path}`}
+                        <PrivateImage
+                          path={seniorFileUrl(viewing.id, kind, path)}
                           alt={label}
                           className="h-24 w-full rounded-lg border border-border/60 object-cover"
                         />
@@ -422,7 +421,7 @@ function EligibilityReview() {
                           Open document
                         </span>
                       )}
-                    </a>
+                    </PrivateFileLink>
                   ) : (
                     <span className="mt-2 block rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
                       Not uploaded

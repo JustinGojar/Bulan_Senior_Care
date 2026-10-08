@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Award,
   ArrowUpDown,
@@ -13,6 +13,8 @@ import {
   Gift,
   Grid2X2,
   HeartHandshake,
+  History,
+  Landmark,
   ListFilter,
   Loader2,
   Plus,
@@ -45,9 +47,11 @@ import {
   statCardClass,
   tileClass,
 } from "@/components/design-kit";
+import { PrivateFileLink } from "@/components/PrivateFile";
+import { ReleaseRosterDialog } from "@/components/ReleaseRosterDialog";
 import {
-  API_URL,
   apiFetch,
+  benefitProofUrl,
   getBarangays,
   getStoredUser,
   type BenefitRelease,
@@ -89,7 +93,20 @@ function localToday() {
 
 const PROGRAM_ICONS = [Coins, Gift, Users, HeartHandshake, Banknote, Award];
 
+/** An ATM payout can only be confirmed received once the bank has credited the account. */
+function awaitingBank(transaction: BenefitTransaction) {
+  return transaction.payout_method === "atm" && transaction.bank_status !== "credited";
+}
+
+const BANK_STATUS_LABEL: Record<string, string> = {
+  for_payroll: "ATM · For payroll",
+  sent_to_bank: "ATM · Waiting for bank",
+  credited: "ATM · Credited",
+  crediting_failed: "ATM · Crediting failed",
+};
+
 function BenefitTracking() {
+  const navigate = useNavigate();
   const [confirm, confirmDialog] = useConfirmDialog();
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
   const [transactions, setTransactions] = useState<BenefitTransaction[]>([]);
@@ -99,10 +116,14 @@ function BenefitTracking() {
   const [transactionLastPage, setTransactionLastPage] = useState(1);
   const [releaseFormOpen, setReleaseFormOpen] = useState(false);
   const [selectedBenefitId, setSelectedBenefitId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [releaseBarangayIds, setReleaseBarangayIds] = useState<number[]>([]);
+  const [releaseBarangaySearch, setReleaseBarangaySearch] = useState("");
   const [releaseDate, setReleaseDate] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingRelease, setSavingRelease] = useState(false);
+  // The release batch whose list of receiving seniors is open.
+  const [rosterReleaseId, setRosterReleaseId] = useState<number | null>(null);
+  const [transactionsVersion, setTransactionsVersion] = useState(0);
   const [selectedBarangay, setSelectedBarangay] = useState("All");
   const [selectedBenefit, setSelectedBenefit] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
@@ -174,8 +195,16 @@ function BenefitTracking() {
         : sortedPrograms.filter((program) => program.name === selectedBenefit),
     [selectedBenefit, sortedPrograms],
   );
+  const releaseBarangayOptions = barangays.filter((barangay) =>
+    barangay.barangay_name.toLowerCase().includes(releaseBarangaySearch.trim().toLowerCase()),
+  );
+  // A release batch covers the barangay filter when it lists it, or when it is for everyone.
+  const releaseCoversBarangay = (release: BenefitRelease) =>
+    selectedBarangay === "All" ||
+    !release.barangays?.length ||
+    release.barangays.some((barangay) => barangay.barangay_name === selectedBarangay);
   const pendingTransactions = filteredTransactions.filter(
-    (transaction) => transaction.status === "pending",
+    (transaction) => transaction.status === "pending" && !awaitingBank(transaction),
   );
   const allPendingSelected =
     pendingTransactions.length > 0 &&
@@ -239,11 +268,12 @@ function BenefitTracking() {
     apiFetch<PaginatedResponse<BenefitRelease>>("/benefit-releases?page=1&per_page=50")
       .then((result) => setReleaseSchedules(result.data))
       .catch(() => setReleaseSchedules([]));
-  }, [currentUser?.barangay_id, isLeader, transactionPage]);
+  }, [currentUser?.barangay_id, isLeader, transactionPage, transactionsVersion]);
 
   function resetReleaseForm() {
     setSelectedBenefitId("");
-    setAmount("");
+    setReleaseBarangayIds([]);
+    setReleaseBarangaySearch("");
     setReleaseDate("");
     setRemarks("");
   }
@@ -353,13 +383,17 @@ function BenefitTracking() {
 
   async function saveRelease(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (releaseBarangayIds.length === 0) {
+      toast.error("Select at least one barangay for this release batch.");
+      return;
+    }
     setSavingRelease(true);
     try {
       const saved = await apiFetch<BenefitRelease>("/benefit-releases", {
         method: "POST",
         body: JSON.stringify({
           benefit_id: selectedBenefitId,
-          amount,
+          barangay_ids: releaseBarangayIds,
           period_label: new Date(`${releaseDate}T00:00:00`).toLocaleDateString("en-US", {
             month: "long",
             year: "numeric",
@@ -370,10 +404,16 @@ function BenefitTracking() {
         }),
       });
       setReleaseSchedules((current) => [saved, ...current]);
+      // Show who receives on that day, and load their new records into the release queue.
+      setRosterReleaseId(saved.id);
+      setTransactionsVersion((version) => version + 1);
+      toast.success(
+        `Release saved. ${saved.transactions_count ?? 0} ${saved.transactions_count === 1 ? "senior" : "seniors"} listed for this batch.`,
+      );
       setReleaseFormOpen(false);
       resetReleaseForm();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to save benefit release.");
+      toast.error(reason instanceof Error ? reason.message : "Unable to save benefit release.");
     } finally {
       setSavingRelease(false);
     }
@@ -665,6 +705,20 @@ function BenefitTracking() {
               onClick={openAddRelease}
             />
           )}
+          <IconActionButton
+            label="Release History"
+            variant="outline"
+            icon={<History className="h-5 w-5" />}
+            onClick={() => navigate({ to: "/releases" })}
+          />
+          {canManageReleases && (
+            <IconActionButton
+              label="ATM Payroll"
+              variant="outline"
+              icon={<Landmark className="h-5 w-5" />}
+              onClick={() => navigate({ to: "/payroll" })}
+            />
+          )}
           {isHead && (
             <IconActionButton
               label="Export PDF"
@@ -764,20 +818,27 @@ function BenefitTracking() {
           const pending = programTransactions.filter(
             (transaction) => transaction.status === "pending",
           ).length;
-          const scheduledReleases = releaseSchedules
+          const today = localToday();
+          const programReleases = releaseSchedules.filter(
+            (release) =>
+              release.benefit.benefit_name === program.name &&
+              release.status !== "cancelled" &&
+              releaseCoversBarangay(release),
+          );
+          // Only batches still ahead count as next; a passed date is a past release even
+          // before someone marks the batch completed.
+          const nextRelease = programReleases
             .filter(
               (release) =>
-                release.benefit.benefit_name === program.name && release.status === "scheduled",
+                release.status === "scheduled" && release.release_date.slice(0, 10) >= today,
             )
-            .sort((a, b) => a.release_date.localeCompare(b.release_date));
-          const completedReleases = releaseSchedules
+            .sort((a, b) => a.release_date.localeCompare(b.release_date))[0];
+          const latestRelease = programReleases
             .filter(
               (release) =>
-                release.benefit.benefit_name === program.name && release.status === "released",
+                release.status === "released" || release.release_date.slice(0, 10) < today,
             )
-            .sort((a, b) => b.release_date.localeCompare(a.release_date));
-          const nextRelease = scheduledReleases[0];
-          const latestRelease = completedReleases[0];
+            .sort((a, b) => b.release_date.localeCompare(a.release_date))[0];
           const ProgramIcon = PROGRAM_ICONS[index % PROGRAM_ICONS.length]!;
           const relatedBarangay = selectedBarangay === "All" ? "All barangays" : selectedBarangay;
 
@@ -823,8 +884,24 @@ function BenefitTracking() {
                   <div className="min-w-0">
                     <p className="text-[10px] text-muted-foreground">Release date</p>
                     <p className="truncate text-xs font-semibold">
-                      {latestRelease ? formatDate(latestRelease.release_date) : "Not yet released"}
+                      {latestRelease ? (
+                        <button
+                          type="button"
+                          onClick={() => setRosterReleaseId(latestRelease.id)}
+                          className="text-primary hover:underline"
+                          title="View the seniors in this batch"
+                        >
+                          {formatDate(latestRelease.release_date)}
+                        </button>
+                      ) : (
+                        "Not yet released"
+                      )}
                     </p>
+                    {latestRelease?.status === "scheduled" && (
+                      <p className="text-[10px] font-semibold text-gold-foreground dark:text-gold">
+                        Not yet closed
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex min-w-0 gap-2 border-l border-border/70 pl-3">
@@ -832,7 +909,18 @@ function BenefitTracking() {
                   <div className="min-w-0">
                     <p className="text-[10px] text-muted-foreground">Next release</p>
                     <p className="truncate text-xs font-semibold">
-                      {nextRelease ? formatDate(nextRelease.release_date) : "Not scheduled"}
+                      {nextRelease ? (
+                        <button
+                          type="button"
+                          onClick={() => setRosterReleaseId(nextRelease.id)}
+                          className="text-primary hover:underline"
+                          title="View the seniors in this batch"
+                        >
+                          {formatDate(nextRelease.release_date)}
+                        </button>
+                      ) : (
+                        "Not scheduled"
+                      )}
                     </p>
                   </div>
                 </div>
@@ -997,7 +1085,7 @@ function BenefitTracking() {
                   <tr key={transaction.id} className="border-t border-border/60">
                     {canUpdateTransactions && (
                       <td className="px-3 py-3.5">
-                        {transaction.status === "pending" && (
+                        {transaction.status === "pending" && !awaitingBank(transaction) && (
                           <input
                             type="checkbox"
                             checked={selectedTransactionIds.includes(transaction.id)}
@@ -1042,6 +1130,11 @@ function BenefitTracking() {
                       >
                         {statusLabel}
                       </StatusPill>
+                      {transaction.bank_status && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {BANK_STATUS_LABEL[transaction.bank_status]}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3.5 text-xs text-muted-foreground">
                       <p>
@@ -1055,19 +1148,21 @@ function BenefitTracking() {
                         <p className="mt-1">Modified by {transaction.updater.name}</p>
                       )}
                       {transaction.attachment_path && (
-                        <a
-                          href={`${API_URL.replace(/\/api$/, "")}/storage/${transaction.attachment_path}`}
-                          target="_blank"
-                          rel="noreferrer"
+                        <PrivateFileLink
+                          path={benefitProofUrl(transaction.id, transaction.attachment_path)}
                           className="mt-1 inline-block font-semibold text-primary hover:underline"
                         >
                           Open proof
-                        </a>
+                        </PrivateFileLink>
                       )}
                     </td>
                     {canUpdateTransactions && (
                       <td className="px-4 py-3.5">
-                        {transaction.status === "pending" ? (
+                        {transaction.status === "pending" && awaitingBank(transaction) ? (
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            Waiting for bank
+                          </span>
+                        ) : transaction.status === "pending" ? (
                           <div className="flex flex-nowrap gap-2">
                             <button
                               type="button"
@@ -1169,15 +1264,7 @@ function BenefitTracking() {
                 name="benefit_id"
                 required
                 value={selectedBenefitId}
-                onValueChange={(value) => {
-                  setSelectedBenefitId(value);
-                  const selected = programs.find((program) => String(program.id) === value);
-                  setAmount(
-                    selected?.amount === "Variable"
-                      ? ""
-                      : (selected?.amount.replace(/[^0-9.]/g, "") ?? ""),
-                  );
-                }}
+                onValueChange={setSelectedBenefitId}
               >
                 <SelectTrigger id="release-benefit">
                   <SelectValue placeholder="Select benefit" />
@@ -1191,19 +1278,6 @@ function BenefitTracking() {
                 </SelectContent>
               </Select>
             </div>
-            <label>
-              <span className="mb-2 block text-sm font-semibold">Amount</span>
-              <input
-                required
-                min="0"
-                step="0.01"
-                type="number"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                placeholder="0.00"
-                className={`${fieldClass} h-11`}
-              />
-            </label>
             <label>
               <span className="mb-2 block text-sm font-semibold">Release Date</span>
               <input
@@ -1223,6 +1297,75 @@ function BenefitTracking() {
                 className={`${fieldClass} h-11`}
               />
             </label>
+            <fieldset className="sm:col-span-2">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <legend className="text-sm font-semibold">
+                  Barangays in this batch{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ({releaseBarangayIds.length} selected)
+                  </span>
+                </legend>
+                <div className="flex gap-3 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReleaseBarangayIds([
+                        ...new Set([
+                          ...releaseBarangayIds,
+                          ...releaseBarangayOptions.map((barangay) => barangay.id),
+                        ]),
+                      ])
+                    }
+                    className="text-primary hover:underline"
+                  >
+                    Select all{releaseBarangaySearch ? " shown" : ""}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReleaseBarangayIds([])}
+                    className="text-muted-foreground hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <input
+                type="search"
+                value={releaseBarangaySearch}
+                onChange={(event) => setReleaseBarangaySearch(event.target.value)}
+                placeholder="Search barangay"
+                className={`${fieldClass} h-10`}
+              />
+              <div className="mt-2 grid max-h-56 gap-1 overflow-y-auto rounded-lg border border-border/60 p-2 sm:grid-cols-2">
+                {releaseBarangayOptions.map((barangay) => (
+                  <label
+                    key={barangay.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={releaseBarangayIds.includes(barangay.id)}
+                      onChange={(event) =>
+                        setReleaseBarangayIds((current) =>
+                          event.target.checked
+                            ? [...current, barangay.id]
+                            : current.filter((id) => id !== barangay.id),
+                        )
+                      }
+                      className="h-4 w-4 shrink-0 accent-[var(--navy)]"
+                    />
+                    {barangay.barangay_name}
+                  </label>
+                ))}
+                {releaseBarangayOptions.length === 0 && (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">No barangay matches.</p>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Only the BSCA Presidents and seniors of these barangays are notified. Schedule the
+                other barangays as separate batches.
+              </p>
+            </fieldset>
             <div className="flex justify-end gap-2 sm:col-span-2">
               <button
                 type="button"
@@ -1286,6 +1429,11 @@ function BenefitTracking() {
         </DialogContent>
       </Dialog>
       {confirmDialog}
+      <ReleaseRosterDialog
+        releaseId={rosterReleaseId}
+        onClose={() => setRosterReleaseId(null)}
+        onChanged={() => setTransactionsVersion((version) => version + 1)}
+      />
     </AppShell>
   );
 }

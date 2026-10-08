@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\BenefitTransaction;
 use App\Models\AuditLog;
+use App\Models\SeniorCitizen;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BenefitTransactionController extends Controller
 {
@@ -65,7 +69,7 @@ class BenefitTransactionController extends Controller
         $data['created_by'] = $request->user()->id;
         $data['updated_by'] = $request->user()->id;
         if ($request->hasFile('attachment')) {
-            $data['attachment_path'] = $request->file('attachment')->store('benefit-proofs', 'public');
+            $data['attachment_path'] = $request->file('attachment')->store('benefit-proofs', SeniorCitizen::FILE_DISK);
         }
         unset($data['attachment']);
 
@@ -102,8 +106,13 @@ class BenefitTransactionController extends Controller
             'remarks' => ['nullable', 'string', 'max:500'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
+        abort_if(
+            $data['status'] === 'released' && $benefitTransaction->payout_method === 'atm' && $benefitTransaction->bank_status !== 'credited',
+            422,
+            "The bank has not credited this senior's ATM account yet, so it cannot be marked received.",
+        );
         if ($request->hasFile('attachment')) {
-            $data['attachment_path'] = $request->file('attachment')->store('benefit-proofs', 'public');
+            $data['attachment_path'] = $request->file('attachment')->store('benefit-proofs', SeniorCitizen::FILE_DISK);
         }
         unset($data['attachment']);
         $benefitTransaction->update([
@@ -117,6 +126,20 @@ class BenefitTransactionController extends Controller
         AuditLog::record($request->user(), $action, $benefitTransaction, $beforeValue, $benefitTransaction->only(['benefit_id', 'status', 'amount', 'period_label']));
 
         return response()->json($benefitTransaction->fresh()->load($this->relations()));
+    }
+
+    public function attachment(Request $request, BenefitTransaction $benefitTransaction): StreamedResponse
+    {
+        $senior = $benefitTransaction->senior;
+        abort_unless($senior, 404, 'This file is not available.');
+        $this->authorizeScope($request, $senior);
+        $path = $benefitTransaction->attachment_path;
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk(SeniorCitizen::FILE_DISK);
+        abort_unless($path && $disk->exists($path), 404, 'This file is not available.');
+
+        // Personal records: never kept by shared caches or on disk by the browser.
+        return $disk->response($path, headers: ['Cache-Control' => 'private, no-store']);
     }
 
     private function relations(): array

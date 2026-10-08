@@ -29,12 +29,16 @@ class UserController extends Controller
             'last_name' => ['required', 'string', 'max:80'],
             'name' => ['nullable', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'contact_number' => ['required', 'string', 'max:30'],
+            'contact_number' => ['required', 'regex:/^09\d{9}$/'],
             'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
-            'role' => ['required', Rule::in(['admin', 'head', 'leader'])],
+            // Admin accounts cannot be created from the portal.
+            'role' => ['required', Rule::in(['head', 'leader'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'password' => ['required', 'confirmed', Password::defaults()],
+        ], [
+            'contact_number.regex' => 'Enter an 11-digit mobile number starting with 09.',
+            'role.in' => 'Admin accounts cannot be created.',
         ]);
 
         if ($data['role'] === 'leader' && ! $data['barangay_id']) {
@@ -70,12 +74,16 @@ class UserController extends Controller
             'last_name' => ['nullable', 'string', 'max:80'],
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'contact_number' => ['nullable', 'string', 'max:30'],
+            'contact_number' => ['nullable', 'regex:/^09\d{9}$/'],
             'birthdate' => ['nullable', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
-            'role' => ['required', Rule::in(['admin', 'head', 'leader'])],
+            // An existing Admin keeps the role, but no other account can be promoted to Admin.
+            'role' => ['required', Rule::in($user->role === 'admin' ? ['admin', 'head', 'leader'] : ['head', 'leader'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+        ], [
+            'contact_number.regex' => 'Enter an 11-digit mobile number starting with 09.',
+            'role.in' => 'Only existing Admin accounts can have the Admin role.',
         ]);
 
         if ($request->user()->is($user) && ($data['role'] !== 'admin' || $data['status'] !== 'active')) {

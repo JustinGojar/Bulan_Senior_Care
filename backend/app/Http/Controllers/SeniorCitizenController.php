@@ -8,12 +8,15 @@ use App\Models\Benefit;
 use App\Models\SeniorCitizen;
 use App\Support\AdvisoryDispatcher;
 use Illuminate\Database\QueryException;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SeniorCitizenController extends Controller
 {
@@ -112,6 +115,7 @@ class SeniorCitizenController extends Controller
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
+        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay leaders.');
         $this->normalizeContact($request);
         $data = $request->validate($this->rules());
         // The senior, or their representative, agrees to the data privacy notice before
@@ -126,12 +130,12 @@ class SeniorCitizenController extends Controller
         $data['privacy_consent_at'] = now();
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
-                $documentPath = $request->file($documentField)->store('senior-documents', 'public');
+                $documentPath = $request->file($documentField)->store('senior-documents', SeniorCitizen::FILE_DISK);
                 $data["{$documentField}_path"] = $documentPath;
             }
         }
         if ($request->hasFile('profile_photo')) {
-            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
+            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', SeniorCitizen::FILE_DISK);
         }
         if ($request->user()->role === 'leader') {
             // Leaders are always scoped to their own barangay; never let their input
@@ -193,6 +197,7 @@ class SeniorCitizenController extends Controller
     public function bulkStore(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
+        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay leaders.');
         $rows = $request->input('records');
         abort_if(! is_array($rows) || count($rows) === 0, 422, 'At least one senior record is required.');
         abort_if(count($rows) > 500, 422, 'You can import a maximum of 500 records at a time.');
@@ -315,6 +320,22 @@ class SeniorCitizenController extends Controller
         return response()->json($senior->load(['barangay', 'benefits']));
     }
 
+    public function file(Request $request, SeniorCitizen $senior, string $kind): StreamedResponse
+    {
+        $this->authorizeScope($request, $senior);
+        $path = $senior->{SeniorCitizen::FILE_COLUMNS[$kind]};
+        // Older records kept the valid ID in id_document_path.
+        if ($kind === 'valid_id') {
+            $path ??= $senior->id_document_path;
+        }
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk(SeniorCitizen::FILE_DISK);
+        abort_unless($path && $disk->exists($path), 404, 'This file is not available.');
+
+        // Personal records: never kept by shared caches or on disk by the browser.
+        return $disk->response($path, headers: ['Cache-Control' => 'private, no-store']);
+    }
+
     public function update(Request $request, SeniorCitizen $senior): JsonResponse
     {
         abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
@@ -327,11 +348,11 @@ class SeniorCitizenController extends Controller
         }
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
-                $data["{$documentField}_path"] = $request->file($documentField)->store('senior-documents', 'public');
+                $data["{$documentField}_path"] = $request->file($documentField)->store('senior-documents', SeniorCitizen::FILE_DISK);
             }
         }
         if ($request->hasFile('profile_photo')) {
-            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', 'public');
+            $data['photo_path'] = $request->file('profile_photo')->store('senior-photos', SeniorCitizen::FILE_DISK);
         }
         $senior->update($data);
         AuditLog::record(

@@ -29,7 +29,8 @@ class AdvisoryDispatcher
         self::sendSms($settings, $senior->contact_number, 'Registration received', 'Your senior citizen registration is awaiting validation.');
     }
 
-    public static function forBenefitRelease(string $benefitName, string $periodLabel, string $releaseDate): void
+    /** @param  array<int, int>|null  $barangayIds  The release batch; null notifies every barangay. */
+    public static function forBenefitRelease(string $benefitName, string $periodLabel, string $releaseDate, ?array $barangayIds = null): void
     {
         $settings = AdvisorySettings::all();
         if (! $settings['email_advisories'] && ! $settings['sms_advisories']) {
@@ -41,6 +42,7 @@ class AdvisoryDispatcher
         User::query()
             ->where('role', 'leader')
             ->where('status', 'active')
+            ->when($barangayIds !== null, fn ($leaders) => $leaders->whereIn('barangay_id', $barangayIds))
             ->select(['id', 'email', 'contact_number'])
             ->chunkById(100, function ($leaders) use ($settings, $subject, $message): void {
                 foreach ($leaders as $leader) {
@@ -51,6 +53,7 @@ class AdvisoryDispatcher
         SeniorCitizen::query()
             ->where('status', 'active')
             ->whereNotNull('contact_number')
+            ->when($barangayIds !== null, fn ($seniors) => $seniors->whereIn('barangay_id', $barangayIds))
             ->select(['id', 'contact_number'])
             ->chunkById(500, function ($seniors) use ($settings, $subject, $message): void {
                 foreach ($seniors as $senior) {

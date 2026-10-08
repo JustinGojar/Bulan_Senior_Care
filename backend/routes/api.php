@@ -10,10 +10,12 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationSettingsController;
 use App\Http\Controllers\OverviewController;
+use App\Http\Controllers\PayrollBatchController;
 use App\Http\Controllers\SeniorCitizenController;
 use App\Http\Controllers\SeniorEditRequestController;
 use App\Http\Controllers\SystemDataController;
 use App\Http\Controllers\UserController;
+use App\Models\SeniorCitizen;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -46,9 +48,21 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::get('/benefits', [BenefitController::class, 'index']);
     Route::get('/benefit-releases', [BenefitReleaseController::class, 'index']);
     Route::post('/benefit-releases', [BenefitReleaseController::class, 'store']);
+    Route::get('/benefit-releases/{benefitRelease}', [BenefitReleaseController::class, 'show']);
+    Route::post('/benefit-releases/{benefitRelease}/complete', [BenefitReleaseController::class, 'complete']);
+    Route::post('/benefit-releases/{benefitRelease}/documents', [BenefitReleaseController::class, 'uploadDocuments']);
+    Route::delete('/benefit-releases/{benefitRelease}/documents/{releaseDocument}', [BenefitReleaseController::class, 'destroyDocument']);
     Route::get('/benefit-transactions', [BenefitTransactionController::class, 'index']);
     Route::post('/benefit-transactions', [BenefitTransactionController::class, 'store']);
     Route::patch('/benefit-transactions/{benefitTransaction}', [BenefitTransactionController::class, 'update']);
+    Route::get('/payroll-batches', [PayrollBatchController::class, 'index']);
+    Route::post('/payroll-batches', [PayrollBatchController::class, 'store']);
+    Route::get('/payroll-batches/{payrollBatch}', [PayrollBatchController::class, 'show']);
+    Route::delete('/payroll-batches/{payrollBatch}', [PayrollBatchController::class, 'destroy']);
+    Route::post('/payroll-batches/{payrollBatch}/sent', [PayrollBatchController::class, 'markSent']);
+    Route::post('/payroll-batches/{payrollBatch}/crediting', [PayrollBatchController::class, 'recordCrediting']);
+    Route::patch('/payroll-batches/{payrollBatch}/items/{benefitTransaction}', [PayrollBatchController::class, 'updateItem']);
+    Route::post('/atm-accounts', [PayrollBatchController::class, 'importAccounts']);
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::post('/announcements/{announcement}/comments', [AnnouncementController::class, 'comment']);
     Route::get('/messages/unread-summary', [MessageController::class, 'unreadSummary']);
@@ -64,4 +78,13 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::delete('/notifications', [NotificationController::class, 'clear']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
+});
+
+// Private senior files. A list page loads many photos at once, so these get their own limit.
+Route::middleware(['token.idle', 'auth:sanctum', 'throttle:files'])->group(function () {
+    Route::get('/seniors/{senior}/files/{kind}', [SeniorCitizenController::class, 'file'])
+        ->whereIn('kind', array_keys(SeniorCitizen::FILE_COLUMNS));
+    Route::get('/benefit-transactions/{benefitTransaction}/attachment', [BenefitTransactionController::class, 'attachment']);
+    Route::get('/payroll-batches/{payrollBatch}/report', [PayrollBatchController::class, 'report']);
+    Route::get('/benefit-releases/{benefitRelease}/documents/{releaseDocument}', [BenefitReleaseController::class, 'document']);
 });

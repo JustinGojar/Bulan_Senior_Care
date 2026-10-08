@@ -286,7 +286,7 @@ function MessagesPage() {
                         <small className="text-xs text-muted-foreground">{item.email}</small>
                       </span>
                       <small className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-                        {item.role === "head" ? "OSCA Head" : "BSCA"}
+                        {item.role === "head" ? "OSCA Head" : "BSCA President"}
                       </small>
                     </button>
                   ))}

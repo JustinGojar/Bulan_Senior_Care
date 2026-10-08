@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\AuthenticateFromCookie;
-use App\Models\AuditLog;
 use App\Models\User;
 use App\Models\Barangay;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +35,7 @@ class AuthController extends Controller
             'middle_name' => ['nullable', 'string', 'max:80'],
             'last_name' => ['required', 'string', 'max:80'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'contact_number' => ['required', 'string', 'max:30'],
+            'contact_number' => ['required', 'regex:/^09\d{9}$/'],
             'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'barangay_id' => ['required', 'integer', 'exists:barangays,id'],
             'password' => [
@@ -44,6 +43,8 @@ class AuthController extends Controller
                 'confirmed',
                 Password::defaults(),
             ],
+        ], [
+            'contact_number.regex' => 'Enter an 11-digit mobile number starting with 09.',
         ]);
 
         $user = User::create([
@@ -69,10 +70,6 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
-            'accepted_terms' => ['accepted'],
-            'terms_version' => ['required', 'string', 'max:20'],
-        ], [
-            'accepted_terms.accepted' => 'You must agree to the Terms and Conditions to sign in.',
         ]);
         $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
@@ -93,22 +90,7 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        $previousTermsVersion = $user->terms_version;
-        $user->forceFill([
-            'last_login' => now(),
-            'terms_version' => $credentials['terms_version'],
-            'terms_accepted_at' => now(),
-        ])->save();
-        // The user agrees on every sign-in; the audit log keeps the first agreement to each version.
-        if ($previousTermsVersion !== $credentials['terms_version']) {
-            AuditLog::record(
-                $user,
-                'accepted_terms',
-                $user,
-                $previousTermsVersion === null ? null : ['terms_version' => $previousTermsVersion],
-                ['terms_version' => $credentials['terms_version'], 'ip_address' => $request->ip()],
-            );
-        }
+        $user->forceFill(['last_login' => now()])->save();
         $user->tokens()->delete();
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
 

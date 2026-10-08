@@ -30,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)
             ->by($request->user()?->id ?: $request->ip()));
 
+        // Private senior photos and documents, fetched one request per file.
+        RateLimiter::for('files', fn (Request $request) => Limit::perMinute(600)
+            ->by($request->user()?->id ?: $request->ip()));
+
         // Stops one address from trying many accounts; the controller also limits each email.
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
     }

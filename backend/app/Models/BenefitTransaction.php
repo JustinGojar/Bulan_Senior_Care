@@ -10,7 +10,7 @@ class BenefitTransaction extends Model
     protected $fillable = [
         'senior_citizen_id', 'benefit_id', 'distributed_by', 'date_distributed',
         'amount', 'period_label', 'status', 'reference_number', 'remarks', 'attachment_path',
-        'created_by', 'updated_by',
+        'created_by', 'updated_by', 'payout_method', 'payroll_batch_id', 'bank_status', 'bank_remarks', 'benefit_release_id',
     ];
 
     protected function casts(): array
@@ -26,6 +26,16 @@ class BenefitTransaction extends Model
     public function benefit(): BelongsTo
     {
         return $this->belongsTo(Benefit::class);
+    }
+
+    public function benefitRelease(): BelongsTo
+    {
+        return $this->belongsTo(BenefitRelease::class);
+    }
+
+    public function payrollBatch(): BelongsTo
+    {
+        return $this->belongsTo(PayrollBatch::class);
     }
 
     public function distributor(): BelongsTo

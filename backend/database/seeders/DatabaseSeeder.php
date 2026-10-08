@@ -9,26 +9,29 @@ use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
+    /** The official barangays of Bulan, Sorsogon. */
+    public const BARANGAYS = [
+        'A. Bonifacio (Tinurilan)', 'Abad Santos (Kambal)', 'Aguinaldo (Lipata Dako)', 'Antipolo',
+        'Aquino (Imelda)', 'Beguin', 'Bical', 'Bonga', 'Butag', 'Cadandanan', 'Calomagon', 'Calpi',
+        'Cocok-Cabitan', 'Daganas', 'Danao', 'Dolos', 'E. Quirino (Pinangomhan)', 'Fabrica',
+        'G. Del Pilar (Tanga)', 'Gate', 'Inararan', 'J. Gerona (Biton)', 'J.P. Laurel (Pon-od)',
+        'Jamorawon', 'Lajong', 'Libertad (Calle Putol)', 'Magsaysay (Bongog)', 'Managa-naga',
+        'Marinab', 'Montecalvario', 'N. Roque (Calayugan)', 'Namo', 'Nasuje', 'Obrero',
+        'Osmeña (Lipata Saday)', 'Otavi', 'Padre Diaz', 'Palale', 'Quezon (Cabarawan)',
+        'R. Gerona (Butag)', 'Recto', 'Roxas (Busay)', 'Sagrada', 'San Francisco (Polot)',
+        'San Isidro (Cabugaan)', 'San Juan Bag-o', 'San Juan Daan', 'San Rafael (Togbongon)',
+        'San Ramon', 'San Vicente', 'Santa Remedios', 'Santa Teresita (Trece)', 'Sigad',
+        'Somagongsong', 'Tarhan', 'Taromata', 'Zone 1 (Ilawod)', 'Zone 2 (Sabang)',
+        'Zone 3 (Central)', 'Zone 4 (Central Business District)', 'Zone 5 (Canipaan)',
+        'Zone 6 (Baybay)', 'Zone 7 (Iraya)', 'Zone 8 (Loyo)',
+    ];
+
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        $barangays = collect([
-            'A. Bonifacio (Tinurilan)', 'Abad Santos (Kambal)', 'Aguinaldo (Lipata Dako)', 'Antipolo',
-            'Aquino (Imelda)', 'Beguin', 'Bical', 'Bonga', 'Butag', 'Cadandanan', 'Calomagon', 'Calpi',
-            'Cocok-Cabitan', 'Daganas', 'Danao', 'Dolos', 'E. Quirino (Pinangomhan)', 'Fabrica',
-            'G. Del Pilar (Tanga)', 'Gate', 'Inararan', 'J. Gerona (Biton)', 'J.P. Laurel (Pon-od)',
-            'Jamorawon', 'Lajong', 'Libertad (Calle Putol)', 'Magsaysay (Bongog)', 'Managa-naga',
-            'Marinab', 'Montecalvario', 'N. Roque (Calayugan)', 'Namo', 'Nasuje', 'Obrero',
-            'Osmeña (Lipata Saday)', 'Otavi', 'Padre Diaz', 'Palale', 'Quezon (Cabarawan)',
-            'R. Gerona (Butag)', 'Recto', 'Roxas (Busay)', 'Sagrada', 'San Francisco (Polot)',
-            'San Isidro (Cabugaan)', 'San Juan Bag-o', 'San Juan Daan', 'San Rafael (Togbongon)',
-            'San Ramon', 'San Vicente', 'Santa Remedios', 'Santa Teresita (Trece)', 'Sigad',
-            'Somagongsong', 'Tarhan', 'Taromata', 'Zone 1 (Ilawod)', 'Zone 2 (Sabang)',
-            'Zone 3 (Central)', 'Zone 4 (Central Business District)', 'Zone 5 (Canipaan)',
-            'Zone 6 (Baybay)', 'Zone 7 (Iraya)', 'Zone 8 (Loyo)',
-        ])->map(fn (string $name, int $index) => [
+        $barangays = collect(self::BARANGAYS)->map(fn (string $name, int $index) => [
             'barangay_name' => $name,
             'zone_number' => $index + 1,
         ])->mapWithKeys(fn (array $barangay) => [$barangay['barangay_name'] => Barangay::updateOrCreate(['barangay_name' => $barangay['barangay_name']], $barangay)]);
@@ -48,6 +51,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(BenefitSeeder::class);
+        $this->call(BscaLeaderSeeder::class);
         $this->call(SampleDataSeeder::class);
     }
 }

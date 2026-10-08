@@ -66,10 +66,11 @@ class SeniorBulkUploadTest extends TestCase
         ]);
     }
 
-    public function test_bulk_import_creates_a_missing_barangay(): void
+    public function test_leader_can_bulk_import_into_their_barangay(): void
     {
+        $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
         /** @var User $user */
-        $user = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'leader', 'barangay_id' => $barangay->id]);
 
         Benefit::create([
             'benefit_name' => 'Social Pension',
@@ -105,8 +106,7 @@ class SeniorBulkUploadTest extends TestCase
         ]);
 
         $response->assertCreated()->assertJsonCount(1, 'created');
-        $this->assertDatabaseHas('barangays', ['barangay_name' => 'Zone 8 (Loyo)']);
-        $this->assertDatabaseHas('senior_citizens', ['first_name' => 'Maria', 'last_name' => 'Santos']);
+        $this->assertDatabaseHas('senior_citizens', ['first_name' => 'Maria', 'last_name' => 'Santos', 'barangay_id' => $barangay->id]);
         $this->assertDatabaseHas('senior_citizens', [
             'first_name' => 'Maria',
             'place_of_birth' => 'Bulan, Sorsogon',
@@ -117,8 +117,9 @@ class SeniorBulkUploadTest extends TestCase
 
     public function test_bulk_import_returns_row_error_for_underage_record(): void
     {
+        $barangay = Barangay::create(['barangay_name' => 'Zone 8']);
         /** @var User $user */
-        $user = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'leader', 'barangay_id' => $barangay->id]);
         $cutoffDate = now()->subYears(60)->toDateString();
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors/bulk', [
@@ -135,6 +136,38 @@ class SeniorBulkUploadTest extends TestCase
 
         $response->assertOk()->assertJsonPath('failed.0.row', 2);
         $response->assertJsonPath('failed.0.message', "The birthdate field must be a date before or equal to {$cutoffDate}.");
+    }
+
+    public function test_admin_cannot_register_or_bulk_import_seniors(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/seniors', [
+            'privacy_consent' => true,
+            'privacy_consent_version' => '2026-10-07',
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'birthdate' => '1960-01-01',
+            'sex' => 'male',
+            'contact_number' => '09123456789',
+            'barangay' => 'Bulusan',
+            'benefit' => 'Social Pension',
+        ])->assertForbidden();
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/seniors/bulk', [
+            'records' => [[
+                'first_name' => 'Maria',
+                'last_name' => 'Santos',
+                'birthdate' => '1960-01-01',
+                'sex' => 'female',
+                'contact_number' => '09123456789',
+                'barangay' => 'Bulusan',
+                'benefit' => 'Social Pension',
+            ]],
+        ])->assertForbidden();
+
+        $this->assertSame(0, SeniorCitizen::count());
     }
 
     public function test_admin_can_create_non_leader_accounts_without_barangay_assignment(): void

@@ -121,6 +121,8 @@ const NAV = [
 const NAV_PARENT: Record<string, string> = {
   "/audit-logs": "/settings",
   "/reports": "/analytics",
+  "/payroll": "/benefits",
+  "/releases": "/benefits",
 };
 
 function isNavActive(pathname: string, to: string) {
@@ -271,7 +273,7 @@ export function AppShell({
     .toUpperCase();
   const roleLabel =
     user?.role?.toLowerCase() === "leader"
-      ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+      ? `BSCA President${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
       : user?.role?.toLowerCase() === "head"
         ? "OSCA Head"
         : user?.role?.toLowerCase() === "admin"

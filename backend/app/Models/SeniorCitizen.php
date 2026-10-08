@@ -13,11 +13,26 @@ class SeniorCitizen extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Photos, IDs, birth certificates and benefit proofs live on the private disk and are only
+     * served through signed-in, barangay-scoped API routes, never from /storage.
+     */
+    public const FILE_DISK = 'local';
+
+    /** The file kinds the API serves, mapped to the column holding each path. */
+    public const FILE_COLUMNS = [
+        'photo' => 'photo_path',
+        'id_document' => 'id_document_path',
+        'valid_id' => 'valid_id_path',
+        'birth_certificate' => 'birth_certificate_path',
+    ];
+
     protected $fillable = [
         'osca_id_number', 'barangay_id', 'encoded_by', 'last_name', 'first_name',
         'middle_name', 'suffix', 'birthdate', 'place_of_birth', 'sex', 'contact_number', 'address',
         'civil_status', 'educational_attainment', 'other_skills', 'family_composition',
         'association_name', 'association_address', 'association_membership_date', 'association_position',
+        'atm_account_last4',
         'living_arrangement', 'registration_date', 'status',
         'photo_path', 'id_document_path', 'valid_id_path', 'birth_certificate_path',
         'privacy_consent_version', 'privacy_consent_at',

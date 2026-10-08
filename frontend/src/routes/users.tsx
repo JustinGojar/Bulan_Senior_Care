@@ -39,6 +39,12 @@ import {
   type ManagedUser,
 } from "@/lib/api";
 
+/** Keeps a PH mobile number as 11 local digits (09XXXXXXXXX), converting a +63 prefix. */
+function toLocalMobile(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return (digits.startsWith("63") ? `0${digits.slice(2)}` : digits).slice(0, 11);
+}
+
 export const Route = createFileRoute("/users")({
   head: () => ({ meta: [{ title: "User Management — Bulan SeniorCare" }] }),
   component: UserManagement,
@@ -143,7 +149,7 @@ function UserManagement() {
     setMiddleName(user.middle_name ?? "");
     setLastName(user.last_name ?? "");
     setEmail(user.email);
-    setContactNumber(user.contact_number ?? "");
+    setContactNumber(toLocalMobile(user.contact_number ?? ""));
     setBirthdate(user.birthdate ?? "");
     setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
     setRole(user.role as "admin" | "head" | "leader");
@@ -231,7 +237,7 @@ function UserManagement() {
   }
 
   const roleLabel = (value: string) =>
-    value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA";
+    value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA President";
   const labelClass = "mb-2 block text-sm font-semibold";
   const actionButtonClass =
     "grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground";
@@ -462,11 +468,16 @@ function UserManagement() {
                     id="user-contact"
                     required={!editingUser}
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={11}
+                    pattern="09[0-9]{9}"
+                    title="Enter an 11-digit mobile number starting with 09."
                     value={contactNumber}
-                    onChange={(event) => setContactNumber(event.target.value)}
-                    placeholder="0917 123 4567"
+                    onChange={(event) => setContactNumber(toLocalMobile(event.target.value))}
+                    placeholder="09171234567"
                     className={`${fieldClass} h-11`}
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">11 digits, starting with 09.</p>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -511,9 +522,12 @@ function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
+                      {/* New Admin accounts cannot be made here; existing ones keep their role. */}
+                      {editingUser?.role === "admin" && (
+                        <SelectItem value="admin">Admin</SelectItem>
+                      )}
                       <SelectItem value="head">Head</SelectItem>
-                      <SelectItem value="leader">BSCA</SelectItem>
+                      <SelectItem value="leader">BSCA President</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -43,6 +43,7 @@ import {
   tileClass,
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
+import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
   AlertDialog,
@@ -63,11 +64,12 @@ import {
 } from "@/components/ui/dialog";
 import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
 import {
-  API_URL,
   apiFetch,
   bulkCreateSeniors,
   getBarangays,
   getStoredUser,
+  loadPrivateFile,
+  seniorFileUrl,
   type ArchivedSenior,
   type BenefitTransaction,
   type PaginatedResponse,
@@ -118,10 +120,10 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function avatarPath(senior: Senior) {
-  if (senior.photoPath) return senior.photoPath;
+function avatarUrl(senior: Senior) {
+  if (senior.photoPath) return seniorFileUrl(senior.id, "photo", senior.photoPath);
   return senior.idDocumentPath && /\.(jpe?g|png|webp)$/i.test(senior.idDocumentPath)
-    ? senior.idDocumentPath
+    ? seniorFileUrl(senior.id, "id_document", senior.idDocumentPath)
     : null;
 }
 
@@ -287,12 +289,13 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   document.setTextColor(0, 0, 0);
   document.setDrawColor(35, 45, 55);
   document.rect(166, 13, 25, 25);
-  const photoSource =
-    draft.profilePhoto ??
-    (draft.photoPath ? `${API_URL.replace(/\/api$/, "")}/storage/${draft.photoPath}` : null);
-  if (photoSource) {
+  const storedPhoto =
+    draft.photoPath && oscaId ? seniorFileUrl(oscaId, "photo", draft.photoPath) : null;
+  if (draft.profilePhoto || storedPhoto) {
     try {
-      const photoDataUrl = await imageDataUrl(photoSource);
+      const photoDataUrl = await imageDataUrl(
+        draft.profilePhoto ?? (await loadPrivateFile(storedPhoto!)),
+      );
       document.addImage(photoDataUrl, "JPEG", 167, 14, 23, 23);
     } catch {
       document.setFontSize(13);
@@ -743,7 +746,6 @@ function SeniorRecords() {
     }
   }
 
-  const storageUrl = (path: string) => `${API_URL.replace(/\/api$/, "")}/storage/${path}`;
   const actionButtonClass =
     "grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground";
 
@@ -754,7 +756,7 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-2 sm:gap-3">
-          {(isLeader || isAdmin) && (
+          {isLeader && (
             <>
               <IconActionButton
                 label="Register Senior"
@@ -1004,17 +1006,13 @@ function SeniorRecords() {
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white ring-2 ring-gold/40">
-                        {avatarPath(s) ? (
-                          <img
-                            src={storageUrl(avatarPath(s)!)}
-                            alt={`${s.name} profile`}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        ) : (
-                          initials(s.name)
-                        )}
+                        <PrivateImage
+                          path={avatarUrl(s)}
+                          alt={`${s.name} profile`}
+                          className="h-full w-full object-cover"
+                          decoding="async"
+                          fallback={initials(s.name)}
+                        />
                       </span>
                       <span className="font-semibold">{s.name}</span>
                     </div>
@@ -1290,15 +1288,11 @@ function SeniorRecords() {
           <DialogHeader>
             <div className="flex items-center gap-4">
               <span className="bg-navy grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white ring-2 ring-gold/50">
-                {viewing && avatarPath(viewing) ? (
-                  <img
-                    src={storageUrl(avatarPath(viewing)!)}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  initials(viewing?.name ?? "")
-                )}
+                <PrivateImage
+                  path={viewing ? avatarUrl(viewing) : null}
+                  className="h-full w-full object-cover"
+                  fallback={initials(viewing?.name ?? "")}
+                />
               </span>
               <div className="min-w-0 text-left">
                 <DialogTitle className="font-display truncate text-xl">{viewing?.name}</DialogTitle>
@@ -1479,70 +1473,70 @@ function SeniorRecords() {
               </p>
               <div className="mt-3 flex flex-wrap items-start gap-3">
                 {viewing.photoPath && (
-                  <a
-                    href={storageUrl(viewing.photoPath)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <PrivateFileLink
+                    path={seniorFileUrl(viewing.id, "photo", viewing.photoPath)}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
-                    <img
-                      src={storageUrl(viewing.photoPath)}
+                    <PrivateImage
+                      path={seniorFileUrl(viewing.id, "photo", viewing.photoPath)}
                       alt={`${viewing.name} profile`}
                       className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                     />
                     <span>Profile photo</span>
-                  </a>
+                  </PrivateFileLink>
                 )}
                 {viewing.idDocumentPath && !viewing.validIdPath && (
-                  <a
-                    href={storageUrl(viewing.idDocumentPath)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <PrivateFileLink
+                    path={seniorFileUrl(viewing.id, "id_document", viewing.idDocumentPath)}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.idDocumentPath) && (
-                      <img
-                        src={storageUrl(viewing.idDocumentPath)}
+                      <PrivateImage
+                        path={seniorFileUrl(viewing.id, "id_document", viewing.idDocumentPath)}
                         alt="Valid ID"
                         className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                       />
                     )}
                     <span>Valid ID</span>
-                  </a>
+                  </PrivateFileLink>
                 )}
                 {viewing.validIdPath && (
-                  <a
-                    href={storageUrl(viewing.validIdPath)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <PrivateFileLink
+                    path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.validIdPath) && (
-                      <img
-                        src={storageUrl(viewing.validIdPath)}
+                      <PrivateImage
+                        path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
                         alt="Valid ID"
                         className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                       />
                     )}
                     <span>Valid ID</span>
-                  </a>
+                  </PrivateFileLink>
                 )}
                 {viewing.birthCertificatePath && (
-                  <a
-                    href={storageUrl(viewing.birthCertificatePath)}
-                    target="_blank"
-                    rel="noreferrer"
+                  <PrivateFileLink
+                    path={seniorFileUrl(
+                      viewing.id,
+                      "birth_certificate",
+                      viewing.birthCertificatePath,
+                    )}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
                     {isImageDocument(viewing.birthCertificatePath) && (
-                      <img
-                        src={storageUrl(viewing.birthCertificatePath)}
+                      <PrivateImage
+                        path={seniorFileUrl(
+                          viewing.id,
+                          "birth_certificate",
+                          viewing.birthCertificatePath,
+                        )}
                         alt="Birth Certificate"
                         className="h-20 w-20 rounded-lg border border-border/60 object-cover"
                       />
                     )}
                     <span>Birth Certificate</span>
-                  </a>
+                  </PrivateFileLink>
                 )}
                 {!viewing.birthCertificatePath && (
                   <span className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">

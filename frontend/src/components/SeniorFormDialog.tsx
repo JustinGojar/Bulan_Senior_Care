@@ -20,7 +20,8 @@ import { clearFieldById, flagFieldById, flagFieldsById } from "@/lib/form-valida
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 import { SearchableSelect } from "@/components/SearchableSelect";
-import { API_URL } from "@/lib/api";
+import { PrivateFileLink } from "@/components/PrivateFile";
+import { seniorFileUrl } from "@/lib/api";
 import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
 
@@ -822,26 +823,28 @@ export function SeniorFormDialog({
                   }}
                   className="mt-1.5 cursor-pointer"
                 />
-                {(validIdPreview || senior?.validIdPath) && (
+                {validIdPreview ? (
                   <a
-                    href={
-                      validIdPreview ??
-                      `${API_URL.replace(/\/api$/, "")}/storage/${senior?.validIdPath}`
-                    }
+                    href={validIdPreview}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-2 block w-fit"
                   >
-                    {validIdPreview ? (
-                      <img
-                        src={validIdPreview}
-                        alt="Valid ID preview"
-                        className="h-24 w-24 rounded-lg border border-border/60 object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Current Valid ID</span>
-                    )}
+                    <img
+                      src={validIdPreview}
+                      alt="Valid ID preview"
+                      className="h-24 w-24 rounded-lg border border-border/60 object-cover"
+                    />
                   </a>
+                ) : (
+                  senior?.validIdPath && (
+                    <PrivateFileLink
+                      path={seniorFileUrl(senior.id, "valid_id", senior.validIdPath)}
+                      className="mt-2 block w-fit"
+                    >
+                      <span className="text-xs text-muted-foreground">Current Valid ID</span>
+                    </PrivateFileLink>
+                  )
                 )}
               </div>
               <div>
@@ -861,28 +864,34 @@ export function SeniorFormDialog({
                 <p className="mt-1 text-xs text-muted-foreground">
                   PDF, JPG, or PNG up to 5 MB each.
                 </p>
-                {(birthCertificatePreview || senior?.birthCertificatePath) && (
+                {birthCertificatePreview ? (
                   <a
-                    href={
-                      birthCertificatePreview ??
-                      `${API_URL.replace(/\/api$/, "")}/storage/${senior?.birthCertificatePath}`
-                    }
+                    href={birthCertificatePreview}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-2 block w-fit"
                   >
-                    {birthCertificatePreview ? (
-                      <img
-                        src={birthCertificatePreview}
-                        alt="Birth Certificate preview"
-                        className="h-24 w-24 rounded-lg border border-border/60 object-cover"
-                      />
-                    ) : (
+                    <img
+                      src={birthCertificatePreview}
+                      alt="Birth Certificate preview"
+                      className="h-24 w-24 rounded-lg border border-border/60 object-cover"
+                    />
+                  </a>
+                ) : (
+                  senior?.birthCertificatePath && (
+                    <PrivateFileLink
+                      path={seniorFileUrl(
+                        senior.id,
+                        "birth_certificate",
+                        senior.birthCertificatePath,
+                      )}
+                      className="mt-2 block w-fit"
+                    >
                       <span className="text-xs text-muted-foreground">
                         Current Birth Certificate
                       </span>
-                    )}
-                  </a>
+                    </PrivateFileLink>
+                  )
                 )}
               </div>
             </div>
@@ -911,8 +920,9 @@ export function SeniorFormDialog({
                     type="checkbox"
                     checked={privacyConsent}
                     onChange={(event) => {
-                      setPrivacyConsent(event.target.checked);
-                      clearFieldById("senior-privacy-consent");
+                      // Checking the box opens the consent; it is ticked once "I agree" is pressed.
+                      if (event.target.checked) setConsentOpen(true);
+                      else setPrivacyConsent(false);
                     }}
                     className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--navy)]"
                   />

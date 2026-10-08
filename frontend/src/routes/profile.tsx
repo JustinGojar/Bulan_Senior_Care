@@ -131,7 +131,7 @@ function ProfilePage() {
       : defaultProfileImage);
   const roleLabel =
     user?.role?.toLowerCase() === "leader"
-      ? `BSCA${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+      ? `BSCA President${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
       : user?.role?.toLowerCase() === "head"
         ? "OSCA Head"
         : user?.role?.toLowerCase() === "admin"
