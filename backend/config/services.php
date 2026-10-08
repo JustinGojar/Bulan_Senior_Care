@@ -14,6 +14,11 @@ return [
     |
     */
 
+    'gmail_script' => [
+        'url' => env('GMAIL_SCRIPT_URL'),
+        'secret' => env('GMAIL_SCRIPT_SECRET'),
+    ],
+
     'mailjet' => [
         'key' => env('MAILJET_API_KEY'),
         'secret' => env('MAILJET_SECRET_KEY'),

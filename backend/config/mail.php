@@ -49,6 +49,12 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
         ],
 
+        // Sends from a Gmail account through the Apps Script relay in docs/gmail-relay (free, HTTPS).
+        'gmail' => [
+            'transport' => 'gmail',
+            'timeout' => env('MAIL_TIMEOUT', 20),
+        ],
+
         // HTTPS API mailer; use this on Railway, which blocks outbound SMTP below the Pro plan.
         'mailjet' => [
             'transport' => 'mailjet',

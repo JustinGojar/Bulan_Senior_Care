@@ -123,4 +123,41 @@ class PasswordResetTest extends TestCase
         $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertStatus(503);
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
+
+    public function test_reset_email_is_sent_through_the_gmail_relay(): void
+    {
+        config([
+            'mail.default' => 'gmail',
+            'services.gmail_script.url' => 'https://script.google.com/macros/s/abc/exec',
+            'services.gmail_script.secret' => 'relay-secret',
+            'mail.from.name' => 'Bulan SeniorCare',
+            'app.frontend_url' => 'https://seniorcare.example',
+        ]);
+        Http::fake(['script.google.com/*' => Http::response(['ok' => true, 'remaining' => 99])]);
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://script.google.com/macros/s/abc/exec'
+            && $request['secret'] === 'relay-secret'
+            && $request['to'] === ['leader@example.com']
+            && $request['fromName'] === 'Bulan SeniorCare'
+            && $request['subject'] === 'Reset your Bulan SeniorCare password'
+            && str_contains($request['html'], 'https://seniorcare.example/reset-password?token='));
+    }
+
+    public function test_gmail_relay_failure_reports_the_email_could_not_be_sent(): void
+    {
+        config([
+            'mail.default' => 'gmail',
+            'services.gmail_script.url' => 'https://script.google.com/macros/s/abc/exec',
+            'services.gmail_script.secret' => 'wrong-secret',
+        ]);
+        // Apps Script always answers 200, so failures are reported in the body.
+        Http::fake(['script.google.com/*' => Http::response(['ok' => false, 'error' => 'Unauthorized'])]);
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertStatus(503);
+        $this->assertSame(0, DB::table('password_reset_tokens')->count());
+    }
 }

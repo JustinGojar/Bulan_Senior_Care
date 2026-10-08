@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\GmailScriptTransport;
 use App\Mail\Transport\MailjetTransport;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -37,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
             ->by($request->user()?->id ?: $request->ip()));
 
         // Mail over HTTPS for hosts that block SMTP (Railway outside the Pro plan).
+        Mail::extend('gmail', fn (array $config) => new GmailScriptTransport(
+            (string) config('services.gmail_script.url'),
+            (string) config('services.gmail_script.secret'),
+            (int) ($config['timeout'] ?? 20),
+        ));
         Mail::extend('mailjet', fn (array $config) => new MailjetTransport(
             (string) config('services.mailjet.key'),
             (string) config('services.mailjet.secret'),
