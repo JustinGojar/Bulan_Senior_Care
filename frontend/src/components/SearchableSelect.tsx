@@ -30,7 +30,7 @@ export function SearchMenu({
   onSelect: (value: string) => void;
   searchPlaceholder?: string;
   /** Replaces the default "No ... found." text, e.g. when the options failed to load. */
-  emptyMessage?: string;
+  emptyMessage?: string | undefined;
 }) {
   return (
     <Command
@@ -93,7 +93,7 @@ export function SearchableSelect({
   required?: boolean;
   disabled?: boolean;
   className?: string;
-  emptyMessage?: string;
+  emptyMessage?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const current = options.find((option) => option.value === value)?.label;
