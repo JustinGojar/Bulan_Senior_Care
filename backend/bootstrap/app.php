@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Railway (and Vercel in front of it) terminate HTTPS, so trust their forwarded
+        // headers; otherwise Laravel sees plain HTTP and the session cookie loses Secure.
+        $middleware->trustProxies(at: '*');
         $middleware->redirectGuestsTo(fn (Request $request) =>
             $request->is('api/*') ? null : route('login')
         );
