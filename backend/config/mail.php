@@ -49,6 +49,12 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
         ],
 
+        // Brevo's HTTPS API; MAIL_FROM_ADDRESS must be a sender verified in Brevo.
+        'brevo' => [
+            'transport' => 'brevo',
+            'timeout' => env('MAIL_TIMEOUT', 10),
+        ],
+
         // Sends from a Gmail account through the Apps Script relay in docs/gmail-relay (free, HTTPS).
         'gmail' => [
             'transport' => 'gmail',

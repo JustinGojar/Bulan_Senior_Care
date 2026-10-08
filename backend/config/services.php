@@ -14,6 +14,10 @@ return [
     |
     */
 
+    'brevo' => [
+        'key' => env('BREVO_API_KEY'),
+    ],
+
     'gmail_script' => [
         'url' => env('GMAIL_SCRIPT_URL'),
         'secret' => env('GMAIL_SCRIPT_SECRET'),

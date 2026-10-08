@@ -84,8 +84,9 @@ Notes:
 - `QUEUE_CONNECTION=sync` because no queue worker runs. If you later add a worker
   service (`php artisan queue:work`), switch back to `database`.
 - Railway blocks outbound SMTP below the Pro plan, so email goes over HTTPS through a
-  Gmail relay (see **Email: Gmail relay** below). Mailjet also works:
-  `MAIL_MAILER=mailjet` with `MAILJET_API_KEY` / `MAILJET_SECRET_KEY`.
+  Gmail relay (see **Email: Gmail relay** below). Brevo (`MAIL_MAILER=brevo` with
+  `BREVO_API_KEY`) and Mailjet (`MAIL_MAILER=mailjet` with `MAILJET_API_KEY` /
+  `MAILJET_SECRET_KEY`) also work; their sender address must be verified with them.
 
 ### 5. Give it a public URL
 Service → **Settings** → **Networking** → **Generate Domain**. You get something like
