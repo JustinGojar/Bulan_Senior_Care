@@ -88,6 +88,7 @@ function UserManagement() {
   const [birthdate, setBirthdate] = useState("");
   const [barangayId, setBarangayId] = useState("");
   const [barangays, setBarangays] = useState<BarangayOption[]>([]);
+  const [barangaysFailed, setBarangaysFailed] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -105,7 +106,10 @@ function UserManagement() {
       .catch(() => setUsers([]));
     getBarangays()
       .then(setBarangays)
-      .catch(() => setBarangays([]));
+      .catch(() => {
+        setBarangays([]);
+        setBarangaysFailed(true);
+      });
   }, []);
 
   if (!isAdmin) {
@@ -563,6 +567,11 @@ function UserManagement() {
                   value={role === "leader" ? barangayId : ""}
                   onChange={setBarangayId}
                   placeholder={role === "leader" ? "Select a barangay" : "No barangay assignment"}
+                  emptyMessage={
+                    barangaysFailed
+                      ? "Couldn't load barangays. Refresh the page to try again."
+                      : undefined
+                  }
                   options={barangays.map((barangay) => ({
                     value: String(barangay.id),
                     label: barangay.barangay_name,

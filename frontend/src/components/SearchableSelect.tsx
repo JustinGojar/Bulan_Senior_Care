@@ -22,12 +22,15 @@ export function SearchMenu({
   value,
   onSelect,
   searchPlaceholder,
+  emptyMessage,
 }: {
   label: string;
   options: Option[];
   value: string;
   onSelect: (value: string) => void;
   searchPlaceholder?: string;
+  /** Replaces the default "No ... found." text, e.g. when the options failed to load. */
+  emptyMessage?: string | undefined;
 }) {
   return (
     <Command
@@ -45,7 +48,7 @@ export function SearchMenu({
       />
       <CommandList className="max-h-72 p-1">
         <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-          No {label.toLowerCase()} found.
+          {emptyMessage ?? `No ${label.toLowerCase()} found.`}
         </CommandEmpty>
         {options.map((option) => (
           <CommandItem
@@ -79,6 +82,7 @@ export function SearchableSelect({
   required,
   disabled,
   className,
+  emptyMessage,
 }: {
   id?: string;
   label: string;
@@ -89,6 +93,7 @@ export function SearchableSelect({
   required?: boolean;
   disabled?: boolean;
   className?: string;
+  emptyMessage?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const current = options.find((option) => option.value === value)?.label;
@@ -122,6 +127,7 @@ export function SearchableSelect({
             label={label}
             options={options}
             value={value}
+            emptyMessage={emptyMessage}
             onSelect={(next) => {
               onChange(next);
               setOpen(false);
