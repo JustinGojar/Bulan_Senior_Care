@@ -66,14 +66,11 @@ FILESYSTEM_DISK=local
 SANCTUM_IDLE_TIMEOUT=15
 SANCTUM_EXPIRATION=720
 
-MAIL_MAILER=smtp
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=your-gmail-address@gmail.com
-MAIL_PASSWORD=your-gmail-app-password
-MAIL_ENCRYPTION=tls
+MAIL_MAILER=gmail
+GMAIL_SCRIPT_URL=https://script.google.com/macros/s/.../exec
+GMAIL_SCRIPT_SECRET=a-long-random-string
 MAIL_FROM_ADDRESS=your-gmail-address@gmail.com
-MAIL_FROM_NAME="Bulan Senior Care"
+MAIL_FROM_NAME="Bulan SeniorCare"
 
 SEMAPHORE_API_KEY=
 SEMAPHORE_SENDER_NAME=
@@ -86,7 +83,10 @@ Notes:
 - `FRONTEND_URL` is used in password-reset emails. Use a placeholder now and fix it in Part 3.
 - `QUEUE_CONNECTION=sync` because no queue worker runs. If you later add a worker
   service (`php artisan queue:work`), switch back to `database`.
-- Gmail needs an **App Password** (Google Account → Security → 2-Step Verification → App passwords).
+- Railway blocks outbound SMTP below the Pro plan, so email goes over HTTPS through a
+  Gmail relay (see **Email: Gmail relay** below). Brevo (`MAIL_MAILER=brevo` with
+  `BREVO_API_KEY`) and Mailjet (`MAIL_MAILER=mailjet` with `MAILJET_API_KEY` /
+  `MAILJET_SECRET_KEY`) also work; their sender address must be verified with them.
 
 ### 5. Give it a public URL
 Service → **Settings** → **Networking** → **Generate Domain**. You get something like
@@ -159,6 +159,22 @@ Click **Deploy**. Note the URL, e.g. `https://bulan-senior-care.vercel.app`.
 4. Test "Forgot password" — the emailed link should point to the Vercel URL.
 
 ---
+
+## Email: Gmail relay
+Free (about 100 emails a day) and sent from your real Gmail, so it does not land in spam.
+
+1. Signed in to the Gmail account that should send the emails, open
+   https://script.google.com and click **New project**.
+2. Replace the editor contents with [`docs/gmail-relay/Code.gs`](gmail-relay/Code.gs) and save.
+3. **Project Settings** (gear icon) → **Script properties** → **Add script property**:
+   `SECRET` = a long random string. Use the same value for `GMAIL_SCRIPT_SECRET` on Railway.
+4. **Deploy → New deployment** → type **Web app**. Execute as: **Me**. Who has access:
+   **Anyone**. Click **Deploy**, then allow the permission prompt (Advanced → Go to project).
+5. Copy the **Web app URL** (ends in `/exec`) into `GMAIL_SCRIPT_URL` on Railway, and set
+   `MAIL_MAILER=gmail`.
+
+If you edit the script later, use **Deploy → Manage deployments → Edit → New version** so the
+URL stays the same.
 
 ## Custom domain (optional)
 - Vercel → Project → **Settings → Domains** → add `seniorcare.example.com`, follow the DNS steps.

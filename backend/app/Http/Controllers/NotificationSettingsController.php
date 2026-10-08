@@ -58,6 +58,12 @@ class NotificationSettingsController extends Controller
                 && filled(config('mail.mailers.smtp.username'))
                 && filled(config('mail.mailers.smtp.password'));
         }
+        if ($mailer === 'brevo') {
+            return filled(config('services.brevo.key'));
+        }
+        if ($mailer === 'gmail') {
+            return filled(config('services.gmail_script.url')) && filled(config('services.gmail_script.secret'));
+        }
         if ($mailer === 'mailjet') {
             return filled(config('services.mailjet.key')) && filled(config('services.mailjet.secret'));
         }
