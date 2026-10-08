@@ -10,6 +10,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationSettingsController;
 use App\Http\Controllers\OverviewController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SeniorCitizenController;
 use App\Http\Controllers\SeniorEditRequestController;
 use App\Http\Controllers\SystemDataController;
@@ -40,6 +41,9 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::put('/admin/users/{user}', [UserController::class, 'update']);
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
     Route::apiResource('seniors', SeniorCitizenController::class);
+    Route::get('/reports', [ReportController::class, 'index']);
+    Route::post('/reports', [ReportController::class, 'store']);
+    Route::patch('/reports/{report}', [ReportController::class, 'update']);
     Route::get('/senior-edit-requests', [SeniorEditRequestController::class, 'index']);
     Route::post('/senior-edit-requests', [SeniorEditRequestController::class, 'store']);
     Route::patch('/senior-edit-requests/{seniorEditRequest}', [SeniorEditRequestController::class, 'update']);

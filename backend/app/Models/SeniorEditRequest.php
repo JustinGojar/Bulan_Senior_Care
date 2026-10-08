@@ -16,7 +16,7 @@ class SeniorEditRequest extends Model
 
     public function senior(): BelongsTo
     {
-        return $this->belongsTo(SeniorCitizen::class);
+        return $this->belongsTo(SeniorCitizen::class, 'senior_citizen_id');
     }
 
     public function requester(): BelongsTo
