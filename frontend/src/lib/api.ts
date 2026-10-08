@@ -906,8 +906,12 @@ export function createAnnouncementComment(
   });
 }
 
-export function getMessages(page = 1) {
-  return apiFetch<PaginatedMessages>(`/messages?page=${page}&per_page=25`);
+/** Pass `live` when polling, so the request skips the shared response cache. */
+export function getMessages(page = 1, live = false) {
+  return apiFetch<PaginatedMessages>(
+    `/messages?page=${page}&per_page=25`,
+    live ? { cache: "no-store" } : {},
+  );
 }
 
 /** Which of these accounts are online now. */
@@ -962,6 +966,12 @@ export function sendMessage(
   return apiFetch<Message>("/messages", {
     method: "POST",
     body: JSON.stringify({ recipient_id: recipientId, subject, message }),
+  });
+}
+
+export function markConversationRead(userId: number) {
+  return apiFetch<{ updated: number }>(`/messages/conversations/${userId}/read`, {
+    method: "POST",
   });
 }
 
