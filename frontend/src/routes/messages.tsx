@@ -51,6 +51,8 @@ import {
 } from "@/lib/api";
 
 const PRESENCE_REFRESH_INTERVAL = 30_000;
+// How often the open inbox checks for new messages.
+const MESSAGES_REFRESH_INTERVAL = 5_000;
 
 export const Route = createFileRoute("/messages")({
   head: () => ({ meta: [{ title: "Inbox — Bulan SeniorCare" }] }),
@@ -164,6 +166,60 @@ function MessagesPage() {
       setSaving(false);
     }
   }
+
+  // The open conversation, read by the poll below without restarting its timer.
+  const selectedRef = useRef(selectedConversation);
+  selectedRef.current = selectedConversation;
+
+  // Live updates: new messages show up while the inbox is open, and any that land in the
+  // conversation being read are marked read at once, so the inbox icon never counts them.
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    const refresh = () => {
+      if (document.hidden) return;
+      getMessages(currentPage, true)
+        .then((result) => {
+          if (!active) return;
+          const selected = selectedRef.current;
+          const partnerId = selected
+            ? selected.sender.id === currentUserId
+              ? selected.recipient.id
+              : selected.sender.id
+            : null;
+          const fresh = result.data.filter((item) => item.sender?.id && item.recipient?.id);
+          const isUnreadInOpen = (item: Message) =>
+            !item.read_at && item.sender.id === partnerId && item.recipient.id === currentUserId;
+          const openHasUnread = fresh.some(isUnreadInOpen);
+          const readAt = new Date().toISOString();
+          setMessages((current) => {
+            const readLocally = new Map(current.map((item) => [item.id, item.read_at]));
+            return fresh.map((item) => ({
+              ...item,
+              // Keep reads this page already made, in case the server has not caught up.
+              read_at: isUnreadInOpen(item)
+                ? readAt
+                : (item.read_at ?? readLocally.get(item.id) ?? null),
+            }));
+          });
+          setLastPage(result.last_page);
+          setOnlineIds(new Set(result.online_user_ids ?? []));
+          if (openHasUnread && partnerId !== null) {
+            markConversationRead(partnerId)
+              .then(() => window.dispatchEvent(new Event("bulan-unread-updated")))
+              .catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(refresh, MESSAGES_REFRESH_INTERVAL);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [currentPage, currentUserId]);
 
   async function openMessage(item: Message) {
     setSelectedConversation(item);
