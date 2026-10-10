@@ -15,7 +15,7 @@ class TokenIdleTimeoutTest extends TestCase
         /** @var User $user */
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('test')->plainTextToken;
-        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(16)])->save();
+        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(31)])->save();
 
         $this->withToken($plainTextToken)
             ->getJson('/api/user')
@@ -68,7 +68,7 @@ class TokenIdleTimeoutTest extends TestCase
 
         $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'secret-password', 'accepted_terms' => true, 'terms_version' => '2026-10-07'])
             ->assertOk()
-            ->assertJsonPath('session.idle_timeout_minutes', 15)
+            ->assertJsonPath('session.idle_timeout_minutes', 30)
             ->assertJsonPath('session.expires_in_seconds', 720 * 60);
     }
 }

@@ -9,7 +9,7 @@ export const SESSION_ID_KEY = "bulan-session-id";
 const SESSION_KEY = "bulan-api-session";
 const SESSION_NOTICE_KEY = "bulan-session-notice";
 // Used for sessions signed in before the server reported its limits.
-const DEFAULT_IDLE_TIMEOUT_MINUTES = 15;
+const DEFAULT_IDLE_TIMEOUT_MINUTES = 30;
 const ANNOUNCEMENTS_CACHE_TTL = 60_000;
 const BARANGAYS_CACHE_TTL = 5 * 60_000;
 // GET responses younger than this are reused without a request.
