@@ -30,10 +30,10 @@ class VerifyEmailNotification extends Notification
             subject: 'Verify your Bulan SeniorCare email address',
             heading: 'Verify your email address',
             intro: 'A Bulan SeniorCare account has been created for you. Click the button below to confirm this email address, then log in with the password the Office for Senior Citizens Affairs gave you.',
-            actionText: 'Verify email address',
-            url: $this->url,
             notice: new HtmlString('This link will expire in <strong>'.$hours.' hours</strong>. If you were not expecting this account, you can safely ignore this email.'),
             preheader: 'Confirm your email address to start using Bulan SeniorCare.',
+            actionText: 'Verify email address',
+            url: $this->url,
         );
     }
 }

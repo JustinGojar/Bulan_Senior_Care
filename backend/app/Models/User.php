@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
@@ -16,12 +15,6 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
-
-    public function sendPasswordResetNotification($token): void
-    {
-        $url = rtrim(config('app.frontend_url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($this->getEmailForPasswordReset());
-        $this->notify(new ResetPasswordNotification($url));
-    }
 
     public function sendEmailVerificationNotification(): void
     {

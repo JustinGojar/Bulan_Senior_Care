@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Notifications\ResetPasswordNotification;
+use App\Notifications\PasswordResetCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,48 +16,105 @@ class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_reset_password_with_the_emailed_link(): void
+    public function test_user_can_reset_password_with_the_emailed_code(): void
     {
         Notification::fake();
-        config(['app.frontend_url' => 'https://seniorcare.example']);
         $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
 
-        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+        $code = $this->requestCode('leader@example.com');
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
 
-        $url = null;
-        Notification::assertSentTo($user, ResetPasswordNotification::class, function ($notification) use ($user, &$url) {
-            $url = $notification->toMail($user)->actionUrl;
+        $wrong = $code === '000000' ? '111111' : '000000';
+        $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $wrong])->assertStatus(422);
 
-            return true;
-        });
-        $this->assertStringStartsWith('https://seniorcare.example/reset-password?token=', $url);
-        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
-        $this->assertSame('leader@example.com', $query['email']);
+        $token = $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $code])
+            ->assertOk()
+            ->json('reset_token');
+
+        // The code only works once.
+        $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $code])->assertStatus(422);
 
         $this->postJson('/api/reset-password', [
-            'token' => $query['token'],
-            'email' => $query['email'],
+            'token' => $token,
+            'email' => 'leader@example.com',
             'password' => 'NewPass#2026',
             'password_confirmation' => 'NewPass#2026',
         ])->assertOk();
 
         $this->assertTrue(Hash::check('NewPass#2026', $user->fresh()->password));
-        $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'NewPass#2026', 'accepted_terms' => true, 'terms_version' => '2026-10-07'])->assertOk();
+        $this->postJson('/api/login', ['email' => 'leader@example.com', 'password' => 'NewPass#2026'])->assertOk();
 
-        // A used link cannot be reused.
+        // A used reset token cannot be reused.
         $this->postJson('/api/reset-password', [
-            'token' => $query['token'],
-            'email' => $query['email'],
+            'token' => $token,
+            'email' => 'leader@example.com',
             'password' => 'Another#2026',
             'password_confirmation' => 'Another#2026',
         ])->assertStatus(422);
+    }
+
+    public function test_the_code_cannot_be_used_directly_as_a_reset_token(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $code = $this->requestCode('leader@example.com');
+
+        $this->postJson('/api/reset-password', [
+            'token' => $code,
+            'email' => 'leader@example.com',
+            'password' => 'NewPass#2026',
+            'password_confirmation' => 'NewPass#2026',
+        ])->assertStatus(422);
+    }
+
+    public function test_five_wrong_codes_cancel_the_code(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $code = $this->requestCode('leader@example.com');
+        $wrong = $code === '000000' ? '111111' : '000000';
+
+        for ($attempt = 1; $attempt <= 4; $attempt++) {
+            $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $wrong])->assertStatus(422);
+        }
+        $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $wrong])->assertStatus(429);
+
+        $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $code])->assertStatus(429);
+        $this->assertSame(0, DB::table('password_reset_tokens')->count());
+    }
+
+    public function test_code_expires_after_fifteen_minutes(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $code = $this->requestCode('leader@example.com');
+
+        $this->travel(16)->minutes();
+
+        $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $code])
+            ->assertStatus(422)
+            ->assertJson(['message' => 'This code has expired. Please request a new code.']);
+    }
+
+    public function test_repeat_requests_within_a_minute_send_one_code(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+        Notification::assertSentToTimes($user, PasswordResetCodeNotification::class, 1);
+
+        $this->travel(61)->seconds();
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+        Notification::assertSentToTimes($user, PasswordResetCodeNotification::class, 2);
     }
 
     public function test_unknown_email_gets_the_same_response(): void
     {
         $this->postJson('/api/forgot-password', ['email' => 'nobody@example.com'])
             ->assertOk()
-            ->assertJson(['message' => 'If an account exists for that email address, a password reset link has been sent.']);
+            ->assertJson(['message' => 'If an account exists for that email address, we sent a 6-digit verification code to it.']);
     }
 
     public function test_failed_email_send_can_be_retried_immediately(): void
@@ -73,10 +130,10 @@ class PasswordResetTest extends TestCase
         $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertStatus(503);
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
 
-        // Once mail works again, the retry sends a link instead of being throttled.
+        // Once mail works again, the retry sends a code instead of being throttled.
         Notification::fake();
         $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
-        Notification::assertSentTo(User::where('email', 'leader@example.com')->first(), ResetPasswordNotification::class);
+        Notification::assertSentTo(User::where('email', 'leader@example.com')->first(), PasswordResetCodeNotification::class);
     }
 
     public function test_reset_email_is_sent_through_the_mailjet_api(): void
@@ -104,8 +161,8 @@ class PasswordResetTest extends TestCase
                 && $request->hasHeader('Authorization', 'Basic '.base64_encode('test-key:test-secret'))
                 && $message['From']['Email'] === 'office@example.com'
                 && $message['To'][0]['Email'] === 'leader@example.com'
-                && $message['Subject'] === 'Reset your Bulan SeniorCare password'
-                && str_contains($message['HTMLPart'], 'https://seniorcare.example/reset-password?token=');
+                && $message['Subject'] === 'Your Bulan SeniorCare password reset code'
+                && str_contains($message['HTMLPart'], 'Your verification code');
         });
     }
 
@@ -142,8 +199,8 @@ class PasswordResetTest extends TestCase
             && $request['secret'] === 'relay-secret'
             && $request['to'] === ['leader@example.com']
             && $request['fromName'] === 'Bulan SeniorCare'
-            && $request['subject'] === 'Reset your Bulan SeniorCare password'
-            && str_contains($request['html'], 'https://seniorcare.example/reset-password?token='));
+            && $request['subject'] === 'Your Bulan SeniorCare password reset code'
+            && str_contains($request['html'], 'Your verification code'));
     }
 
     public function test_gmail_relay_failure_reports_the_email_could_not_be_sent(): void
@@ -179,8 +236,8 @@ class PasswordResetTest extends TestCase
             && $request->hasHeader('api-key', 'test-key')
             && $request['sender']['email'] === 'office@example.com'
             && $request['to'][0]['email'] === 'leader@example.com'
-            && $request['subject'] === 'Reset your Bulan SeniorCare password'
-            && str_contains($request['htmlContent'], 'https://seniorcare.example/reset-password?token='));
+            && $request['subject'] === 'Your Bulan SeniorCare password reset code'
+            && str_contains($request['htmlContent'], 'Your verification code'));
     }
 
     public function test_brevo_rejection_reports_the_email_could_not_be_sent(): void
@@ -193,41 +250,30 @@ class PasswordResetTest extends TestCase
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
 
-    public function test_reset_email_uses_branded_template_with_logo(): void
+    public function test_reset_email_uses_branded_template_with_code(): void
     {
         config(['app.frontend_url' => 'https://seniorcare.example']);
         $user = User::factory()->create(['name' => 'Maria Santos']);
-        $url = 'https://seniorcare.example/reset-password?token=abc&email=maria%40example.com';
 
-        $html = (string) (new ResetPasswordNotification($url))->toMail($user)->render();
+        $html = (string) (new PasswordResetCodeNotification('042917'))->toMail($user)->render();
 
         $this->assertStringContainsString('src="https://seniorcare.example/email-logo.png"', $html);
         $this->assertStringContainsString('Hello Maria Santos,', $html);
-        $this->assertStringContainsString('href="'.e($url).'"', $html);
+        $this->assertStringContainsString('042917', $html);
         $this->assertStringContainsString('<strong>15 minutes</strong>', $html);
     }
 
-    public function test_reset_link_expires_after_fifteen_minutes(): void
+    private function requestCode(string $email): string
     {
-        Notification::fake();
-        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
-        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+        $this->postJson('/api/forgot-password', ['email' => $email])->assertOk();
 
-        $url = null;
-        Notification::assertSentTo($user, ResetPasswordNotification::class, function ($notification) use ($user, &$url) {
-            $url = $notification->toMail($user)->actionUrl;
+        $code = null;
+        Notification::assertSentTo(User::where('email', $email)->first(), PasswordResetCodeNotification::class, function ($notification) use (&$code) {
+            $code = $notification->code;
 
             return true;
         });
-        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
-        $this->travel(16)->minutes();
-
-        $this->postJson('/api/reset-password', [
-            'token' => $query['token'],
-            'email' => $query['email'],
-            'password' => 'NewPass#2026',
-            'password_confirmation' => 'NewPass#2026',
-        ])->assertStatus(422);
+        return $code;
     }
 }

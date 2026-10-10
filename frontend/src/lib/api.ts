@@ -588,6 +588,13 @@ export function verifyEmail(params: {
   });
 }
 
+export function verifyResetCode(email: string, code: string) {
+  return apiFetch<{ message: string; reset_token: string }>("/verify-reset-code", {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+  });
+}
+
 export function resetPassword(
   token: string,
   email: string,
