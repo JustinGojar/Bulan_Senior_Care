@@ -339,7 +339,7 @@ export function ReleaseRosterDialog({
               <EmptyState
                 icon={Users}
                 title="No seniors in this batch"
-                description="No active senior on this benefit in these barangays was waiting for this period. Seniors already listed for the period, such as by ATM payroll, are not listed again."
+                description="No active senior on this benefit in these barangays was waiting for this period. Seniors already listed for the period are not listed again."
               />
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border/60">

@@ -14,7 +14,6 @@ import {
   Grid2X2,
   HeartHandshake,
   History,
-  Landmark,
   ListFilter,
   Loader2,
   Plus,
@@ -155,7 +154,7 @@ function BenefitTracking() {
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
-  // The OSCA Head schedules releases and handles ATM payrolls.
+  // The OSCA Head schedules releases.
   const canManageReleases = currentUser?.role === "head";
   const canUpdateTransactions = currentUser?.role === "leader";
 
@@ -730,14 +729,6 @@ function BenefitTracking() {
             icon={<History className="h-5 w-5" />}
             onClick={() => navigate({ to: "/releases" })}
           />
-          {canManageReleases && (
-            <IconActionButton
-              label="ATM Payroll"
-              variant="outline"
-              icon={<Landmark className="h-5 w-5" />}
-              onClick={() => navigate({ to: "/payroll" })}
-            />
-          )}
           {isHead && (
             <IconActionButton
               label="Export PDF"

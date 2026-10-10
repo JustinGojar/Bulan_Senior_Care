@@ -121,7 +121,6 @@ const NAV = [
 const NAV_PARENT: Record<string, string> = {
   "/audit-logs": "/settings",
   "/reports": "/analytics",
-  "/payroll": "/benefits",
   "/releases": "/benefits",
 };
 
