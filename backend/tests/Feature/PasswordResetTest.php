@@ -192,4 +192,17 @@ class PasswordResetTest extends TestCase
         $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertStatus(503);
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
+
+    public function test_reset_email_uses_branded_template_with_logo(): void
+    {
+        config(['app.frontend_url' => 'https://seniorcare.example']);
+        $user = User::factory()->create(['name' => 'Maria Santos']);
+        $url = 'https://seniorcare.example/reset-password?token=abc&email=maria%40example.com';
+
+        $html = (string) (new ResetPasswordNotification($url))->toMail($user)->render();
+
+        $this->assertStringContainsString('src="https://seniorcare.example/email-logo.png"', $html);
+        $this->assertStringContainsString('Hello Maria Santos,', $html);
+        $this->assertStringContainsString('href="'.e($url).'"', $html);
+    }
 }
