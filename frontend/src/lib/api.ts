@@ -314,9 +314,11 @@ export type Announcement = {
 
 export type AnnouncementComment = {
   id: number;
-  message: string;
+  message: string | null;
+  image_path?: string | null;
   created_at: string;
-  user: { name: string; role: string };
+  user_id: number;
+  user: { id: number; name: string; role: string };
   replies?: AnnouncementComment[];
 };
 
@@ -899,10 +901,25 @@ export function createAnnouncementComment(
   announcementId: number,
   message: string,
   parentCommentId?: number,
+  image?: File | null,
 ) {
+  const body = new FormData();
+  if (message) body.append("message", message);
+  if (parentCommentId) body.append("parent_comment_id", String(parentCommentId));
+  if (image) body.append("image", image);
   return apiFetch<AnnouncementComment>(`/announcements/${announcementId}/comments`, {
     method: "POST",
-    body: JSON.stringify({ message, parent_comment_id: parentCommentId }),
+    body,
+  });
+}
+
+export function deleteAnnouncement(announcementId: number) {
+  return apiFetch<null>(`/announcements/${announcementId}`, { method: "DELETE" });
+}
+
+export function deleteAnnouncementComment(announcementId: number, commentId: number) {
+  return apiFetch<null>(`/announcements/${announcementId}/comments/${commentId}`, {
+    method: "DELETE",
   });
 }
 

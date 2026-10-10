@@ -65,7 +65,8 @@ class SyncFacebookAnnouncements extends Command
             $firstLine = Str::squish(Str::before($message, "\n"));
             $title = Str::limit($firstLine !== '' ? $firstLine : 'Facebook update', 180);
 
-            $announcement = Announcement::query()->updateOrCreate(
+            // Include deleted announcements so a post Head removed is not imported again.
+            $announcement = Announcement::withTrashed()->updateOrCreate(
                 ['facebook_post_id' => $post['id']],
                 [
                     'created_by' => $authorId,

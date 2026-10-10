@@ -69,6 +69,8 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::post('/atm-accounts', [PayrollBatchController::class, 'importAccounts']);
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::post('/announcements/{announcement}/comments', [AnnouncementController::class, 'comment']);
+    Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
+    Route::delete('/announcements/{announcement}/comments/{comment}', [AnnouncementController::class, 'destroyComment']);
     Route::get('/messages/unread-summary', [MessageController::class, 'unreadSummary']);
     Route::get('/messages/presence', [MessageController::class, 'presence']);
     Route::get('/messages', [MessageController::class, 'index']);

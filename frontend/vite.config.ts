@@ -11,6 +11,9 @@ const backendUrl = process.env["BACKEND_URL"]?.replace(/\/$/, "");
 export default defineConfig(({ mode }) => ({
   base: mode === "production" && !process.env["VERCEL"] ? "/spa-assets/" : "/",
   resolve: { tsconfigPaths: true },
+  // Paths with a file extension (uploaded images like /storage/x.png) are answered by Vite's
+  // static handler and never reach Nitro's devProxy below, so /storage needs Vite's proxy too.
+  server: { proxy: { "/storage": { target: apiProxyTarget, changeOrigin: true } } },
   plugins: [
     tanstackStart({
       server: { entry: "server" },

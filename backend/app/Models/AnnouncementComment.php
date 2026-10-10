@@ -11,7 +11,7 @@ class AnnouncementComment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['announcement_id', 'user_id', 'parent_comment_id', 'message'];
+    protected $fillable = ['announcement_id', 'user_id', 'parent_comment_id', 'message', 'image_path'];
 
     public function announcement(): BelongsTo
     {

@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class AnnouncementController extends Controller
 {
@@ -58,7 +59,8 @@ class AnnouncementController extends Controller
     public function comment(Request $request, Announcement $announcement): JsonResponse
     {
         $data = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
+            'message' => ['nullable', 'required_without:image', 'string', 'max:2000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'parent_comment_id' => ['nullable', 'integer', 'exists:announcement_comments,id'],
         ]);
 
@@ -74,7 +76,10 @@ class AnnouncementController extends Controller
             'announcement_id' => $announcement->id,
             'user_id' => $request->user()->id,
             'parent_comment_id' => $data['parent_comment_id'] ?? null,
-            'message' => $data['message'],
+            'message' => $data['message'] ?? null,
+            'image_path' => $request->hasFile('image')
+                ? $request->file('image')->store('announcement-comments', 'public')
+                : null,
         ]);
         Cache::forget('announcements:dashboard');
 
@@ -95,5 +100,41 @@ class AnnouncementController extends Controller
         }
 
         return response()->json($comment->load('user:id,name,role'), 201);
+    }
+
+    public function destroy(Request $request, Announcement $announcement): JsonResponse
+    {
+        abort_unless($request->user()->role === 'head', 403, 'Only Head can delete announcements.');
+
+        Storage::disk('public')->delete(array_filter([
+            $announcement->image_path,
+            ...$announcement->comments()->whereNotNull('image_path')->pluck('image_path')->all(),
+        ]));
+        $announcement->comments()->delete();
+        Notification::where('source_type', 'announcement')->where('source_id', $announcement->id)->delete();
+        // Soft-deleted so the Facebook sync remembers the post and does not import it again.
+        $announcement->delete();
+        Cache::forget('announcements:dashboard');
+
+        return response()->json(null, 204);
+    }
+
+    public function destroyComment(Request $request, Announcement $announcement, AnnouncementComment $comment): JsonResponse
+    {
+        abort_unless((int) $comment->announcement_id === $announcement->id, 404);
+        abort_unless(
+            (int) $comment->user_id === $request->user()->id || $request->user()->role === 'head',
+            403,
+            'You can only delete your own comments.',
+        );
+
+        Storage::disk('public')->delete(array_filter([
+            $comment->image_path,
+            ...$comment->replies()->whereNotNull('image_path')->pluck('image_path')->all(),
+        ]));
+        $comment->delete();
+        Cache::forget('announcements:dashboard');
+
+        return response()->json(null, 204);
     }
 }
