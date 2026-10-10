@@ -47,7 +47,8 @@ class SampleDataSeeder extends Seeder
 
     private const LIVING = ['With family', 'With spouse', 'Alone', 'With children', 'With relatives'];
 
-    private const POSITIONS = ['Member', 'Member', 'Member', 'Member', 'Treasurer', 'Secretary', 'Auditor', 'Board Member'];
+    // The same options as the registration form's Position dropdown.
+    private const POSITIONS = ['Member', 'Member', 'Member', 'Member', 'Treasurer', 'Secretary', 'Auditor', 'PIO'];
 
     public function run(): void
     {
