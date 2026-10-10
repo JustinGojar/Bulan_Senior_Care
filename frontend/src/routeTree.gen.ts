@@ -23,7 +23,6 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SeniorsRouteImport } from './routes/seniors'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
@@ -100,11 +99,6 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SeniorsRoute = SeniorsRouteImport.update({
   id: '/seniors',
   path: '/seniors',
@@ -146,7 +140,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
   '/unauthorized': typeof UnauthorizedRoute
@@ -168,7 +161,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
   '/unauthorized': typeof UnauthorizedRoute
@@ -191,7 +183,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
   '/unauthorized': typeof UnauthorizedRoute
@@ -215,7 +206,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/releases'
     | '/reports'
-    | '/reset-password'
     | '/seniors'
     | '/settings'
     | '/unauthorized'
@@ -237,7 +227,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/releases'
     | '/reports'
-    | '/reset-password'
     | '/seniors'
     | '/settings'
     | '/unauthorized'
@@ -259,7 +248,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/releases'
     | '/reports'
-    | '/reset-password'
     | '/seniors'
     | '/settings'
     | '/unauthorized'
@@ -282,7 +270,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ReleasesRoute: typeof ReleasesRoute
   ReportsRoute: typeof ReportsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   SeniorsRoute: typeof SeniorsRoute
   SettingsRoute: typeof SettingsRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
@@ -390,13 +377,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/seniors': {
       id: '/seniors'
       path: '/seniors'
@@ -450,7 +430,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ReleasesRoute: ReleasesRoute,
   ReportsRoute: ReportsRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   SeniorsRoute: SeniorsRoute,
   SettingsRoute: SettingsRoute,
   UnauthorizedRoute: UnauthorizedRoute,

@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Middleware\AuthenticateFromCookie;
 use App\Models\Barangay;
 use App\Models\User;
+use App\Notifications\PasswordResetCodeNotification;
 use App\Support\PhotoBackup;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\RateLimiter;
@@ -20,6 +24,8 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AuthController extends Controller
 {
+    private const RESET_CODE_MAX_ATTEMPTS = 5;
+
     public function barangays(Request $request): JsonResponse
     {
         // Saving a barangay clears this entry.
@@ -150,35 +156,103 @@ class AuthController extends Controller
     public function forgotPassword(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => ['required', 'email']]);
+        $user = User::where('email', $data['email'])->first();
 
-        try {
-            $status = PasswordBroker::sendResetLink(['email' => $data['email']]);
-        } catch (TransportExceptionInterface $exception) {
-            report($exception);
+        // A code sent in the last minute stays valid, so repeat requests do not flood the inbox.
+        if ($user && ! self::resetCodeRecentlySent($user->email)) {
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            self::resetTokens()->updateOrInsert(
+                ['email' => $user->email],
+                ['token' => Hash::make($code), 'created_at' => now()],
+            );
+            RateLimiter::clear(self::resetCodeAttemptsKey($user->email));
 
-            // The token was stored before sending failed; drop it so an immediate retry
-            // is not silently throttled while reporting the link as sent.
-            $user = PasswordBroker::getUser(['email' => $data['email']]);
-            if ($user) {
-                PasswordBroker::deleteToken($user);
+            try {
+                $user->notify(new PasswordResetCodeNotification($code));
+            } catch (TransportExceptionInterface $exception) {
+                report($exception);
+                // Drop the unsent code so an immediate retry sends a new one.
+                self::resetTokens()->where('email', $user->email)->delete();
+
+                return response()->json([
+                    'message' => 'We could not send the verification code right now. Please try again later.',
+                ], 503);
+            }
+        }
+
+        return response()->json([
+            'message' => 'If an account exists for that email address, we sent a 6-digit verification code to it.',
+        ]);
+    }
+
+    /**
+     * Swaps a correct emailed code for a one-time reset token. Five wrong codes cancel the code.
+     */
+    public function verifyResetCode(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'code' => ['required', 'digits:6'],
+        ], ['code.digits' => 'Enter the 6-digit code from the email.']);
+
+        $attemptsKey = self::resetCodeAttemptsKey($data['email']);
+        if (RateLimiter::tooManyAttempts($attemptsKey, self::RESET_CODE_MAX_ATTEMPTS)) {
+            return response()->json(['message' => 'Too many incorrect codes. Please request a new code.'], 429);
+        }
+
+        $record = self::resetTokens()->where('email', $data['email'])->first();
+        $expired = $record && Carbon::parse($record->created_at)->addMinutes(self::resetExpiryMinutes())->isPast();
+        if (! $record || $expired || ! Hash::check($data['code'], $record->token)) {
+            RateLimiter::hit($attemptsKey, self::resetExpiryMinutes() * 60);
+            if (RateLimiter::tooManyAttempts($attemptsKey, self::RESET_CODE_MAX_ATTEMPTS)) {
+                self::resetTokens()->where('email', $data['email'])->delete();
+
+                return response()->json(['message' => 'Too many incorrect codes. Please request a new code.'], 429);
             }
 
             return response()->json([
-                'message' => 'We could not send the reset email right now. Please try again later.',
-            ], 503);
+                'message' => $expired ? 'This code has expired. Please request a new code.' : 'The code you entered is incorrect.',
+            ], 422);
         }
 
-        logger()->info('Password reset link request processed.', ['status' => $status]);
-
-        return response()->json([
-            'message' => 'If an account exists for that email address, a password reset link has been sent.',
+        RateLimiter::clear($attemptsKey);
+        // The password broker checks this token on the final step; the code itself stops working.
+        $token = Str::random(64);
+        self::resetTokens()->where('email', $data['email'])->update([
+            'token' => Hash::make($token),
+            'created_at' => now(),
         ]);
+
+        return response()->json(['message' => 'Code verified. You can now set a new password.', 'reset_token' => $token]);
+    }
+
+    private static function resetTokens(): Builder
+    {
+        return DB::table(config('auth.passwords.users.table'));
+    }
+
+    private static function resetExpiryMinutes(): int
+    {
+        return (int) config('auth.passwords.users.expire');
+    }
+
+    private static function resetCodeAttemptsKey(string $email): string
+    {
+        return 'reset-code:'.Str::lower($email);
+    }
+
+    private static function resetCodeRecentlySent(string $email): bool
+    {
+        $createdAt = self::resetTokens()->where('email', $email)->value('created_at');
+
+        return $createdAt !== null && Carbon::parse($createdAt)->addMinute()->isFuture();
     }
 
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'token' => ['required', 'string'],
+            // Only the token from verifyResetCode, never the 6-digit code, which has its own attempt limit.
+            'token' => ['required', 'string', 'size:64'],
             'email' => ['required', 'email'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
@@ -192,7 +266,11 @@ class AuthController extends Controller
         );
 
         if ($status !== PasswordBroker::PASSWORD_RESET) {
-            return response()->json(['message' => __($status)], 422);
+            $message = $status === PasswordBroker::INVALID_TOKEN
+                ? 'Your password reset session has expired. Please request a new code.'
+                : __($status);
+
+            return response()->json(['message' => $message], 422);
         }
 
         return response()->json(['message' => 'Your password has been reset. You can now log in.']);

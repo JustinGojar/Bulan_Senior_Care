@@ -30,6 +30,16 @@
 <p style="margin: 0 0 20px; font-size: 15px; line-height: 24px; color: #4b5563;">Hello {{ $name }},</p>
 <p style="margin: 0 0 28px; font-size: 15px; line-height: 24px; color: #4b5563;">{{ $intro }}</p>
 
+@if ($code)
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto 28px;">
+<tr>
+<td align="center" style="background-color: #f3f6f9; border: 1px dashed #173A52; border-radius: 10px; padding: 18px 32px;">
+<div style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; margin-bottom: 6px;">Your verification code</div>
+<div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 34px; font-weight: 700; letter-spacing: 10px; color: #173A52; padding-left: 10px;">{{ $code }}</div>
+</td>
+</tr>
+</table>
+@else
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto 28px;">
 <tr>
 <td align="center" bgcolor="#173A52" style="border-radius: 8px;">
@@ -37,6 +47,7 @@
 </td>
 </tr>
 </table>
+@endif
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px;">
 <tr>
@@ -51,6 +62,7 @@
 </td>
 </tr>
 
+@if ($url)
 {{-- Fallback link --}}
 <tr>
 <td style="padding: 0 40px 32px;">
@@ -60,6 +72,7 @@ Having trouble with the button? Copy and paste this link into your web browser:<
 </div>
 </td>
 </tr>
+@endif
 </table>
 
 {{-- Footer --}}
