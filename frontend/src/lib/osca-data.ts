@@ -1,6 +1,11 @@
 export type Senior = {
   id: string;
   name: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
+  suffix?: string;
+  registrationDate?: string;
   birthdate?: string;
   placeOfBirth?: string;
   sex?: "male" | "female";
@@ -23,6 +28,26 @@ export type Senior = {
   validIdPath?: string | null;
   birthCertificatePath?: string | null;
   privacyConsentAt?: string | null;
+  /** Why the record is inactive (a key of INACTIVE_REASONS), and any remarks. */
+  inactiveReason?: string;
+  inactiveRemarks?: string;
+  /** Set when the senior has died; the record is then inactive. */
+  deceased?: {
+    dateOfDeath: string;
+    certificatePath: string | null;
+    remarks: string;
+    recordedBy: string;
+    recordedAt: string;
+  } | null;
+};
+
+/** Why a senior record can be inactive. A death also needs its date and certificate. */
+export const INACTIVE_REASONS: Record<string, string> = {
+  deceased: "Deceased",
+  transferred: "Transferred to another municipality",
+  withdrawn: "Withdrew from the program",
+  duplicate: "Duplicate record",
+  other: "Other",
 };
 
 export type BenefitProgram = {
@@ -133,6 +158,7 @@ export function claimMessage(name: string, age: number, grant: string) {
 // Flags only Expanded Centenarians Act milestones (80, 85, 90, 95, 100).
 export function findNewEligibilityFlags(seniors: Senior[]): EligibilityFlag[] {
   return seniors.flatMap((senior) => {
+    if (senior.deceased) return [];
     const program = BENEFIT_PROGRAMS.find(
       (program) => program.ages && qualifiesFor(program, senior.age),
     );

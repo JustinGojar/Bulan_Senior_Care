@@ -1,7 +1,8 @@
-import { CalendarCheck, PartyPopper } from "lucide-react";
+import { CalendarCheck, FileDown, Loader2, PartyPopper } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { PrivateImage } from "@/components/PrivateFile";
-import { tileClass } from "@/components/design-kit";
+import { primaryButtonClass, tileClass } from "@/components/design-kit";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getSeniorBenefitRecords, seniorFileUrl, type BenefitTransaction } from "@/lib/api";
+import { downloadClaimForm } from "@/lib/claim-form-pdf";
 import { BENEFIT_PROGRAMS, benefitsFor, type EligibilityFlag } from "@/lib/osca-data";
 
 function initials(name: string) {
@@ -63,6 +65,20 @@ export function EligibilityFlagDialog({
   const senior = flag?.senior;
   const benefits = flag ? benefitsFor(flag.program.name) : [];
   const [records, setRecords] = useState<BenefitTransaction[]>([]);
+  const [printing, setPrinting] = useState(false);
+
+  async function printClaimForm() {
+    if (!senior) return;
+    setPrinting(true);
+    try {
+      await downloadClaimForm(senior);
+      toast.success("Claim form ready to print.");
+    } catch {
+      toast.error("Unable to create the claim form.");
+    } finally {
+      setPrinting(false);
+    }
+  }
 
   useEffect(() => {
     setRecords([]);
@@ -161,6 +177,25 @@ export function EligibilityFlagDialog({
                 <dd className="mt-1 font-semibold">{senior.address || "Not provided"}</dd>
               </div>
             </dl>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
+              <p className="max-w-64 text-xs text-muted-foreground">
+                NCSC Annex A Grantee Claim Form, filled in with this senior&apos;s details.
+              </p>
+              <button
+                type="button"
+                disabled={printing}
+                onClick={printClaimForm}
+                className={primaryButtonClass}
+              >
+                {printing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="h-4 w-4" />
+                )}
+                Print claim form (Annex A)
+              </button>
+            </div>
           </>
         )}
       </DialogContent>

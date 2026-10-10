@@ -1,4 +1,13 @@
-import { CheckCircle2, Download, FileText, Loader2, Paperclip, Trash2, Users } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  FileText,
+  Loader2,
+  Paperclip,
+  Printer,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
@@ -21,6 +30,7 @@ import {
   uploadReleaseDocuments,
   type ReleaseRoster,
 } from "@/lib/api";
+import { downloadCashPayroll } from "@/lib/payroll-pdf";
 
 function longDate(date: string) {
   return new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString("en-PH", {
@@ -75,7 +85,7 @@ export function ReleaseRosterDialog({
   const [confirm, confirmDialog] = useConfirmDialog();
   const [roster, setRoster] = useState<ReleaseRoster | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"upload" | "complete" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "complete" | "payroll" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -127,6 +137,19 @@ export function ReleaseRosterDialog({
       );
     } catch {
       toast.error("Unable to export the release batch.");
+    }
+  }
+
+  async function printPayroll() {
+    if (!roster) return;
+    setBusy("payroll");
+    try {
+      await downloadCashPayroll(roster);
+      toast.success("Payroll ready to print.");
+    } catch {
+      toast.error("Unable to create the payroll.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -241,8 +264,8 @@ export function ReleaseRosterDialog({
                     <Paperclip className="h-4 w-4" /> Release documents
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Signed lists, photos of the release day, payroll copies. PDF or image, up to 10
-                    MB each.
+                    For cash or clustering payouts, upload the signed payroll and photos of the
+                    release day. PDF or image, up to 10 MB each.
                   </p>
                 </div>
                 {canUpload && (
@@ -313,9 +336,25 @@ export function ReleaseRosterDialog({
 
             <div className="flex flex-wrap justify-end gap-2">
               {items.length > 0 && (
-                <button type="button" onClick={exportRoster} className={secondaryButtonClass}>
-                  <Download className="h-4 w-4" /> Export list
-                </button>
+                <>
+                  <button
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={printPayroll}
+                    title="Cash assistance payroll with a signature or thumbmark space for each senior, for cash and clustering payouts"
+                    className={secondaryButtonClass}
+                  >
+                    {busy === "payroll" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Printer className="h-4 w-4" />
+                    )}
+                    Print payroll
+                  </button>
+                  <button type="button" onClick={exportRoster} className={secondaryButtonClass}>
+                    <Download className="h-4 w-4" /> Export list
+                  </button>
+                </>
               )}
               {canComplete && roster.status === "scheduled" && (
                 <button

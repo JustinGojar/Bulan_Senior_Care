@@ -8,6 +8,7 @@ import {
   Clipboard,
   Download,
   Eye,
+  HeartOff,
   FilePenLine,
   HandCoins,
   Loader2,
@@ -44,6 +45,7 @@ import {
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
+import { MarkDeceasedDialog } from "@/components/MarkDeceasedDialog";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
   AlertDialog,
@@ -62,7 +64,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BARANGAYS, benefitForAge, benefitLabel, type Senior } from "@/lib/osca-data";
+import {
+  BARANGAYS,
+  INACTIVE_REASONS,
+  benefitForAge,
+  benefitLabel,
+  type Senior,
+} from "@/lib/osca-data";
 import {
   apiFetch,
   bulkCreateSeniors,
@@ -76,6 +84,7 @@ import {
 } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
+import { downloadMasterlist } from "@/lib/masterlist-pdf";
 import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
@@ -519,6 +528,7 @@ function SeniorRecords() {
   const [viewing, setViewing] = useState<Senior | null>(null);
   const [downloadingForm, setDownloadingForm] = useState(false);
   const [deleting, setDeleting] = useState<Senior | null>(null);
+  const [markingDeceased, setMarkingDeceased] = useState<Senior | null>(null);
   const [editRequests, setEditRequests] = useState<SeniorEditRequest[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
@@ -696,54 +706,8 @@ function SeniorRecords() {
         toast.error("There are no senior records to export.");
         return;
       }
-      const { jsPDF } = await import("jspdf");
-      const document = new jsPDF({ orientation: "landscape" });
-      const generatedDate = new Date();
-      const logoDataUrl = await loadPdfLogo();
-
-      document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
-      document.setFontSize(18);
-      document.text("Bulan SeniorCare", 32, 18);
-      document.setFontSize(13);
-      document.text("Senior Citizen Records", 14, 28);
-      document.setFontSize(9);
-      document.text(`Generated: ${generatedDate.toLocaleDateString()}`, 14, 36);
-      document.text(`Records: ${exportRows.length}`, 14, 43);
-
-      let y = 56;
-      document.setFontSize(9);
-      document.setFont("helvetica", "bold");
-      document.text("Senior ID", 14, y);
-      document.text("Name", 48, y);
-      document.text("Age", 118, y);
-      document.text("Barangay", 138, y);
-      document.text("Contact", 195, y);
-      document.text("Benefit", 235, y);
-      document.text("Status", 275, y);
-      document.setFont("helvetica", "normal");
-      y += 7;
-
-      exportRows.forEach((senior) => {
-        if (y > 195) {
-          document.addPage();
-          y = 18;
-        }
-        document.text(senior.id, 14, y);
-        document.text(document.splitTextToSize(senior.name, 62)[0] ?? senior.name, 48, y);
-        document.text(String(senior.age), 118, y);
-        document.text(document.splitTextToSize(senior.barangay, 52)[0] ?? senior.barangay, 138, y);
-        document.text(document.splitTextToSize(senior.contact, 34)[0] ?? senior.contact, 195, y);
-        document.text(
-          document.splitTextToSize(benefitLabel(senior.benefit), 34)[0] ?? senior.benefit,
-          235,
-          y,
-        );
-        document.text(senior.status, 275, y);
-        y += 7;
-      });
-
-      document.save(`bulan-seniorcare-records-${generatedDate.toISOString().slice(0, 10)}.pdf`);
-      toast.success("Senior records exported as PDF.");
+      await downloadMasterlist(exportRows);
+      toast.success("Masterlist of senior citizens exported as PDF.");
     } catch {
       toast.error("Unable to export senior records.");
     } finally {
@@ -1038,7 +1002,11 @@ function SeniorRecords() {
                   </td>
                   <td className="max-w-40 px-4 py-3.5">{benefitLabel(s.benefit)}</td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
-                    <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                    {s.deceased ? (
+                      <StatusPill tone="neutral">Deceased</StatusPill>
+                    ) : (
+                      <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                    )}
                   </td>
                   <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
                     <div className="flex gap-1.5">
@@ -1061,6 +1029,16 @@ function SeniorRecords() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
+                      {(isLeader || isAdmin) && !s.deceased && (
+                        <button
+                          aria-label={`Mark ${s.name} as deceased`}
+                          title="Mark as deceased"
+                          onClick={() => setMarkingDeceased(s)}
+                          className={actionButtonClass}
+                        >
+                          <HeartOff className="h-4 w-4" />
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           aria-label={`Delete record of ${s.name}`}
@@ -1482,6 +1460,89 @@ function SeniorRecords() {
               </div>
             );
           })()}
+          {viewing &&
+            viewing.status === "Inactive" &&
+            viewing.inactiveReason &&
+            !viewing.deceased && (
+              <div className="mt-2 rounded-xl border border-border bg-muted/50 p-4 text-sm">
+                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Reason for inactive
+                </p>
+                <p className="mt-2 font-semibold">
+                  {INACTIVE_REASONS[viewing.inactiveReason] ?? viewing.inactiveReason}
+                </p>
+                {viewing.inactiveRemarks && (
+                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                    {viewing.inactiveRemarks}
+                  </p>
+                )}
+              </div>
+            )}
+          {viewing?.deceased && (
+            <div className="mt-2 rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Deceased record
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Date of death</dt>
+                  <dd className="font-semibold">
+                    {viewing.deceased.dateOfDeath
+                      ? new Date(`${viewing.deceased.dateOfDeath}T00:00:00`).toLocaleDateString(
+                          undefined,
+                          { dateStyle: "long" },
+                        )
+                      : "Not provided"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Recorded</dt>
+                  <dd className="font-semibold">
+                    {[
+                      viewing.deceased.recordedBy,
+                      viewing.deceased.recordedAt &&
+                        new Date(viewing.deceased.recordedAt).toLocaleDateString(),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Not provided"}
+                  </dd>
+                </div>
+                {viewing.deceased.remarks && (
+                  <div className="col-span-2">
+                    <dt className="text-xs text-muted-foreground">Remarks</dt>
+                    <dd className="font-semibold whitespace-pre-wrap">
+                      {viewing.deceased.remarks}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {viewing.deceased.certificatePath ? (
+                <PrivateFileLink
+                  path={seniorFileUrl(
+                    viewing.id,
+                    "death_certificate",
+                    viewing.deceased.certificatePath,
+                  )}
+                  className="mt-3 flex w-28 flex-col gap-2 text-xs font-semibold"
+                >
+                  {isImageDocument(viewing.deceased.certificatePath) && (
+                    <PrivateImage
+                      path={seniorFileUrl(
+                        viewing.id,
+                        "death_certificate",
+                        viewing.deceased.certificatePath,
+                      )}
+                      alt="Death certificate"
+                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                    />
+                  )}
+                  <span className="text-primary hover:underline">Death certificate</span>
+                </PrivateFileLink>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">No death certificate on file.</p>
+              )}
+            </div>
+          )}
           {viewing && (
             <div className="mt-2 border-t border-border/60 pt-5">
               <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
@@ -1631,6 +1692,11 @@ function SeniorRecords() {
         </AlertDialogContent>
       </AlertDialog>
       {confirmDialog}
+      <MarkDeceasedDialog
+        senior={markingDeceased}
+        onClose={() => setMarkingDeceased(null)}
+        onSaved={() => window.location.reload()}
+      />
     </AppShell>
   );
 }

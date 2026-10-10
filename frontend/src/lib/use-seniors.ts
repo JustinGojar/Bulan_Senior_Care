@@ -26,6 +26,9 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   validId?: File | null;
   birthCertificate?: File | null;
   profilePhoto?: File | null;
+  /** Documentation when the status is set to Inactive. */
+  dateOfDeath?: string;
+  deathCertificate?: File | null;
   /** The senior agreed to the Data Privacy Consent; sent with new registrations. */
   privacyConsent?: boolean;
 };
@@ -44,6 +47,11 @@ function mapSenior(senior: ApiSenior): Senior {
   return {
     id: senior.osca_id_number,
     name: [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" "),
+    lastName: senior.last_name,
+    firstName: senior.first_name,
+    middleName: senior.middle_name ?? "",
+    suffix: senior.suffix ?? "",
+    registrationDate: senior.registration_date ? String(senior.registration_date).slice(0, 10) : "",
     birthdate: String(senior.birthdate).slice(0, 10),
     placeOfBirth: senior.place_of_birth ?? "",
     sex: senior.sex ?? "female",
@@ -67,6 +75,18 @@ function mapSenior(senior: ApiSenior): Senior {
     validIdPath: senior.valid_id_path ?? senior.id_document_path ?? null,
     birthCertificatePath: senior.birth_certificate_path ?? null,
     privacyConsentAt: senior.privacy_consent_at ?? null,
+    inactiveReason: senior.inactive_reason ?? "",
+    inactiveRemarks: senior.inactive_remarks ?? "",
+    deceased:
+      senior.inactive_reason === "deceased"
+        ? {
+            dateOfDeath: String(senior.date_of_death ?? "").slice(0, 10),
+            certificatePath: senior.death_certificate_path ?? null,
+            remarks: senior.inactive_remarks ?? "",
+            recordedBy: senior.inactivator?.name ?? "",
+            recordedAt: senior.inactivated_at ?? "",
+          }
+        : null,
   };
 }
 
@@ -278,6 +298,15 @@ export function useSeniors(
       if (draft.barangay) body.append("barangay", draft.barangay);
       if (draft.benefit) body.append("benefit", draft.benefit);
       body.append("status", draft.status.toLowerCase());
+      if (draft.status === "Inactive") {
+        body.append("inactive_reason", draft.inactiveReason ?? "");
+        if (draft.inactiveRemarks?.trim())
+          body.append("inactive_remarks", draft.inactiveRemarks.trim());
+        if (draft.inactiveReason === "deceased") {
+          body.append("date_of_death", draft.dateOfDeath ?? "");
+          if (draft.deathCertificate) body.append("death_certificate", draft.deathCertificate);
+        }
+      }
       if (draft.validId) body.append("valid_id", draft.validId);
       if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
       if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);

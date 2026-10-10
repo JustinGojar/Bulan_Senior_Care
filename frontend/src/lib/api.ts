@@ -54,7 +54,8 @@ function clearResponseCache() {
   privateFiles.clear();
 }
 
-export type SeniorFileKind = "photo" | "id_document" | "valid_id" | "birth_certificate";
+export type SeniorFileKind =
+  "photo" | "id_document" | "valid_id" | "birth_certificate" | "death_certificate";
 
 // The stored path is appended so a replaced upload is fetched again instead of reused.
 export function seniorFileUrl(oscaId: string, kind: SeniorFileKind, storedPath: string) {
@@ -131,7 +132,9 @@ export type ApiSenior = {
   first_name: string;
   last_name: string;
   middle_name?: string | null;
+  suffix?: string | null;
   birthdate: string;
+  registration_date?: string | null;
   place_of_birth?: string | null;
   sex?: "male" | "female";
   civil_status?: string | null;
@@ -150,6 +153,13 @@ export type ApiSenior = {
   birth_certificate_path?: string | null;
   privacy_consent_at?: string | null;
   status: "active" | "pending" | "inactive";
+  /** Why the record is inactive; "deceased" comes with the documentation below. */
+  inactive_reason?: string | null;
+  date_of_death?: string | null;
+  death_certificate_path?: string | null;
+  inactive_remarks?: string | null;
+  inactivated_at?: string | null;
+  inactivator?: { name: string; role: string } | null;
   barangay?: { barangay_name: string } | null;
   /** The program the senior is enrolled in. */
   benefit?: { id: number; benefit_name: string } | null;
@@ -221,7 +231,7 @@ export type BenefitRelease = {
   remarks?: string | null;
   completed_at?: string | null;
   completer?: { name: string; role: string } | null;
-  benefit: { benefit_name: string };
+  benefit: { benefit_name: string; schedule?: string | null };
   creator?: { name: string; role: string } | null;
   updater?: { name: string; role: string } | null;
 };
@@ -625,6 +635,7 @@ export type ReleaseRoster = BenefitRelease & {
       first_name: string;
       middle_name?: string | null;
       last_name: string;
+      suffix?: string | null;
       barangay?: { barangay_name: string } | null;
     } | null;
   }>;

@@ -22,7 +22,13 @@ import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { PrivateFileLink } from "@/components/PrivateFile";
 import { seniorFileUrl } from "@/lib/api";
-import { BARANGAYS, benefitForAge, benefitsFor, type Senior } from "@/lib/osca-data";
+import {
+  BARANGAYS,
+  INACTIVE_REASONS,
+  benefitForAge,
+  benefitsFor,
+  type Senior,
+} from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
 
 const EMPTY: SeniorDraft = {
@@ -258,9 +264,9 @@ export function SeniorFormDialog({
         ? {
             name: senior.name,
             birthdate: senior.birthdate ?? "",
-            firstName: senior.name.split(" ")[0] ?? "",
-            middleName: senior.name.split(" ").slice(1, -1).join(" "),
-            lastName: senior.name.split(" ").at(-1) ?? "",
+            firstName: senior.firstName ?? senior.name.split(" ")[0] ?? "",
+            middleName: senior.middleName ?? senior.name.split(" ").slice(1, -1).join(" "),
+            lastName: senior.lastName ?? senior.name.split(" ").at(-1) ?? "",
             age: senior.birthdate ? ageFromBirthdate(senior.birthdate) : 0,
             barangay: senior.barangay,
             address: streetFromAddress(senior.address, senior.barangay),
@@ -277,6 +283,10 @@ export function SeniorFormDialog({
             associationPosition: senior.associationPosition ?? "",
             benefit: senior.benefit,
             status: senior.status,
+            inactiveReason: senior.inactiveReason ?? "",
+            inactiveRemarks: senior.inactiveRemarks ?? "",
+            dateOfDeath: senior.deceased?.dateOfDeath ?? "",
+            deathCertificate: null,
           }
         : leaderBarangay
           ? { ...EMPTY, barangay: leaderBarangay }
@@ -365,6 +375,17 @@ export function SeniorFormDialog({
         "senior-privacy-consent",
         "The senior must agree to the Data Privacy Consent before registering.",
       ]);
+    if (senior && draft.status === "Inactive") {
+      if (!draft.inactiveReason)
+        errors.push(["senior-inactive-reason", "Choose the reason the senior is inactive."]);
+      if (draft.inactiveReason === "deceased") {
+        if (!draft.dateOfDeath) errors.push(["senior-date-of-death", "Enter the date of death."]);
+        if (!draft.deathCertificate && !senior.deceased?.certificatePath)
+          errors.push(["senior-death-certificate", "Attach the death certificate."]);
+      }
+      if (draft.inactiveReason === "other" && !draft.inactiveRemarks?.trim())
+        errors.push(["senior-inactive-remarks", "Describe the reason in the remarks."]);
+    }
     if (errors.length > 0) return flagFieldsById(errors);
     const age = ageFromBirthdate(draft.birthdate ?? "");
     if (age < 60 || age > 130)
@@ -724,6 +745,98 @@ export function SeniorFormDialog({
                   <SelectItem value="Inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
+              {draft.status === "Inactive" && (
+                <div className="mt-3 grid gap-4 rounded-lg border border-border/60 bg-background/40 p-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="senior-inactive-reason">Reason for inactive *</Label>
+                    <Select
+                      value={draft.inactiveReason ?? ""}
+                      onValueChange={(value) => {
+                        clearFieldById("senior-inactive-reason");
+                        set("inactiveReason", value);
+                      }}
+                    >
+                      <SelectTrigger id="senior-inactive-reason" className="mt-1.5 h-9 px-3">
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(INACTIVE_REASONS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {draft.inactiveReason === "deceased" && (
+                    <>
+                      <div>
+                        <Label htmlFor="senior-date-of-death">Date of death *</Label>
+                        <Input
+                          id="senior-date-of-death"
+                          type="date"
+                          value={draft.dateOfDeath ?? ""}
+                          min={draft.birthdate}
+                          max={new Date().toISOString().slice(0, 10)}
+                          onChange={(event) => {
+                            clearFieldById("senior-date-of-death");
+                            set("dateOfDeath", event.target.value);
+                          }}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="senior-death-certificate">
+                          Death certificate {senior?.deceased?.certificatePath ? "" : "*"}
+                        </Label>
+                        <Input
+                          id="senior-death-certificate"
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(event) => {
+                            clearFieldById("senior-death-certificate");
+                            set("deathCertificate", event.target.files?.[0] ?? null);
+                          }}
+                          className="mt-1.5"
+                        />
+                        {senior?.deceased?.certificatePath && (
+                          <PrivateFileLink
+                            path={seniorFileUrl(
+                              senior.id,
+                              "death_certificate",
+                              senior.deceased.certificatePath,
+                            )}
+                            className="mt-1 inline-block text-xs font-semibold text-primary hover:underline"
+                          >
+                            View current certificate
+                          </PrivateFileLink>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="senior-inactive-remarks">
+                      Remarks {draft.inactiveReason === "other" ? "*" : "(optional)"}
+                    </Label>
+                    <textarea
+                      id="senior-inactive-remarks"
+                      rows={2}
+                      maxLength={500}
+                      value={draft.inactiveRemarks ?? ""}
+                      onChange={(event) => {
+                        clearFieldById("senior-inactive-remarks");
+                        set("inactiveRemarks", event.target.value);
+                      }}
+                      placeholder={
+                        draft.inactiveReason === "transferred"
+                          ? "e.g. Moved to Irosin, Sorsogon"
+                          : "Details or document reference"
+                      }
+                      className="mt-1.5 w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
