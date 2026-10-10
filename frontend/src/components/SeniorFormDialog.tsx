@@ -395,7 +395,7 @@ export function SeniorFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="font-display">
             {senior ? "Edit senior record" : "Register senior"}
@@ -407,7 +407,7 @@ export function SeniorFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
             <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Personal information
