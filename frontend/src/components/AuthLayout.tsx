@@ -112,12 +112,13 @@ export function AuthAlert({
   children: ReactNode;
 }) {
   const Icon = tone === "error" ? AlertCircle : tone === "info" ? Clock : CheckCircle2;
+  // Tints are mixed into the card color so the alert stays solid over the page photo.
   const toneClass =
     tone === "error"
-      ? "border-destructive/30 bg-destructive/10 text-destructive"
+      ? "border-destructive/30 bg-[color-mix(in_oklab,var(--color-destructive)_10%,var(--color-card))] text-destructive"
       : tone === "info"
-        ? "border-gold/40 bg-gold/15 text-gold-foreground dark:text-gold"
-        : "border-success/30 bg-success/10 text-success";
+        ? "border-gold/40 bg-[color-mix(in_oklab,var(--color-gold)_15%,var(--color-card))] text-gold-foreground dark:text-gold"
+        : "border-success/30 bg-[color-mix(in_oklab,var(--color-success)_10%,var(--color-card))] text-success";
 
   return (
     <div
