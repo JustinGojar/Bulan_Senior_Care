@@ -167,6 +167,8 @@ function ForgotPasswordPage() {
               autoFocus
               value={code}
               onChange={setCode}
+              // Codes copied from Gmail can carry spaces or a line break; keep only the digits.
+              pasteTransformer={(text) => text.replace(/\D/g, "").slice(0, 6)}
               containerClassName="justify-center"
             >
               <InputOTPGroup>
