@@ -204,5 +204,30 @@ class PasswordResetTest extends TestCase
         $this->assertStringContainsString('src="https://seniorcare.example/email-logo.png"', $html);
         $this->assertStringContainsString('Hello Maria Santos,', $html);
         $this->assertStringContainsString('href="'.e($url).'"', $html);
+        $this->assertStringContainsString('<strong>15 minutes</strong>', $html);
+    }
+
+    public function test_reset_link_expires_after_fifteen_minutes(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $this->postJson('/api/forgot-password', ['email' => 'leader@example.com'])->assertOk();
+
+        $url = null;
+        Notification::assertSentTo($user, ResetPasswordNotification::class, function ($notification) use ($user, &$url) {
+            $url = $notification->toMail($user)->actionUrl;
+
+            return true;
+        });
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+        $this->travel(16)->minutes();
+
+        $this->postJson('/api/reset-password', [
+            'token' => $query['token'],
+            'email' => $query['email'],
+            'password' => 'NewPass#2026',
+            'password_confirmation' => 'NewPass#2026',
+        ])->assertStatus(422);
     }
 }
