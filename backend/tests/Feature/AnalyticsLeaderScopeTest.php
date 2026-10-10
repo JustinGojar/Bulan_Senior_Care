@@ -106,8 +106,8 @@ class AnalyticsLeaderScopeTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
-        // Social Pension: 79, 86 (between bands), 96 and 101.
-        foreach ([79, 86, 96, 101] as $age) {
+        // No milestone grant: 79, 82 and 92 (between milestone ages), 86, 96 and 101.
+        foreach ([79, 82, 86, 92, 96, 101] as $age) {
             $this->createSenior($admin, $barangay, "SP-{$age}", $age);
         }
         // Turns 80 tomorrow, so still 79 today.
@@ -122,7 +122,8 @@ class AnalyticsLeaderScopeTest extends TestCase
             ->getJson('/api/analytics')
             ->assertOk()
             ->assertJsonPath('benefit_records', [
-                ['name' => 'Social Pension', 'value' => 5],
+                // Milestone seniors keep their Social Pension, so it counts all 12.
+                ['name' => 'Social Pension', 'value' => 12],
                 ['name' => 'Octogenarian Grant', 'value' => 2],
                 ['name' => 'Nonagenarian Grant', 'value' => 2],
                 ['name' => 'Centenarian Award', 'value' => 1],

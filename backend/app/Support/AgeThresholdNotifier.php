@@ -6,18 +6,50 @@ use App\Models\Benefit;
 use App\Models\Notification;
 use App\Models\SeniorCitizen;
 use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Notifies the senior's barangay leader (plus Admin and Head) when an active
- * senior is within an Expanded Centenarians Act age bracket (octogenarian,
- * nonagenarian, centenarian) and has not received that benefit yet.
+ * senior is at an Expanded Centenarians Act milestone age (octogenarian,
+ * nonagenarian, centenarian) and has not received that grant since turning it.
  * Notifications are de-duplicated, so running this repeatedly is safe.
  */
 class AgeThresholdNotifier
 {
     public const PROGRAM_TYPES = ['octogenarian', 'nonagenarian', 'centenarian'];
+
+    /**
+     * The exact ages each grant is given at. Seniors at these ages still keep their
+     * Social Pension, so they hold two benefits.
+     */
+    public const MILESTONE_AGES = [
+        'octogenarian' => [80, 85],
+        'nonagenarian' => [90, 95],
+        'centenarian' => [100],
+    ];
+
+    /** @return list<int> */
+    public static function milestoneAges(Benefit $program): array
+    {
+        return self::MILESTONE_AGES[$program->benefit_type] ?? [];
+    }
+
+    /**
+     * Whether the senior was already paid this grant at their current milestone: anyone at
+     * a milestone age turned it within the past year, so an earlier payment (at 80) does
+     * not block the next one (at 85).
+     */
+    public static function receivedSince(Builder|EloquentBuilder $query, int $benefitId, CarbonInterface $since): void
+    {
+        $query->where('benefit_id', $benefitId)
+            ->where('status', 'released')
+            ->where(fn ($dated) => $dated->where('date_distributed', '>', $since->toDateString())
+                ->orWhere(fn ($undated) => $undated->whereNull('date_distributed')->where('created_at', '>', $since)));
+    }
 
     public static function programs(): Collection
     {
@@ -34,18 +66,20 @@ class AgeThresholdNotifier
         $age = $senior->birthdate->age;
         $flags = 0;
         foreach ($programs as $program) {
-            if ($age < $program->min_age || ($program->max_age && $age > $program->max_age)) {
+            if (! in_array($age, self::milestoneAges($program), true)) {
                 continue;
             }
             $alreadyReleased = DB::table('benefit_transactions')
                 ->where('senior_citizen_id', $senior->id)
-                ->where('benefit_id', $program->id)
-                ->where('status', 'released')
+                ->tap(fn ($query) => self::receivedSince($query, $program->id, now()->subYear()))
                 ->exists();
             if ($alreadyReleased) {
                 continue;
             }
-            $message = "{$senior->first_name} {$senior->last_name} is eligible for {$program->benefit_name}.";
+            // The age keeps the 85 notice separate from the one sent at 80. Matches claimMessage()
+            // in the frontend.
+            $message = "{$senior->first_name} {$senior->last_name} has turned {$age}. "
+                ."You can now claim these benefits: Social Pension and {$program->benefit_name}.";
             foreach (self::recipients($senior) as $recipient) {
                 Notification::firstOrCreate([
                     'recipient_account_id' => $recipient->id,

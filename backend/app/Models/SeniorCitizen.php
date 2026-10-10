@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SeniorCitizen extends Model
 {
@@ -79,5 +80,10 @@ class SeniorCitizen extends Model
     public function benefits(): BelongsToMany
     {
         return $this->belongsToMany(Benefit::class, 'benefit_transactions')->withPivot(['amount', 'status', 'period_label', 'date_distributed']);
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(BenefitTransaction::class, 'senior_citizen_id');
     }
 }

@@ -271,15 +271,27 @@ class BenefitReleaseController extends Controller
             ->whereIn('barangay_id', $barangayIds)
             ->when(
                 $ageBased,
-                // Age-based grants go by the senior's age on the release date, not by the
-                // benefit chosen at registration. They are one-time, so past recipients are left out.
+                // Age-based grants go by the senior's exact age on the release date (80 or 85,
+                // 90 or 95, 100), not by the benefit chosen at registration. Each milestone is
+                // paid once, so seniors already paid since turning this age are left out.
                 fn ($query) => $query
-                    ->whereDate('birthdate', '<=', $release->release_date->copy()->subYears($benefit->min_age))
-                    ->when($benefit->max_age, fn ($query) => $query->whereDate('birthdate', '>', $release->release_date->copy()->subYears($benefit->max_age + 1)))
-                    ->whereDoesntHave('benefits', fn ($received) => $received
-                        ->where('benefits.id', $release->benefit_id)
-                        ->where('benefit_transactions.status', 'released')),
-                fn ($query) => $query->where('benefit_id', $release->benefit_id),
+                    ->where(function ($atMilestone) use ($benefit, $release) {
+                        foreach (AgeThresholdNotifier::milestoneAges($benefit) as $age) {
+                            $atMilestone->orWhere(fn ($exact) => $exact
+                                ->whereDate('birthdate', '<=', $release->release_date->copy()->subYearsNoOverflow($age))
+                                ->whereDate('birthdate', '>', $release->release_date->copy()->subYearsNoOverflow($age + 1)));
+                        }
+                    })
+                    ->whereDoesntHave('transactions', fn ($received) => AgeThresholdNotifier::receivedSince(
+                        $received,
+                        $release->benefit_id,
+                        $release->release_date->copy()->subYear(),
+                    )),
+                // Seniors enrolled in a milestone grant still receive the Social Pension.
+                fn ($query) => $benefit?->benefit_type === 'social_pension'
+                    ? $query->whereHas('benefit', fn ($enrolled) => $enrolled
+                        ->whereIn('benefit_type', ['social_pension', ...AgeThresholdNotifier::PROGRAM_TYPES]))
+                    : $query->where('benefit_id', $release->benefit_id),
             )
             ->whereDoesntHave('benefits', fn ($query) => $query
                 ->where('benefits.id', $release->benefit_id)

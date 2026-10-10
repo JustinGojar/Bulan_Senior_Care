@@ -36,6 +36,8 @@ export type BenefitProgram = {
     | "provincial";
   minAge: number;
   maxAge?: number;
+  /** Expanded Centenarians Act grants are given at these exact ages only. */
+  ages?: number[];
   amount: string;
   schedule: "Quarterly" | "One-time" | "When funds are available";
   funding: "National" | "Municipal" | "Provincial";
@@ -55,6 +57,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "octogenarian",
     minAge: 80,
     maxAge: 85,
+    ages: [80, 85],
     amount: "₱10,000",
     schedule: "One-time",
     funding: "National",
@@ -64,6 +67,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "nonagenarian",
     minAge: 90,
     maxAge: 95,
+    ages: [90, 95],
     amount: "₱10,000",
     schedule: "One-time",
     funding: "National",
@@ -73,6 +77,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "centenarian",
     minAge: 100,
     maxAge: 100,
+    ages: [100],
     amount: "₱100,000",
     schedule: "One-time",
     funding: "National",
@@ -103,22 +108,36 @@ export type EligibilityFlag = {
   reason: string;
 };
 
+export function qualifiesFor(program: BenefitProgram, age: number) {
+  if (program.ages) return program.ages.includes(age);
+  return age >= program.minAge && (program.maxAge === undefined || age <= program.maxAge);
+}
+
+export function programAgeLabel(program: BenefitProgram) {
+  if (program.ages) {
+    return program.ages.length === 1
+      ? `Age ${program.ages[0]}`
+      : `Ages ${program.ages.slice(0, -1).join(", ")} & ${program.ages.at(-1)}`;
+  }
+  if (program.maxAge === undefined) return "No upper limit";
+  return program.maxAge === program.minAge
+    ? `Age ${program.minAge}`
+    : `Ages ${program.minAge}–${program.maxAge}`;
+}
+
+/** Matches the notification the API sends when a senior reaches a milestone age. */
+export function claimMessage(name: string, age: number, grant: string) {
+  return `${name} has turned ${age}. You can now claim these benefits: Social Pension and ${grant}.`;
+}
+
+// Flags only Expanded Centenarians Act milestones (80, 85, 90, 95, 100).
 export function findNewEligibilityFlags(seniors: Senior[]): EligibilityFlag[] {
   return seniors.flatMap((senior) => {
     const program = BENEFIT_PROGRAMS.find(
-      (program) =>
-        senior.age >= program.minAge &&
-        (program.maxAge === undefined || senior.age <= program.maxAge) &&
-        program.type !== "social_pension",
+      (program) => program.ages && qualifiesFor(program, senior.age),
     );
     return program
-      ? [
-          {
-            senior,
-            program,
-            reason: `${senior.name} is ${senior.age}, within the ${program.name} age bracket.`,
-          },
-        ]
+      ? [{ senior, program, reason: claimMessage(senior.name, senior.age, program.name) }]
       : [];
   });
 }
@@ -292,10 +311,17 @@ export const DISTRIBUTION_STATUS = [
   { label: "Pending", value: 132, total: 1245, tone: "coral" as const },
 ];
 
-// Milestone benefits apply only to their age bands; every other age 60+ gets Social Pension.
+// The program a senior is enrolled under: the milestone grant at 80, 85, 90, 95 or 100,
+// otherwise Social Pension. Milestone seniors keep Social Pension too (see benefitsFor).
 export function benefitForAge(age: number) {
-  if (age === 100) return "Centenarian Award";
-  if (age >= 90 && age <= 95) return "Nonagenarian Grant";
-  if (age >= 80 && age <= 85) return "Octogenarian Grant";
-  return "Social Pension";
+  return BENEFIT_PROGRAMS.find((program) => program.ages?.includes(age))?.name ?? "Social Pension";
+}
+
+/** Every benefit a senior holds: Social Pension plus their milestone grant, if any. */
+export function benefitsFor(benefit: string) {
+  return benefit && benefit !== "Social Pension" ? ["Social Pension", benefit] : ["Social Pension"];
+}
+
+export function benefitLabel(benefit: string) {
+  return benefitsFor(benefit).join(" + ");
 }

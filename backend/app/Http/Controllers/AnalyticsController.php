@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AgeThresholdNotifier;
 use App\Models\Barangay;
 use App\Models\BenefitTransaction;
 use App\Models\SeniorCitizen;
@@ -14,12 +15,6 @@ class AnalyticsController extends Controller
 {
     private const AGE_BRACKETS = [60, 70, 80, 90, 100];
 
-    /** Column alias => [first age, last age] for each milestone benefit. */
-    private const MILESTONE_BENEFITS = [
-        'octogenarian' => [80, 85],
-        'nonagenarian' => [90, 95],
-        'centenarian' => [100, 100],
-    ];
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -65,12 +60,16 @@ class AnalyticsController extends Controller
                 $ageBindings[] = now()->subYearsNoOverflow($age + 10)->toDateString().' 23:59:59';
             }
         }
-        // Expanded Centenarians Act age bands; every other age gets Social Pension.
+        // Expanded Centenarians Act milestone ages; every senior also gets Social Pension.
         // Mirrors benefitForAge() in the frontend so charts match the registration form.
-        foreach (self::MILESTONE_BENEFITS as $column => [$from, $to]) {
-            $ageSelects[] = "COALESCE(SUM(CASE WHEN birthdate <= ? AND birthdate > ? THEN 1 ELSE 0 END), 0) AS {$column}";
-            $ageBindings[] = now()->subYearsNoOverflow($from)->toDateString().' 23:59:59';
-            $ageBindings[] = now()->subYearsNoOverflow($to + 1)->toDateString().' 23:59:59';
+        foreach (AgeThresholdNotifier::MILESTONE_AGES as $column => $ages) {
+            $exactAges = [];
+            foreach ($ages as $age) {
+                $exactAges[] = '(birthdate <= ? AND birthdate > ?)';
+                $ageBindings[] = now()->subYearsNoOverflow($age)->toDateString().' 23:59:59';
+                $ageBindings[] = now()->subYearsNoOverflow($age + 1)->toDateString().' 23:59:59';
+            }
+            $ageSelects[] = 'COALESCE(SUM(CASE WHEN '.implode(' OR ', $exactAges)." THEN 1 ELSE 0 END), 0) AS {$column}";
         }
 
         $totals = (clone $seniors)
@@ -135,7 +134,8 @@ class AnalyticsController extends Controller
         $nonagenarian = (int) $totals->nonagenarian;
         $centenarian = (int) $totals->centenarian;
         $benefitRecords = collect([
-            ['name' => 'Social Pension', 'value' => (int) $totals->total_registered - $octogenarian - $nonagenarian - $centenarian],
+            // Milestone seniors keep their Social Pension, so it counts everyone.
+            ['name' => 'Social Pension', 'value' => (int) $totals->total_registered],
             ['name' => 'Octogenarian Grant', 'value' => $octogenarian],
             ['name' => 'Nonagenarian Grant', 'value' => $nonagenarian],
             ['name' => 'Centenarian Award', 'value' => $centenarian],
