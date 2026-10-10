@@ -9,7 +9,7 @@ export const SESSION_ID_KEY = "bulan-session-id";
 const SESSION_KEY = "bulan-api-session";
 const SESSION_NOTICE_KEY = "bulan-session-notice";
 // Used for sessions signed in before the server reported its limits.
-const DEFAULT_IDLE_TIMEOUT_MINUTES = 15;
+const DEFAULT_IDLE_TIMEOUT_MINUTES = 30;
 const ANNOUNCEMENTS_CACHE_TTL = 60_000;
 const BARANGAYS_CACHE_TTL = 5 * 60_000;
 // GET responses younger than this are reused without a request.
@@ -188,10 +188,6 @@ export type BenefitTransaction = {
   date_distributed?: string | null;
   reference_number?: string | null;
   remarks?: string | null;
-  payout_method?: "cash" | "atm";
-  /** Where an ATM payout is with the bank; null for cash payouts. */
-  bank_status?: BankStatus | null;
-  bank_remarks?: string | null;
   senior: {
     osca_id_number: string;
     first_name: string;
@@ -207,47 +203,6 @@ export type BenefitTransaction = {
   creator?: { name: string; role: string } | null;
   updater?: { name: string; role: string } | null;
 };
-
-export type BankStatus = "for_payroll" | "sent_to_bank" | "credited" | "crediting_failed";
-
-export type PayrollBatchSummary = {
-  id: number;
-  batch_number: string;
-  period_label: string;
-  status: "draft" | "sent_to_bank" | "reconciled";
-  sent_at?: string | null;
-  bank_reference?: string | null;
-  crediting_report_path?: string | null;
-  created_at: string;
-  benefit: { id: number; benefit_name: string; amount?: string | null };
-  creator?: { name: string; role: string } | null;
-  transactions_count?: number;
-  credited_count?: number;
-  failed_count?: number;
-  received_count?: number;
-  total_amount?: string | number | null;
-};
-
-export type PayrollItem = {
-  id: number;
-  amount: string;
-  status: "pending" | "released" | "failed";
-  bank_status: BankStatus | null;
-  bank_remarks?: string | null;
-  date_distributed?: string | null;
-  senior: {
-    osca_id_number: string;
-    first_name: string;
-    middle_name?: string | null;
-    last_name: string;
-    atm_account_last4?: string | null;
-    barangay?: { barangay_name: string } | null;
-  } | null;
-};
-
-export type PayrollBatch = PayrollBatchSummary & { transactions: PayrollItem[] };
-
-export type PayrollRowResult = { row: number; osca_id_number: string; message: string };
 
 export type BenefitRelease = {
   id: number;
@@ -704,77 +659,6 @@ export function releaseDocumentUrl(releaseId: number, document: ReleaseDocument)
   return `/benefit-releases/${releaseId}/documents/${document.id}?v=${encodeURIComponent(document.path)}`;
 }
 
-export function getPayrollBatches() {
-  return apiFetch<PayrollBatchSummary[]>("/payroll-batches", { cache: "no-store" });
-}
-
-export function getPayrollBatch(id: number) {
-  return apiFetch<PayrollBatch>(`/payroll-batches/${id}`, { cache: "no-store" });
-}
-
-export function createPayrollBatch(data: { benefit_id: number; period_label: string }) {
-  return apiFetch<PayrollBatch>("/payroll-batches", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-export function deletePayrollBatch(id: number) {
-  return apiFetch<void>(`/payroll-batches/${id}`, { method: "DELETE" });
-}
-
-export function markPayrollSent(id: number, data: { sent_at: string; bank_reference: string }) {
-  return apiFetch<PayrollBatch>(`/payroll-batches/${id}/sent`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-/** Records the bank's crediting report; the original file is kept as proof when given. */
-export function recordPayrollCrediting(
-  id: number,
-  results: Array<{ osca_id_number: string; credited: boolean; reason?: string }>,
-  report: File | null,
-) {
-  const body = new FormData();
-  results.forEach((result, index) => {
-    body.append(`results[${index}][osca_id_number]`, result.osca_id_number);
-    body.append(`results[${index}][credited]`, result.credited ? "1" : "0");
-    if (result.reason) body.append(`results[${index}][reason]`, result.reason);
-  });
-  if (report) body.append("report", report);
-  return apiFetch<{
-    batch: PayrollBatch;
-    credited: number;
-    failed: number;
-    unmatched: PayrollRowResult[];
-  }>(`/payroll-batches/${id}/crediting`, { method: "POST", body });
-}
-
-export function setPayrollItemResult(
-  batchId: number,
-  transactionId: number,
-  data: { credited: boolean; reason?: string },
-) {
-  return apiFetch<PayrollBatch>(`/payroll-batches/${batchId}/items/${transactionId}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-}
-
-export function importAtmAccounts(
-  accounts: Array<{ osca_id_number: string; account_last4: string }>,
-) {
-  return apiFetch<{ updated: number; unmatched: PayrollRowResult[] }>("/atm-accounts", {
-    method: "POST",
-    body: JSON.stringify({ accounts }),
-  });
-}
-
-export function payrollReportUrl(batchId: number, storedPath: string) {
-  return `/payroll-batches/${batchId}/report?v=${encodeURIComponent(storedPath)}`;
-}
-
 export function bulkCreateSeniors(records: Array<Record<string, string>>) {
   return apiFetch<{
     created: Array<{ row: number; osca_id_number: string }>;
@@ -923,8 +807,12 @@ export function deleteAnnouncementComment(announcementId: number, commentId: num
   });
 }
 
-export function getMessages(page = 1) {
-  return apiFetch<PaginatedMessages>(`/messages?page=${page}&per_page=25`);
+/** Pass `live` when polling, so the request skips the shared response cache. */
+export function getMessages(page = 1, live = false) {
+  return apiFetch<PaginatedMessages>(
+    `/messages?page=${page}&per_page=25`,
+    live ? { cache: "no-store" } : {},
+  );
 }
 
 /** Which of these accounts are online now. */
@@ -979,6 +867,12 @@ export function sendMessage(
   return apiFetch<Message>("/messages", {
     method: "POST",
     body: JSON.stringify({ recipient_id: recipientId, subject, message }),
+  });
+}
+
+export function markConversationRead(userId: number) {
+  return apiFetch<{ updated: number }>(`/messages/conversations/${userId}/read`, {
+    method: "POST",
   });
 }
 

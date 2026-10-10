@@ -151,6 +151,22 @@ class MessageController extends Controller
         return response()->json($message->fresh(['sender:id,name,role,email', 'recipient:id,name,role,email']));
     }
 
+    /** Opening a conversation marks everything the other person sent you in it as read. */
+    public function readConversation(Request $request, User $user): JsonResponse
+    {
+        $me = $request->user()->id;
+        $updated = Message::query()
+            ->where('sender_id', $user->id)
+            ->where('recipient_id', $me)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+        if ($updated > 0) {
+            $this->invalidateMessagesCache($me);
+        }
+
+        return response()->json(['updated' => $updated]);
+    }
+
     /**
      * Removes the conversation from this account's inbox only; the other person keeps it.
      * Messages both people have deleted are removed for good, with their attachments.

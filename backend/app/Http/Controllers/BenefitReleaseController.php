@@ -259,7 +259,7 @@ class BenefitReleaseController extends Controller
 
     /**
      * Lists the active seniors for this benefit in the batch's barangays as pending records.
-     * Seniors already listed for the period, by ATM payroll or another batch, are skipped.
+     * Seniors already listed for the period, by another batch, are skipped.
      */
     private function listRecipients(Request $request, BenefitRelease $release, array $barangayIds): void
     {

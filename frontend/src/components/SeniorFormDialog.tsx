@@ -50,6 +50,8 @@ const EMPTY: SeniorDraft = {
 
 const CIVIL_STATUSES = ["Single", "Married", "Widowed", "Separated", "Annulled"];
 
+const ASSOCIATION_POSITIONS = ["President", "Secretary", "Treasurer", "PIO", "Auditor", "Member"];
+
 const RELATIONSHIPS = [
   "Spouse",
   "Son",
@@ -393,7 +395,7 @@ export function SeniorFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="font-display">
             {senior ? "Edit senior record" : "Register senior"}
@@ -405,7 +407,7 @@ export function SeniorFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="rounded-lg border border-border/60 bg-background/40 p-4 sm:p-5">
             <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Personal information
@@ -780,13 +782,28 @@ export function SeniorFormDialog({
                 </div>
                 <div>
                   <Label htmlFor="senior-association-position">Position *</Label>
-                  <Input
-                    id="senior-association-position"
+                  <Select
                     value={draft.associationPosition ?? ""}
-                    onChange={(e) => set("associationPosition", e.target.value)}
-                    placeholder="Member or officer"
-                    className="mt-1.5"
-                  />
+                    onValueChange={(value) => set("associationPosition", value)}
+                  >
+                    <SelectTrigger id="senior-association-position" className="mt-1.5 h-9 px-3">
+                      <SelectValue placeholder="Select position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Keep older free-text values selectable so editing doesn't blank them. */}
+                      {[
+                        ...ASSOCIATION_POSITIONS,
+                        ...(draft.associationPosition &&
+                        !ASSOCIATION_POSITIONS.includes(draft.associationPosition)
+                          ? [draft.associationPosition]
+                          : []),
+                      ].map((position) => (
+                        <SelectItem key={position} value={position}>
+                          {position}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

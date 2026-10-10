@@ -822,7 +822,7 @@ function SeniorRecords() {
         <IconSelect
           label="Barangay"
           searchable
-          className="!bg-white disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
+          className="disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}
           // A leader's own barangay is their default, so it isn't marked as an active filter.
@@ -1120,9 +1120,12 @@ function SeniorRecords() {
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Page <span className="font-semibold text-foreground">{page}</span> of{" "}
-          <span className="font-semibold text-foreground">{lastPage}</span>
+        {/* Sits on the page photo rather than a panel, so it needs its own surface to stay legible. */}
+        <span className="inline-flex h-10 items-center rounded-lg border border-border bg-card px-3 sm:px-4">
+          <span>
+            Page <span className="font-semibold text-foreground">{page}</span> of{" "}
+            <span className="font-semibold text-foreground">{lastPage}</span>
+          </span>
         </span>
         <div className="flex gap-2">
           <button

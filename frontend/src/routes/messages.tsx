@@ -44,13 +44,15 @@ import {
   getSessionId,
   getStoredUser,
   deleteConversation as deleteConversationApi,
-  markMessageRead,
+  markConversationRead,
   sendMessage,
   type Message,
   type MessageRecipient,
 } from "@/lib/api";
 
 const PRESENCE_REFRESH_INTERVAL = 30_000;
+// How often the open inbox checks for new messages.
+const MESSAGES_REFRESH_INTERVAL = 5_000;
 
 export const Route = createFileRoute("/messages")({
   head: () => ({ meta: [{ title: "Inbox — Bulan SeniorCare" }] }),
@@ -165,17 +167,80 @@ function MessagesPage() {
     }
   }
 
+  // The open conversation, read by the poll below without restarting its timer.
+  const selectedRef = useRef(selectedConversation);
+  selectedRef.current = selectedConversation;
+
+  // Live updates: new messages show up while the inbox is open, and any that land in the
+  // conversation being read are marked read at once, so the inbox icon never counts them.
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    const refresh = () => {
+      if (document.hidden) return;
+      getMessages(currentPage, true)
+        .then((result) => {
+          if (!active) return;
+          const selected = selectedRef.current;
+          const partnerId = selected
+            ? selected.sender.id === currentUserId
+              ? selected.recipient.id
+              : selected.sender.id
+            : null;
+          const fresh = result.data.filter((item) => item.sender?.id && item.recipient?.id);
+          const isUnreadInOpen = (item: Message) =>
+            !item.read_at && item.sender.id === partnerId && item.recipient.id === currentUserId;
+          const openHasUnread = fresh.some(isUnreadInOpen);
+          const readAt = new Date().toISOString();
+          setMessages((current) => {
+            const readLocally = new Map(current.map((item) => [item.id, item.read_at]));
+            return fresh.map((item) => ({
+              ...item,
+              // Keep reads this page already made, in case the server has not caught up.
+              read_at: isUnreadInOpen(item)
+                ? readAt
+                : (item.read_at ?? readLocally.get(item.id) ?? null),
+            }));
+          });
+          setLastPage(result.last_page);
+          setOnlineIds(new Set(result.online_user_ids ?? []));
+          if (openHasUnread && partnerId !== null) {
+            markConversationRead(partnerId)
+              .then(() => window.dispatchEvent(new Event("bulan-unread-updated")))
+              .catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(refresh, MESSAGES_REFRESH_INTERVAL);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [currentPage, currentUserId]);
+
   async function openMessage(item: Message) {
     setSelectedConversation(item);
-    if (item.recipient.id !== currentUser?.id || item.read_at) return;
+    const other = item.sender.id === currentUser?.id ? item.recipient : item.sender;
+    const isUnreadFromOther = (messageItem: Message) =>
+      messageItem.sender.id === other.id &&
+      messageItem.recipient.id === currentUser?.id &&
+      !messageItem.read_at;
+    if (!messages.some(isUnreadFromOther)) return;
+    // Show the conversation as read right away; the badge refreshes once the server confirms.
+    const readAt = new Date().toISOString();
+    setMessages((current) =>
+      current.map((messageItem) =>
+        isUnreadFromOther(messageItem) ? { ...messageItem, read_at: readAt } : messageItem,
+      ),
+    );
     try {
-      const updated = await markMessageRead(item.id);
-      setMessages((current) =>
-        current.map((messageItem) => (messageItem.id === updated.id ? updated : messageItem)),
-      );
+      await markConversationRead(other.id);
       window.dispatchEvent(new Event("bulan-unread-updated"));
     } catch {
-      toast.error("Unable to mark message as read.");
+      toast.error("Unable to mark conversation as read.");
     }
   }
 

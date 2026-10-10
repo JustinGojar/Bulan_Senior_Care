@@ -14,6 +14,20 @@ return [
     |
     */
 
+    'brevo' => [
+        'key' => env('BREVO_API_KEY'),
+    ],
+
+    'gmail_script' => [
+        'url' => env('GMAIL_SCRIPT_URL'),
+        'secret' => env('GMAIL_SCRIPT_SECRET'),
+    ],
+
+    'mailjet' => [
+        'key' => env('MAILJET_API_KEY'),
+        'secret' => env('MAILJET_SECRET_KEY'),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
