@@ -17,7 +17,13 @@ import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
-import { badgeClass, fieldClass, iconButtonClass, panelClass } from "@/components/design-kit";
+import {
+  badgeClass,
+  fieldClass,
+  iconButtonClass,
+  panelClass,
+  tableMessageClass,
+} from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import {
@@ -275,7 +281,7 @@ function UserManagement() {
           subtitle="Role enforcement belongs on the API; this view mirrors the approved accounts."
           badge={<span className={badgeClass}>{users.length} accounts</span>}
         />
-        <div className="mt-6 overflow-x-auto rounded-lg border border-border/60">
+        <div className="mt-6 @container overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[720px] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
             <thead>
               <tr className="bg-muted text-left">
@@ -365,13 +371,15 @@ function UserManagement() {
               {users.length === 0 && (
                 <tr>
                   <td colSpan={6}>
-                    <EmptyState
-                      bare
-                      icon={UserRound}
-                      title="No login accounts yet"
-                      description="Accounts you create will be listed here."
-                      className="py-12"
-                    />
+                    <div className={tableMessageClass}>
+                      <EmptyState
+                        bare
+                        icon={UserRound}
+                        title="No login accounts yet"
+                        description="Accounts you create will be listed here."
+                        className="py-12"
+                      />
+                    </div>
                   </td>
                 </tr>
               )}

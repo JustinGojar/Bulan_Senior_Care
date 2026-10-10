@@ -186,7 +186,7 @@ function AgeThresholdPage() {
             <IconSelect
               label="Barangay"
               searchable
-              className="w-full sm:w-56"
+              className="sm:w-56"
               icon={<MapPin className="h-4 w-4" />}
               value={selectedBarangay}
               options={[
@@ -201,7 +201,7 @@ function AgeThresholdPage() {
             />
           }
         />
-        <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-5">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5">
           {programs.map((program) => (
             <button
               key={program.type}

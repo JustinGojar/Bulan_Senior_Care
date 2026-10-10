@@ -37,3 +37,9 @@ export const primaryButtonClass =
 
 export const secondaryButtonClass =
   "inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60";
+
+/**
+ * Wraps a full-width message (empty state, error) in a horizontally scrolling table so it
+ * stays centered in view on narrow screens. The scroll wrapper needs `@container`.
+ */
+export const tableMessageClass = "sticky left-0 w-[100cqw]";
