@@ -284,7 +284,7 @@ function SettingsPage() {
                       (!channelReadiness || !channelReadiness.email_advisories))
                   }
                   onClick={() => void toggleNotification(label)}
-                  className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${notificationSettings[label] ? "bg-navy" : "bg-muted ring-1 ring-border"}`}
+                  className={`flex h-6 w-11 shrink-0 items-center rounded-full p-1 transition-colors focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 ${notificationSettings[label] ? "bg-navy dark:bg-gold dark:bg-none" : "bg-muted-foreground/40"}`}
                 >
                   <span
                     className={`grid h-4 w-4 place-items-center rounded-full bg-white shadow-sm transition-transform ${notificationSettings[label] ? "translate-x-5" : ""}`}
