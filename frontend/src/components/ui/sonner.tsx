@@ -13,6 +13,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       closeButton
       gap={10}
+      // Start below the top row so toasts don't cover the theme toggle, the
+      // notification bell or the profile menu.
+      offset={{ top: 80, right: 24 }}
+      mobileOffset={{ top: 72, right: 16, left: 16 }}
       icons={{
         success: <CheckCircle2 className="h-[18px] w-[18px]" />,
         error: <XCircle className="h-[18px] w-[18px]" />,
