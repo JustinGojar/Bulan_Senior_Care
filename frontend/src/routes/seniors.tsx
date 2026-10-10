@@ -822,7 +822,7 @@ function SeniorRecords() {
         <IconSelect
           label="Barangay"
           searchable
-          className="!bg-white disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
+          className="disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}
           // A leader's own barangay is their default, so it isn't marked as an active filter.
