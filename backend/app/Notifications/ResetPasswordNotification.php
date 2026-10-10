@@ -26,6 +26,16 @@ class ResetPasswordNotification extends Notification
             ->greeting('Hello '.$notifiable->name.',')
             ->line('We received a request to reset your Bulan SeniorCare password.')
             ->action('Reset password', $this->url)
-            ->line('This link will expire in '.config('auth.passwords.users.expire').' minutes. If you did not request this, no action is needed.');
+            ->line('This link will expire in '.config('auth.passwords.users.expire').' minutes. If you did not request this, no action is needed.')
+            ->view(
+                ['html' => 'emails.reset-password', 'text' => 'emails.reset-password-text'],
+                [
+                    'name' => $notifiable->name,
+                    'url' => $this->url,
+                    'expires' => config('auth.passwords.users.expire'),
+                    // Absolute URL: email clients only load images from public addresses.
+                    'logoUrl' => rtrim((string) config('app.frontend_url'), '/').'/email-logo.png',
+                ],
+            );
     }
 }
