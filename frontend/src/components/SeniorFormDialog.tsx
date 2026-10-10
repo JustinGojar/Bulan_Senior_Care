@@ -50,6 +50,8 @@ const EMPTY: SeniorDraft = {
 
 const CIVIL_STATUSES = ["Single", "Married", "Widowed", "Separated", "Annulled"];
 
+const ASSOCIATION_POSITIONS = ["President", "Secretary", "Treasurer", "PIO", "Auditor", "Member"];
+
 const RELATIONSHIPS = [
   "Spouse",
   "Son",
@@ -780,13 +782,28 @@ export function SeniorFormDialog({
                 </div>
                 <div>
                   <Label htmlFor="senior-association-position">Position *</Label>
-                  <Input
-                    id="senior-association-position"
+                  <Select
                     value={draft.associationPosition ?? ""}
-                    onChange={(e) => set("associationPosition", e.target.value)}
-                    placeholder="Member or officer"
-                    className="mt-1.5"
-                  />
+                    onValueChange={(value) => set("associationPosition", value)}
+                  >
+                    <SelectTrigger id="senior-association-position" className="mt-1.5 h-9 px-3">
+                      <SelectValue placeholder="Select position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Keep older free-text values selectable so editing doesn't blank them. */}
+                      {[
+                        ...ASSOCIATION_POSITIONS,
+                        ...(draft.associationPosition &&
+                        !ASSOCIATION_POSITIONS.includes(draft.associationPosition)
+                          ? [draft.associationPosition]
+                          : []),
+                      ].map((position) => (
+                        <SelectItem key={position} value={position}>
+                          {position}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
