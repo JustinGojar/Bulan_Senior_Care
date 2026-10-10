@@ -1120,9 +1120,12 @@ function SeniorRecords() {
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Page <span className="font-semibold text-foreground">{page}</span> of{" "}
-          <span className="font-semibold text-foreground">{lastPage}</span>
+        {/* Sits on the page photo rather than a panel, so it needs its own surface to stay legible. */}
+        <span className="inline-flex h-10 items-center rounded-lg border border-border bg-card px-3 sm:px-4">
+          <span>
+            Page <span className="font-semibold text-foreground">{page}</span> of{" "}
+            <span className="font-semibold text-foreground">{lastPage}</span>
+          </span>
         </span>
         <div className="flex gap-2">
           <button
