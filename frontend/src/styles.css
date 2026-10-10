@@ -363,6 +363,21 @@
       background-color 160ms ease,
       border-color 160ms ease;
   }
+
+  /* The light-mode navy border disappears against dark surfaces. */
+  .dark
+    :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not(
+          [type="button"]
+        ):not([type="submit"]):not([type="reset"]):not([type="color"]):not(:disabled):not(
+          [readonly]
+        ),
+      textarea:not(:disabled):not([readonly]),
+      select:not(:disabled),
+      [role="combobox"]:not([aria-disabled="true"])
+    ):hover {
+    border-color: var(--ring);
+  }
 }
 
 /* Loading placeholders: muted block with a light sweep across it. */
