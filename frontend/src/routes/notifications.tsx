@@ -139,7 +139,7 @@ function Notifications() {
       subtitle="System alerts and operational messages"
       breadcrumb={["Dashboard", "Notifications"]}
     >
-      <section className={`${panelClass} p-5 sm:p-7`}>
+      <section className={`${panelClass} p-4 sm:p-7`}>
         <SectionHeader
           icon={Bell}
           title="Inbox"
@@ -200,7 +200,7 @@ function Notifications() {
             <div
               key={`server-${notification.id}`}
               onClick={() => handleOpenServerNotification(notification)}
-              className={`${tileClass} flex cursor-pointer items-start gap-4 transition-colors hover:border-ring/40 ${notification.status === "unread" ? "border-l-4 border-l-gold" : "opacity-80"}`}
+              className={`${tileClass} flex cursor-pointer items-start gap-3 transition-colors sm:gap-4 hover:border-ring/40 ${notification.status === "unread" ? "border-l-4 border-l-gold" : "opacity-80"}`}
             >
               <input
                 type="checkbox"
@@ -215,51 +215,53 @@ function Notifications() {
               >
                 <Bell className="h-4 w-4" />
               </span>
-              <span className="min-w-0 flex-1">
-                <strong className="flex items-center gap-2 text-sm">
-                  {notificationTitle(notification)}
-                  {notification.status === "unread" && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-gold" aria-label="Unread" />
-                  )}
-                </strong>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  {notification.message}
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                <span className="min-w-0 flex-1">
+                  <strong className="flex items-center gap-2 text-sm leading-snug">
+                    {notificationTitle(notification)}
+                    {notification.status === "unread" && (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-gold" aria-label="Unread" />
+                    )}
+                  </strong>
+                  <span className="mt-1 block break-words text-sm leading-relaxed text-muted-foreground sm:text-xs">
+                    {notification.message}
+                  </span>
+                  <small className="mt-2 block text-xs text-muted-foreground">
+                    {new Date(notification.created_at).toLocaleDateString()}
+                  </small>
                 </span>
-                <small className="mt-2 block text-xs text-muted-foreground">
-                  {new Date(notification.created_at).toLocaleDateString()}
-                </small>
-              </span>
-              <div className="flex shrink-0 items-center gap-2">
-                {notification.status === "unread" && (
+                <div className="flex items-center gap-2 sm:shrink-0">
+                  {notification.status === "unread" && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        markServerNotificationRead(notification.id)
+                          .then((updated) =>
+                            setServerNotifications((current) =>
+                              current.map((item) => (item.id === updated.id ? updated : item)),
+                            ),
+                          )
+                          .catch(() => undefined);
+                      }}
+                      className={`${secondaryButtonClass} h-8 px-3 text-xs`}
+                    >
+                      <Check className="h-3.5 w-3.5" /> Mark as read
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      markServerNotificationRead(notification.id)
-                        .then((updated) =>
-                          setServerNotifications((current) =>
-                            current.map((item) => (item.id === updated.id ? updated : item)),
-                          ),
-                        )
-                        .catch(() => undefined);
+                      deleteNotification(notification.id);
                     }}
-                    className={`${secondaryButtonClass} h-8 px-3 text-xs`}
+                    aria-label="Delete notification"
+                    title="Delete notification"
+                    className="grid h-8 w-8 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Check className="h-3.5 w-3.5" /> Mark as read
+                    <Trash2 className="h-4 w-4" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    deleteNotification(notification.id);
-                  }}
-                  aria-label="Delete notification"
-                  title="Delete notification"
-                  className="grid h-8 w-8 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                </div>
               </div>
             </div>
           ))}
