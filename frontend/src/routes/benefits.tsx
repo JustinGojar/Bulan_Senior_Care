@@ -1054,11 +1054,11 @@ function BenefitTracking() {
           </div>
         )}
         <div className="mt-5 overflow-x-auto rounded-lg border border-border/60">
-          <table className="w-full min-w-[1040px] text-sm">
+          <table className="w-full min-w-[1040px] text-[13px]">
             <thead>
               <tr className="bg-muted text-left">
                 {canUpdateTransactions && (
-                  <th className="px-3 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  <th className="px-3 py-2.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                     Select
                   </th>
                 )}
@@ -1075,7 +1075,7 @@ function BenefitTracking() {
                 ].map((heading) => (
                   <th
                     key={heading}
-                    className={`px-4 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase ${heading === "Action" ? "w-[190px]" : ""}`}
+                    className={`px-3 py-2.5 text-[11px] font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase ${heading === "Action" ? "w-[190px]" : ""}`}
                   >
                     {heading}
                   </th>
@@ -1100,7 +1100,7 @@ function BenefitTracking() {
                 return (
                   <tr key={transaction.id} className="border-t border-border/60">
                     {canUpdateTransactions && (
-                      <td className="px-3 py-3.5">
+                      <td className="px-3 py-2.5">
                         {transaction.status === "pending" && (
                           <input
                             type="checkbox"
@@ -1119,25 +1119,35 @@ function BenefitTracking() {
                         )}
                       </td>
                     )}
-                    <td className="px-4 py-3.5 font-semibold">{seniorName}</td>
-                    <td className="px-4 py-3.5">{transaction.benefit.benefit_name}</td>
-                    <td className="px-4 py-3.5 whitespace-nowrap text-muted-foreground">
+                    <td className="min-w-40 px-3 py-2.5 font-semibold leading-snug">
+                      {seniorName}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      {transaction.benefit.benefit_name}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
                       {transaction.period_label ?? "-"}
                     </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
                       {transaction.senior.barangay?.barangay_name ?? "Unassigned"}
                     </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      {transaction.senior.encoder?.role === "leader"
-                        ? `BSCA: ${transaction.senior.encoder.name}`
-                        : (transaction.senior.encoder?.name ?? "Unknown")}
+                    <td className="px-3 py-2.5 text-muted-foreground">
+                      {transaction.senior.encoder?.role === "leader" && (
+                        <p className="text-[11px] font-semibold tracking-wider uppercase">BSCA</p>
+                      )}
+                      <p
+                        className="max-w-36 truncate"
+                        title={transaction.senior.encoder?.name ?? "Unknown"}
+                      >
+                        {transaction.senior.encoder?.name ?? "Unknown"}
+                      </p>
                     </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
+                    <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
                       {transaction.date_distributed
                         ? formatDate(transaction.date_distributed)
                         : "-"}
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap">
                       <StatusPill
                         tone={
                           transaction.status === "released"
@@ -1150,17 +1160,32 @@ function BenefitTracking() {
                         {statusLabel}
                       </StatusPill>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                      <p>
-                        Created by{" "}
-                        {transaction.creator?.name ?? transaction.distributor?.name ?? "Unknown"}
-                      </p>
-                      {transaction.created_at && (
-                        <p>{new Date(transaction.created_at).toLocaleString()}</p>
-                      )}
-                      {transaction.updater && (
-                        <p className="mt-1">Modified by {transaction.updater.name}</p>
-                      )}
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {(() => {
+                        const creator =
+                          transaction.creator?.name ?? transaction.distributor?.name ?? "Unknown";
+                        const updater = transaction.updater?.name;
+                        return (
+                          <>
+                            <p className="max-w-44 truncate" title={`Created by ${creator}`}>
+                              By {creator}
+                            </p>
+                            {transaction.created_at && (
+                              <p className="whitespace-nowrap">
+                                {new Date(transaction.created_at).toLocaleString(undefined, {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}
+                              </p>
+                            )}
+                            {updater && updater !== creator && (
+                              <p className="max-w-44 truncate" title={`Modified by ${updater}`}>
+                                Edited by {updater}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                       {transaction.attachment_path && (
                         <PrivateFileLink
                           path={benefitProofUrl(transaction.id, transaction.attachment_path)}
@@ -1171,7 +1196,7 @@ function BenefitTracking() {
                       )}
                     </td>
                     {canUpdateTransactions && (
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-2.5">
                         {transaction.status === "pending" ? (
                           <div className="flex flex-nowrap gap-2">
                             <button
@@ -1190,16 +1215,8 @@ function BenefitTracking() {
                             </button>
                           </div>
                         ) : (
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs font-bold ${transaction.status === "released" ? "text-success" : "text-destructive"}`}
-                          >
-                            {transaction.status === "released" ? (
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            ) : (
-                              <XCircle className="h-3.5 w-3.5" />
-                            )}
-                            {transaction.status === "released" ? "Received" : "Not received"}
-                          </span>
+                          // The Status column already shows the outcome.
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
                     )}
