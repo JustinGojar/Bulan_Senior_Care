@@ -31,7 +31,14 @@ import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, SkeletonValue } from "@/components/DesignKit";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TONE_BAR, TONE_ICON, panelClass, statCardClass, type Tone } from "@/components/design-kit";
+import {
+  TONE_BAR,
+  TONE_ICON,
+  panelClass,
+  statCardClass,
+  type Tone,
+  tableMessageClass,
+} from "@/components/design-kit";
 import { apiFetch, getStoredUser } from "@/lib/api";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -536,7 +543,7 @@ function Analytics() {
           title={isLeader ? "Your Barangay Summary" : "Barangay-Level Summary"}
           subtitle="Share of registered seniors who have received a benefit."
         />
-        <div className="mt-6 overflow-x-auto rounded-lg border border-border/60">
+        <div className="mt-6 @container overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="bg-muted text-left">
@@ -575,13 +582,15 @@ function Analytics() {
               {!loading && barangaySummary.length === 0 && (
                 <tr>
                   <td colSpan={4}>
-                    <EmptyState
-                      bare
-                      compact
-                      icon={MapPin}
-                      title="No barangay records yet"
-                      description="Each barangay's totals appear here once seniors are registered."
-                    />
+                    <div className={tableMessageClass}>
+                      <EmptyState
+                        bare
+                        compact
+                        icon={MapPin}
+                        title="No barangay records yet"
+                        description="Each barangay's totals appear here once seniors are registered."
+                      />
+                    </div>
                   </td>
                 </tr>
               )}
