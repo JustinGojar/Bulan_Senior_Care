@@ -62,8 +62,9 @@ class AuthController extends Controller
             'status' => 'active',
         ]);
         $user->syncRoles(['leader']);
+        $verificationSent = $user->trySendEmailVerification();
 
-        return response()->json(['user' => $user->load('roles')], 201);
+        return response()->json(['user' => $user->load('roles'), 'verification_email_sent' => $verificationSent], 201);
     }
 
     public function login(Request $request): JsonResponse
@@ -91,6 +92,11 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
+
+        if (! $user->hasVerifiedEmail()) {
+            return self::unverifiedLoginResponse($user);
+        }
+
         $user->forceFill(['last_login' => now()])->save();
         $user->tokens()->delete();
         $token = $user->createToken('bulan-seniorcare')->plainTextToken;
@@ -100,6 +106,24 @@ class AuthController extends Controller
             'user' => $user->load('roles'),
             'session' => self::sessionLimits(),
         ])->withCookie(AuthenticateFromCookie::issue($request, $token));
+    }
+
+    /**
+     * Refuses the sign-in and emails a fresh verification link, at most once a minute.
+     */
+    private static function unverifiedLoginResponse(User $user): JsonResponse
+    {
+        $resendKey = 'verify-email:'.$user->id;
+        if (RateLimiter::tooManyAttempts($resendKey, 1)) {
+            $message = 'Please verify your email address before logging in. Check your inbox for the verification link we sent to '.$user->email.'.';
+        } else {
+            RateLimiter::hit($resendKey, 60);
+            $message = $user->trySendEmailVerification()
+                ? 'Please verify your email address before logging in. We sent a new verification link to '.$user->email.'.'
+                : 'Please verify your email address before logging in. We could not send a new verification link right now. Please try again later.';
+        }
+
+        return response()->json(['message' => $message, 'email_unverified' => true], 403);
     }
 
     /**
@@ -172,6 +196,37 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Your password has been reset. You can now log in.']);
+    }
+
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'id' => ['required', 'integer'],
+            'hash' => ['required', 'string'],
+            'expires' => ['required', 'integer'],
+            'signature' => ['required', 'string'],
+        ]);
+
+        $id = (int) $data['id'];
+        $expires = (int) $data['expires'];
+        $user = User::find($id);
+        $valid = $user
+            && hash_equals(User::emailVerificationSignature($id, $data['hash'], $expires), $data['signature'])
+            && hash_equals(sha1($user->getEmailForVerification()), $data['hash']);
+
+        if (! $valid) {
+            return response()->json(['message' => 'This verification link is invalid. Log in to get a new one.'], 422);
+        }
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['message' => 'Your email address is already verified. You can log in.']);
+        }
+        if ($expires < now()->getTimestamp()) {
+            return response()->json(['message' => 'This verification link has expired. Log in to get a new one.'], 422);
+        }
+
+        $user->markEmailAsVerified();
+
+        return response()->json(['message' => 'Your email address has been verified. You can now log in.']);
     }
 
     public function logout(Request $request): JsonResponse

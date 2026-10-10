@@ -47,6 +47,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($accounts as $account) {
             $user = User::updateOrCreate(['email' => $account['email']], [...$account, 'password' => 'password']);
+            $user->forceFill(['email_verified_at' => $user->email_verified_at ?? now()])->save();
             $user->syncRoles([$account['role']]);
         }
 

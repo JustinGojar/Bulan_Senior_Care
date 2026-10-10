@@ -46,6 +46,8 @@ class BscaLeaderSeeder extends Seeder
                 'address' => "{$name}, Bulan, Sorsogon",
                 'status' => 'active',
             ]);
+            // The office provisions these accounts, so they skip email verification.
+            $leader->forceFill(['email_verified_at' => now()])->save();
             $leader->syncRoles(['leader']);
             $created++;
         }

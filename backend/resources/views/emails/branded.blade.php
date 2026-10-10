@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Reset your password</title>
+<title>{{ $heading }}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #eef2f6; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937;">
-<div style="display: none; max-height: 0; overflow: hidden;">Use this link to reset your Bulan SeniorCare password. It expires in {{ $expires }} minutes.</div>
+<div style="display: none; max-height: 0; overflow: hidden;">{{ $preheader }}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #eef2f6;">
 <tr>
 <td align="center" style="padding: 32px 16px;">
@@ -26,14 +26,14 @@
 {{-- Body --}}
 <tr>
 <td style="padding: 36px 40px 8px;">
-<h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 700; color: #173A52;">Reset your password</h1>
+<h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 700; color: #173A52;">{{ $heading }}</h1>
 <p style="margin: 0 0 20px; font-size: 15px; line-height: 24px; color: #4b5563;">Hello {{ $name }},</p>
-<p style="margin: 0 0 28px; font-size: 15px; line-height: 24px; color: #4b5563;">We received a request to reset the password for your Bulan SeniorCare account. Click the button below to choose a new password.</p>
+<p style="margin: 0 0 28px; font-size: 15px; line-height: 24px; color: #4b5563;">{{ $intro }}</p>
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin: 0 auto 28px;">
 <tr>
 <td align="center" bgcolor="#173A52" style="border-radius: 8px;">
-<a href="{{ $url }}" target="_blank" rel="noopener" style="display: inline-block; padding: 14px 36px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; background-color: #173A52;">Reset password</a>
+<a href="{{ $url }}" target="_blank" rel="noopener" style="display: inline-block; padding: 14px 36px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px; background-color: #173A52;">{{ $actionText }}</a>
 </td>
 </tr>
 </table>
@@ -41,7 +41,7 @@
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px;">
 <tr>
 <td style="background-color: #fdf8ea; border-left: 4px solid #d4a72c; border-radius: 6px; padding: 14px 16px; font-size: 14px; line-height: 21px; color: #6b5310;">
-This link will expire in <strong>{{ $expires }} minutes</strong>. If you did not request a password reset, you can safely ignore this email &mdash; your password will not change.
+{{ $notice }}
 </td>
 </tr>
 </table>
