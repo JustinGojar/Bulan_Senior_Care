@@ -62,7 +62,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
+import { BARANGAYS, benefitForAge, benefitLabel, type Senior } from "@/lib/osca-data";
 import {
   apiFetch,
   bulkCreateSeniors,
@@ -733,7 +733,11 @@ function SeniorRecords() {
         document.text(String(senior.age), 118, y);
         document.text(document.splitTextToSize(senior.barangay, 52)[0] ?? senior.barangay, 138, y);
         document.text(document.splitTextToSize(senior.contact, 34)[0] ?? senior.contact, 195, y);
-        document.text(document.splitTextToSize(senior.benefit, 34)[0] ?? senior.benefit, 235, y);
+        document.text(
+          document.splitTextToSize(benefitLabel(senior.benefit), 34)[0] ?? senior.benefit,
+          235,
+          y,
+        );
         document.text(senior.status, 275, y);
         y += 7;
       });
@@ -1032,7 +1036,7 @@ function SeniorRecords() {
                   <td className="px-4 py-3.5 whitespace-nowrap text-muted-foreground">
                     {s.contact}
                   </td>
-                  <td className="max-w-40 px-4 py-3.5">{s.benefit}</td>
+                  <td className="max-w-40 px-4 py-3.5">{benefitLabel(s.benefit)}</td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
                   </td>
@@ -1337,7 +1341,7 @@ function SeniorRecords() {
               ["Age", viewing?.age],
               ["Barangay", viewing?.barangay],
               ["Contact", viewing?.contact],
-              ["Benefit", viewing?.benefit],
+              ["Benefits", viewing && benefitLabel(viewing.benefit)],
             ].map(([label, value]) => (
               <div key={String(label)} className={`${tileClass} p-3`}>
                 <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">

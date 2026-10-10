@@ -14,6 +14,7 @@ import {
 } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import { apiFetch, getStoredUser, type AnalyticsReport } from "@/lib/api";
+import { benefitLabel } from "@/lib/osca-data";
 import { loadPdfLogo } from "@/lib/pdf";
 import { useSeniors } from "@/lib/use-seniors";
 
@@ -133,7 +134,11 @@ function Reports() {
       document.text(document.splitTextToSize(senior.name, 55)[0] ?? senior.name, 45, y);
       document.text(String(senior.age), 105, y);
       document.text(document.splitTextToSize(senior.barangay, 40)[0] ?? senior.barangay, 122, y);
-      document.text(document.splitTextToSize(senior.benefit, 28)[0] ?? senior.benefit, 165, y);
+      document.text(
+        document.splitTextToSize(benefitLabel(senior.benefit), 28)[0] ?? senior.benefit,
+        165,
+        y,
+      );
       document.text(senior.status, 195, y);
       y += 7;
     });
@@ -295,7 +300,7 @@ function Reports() {
                     <td className="px-3 py-3 font-semibold">{senior.name}</td>
                     <td className="px-3 py-3">{senior.age}</td>
                     <td className="px-3 py-3">{senior.barangay}</td>
-                    <td className="px-3 py-3">{senior.benefit}</td>
+                    <td className="px-3 py-3">{benefitLabel(senior.benefit)}</td>
                     <td className="px-3 py-3">
                       <StatusPill
                         tone={

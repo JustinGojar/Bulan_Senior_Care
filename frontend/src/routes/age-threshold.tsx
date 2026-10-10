@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
+import { EligibilityFlagDialog } from "@/components/EligibilityFlagDialog";
 import {
   EmptyState,
   RowSkeletons,
@@ -41,7 +42,10 @@ import { cn } from "@/lib/utils";
 import {
   BENEFIT_PROGRAMS,
   findNewEligibilityFlags,
+  programAgeLabel,
+  qualifiesFor,
   type BenefitProgram,
+  type EligibilityFlag,
   type Senior,
 } from "@/lib/osca-data";
 import { useSeniors } from "@/lib/use-seniors";
@@ -112,6 +116,7 @@ function AgeThresholdPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<BenefitProgram | null>(null);
+  const [selectedFlag, setSelectedFlag] = useState<EligibilityFlag | null>(null);
   const [flagsPage, setFlagsPage] = useState(1);
   const [seniorsPage, setSeniorsPage] = useState(1);
   const [selectedBarangay, setSelectedBarangay] = useState("All");
@@ -147,11 +152,7 @@ function AgeThresholdPage() {
   const programs = BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension");
   const selectedSeniors = selectedProgram
     ? scopedSeniors
-        .filter(
-          (senior) =>
-            senior.age >= selectedProgram.minAge &&
-            (selectedProgram.maxAge === undefined || senior.age <= selectedProgram.maxAge),
-        )
+        .filter((senior) => qualifiesFor(selectedProgram, senior.age))
         .sort((first, second) => first.age - second.age || first.name.localeCompare(second.name))
     : [];
   const flagsLastPage = pageCount(flags.length, FLAGS_PER_PAGE);
@@ -168,11 +169,7 @@ function AgeThresholdPage() {
   );
 
   const inBracket = (program: BenefitProgram) =>
-    scopedSeniors.filter(
-      (senior) =>
-        senior.age >= program.minAge &&
-        (program.maxAge === undefined || senior.age <= program.maxAge),
-    ).length;
+    scopedSeniors.filter((senior) => qualifiesFor(program, senior.age)).length;
 
   return (
     <AppShell
@@ -213,17 +210,13 @@ function AgeThresholdPage() {
                 setSelectedProgram(program);
                 setSeniorsPage(1);
               }}
-              aria-label={`Show seniors aged ${program.minAge}${program.maxAge ? ` to ${program.maxAge}` : " and older"}`}
+              aria-label={`Show seniors for ${program.name} (${programAgeLabel(program)})`}
               className={cn(statCardClass, "min-w-0 p-2.5 text-left sm:p-4")}
             >
               <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR.gold}`} />
               <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
                 <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
-                  {program.maxAge === undefined
-                    ? "No upper limit"
-                    : program.maxAge === program.minAge
-                      ? `Age ${program.minAge}`
-                      : `Ages ${program.minAge}–${program.maxAge}`}
+                  {programAgeLabel(program)}
                 </p>
                 <span className={cn(badgeClass, "max-sm:px-1.5 max-sm:text-[10px]")}>
                   {loading ? (
@@ -239,7 +232,7 @@ function AgeThresholdPage() {
                 </span>
               </div>
               <p className="font-display mt-1.5 text-xl leading-none font-extrabold sm:text-2xl">
-                {program.minAge}+
+                {program.ages ? program.ages.join(" & ") : `${program.minAge}+`}
               </p>
               <p className="mt-2 text-xs leading-tight font-bold wrap-break-word sm:text-sm">
                 {program.name}
@@ -266,18 +259,26 @@ function AgeThresholdPage() {
           }
         />
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {visibleFlags.map(({ senior, program, reason }) => (
-            <article key={`${senior.id}-${program.type}`} className={tileClass}>
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold">{senior.name}</p>
-                <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
-                  Age {senior.age}
-                </span>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
-            </article>
-          ))}
+          {visibleFlags.map((flag) => {
+            const { senior, program, reason } = flag;
+            return (
+              <button
+                type="button"
+                key={`${senior.id}-${program.type}`}
+                onClick={() => setSelectedFlag(flag)}
+                className={`${tileClass} cursor-pointer text-left transition-[border-color,box-shadow] hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-bold">{senior.name}</p>
+                  <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
+                    Age {senior.age}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+              </button>
+            );
+          })}
           {loading && <TileSkeletons label="Loading senior records" />}
           {!loading && loadError && (
             <div className="md:col-span-2 xl:col-span-3">
@@ -301,6 +302,8 @@ function AgeThresholdPage() {
         />
       </section>
 
+      <EligibilityFlagDialog flag={selectedFlag} onClose={() => setSelectedFlag(null)} />
+
       <Dialog
         open={selectedProgram !== null}
         onOpenChange={(open) => !open && setSelectedProgram(null)}
@@ -310,7 +313,7 @@ function AgeThresholdPage() {
             <DialogTitle className="font-display">{selectedProgram?.name}</DialogTitle>
             <DialogDescription>
               {selectedProgram &&
-                `Senior records aged ${selectedProgram.minAge}${selectedProgram.maxAge ? `-${selectedProgram.maxAge}` : " and older"}.`}
+                `Senior records for ${programAgeLabel(selectedProgram).toLowerCase()}.`}
             </DialogDescription>
           </DialogHeader>
           {loading ? (

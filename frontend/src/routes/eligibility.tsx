@@ -28,7 +28,7 @@ import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
 import { getStoredUser, seniorFileUrl, type SeniorFileKind } from "@/lib/api";
 import { useSeniors } from "@/lib/use-seniors";
-import { BARANGAYS, type Senior } from "@/lib/osca-data";
+import { BARANGAYS, benefitLabel, type Senior } from "@/lib/osca-data";
 import {
   Dialog,
   DialogContent,
@@ -381,7 +381,7 @@ function EligibilityReview() {
               ["Age", viewing?.age],
               ["Barangay", viewing?.barangay],
               ["Contact", viewing?.contact],
-              ["Benefit", viewing?.benefit],
+              ["Benefits", viewing && benefitLabel(viewing.benefit)],
               ["Status", viewing?.status],
             ].map(([label, value]) => (
               <div key={String(label)} className={`${tileClass} p-3`}>

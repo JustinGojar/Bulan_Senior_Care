@@ -202,6 +202,8 @@ export type BenefitTransaction = {
   attachment_path?: string | null;
   creator?: { name: string; role: string } | null;
   updater?: { name: string; role: string } | null;
+  /** The release batch this record belongs to, with its scheduled date. */
+  benefit_release?: { id: number; release_date: string; status: string } | null;
 };
 
 export type BenefitRelease = {
@@ -820,6 +822,13 @@ export function createAnnouncementComment(
     method: "POST",
     body,
   });
+}
+
+/** One senior's benefit records, newest first. */
+export function getSeniorBenefitRecords(oscaId: string) {
+  return apiFetch<PaginatedResponse<BenefitTransaction>>(
+    `/benefit-transactions?senior=${encodeURIComponent(oscaId)}&per_page=50`,
+  );
 }
 
 export function deleteAnnouncement(announcementId: number) {

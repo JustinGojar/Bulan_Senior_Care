@@ -64,7 +64,7 @@ class AgeThresholdNotificationTest extends TestCase
 
         $this->assertDatabaseHas('notifications', [
             'recipient_account_id' => $localLeader->id,
-            'message' => 'Maria Santos is eligible for Octogenarian Grant.',
+            'message' => 'Maria Santos has turned 80. You can now claim these benefits: Social Pension and Octogenarian Grant.',
             'source_type' => 'age_threshold',
             'source_id' => $senior->id,
             'channel' => 'in_app',
@@ -86,7 +86,7 @@ class AgeThresholdNotificationTest extends TestCase
 
         $this->assertDatabaseHas('notifications', [
             'recipient_account_id' => $leader->id,
-            'message' => 'Lola Reyes is eligible for Centenarian Award.',
+            'message' => 'Lola Reyes has turned 100. You can now claim these benefits: Social Pension and Centenarian Award.',
             'source_type' => 'age_threshold',
         ]);
     }
@@ -101,7 +101,7 @@ class AgeThresholdNotificationTest extends TestCase
         $this->actingAs($leader, 'sanctum')
             ->getJson('/api/notifications')
             ->assertOk()
-            ->assertJsonFragment(['message' => 'Lola Reyes is eligible for Centenarian Award.']);
+            ->assertJsonFragment(['message' => 'Lola Reyes has turned 100. You can now claim these benefits: Social Pension and Centenarian Award.']);
     }
 
     /** @return array{0: Barangay, 1: User} */

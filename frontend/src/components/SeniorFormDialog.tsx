@@ -22,7 +22,7 @@ import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { PrivateFileLink } from "@/components/PrivateFile";
 import { seniorFileUrl } from "@/lib/api";
-import { BARANGAYS, benefitForAge, type Senior } from "@/lib/osca-data";
+import { BARANGAYS, benefitForAge, benefitsFor, type Senior } from "@/lib/osca-data";
 import type { SeniorDraft } from "@/lib/use-seniors";
 
 const EMPTY: SeniorDraft = {
@@ -582,13 +582,20 @@ export function SeniorFormDialog({
               </div>
 
               <div>
-                <Label>Benefit</Label>
+                <Label>Benefits</Label>
                 <p
                   aria-live="polite"
-                  className="mt-1.5 flex h-9 cursor-not-allowed items-center rounded-lg border border-input bg-muted px-3 text-sm font-medium text-foreground select-none"
+                  className="mt-1.5 flex min-h-9 cursor-not-allowed flex-wrap items-center gap-1.5 rounded-lg border border-input bg-muted px-3 py-1.5 text-sm font-medium text-foreground select-none"
                 >
                   {draft.birthdate ? (
-                    benefitForAge(draft.age)
+                    benefitsFor(benefitForAge(draft.age)).map((benefit) => (
+                      <span
+                        key={benefit}
+                        className="rounded-md border border-border bg-card px-2 py-0.5 text-xs font-semibold"
+                      >
+                        {benefit}
+                      </span>
+                    ))
                   ) : (
                     <span className="font-normal text-muted-foreground">
                       Based on date of birth
@@ -596,8 +603,8 @@ export function SeniorFormDialog({
                   )}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  80–85 Octogenarian · 90–95 Nonagenarian · 100 Centenarian · other ages Social
-                  Pension
+                  Everyone gets Social Pension. Also at age 80 or 85: Octogenarian · 90 or 95:
+                  Nonagenarian · 100: Centenarian
                 </p>
               </div>
             </div>

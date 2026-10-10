@@ -21,7 +21,9 @@ class BenefitTransactionController extends Controller
         $perPage = min(1000, max(10, $request->integer('per_page', 25)));
         // The release period, e.g. "October 2026", so each month's records can be seen on their own.
         $period = $request->string('period')->trim()->toString();
-        $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}:".sha1($period);
+        // One senior's records, by OSCA ID, e.g. for the release dates on an eligibility flag.
+        $senior = $request->string('senior')->trim()->toString();
+        $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}:".sha1($period.'|'.$senior);
         $visible = function () use ($request) {
             $query = BenefitTransaction::query()->whereHas('senior')->whereHas('benefit');
             if ($request->user()->role === 'leader') {
@@ -30,7 +32,7 @@ class BenefitTransactionController extends Controller
 
             return $query;
         };
-        $loadTransactions = function () use ($visible, $period, $page, $perPage) {
+        $loadTransactions = function () use ($visible, $period, $senior, $page, $perPage) {
             return $visible()
                 ->with([
                     'senior.barangay',
@@ -39,8 +41,10 @@ class BenefitTransactionController extends Controller
                     'distributor:id,name,role',
                     'creator:id,name,role',
                     'updater:id,name,role',
+                    'benefitRelease:id,release_date,status',
                 ])
                 ->when($period !== '', fn ($query) => $query->where('period_label', $period))
+                ->when($senior !== '', fn ($query) => $query->whereHas('senior', fn ($match) => $match->where('osca_id_number', $senior)))
                 ->latest()
                 ->paginate($perPage, ['*'], 'page', $page)
                 ->toArray();

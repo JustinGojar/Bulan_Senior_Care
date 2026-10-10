@@ -32,9 +32,14 @@ export type SeniorDraft = Omit<Senior, "id"> & {
 
 function mapSenior(senior: ApiSenior): Senior {
   const birthdate = new Date(`${String(senior.birthdate).slice(0, 10)}T00:00:00`);
+  const today = new Date();
+  const birthdayPassed =
+    today.getMonth() > birthdate.getMonth() ||
+    (today.getMonth() === birthdate.getMonth() && today.getDate() >= birthdate.getDate());
+  // Exact age: milestone grants are given at exact ages, so the birthday must have passed.
   const age = Number.isNaN(birthdate.getTime())
     ? 0
-    : Math.max(0, new Date().getFullYear() - birthdate.getFullYear());
+    : Math.max(0, today.getFullYear() - birthdate.getFullYear() - (birthdayPassed ? 0 : 1));
   const fallbackBenefit = benefitForAge(age);
   return {
     id: senior.osca_id_number,

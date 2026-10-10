@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { EligibilityFlagDialog } from "@/components/EligibilityFlagDialog";
 import { EmptyState, SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -53,7 +54,7 @@ import {
   type AnnouncementComment,
   type Overview,
 } from "@/lib/api";
-import { findNewEligibilityFlags } from "@/lib/osca-data";
+import { findNewEligibilityFlags, type EligibilityFlag } from "@/lib/osca-data";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/dashboard")({
@@ -181,6 +182,7 @@ function Dashboard() {
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentImage, setCommentImage] = useState<File | null>(null);
   const [confirm, confirmDialog] = useConfirmDialog();
+  const [selectedFlag, setSelectedFlag] = useState<EligibilityFlag | null>(null);
   const [commentImagePreview, setCommentImagePreview] = useState<string | null>(null);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -643,18 +645,26 @@ function Dashboard() {
           }
         />
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {eligibilityFlags.slice(0, 6).map(({ senior, program, reason }) => (
-            <div key={`${senior.id}-${program.type}`} className={tileClass}>
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold">{senior.name}</p>
-                <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
-                  Age {senior.age}
-                </span>
-              </div>
-              <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
-            </div>
-          ))}
+          {eligibilityFlags.slice(0, 6).map((flag) => {
+            const { senior, program, reason } = flag;
+            return (
+              <button
+                type="button"
+                key={`${senior.id}-${program.type}`}
+                onClick={() => setSelectedFlag(flag)}
+                className={`${tileClass} cursor-pointer text-left transition-[border-color,box-shadow] hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-bold">{senior.name}</p>
+                  <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-foreground dark:text-gold">
+                    Age {senior.age}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+              </button>
+            );
+          })}
           {loading && <TileSkeletons label="Loading senior records" />}
           {!loading && eligibilityFlags.length === 0 && (
             <EmptyState
@@ -995,6 +1005,7 @@ function Dashboard() {
           </article>
         </div>
       )}
+      <EligibilityFlagDialog flag={selectedFlag} onClose={() => setSelectedFlag(null)} />
       {confirmDialog}
     </AppShell>
   );
