@@ -188,10 +188,6 @@ export type BenefitTransaction = {
   date_distributed?: string | null;
   reference_number?: string | null;
   remarks?: string | null;
-  payout_method?: "cash" | "atm";
-  /** Where an ATM payout is with the bank; null for cash payouts. */
-  bank_status?: BankStatus | null;
-  bank_remarks?: string | null;
   senior: {
     osca_id_number: string;
     first_name: string;
@@ -207,8 +203,6 @@ export type BenefitTransaction = {
   creator?: { name: string; role: string } | null;
   updater?: { name: string; role: string } | null;
 };
-
-export type BankStatus = "for_payroll" | "sent_to_bank" | "credited" | "crediting_failed";
 
 export type BenefitRelease = {
   id: number;

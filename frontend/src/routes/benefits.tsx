@@ -97,18 +97,6 @@ function localToday() {
 
 const PROGRAM_ICONS = [Coins, Gift, Users, HeartHandshake, Banknote, Award];
 
-/** An ATM payout can only be confirmed received once the bank has credited the account. */
-function awaitingBank(transaction: BenefitTransaction) {
-  return transaction.payout_method === "atm" && transaction.bank_status !== "credited";
-}
-
-const BANK_STATUS_LABEL: Record<string, string> = {
-  for_payroll: "ATM · For payroll",
-  sent_to_bank: "ATM · Waiting for bank",
-  credited: "ATM · Credited",
-  crediting_failed: "ATM · Crediting failed",
-};
-
 function BenefitTracking() {
   const navigate = useNavigate();
   const [confirm, confirmDialog] = useConfirmDialog();
@@ -219,7 +207,7 @@ function BenefitTracking() {
     !release.barangays?.length ||
     release.barangays.some((barangay) => barangay.barangay_name === selectedBarangay);
   const pendingTransactions = filteredTransactions.filter(
-    (transaction) => transaction.status === "pending" && !awaitingBank(transaction),
+    (transaction) => transaction.status === "pending",
   );
   const allPendingSelected =
     pendingTransactions.length > 0 &&
@@ -1113,7 +1101,7 @@ function BenefitTracking() {
                   <tr key={transaction.id} className="border-t border-border/60">
                     {canUpdateTransactions && (
                       <td className="px-3 py-3.5">
-                        {transaction.status === "pending" && !awaitingBank(transaction) && (
+                        {transaction.status === "pending" && (
                           <input
                             type="checkbox"
                             checked={selectedTransactionIds.includes(transaction.id)}
@@ -1161,11 +1149,6 @@ function BenefitTracking() {
                       >
                         {statusLabel}
                       </StatusPill>
-                      {transaction.bank_status && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {BANK_STATUS_LABEL[transaction.bank_status]}
-                        </p>
-                      )}
                     </td>
                     <td className="px-4 py-3.5 text-xs text-muted-foreground">
                       <p>
@@ -1189,11 +1172,7 @@ function BenefitTracking() {
                     </td>
                     {canUpdateTransactions && (
                       <td className="px-4 py-3.5">
-                        {transaction.status === "pending" && awaitingBank(transaction) ? (
-                          <span className="text-xs font-semibold text-muted-foreground">
-                            Waiting for bank
-                          </span>
-                        ) : transaction.status === "pending" ? (
+                        {transaction.status === "pending" ? (
                           <div className="flex flex-nowrap gap-2">
                             <button
                               type="button"

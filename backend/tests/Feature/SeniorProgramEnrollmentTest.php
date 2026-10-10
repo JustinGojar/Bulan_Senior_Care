@@ -43,7 +43,7 @@ class SeniorProgramEnrollmentTest extends TestCase
 
         $senior = SeniorCitizen::sole();
         $this->assertSame($pension->id, $senior->benefit_id);
-        // Payment records come only from release batches and ATM payrolls.
+        // Payment records come only from release batches.
         $this->assertSame(0, BenefitTransaction::count());
 
         $this->actingAs($admin, 'sanctum')
