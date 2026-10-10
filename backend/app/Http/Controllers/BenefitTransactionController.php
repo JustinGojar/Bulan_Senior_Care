@@ -129,11 +129,6 @@ class BenefitTransactionController extends Controller
             'remarks' => ['nullable', 'string', 'max:500'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
-        abort_if(
-            $data['status'] === 'released' && $benefitTransaction->payout_method === 'atm' && $benefitTransaction->bank_status !== 'credited',
-            422,
-            "The bank has not credited this senior's ATM account yet, so it cannot be marked received.",
-        );
         if ($request->hasFile('attachment')) {
             $data['attachment_path'] = $request->file('attachment')->store('benefit-proofs', SeniorCitizen::FILE_DISK);
         }

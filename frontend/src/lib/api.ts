@@ -188,10 +188,6 @@ export type BenefitTransaction = {
   date_distributed?: string | null;
   reference_number?: string | null;
   remarks?: string | null;
-  payout_method?: "cash" | "atm";
-  /** Where an ATM payout is with the bank; null for cash payouts. */
-  bank_status?: BankStatus | null;
-  bank_remarks?: string | null;
   senior: {
     osca_id_number: string;
     first_name: string;
@@ -207,47 +203,6 @@ export type BenefitTransaction = {
   creator?: { name: string; role: string } | null;
   updater?: { name: string; role: string } | null;
 };
-
-export type BankStatus = "for_payroll" | "sent_to_bank" | "credited" | "crediting_failed";
-
-export type PayrollBatchSummary = {
-  id: number;
-  batch_number: string;
-  period_label: string;
-  status: "draft" | "sent_to_bank" | "reconciled";
-  sent_at?: string | null;
-  bank_reference?: string | null;
-  crediting_report_path?: string | null;
-  created_at: string;
-  benefit: { id: number; benefit_name: string; amount?: string | null };
-  creator?: { name: string; role: string } | null;
-  transactions_count?: number;
-  credited_count?: number;
-  failed_count?: number;
-  received_count?: number;
-  total_amount?: string | number | null;
-};
-
-export type PayrollItem = {
-  id: number;
-  amount: string;
-  status: "pending" | "released" | "failed";
-  bank_status: BankStatus | null;
-  bank_remarks?: string | null;
-  date_distributed?: string | null;
-  senior: {
-    osca_id_number: string;
-    first_name: string;
-    middle_name?: string | null;
-    last_name: string;
-    atm_account_last4?: string | null;
-    barangay?: { barangay_name: string } | null;
-  } | null;
-};
-
-export type PayrollBatch = PayrollBatchSummary & { transactions: PayrollItem[] };
-
-export type PayrollRowResult = { row: number; osca_id_number: string; message: string };
 
 export type BenefitRelease = {
   id: number;
@@ -700,77 +655,6 @@ export function deleteReleaseDocument(releaseId: number, documentId: number) {
 
 export function releaseDocumentUrl(releaseId: number, document: ReleaseDocument) {
   return `/benefit-releases/${releaseId}/documents/${document.id}?v=${encodeURIComponent(document.path)}`;
-}
-
-export function getPayrollBatches() {
-  return apiFetch<PayrollBatchSummary[]>("/payroll-batches", { cache: "no-store" });
-}
-
-export function getPayrollBatch(id: number) {
-  return apiFetch<PayrollBatch>(`/payroll-batches/${id}`, { cache: "no-store" });
-}
-
-export function createPayrollBatch(data: { benefit_id: number; period_label: string }) {
-  return apiFetch<PayrollBatch>("/payroll-batches", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-export function deletePayrollBatch(id: number) {
-  return apiFetch<void>(`/payroll-batches/${id}`, { method: "DELETE" });
-}
-
-export function markPayrollSent(id: number, data: { sent_at: string; bank_reference: string }) {
-  return apiFetch<PayrollBatch>(`/payroll-batches/${id}/sent`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-}
-
-/** Records the bank's crediting report; the original file is kept as proof when given. */
-export function recordPayrollCrediting(
-  id: number,
-  results: Array<{ osca_id_number: string; credited: boolean; reason?: string }>,
-  report: File | null,
-) {
-  const body = new FormData();
-  results.forEach((result, index) => {
-    body.append(`results[${index}][osca_id_number]`, result.osca_id_number);
-    body.append(`results[${index}][credited]`, result.credited ? "1" : "0");
-    if (result.reason) body.append(`results[${index}][reason]`, result.reason);
-  });
-  if (report) body.append("report", report);
-  return apiFetch<{
-    batch: PayrollBatch;
-    credited: number;
-    failed: number;
-    unmatched: PayrollRowResult[];
-  }>(`/payroll-batches/${id}/crediting`, { method: "POST", body });
-}
-
-export function setPayrollItemResult(
-  batchId: number,
-  transactionId: number,
-  data: { credited: boolean; reason?: string },
-) {
-  return apiFetch<PayrollBatch>(`/payroll-batches/${batchId}/items/${transactionId}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-}
-
-export function importAtmAccounts(
-  accounts: Array<{ osca_id_number: string; account_last4: string }>,
-) {
-  return apiFetch<{ updated: number; unmatched: PayrollRowResult[] }>("/atm-accounts", {
-    method: "POST",
-    body: JSON.stringify({ accounts }),
-  });
-}
-
-export function payrollReportUrl(batchId: number, storedPath: string) {
-  return `/payroll-batches/${batchId}/report?v=${encodeURIComponent(storedPath)}`;
 }
 
 export function bulkCreateSeniors(records: Array<Record<string, string>>) {

@@ -20,7 +20,6 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -85,11 +84,6 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PayrollRoute = PayrollRouteImport.update({
-  id: '/payroll',
-  path: '/payroll',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -143,7 +137,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
-  '/payroll': typeof PayrollRoute
   '/profile': typeof ProfileRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
@@ -165,7 +158,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
-  '/payroll': typeof PayrollRoute
   '/profile': typeof ProfileRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
@@ -188,7 +180,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
-  '/payroll': typeof PayrollRoute
   '/profile': typeof ProfileRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
@@ -212,7 +203,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/messages'
     | '/notifications'
-    | '/payroll'
     | '/profile'
     | '/releases'
     | '/reports'
@@ -234,7 +224,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/messages'
     | '/notifications'
-    | '/payroll'
     | '/profile'
     | '/releases'
     | '/reports'
@@ -256,7 +245,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/messages'
     | '/notifications'
-    | '/payroll'
     | '/profile'
     | '/releases'
     | '/reports'
@@ -279,7 +267,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
-  PayrollRoute: typeof PayrollRoute
   ProfileRoute: typeof ProfileRoute
   ReleasesRoute: typeof ReleasesRoute
   ReportsRoute: typeof ReportsRoute
@@ -369,13 +356,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/payroll': {
-      id: '/payroll'
-      path: '/payroll'
-      fullPath: '/payroll'
-      preLoaderRoute: typeof PayrollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -447,7 +427,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
-  PayrollRoute: PayrollRoute,
   ProfileRoute: ProfileRoute,
   ReleasesRoute: ReleasesRoute,
   ReportsRoute: ReportsRoute,
