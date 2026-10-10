@@ -45,6 +45,7 @@ import {
   secondaryButtonClass,
   statCardClass,
   tileClass,
+  tableMessageClass,
 } from "@/components/design-kit";
 import { PrivateFileLink } from "@/components/PrivateFile";
 import { ReleaseRosterDialog } from "@/components/ReleaseRosterDialog";
@@ -1053,7 +1054,7 @@ function BenefitTracking() {
             </div>
           </div>
         )}
-        <div className="mt-5 overflow-x-auto rounded-lg border border-border/60">
+        <div className="mt-5 @container overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[1040px] text-[13px]">
             <thead>
               <tr className="bg-muted text-left">
@@ -1226,13 +1227,15 @@ function BenefitTracking() {
               {filteredTransactions.length === 0 && (
                 <tr>
                   <td colSpan={canUpdateTransactions ? 10 : 8}>
-                    <EmptyState
-                      bare
-                      icon={Search}
-                      title="No release records"
-                      description="Nothing matches the selected barangay, benefit and status."
-                      className="py-12"
-                    />
+                    <div className={tableMessageClass}>
+                      <EmptyState
+                        bare
+                        icon={Search}
+                        title="No release records"
+                        description="Nothing matches the selected barangay, benefit and status."
+                        className="py-12"
+                      />
+                    </div>
                   </td>
                 </tr>
               )}

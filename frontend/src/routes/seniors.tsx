@@ -40,6 +40,7 @@ import {
   panelClass,
   primaryButtonClass,
   secondaryButtonClass,
+  tableMessageClass,
   tileClass,
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
@@ -972,7 +973,7 @@ function SeniorRecords() {
         </section>
       )}
 
-      <div className={`${panelClass} mt-5 overflow-x-auto`}>
+      <div className={`${panelClass} mt-5 @container overflow-x-auto`}>
         <table className="w-full min-w-[880px] border-collapse text-sm [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-border/60 bg-muted text-left">
@@ -1005,11 +1006,13 @@ function SeniorRecords() {
               />
             ) : error ? (
               <tr>
-                <td colSpan={8} className="px-5 py-12">
-                  <div className="mx-auto max-w-md">
-                    <AuthAlert tone="error">
-                      Unable to load senior records. Please refresh and try again.
-                    </AuthAlert>
+                <td colSpan={8} className="py-12">
+                  <div className={tableMessageClass}>
+                    <div className="mx-auto max-w-md px-5">
+                      <AuthAlert tone="error">
+                        Unable to load senior records. Please refresh and try again.
+                      </AuthAlert>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -1109,13 +1112,15 @@ function SeniorRecords() {
             {!loading && !error && rows.length === 0 && (
               <tr>
                 <td colSpan={8}>
-                  <EmptyState
-                    bare
-                    icon={Search}
-                    title="No records match this filter"
-                    description="Try a different search or reset the filters."
-                    className="py-14"
-                  />
+                  <div className={tableMessageClass}>
+                    <EmptyState
+                      bare
+                      icon={Search}
+                      title="No records match this filter"
+                      description="Try a different search or reset the filters."
+                      className="py-14"
+                    />
+                  </div>
                 </td>
               </tr>
             )}
