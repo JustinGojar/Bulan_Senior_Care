@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { rolePathRewrite } from "@/lib/role-path";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
@@ -11,6 +12,7 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 1000 * 60 * 5,
+    rewrite: rolePathRewrite,
   });
 
   return router;

@@ -19,6 +19,7 @@ import {
   setStoredUser,
   type ApiUser,
 } from "@/lib/api";
+import { PUBLIC_PATHS, rolePrefixFor, rolePrefixOf } from "@/lib/role-path";
 import { THEME_KEY } from "@/lib/theme";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { FormValidation } from "@/components/FormValidation";
@@ -31,7 +32,6 @@ import { toast } from "sonner";
 import logo from "@/images/logo.png";
 import appCss from "../styles.css?url";
 
-const PUBLIC_PATHS = new Set(["/", "/login", "/forgot-password", "/reset-password"]);
 const CURRENT_USER_CACHE_DURATION = 60_000;
 
 let cachedCurrentUser: { session: string; user: ApiUser; expiresAt: number } | null = null;
@@ -213,6 +213,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
     if (location.pathname === "/login") {
       throw redirect({ to: "/dashboard" });
+    }
+
+    // Put the address bar under this account's role (/admin, /head or /bsca) when a typed URL,
+    // an old bookmark or another account's link opened the page under a different prefix.
+    if (!isPublic && rolePrefixOf(location.publicHref) !== rolePrefixFor(user.role)) {
+      throw redirect({ href: location.href, replace: true });
     }
 
     const allowedRoles = roleRequirements[location.pathname];
