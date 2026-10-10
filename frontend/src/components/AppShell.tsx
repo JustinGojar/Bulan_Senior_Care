@@ -42,6 +42,7 @@ import { LogoutConfirmDialog } from "./LogoutConfirmDialog";
 import { SessionTimeout } from "./SessionTimeout";
 import { panelClass, tileClass } from "./design-kit";
 import { ThemeToggle } from "./ThemeToggle";
+import { InstallAppButton } from "./InstallAppButton";
 
 const UNREAD_REFRESH_INTERVAL = 15_000;
 
@@ -705,6 +706,7 @@ export function AppShell({
                     </span>
                     <ThemeToggle className="h-9 w-9 rounded-lg border border-border/60 shadow-none" />
                   </div>
+                  <InstallAppButton className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-semibold hover:bg-muted" />
                   <button
                     onClick={requestSignOut}
                     className="mt-1 flex w-full items-center gap-3 rounded-md border-t border-border/60 px-3 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10"

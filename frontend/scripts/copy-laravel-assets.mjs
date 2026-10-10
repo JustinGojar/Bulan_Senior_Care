@@ -13,7 +13,16 @@ await cp(buildOutput, laravelAssets, { recursive: true });
 
 // Pre-compress text assets so public/router.php can send the small copy
 // (PHP's built-in server cannot compress on the fly).
-const COMPRESSIBLE = new Set([".js", ".mjs", ".css", ".html", ".json", ".svg", ".txt"]);
+const COMPRESSIBLE = new Set([
+  ".js",
+  ".mjs",
+  ".css",
+  ".html",
+  ".json",
+  ".svg",
+  ".txt",
+  ".webmanifest",
+]);
 const entries = await readdir(laravelAssets, { recursive: true, withFileTypes: true });
 let saved = 0;
 for (const entry of entries) {
