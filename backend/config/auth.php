@@ -101,6 +101,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | Minutes a new account's email verification link stays valid. Logging in
+    | with an unverified account sends a fresh link.
+    |
+    */
+
+    'verification' => [
+        'expire' => 1440,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
     |

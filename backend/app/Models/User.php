@@ -8,8 +8,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class User extends Authenticatable
 {
@@ -19,6 +21,44 @@ class User extends Authenticatable
     {
         $url = rtrim(config('app.frontend_url'), '/') . '/reset-password?token=' . urlencode($token) . '&email=' . urlencode($this->getEmailForPasswordReset());
         $this->notify(new ResetPasswordNotification($url));
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $expires = now()->addMinutes((int) config('auth.verification.expire'))->getTimestamp();
+        $hash = sha1($this->getEmailForVerification());
+        $url = rtrim(config('app.frontend_url'), '/').'/verify-email?'.http_build_query([
+            'id' => $this->id,
+            'hash' => $hash,
+            'expires' => $expires,
+            'signature' => self::emailVerificationSignature($this->id, $hash, $expires),
+        ]);
+        $this->notify(new VerifyEmailNotification($url));
+    }
+
+    /**
+     * Signs the link ourselves rather than with URL::signedRoute, because the link opens the
+     * portal and reaches the API through Vercel's proxy, so the API never sees the signed URL.
+     */
+    public static function emailVerificationSignature(int $id, string $hash, int $expires): string
+    {
+        return hash_hmac('sha256', "verify-email|{$id}|{$hash}|{$expires}", (string) config('app.key'));
+    }
+
+    /**
+     * Sends the verification email, reporting rather than throwing when the mail service fails.
+     */
+    public function trySendEmailVerification(): bool
+    {
+        try {
+            $this->sendEmailVerificationNotification();
+
+            return true;
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+
+            return false;
+        }
     }
 
     /**

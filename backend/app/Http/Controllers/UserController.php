@@ -60,8 +60,9 @@ class UserController extends Controller
 
         $user = User::create($data);
         $user->syncRoles([$data['role']]);
+        $verificationSent = $user->trySendEmailVerification();
 
-        return response()->json($user->fresh()->load('roles'), 201);
+        return response()->json(['user' => $user->fresh()->load('roles'), 'verification_email_sent' => $verificationSent], 201);
     }
 
     public function update(Request $request, User $user): JsonResponse

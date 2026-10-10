@@ -211,8 +211,14 @@ function UserManagement() {
           password,
           passwordConfirmation,
         });
-        setUsers((current) => [...current, created]);
-        toast.success("User account created.");
+        setUsers((current) => [...current, created.user]);
+        if (created.verificationEmailSent) {
+          toast.success(`User account created. A verification email was sent to ${email}.`);
+        } else {
+          toast.warning(
+            "User account created, but the verification email could not be sent. It will be sent again when they try to log in.",
+          );
+        }
       }
       resetForm();
       setShowCreateForm(false);

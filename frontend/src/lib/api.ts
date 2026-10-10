@@ -576,6 +576,18 @@ export function requestPasswordReset(email: string) {
   });
 }
 
+export function verifyEmail(params: {
+  id: string;
+  hash: string;
+  expires: string;
+  signature: string;
+}) {
+  return apiFetch<{ message: string }>("/verify-email", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
 export function resetPassword(
   token: string,
   email: string,
@@ -681,21 +693,24 @@ export async function createBarangayLeader(data: {
   password: string;
   passwordConfirmation: string;
 }) {
-  const result = await apiFetch<{ user: ApiUser }>("/admin/barangay-leaders", {
-    method: "POST",
-    body: JSON.stringify({
-      first_name: data.firstName,
-      middle_name: data.middleName || undefined,
-      last_name: data.lastName,
-      email: data.email,
-      contact_number: data.contactNumber,
-      birthdate: data.birthdate,
-      barangay_id: data.barangayId,
-      password: data.password,
-      password_confirmation: data.passwordConfirmation,
-    }),
-  });
-  return result.user;
+  const result = await apiFetch<{ user: ApiUser; verification_email_sent: boolean }>(
+    "/admin/barangay-leaders",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        first_name: data.firstName,
+        middle_name: data.middleName || undefined,
+        last_name: data.lastName,
+        email: data.email,
+        contact_number: data.contactNumber,
+        birthdate: data.birthdate,
+        barangay_id: data.barangayId,
+        password: data.password,
+        password_confirmation: data.passwordConfirmation,
+      }),
+    },
+  );
+  return { user: result.user, verificationEmailSent: result.verification_email_sent };
 }
 
 export async function createManagedUser(data: {
@@ -711,23 +726,26 @@ export async function createManagedUser(data: {
   password: string;
   passwordConfirmation: string;
 }) {
-  const result = await apiFetch<{ user: ManagedUser }>("/admin/users", {
-    method: "POST",
-    body: JSON.stringify({
-      first_name: data.firstName,
-      middle_name: data.middleName || undefined,
-      last_name: data.lastName,
-      email: data.email,
-      contact_number: data.contactNumber,
-      birthdate: data.birthdate,
-      barangay_id: data.barangayId ?? null,
-      role: data.role,
-      status: data.status,
-      password: data.password,
-      password_confirmation: data.passwordConfirmation,
-    }),
-  });
-  return result.user;
+  const result = await apiFetch<{ user: ManagedUser; verification_email_sent: boolean }>(
+    "/admin/users",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        first_name: data.firstName,
+        middle_name: data.middleName || undefined,
+        last_name: data.lastName,
+        email: data.email,
+        contact_number: data.contactNumber,
+        birthdate: data.birthdate,
+        barangay_id: data.barangayId ?? null,
+        role: data.role,
+        status: data.status,
+        password: data.password,
+        password_confirmation: data.passwordConfirmation,
+      }),
+    },
+  );
+  return { user: result.user, verificationEmailSent: result.verification_email_sent };
 }
 
 export function logout() {
