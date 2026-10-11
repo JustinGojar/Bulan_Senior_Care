@@ -80,6 +80,9 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::delete('/notifications', [NotificationController::class, 'clear']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
+    Route::post('/notifications/{notification}/unread', [NotificationController::class, 'unread']);
+    Route::post('/notifications/{notification}/archive', [NotificationController::class, 'archive']);
+    Route::post('/notifications/{notification}/unarchive', [NotificationController::class, 'unarchive']);
 });
 
 // Private senior files. A list page loads many photos at once, so these get their own limit.
