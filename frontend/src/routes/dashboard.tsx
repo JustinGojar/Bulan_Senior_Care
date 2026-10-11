@@ -8,10 +8,10 @@ import {
   ImagePlus,
   Loader2,
   Megaphone,
+  PhilippinePeso,
   PieChart,
   Plus,
   Send,
-  ShieldCheck,
   Trash2,
   UserCheck,
   Users,
@@ -444,12 +444,15 @@ function Dashboard() {
         </Link>
         <Link to="/benefits" className={statCardClass}>
           <StatCardBody
-            icon={ShieldCheck}
+            icon={PhilippinePeso}
             tone="gold"
             label="Benefits Distributed"
             value={
               overview ? (
-                `₱${overview.benefits_distributed_amount.toLocaleString()}`
+                `₱${overview.benefits_distributed_amount.toLocaleString("en-PH", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`
               ) : (
                 <SkeletonValue className="h-7 w-24" />
               )
