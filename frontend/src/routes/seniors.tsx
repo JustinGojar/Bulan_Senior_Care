@@ -470,6 +470,25 @@ function changedFields(request: SeniorEditRequest) {
     fields.push(["Benefit", enrolledBenefit || "None", changes.benefit]);
   if (senior && (senior.address ?? "") !== (changes.address ?? ""))
     fields.push(["Address", senior.address || "None", changes.address || "None"]);
+  const otherFields: Array<[string, keyof SeniorEditRequest["changes"]]> = [
+    ["Place of birth", "place_of_birth"],
+    ["Sex", "sex"],
+    ["Civil status", "civil_status"],
+    ["Educational attainment", "educational_attainment"],
+    ["Other skills", "other_skills"],
+    ["Family composition", "family_composition"],
+    ["Association", "association_name"],
+    ["Association address", "association_address"],
+    ["Membership date", "association_membership_date"],
+    ["Association position", "association_position"],
+  ];
+  for (const [label, key] of otherFields) {
+    // Requests made before these fields existed leave them out; those keep the current value.
+    if (!senior || !(key in changes)) continue;
+    const current = String(senior[key] ?? "");
+    const next = String(changes[key] ?? "");
+    if (current !== next) fields.push([label, current || "None", next || "None"]);
+  }
   return fields;
 }
 

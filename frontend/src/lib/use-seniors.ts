@@ -7,6 +7,9 @@ type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: numb
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
 type SeniorSummaryResponse = { total: number; active: number; pending: number; inactive: number };
 
+/** Shown for a senior with no contact number on file. */
+const NO_CONTACT = "Not provided";
+
 export type SeniorDraft = Omit<Senior, "id"> & {
   id?: string;
   firstName?: string;
@@ -66,7 +69,7 @@ function mapSenior(senior: ApiSenior): Senior {
     age,
     barangay: senior.barangay?.barangay_name ?? "Unassigned",
     address: senior.address ?? "",
-    contact: senior.contact_number ?? "Not provided",
+    contact: senior.contact_number ?? NO_CONTACT,
     benefit: senior.benefit?.benefit_name ?? senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
     status:
       senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
@@ -248,6 +251,8 @@ export function useSeniors(
 
   const updateSenior = useCallback(
     async (id: string, draft: SeniorDraft) => {
+      // The "Not provided" placeholder is for display only, never a number to save.
+      const contact = draft.contact === NO_CONTACT ? "" : draft.contact.trim();
       if (getStoredUser()?.role === "leader") {
         await submitSeniorEditRequest(id, {
           first_name: draft.firstName?.trim() ?? draft.name.trim(),
@@ -265,7 +270,7 @@ export function useSeniors(
           association_membership_date: draft.associationMembershipDate || null,
           association_position: draft.associationPosition?.trim() || null,
           address: draft.address.trim(),
-          contact_number: draft.contact.trim() || null,
+          contact_number: contact || null,
           barangay: draft.barangay,
           benefit: draft.benefit,
         });
@@ -294,7 +299,7 @@ export function useSeniors(
       if (draft.associationPosition?.trim())
         body.append("association_position", draft.associationPosition.trim());
       if (draft.address.trim()) body.append("address", draft.address.trim());
-      if (draft.contact.trim()) body.append("contact_number", draft.contact.trim());
+      if (contact) body.append("contact_number", contact);
       if (draft.barangay) body.append("barangay", draft.barangay);
       if (draft.benefit) body.append("benefit", draft.benefit);
       body.append("status", draft.status.toLowerCase());
