@@ -55,6 +55,7 @@ import {
   type Overview,
 } from "@/lib/api";
 import { findNewEligibilityFlags, type EligibilityFlag } from "@/lib/osca-data";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/dashboard")({
@@ -125,16 +126,6 @@ function MonthlyChange({ value }: { value: number | null | undefined }) {
       {Math.abs(value)}% vs. last month
     </span>
   );
-}
-
-// Large peso totals are shortened so they fit the stat card: 100k and up, then 1M and up
-// (thresholds sit just below each step so rounding never shows "100,000" or "1,000k").
-function formatPesoAmount(amount: number) {
-  const short = (value: number, suffix: string) =>
-    `₱${value.toLocaleString("en-PH", { maximumFractionDigits: 2 })}${suffix}`;
-  if (Math.abs(amount) >= 999_995) return short(amount / 1_000_000, "M");
-  if (Math.abs(amount) >= 99_999.5) return short(amount / 1_000, "k");
-  return `₱${amount.toLocaleString("en-PH", { maximumFractionDigits: 0 })}`;
 }
 
 function StatCardBody({
@@ -459,11 +450,7 @@ function Dashboard() {
             label="Benefits Distributed"
             value={
               overview ? (
-                <span
-                  title={`₱${overview.benefits_distributed_amount.toLocaleString("en-PH", {
-                    maximumFractionDigits: 0,
-                  })}`}
-                >
+                <span title={formatPesoFull(overview.benefits_distributed_amount)}>
                   {formatPesoAmount(overview.benefits_distributed_amount)}
                 </span>
               ) : (

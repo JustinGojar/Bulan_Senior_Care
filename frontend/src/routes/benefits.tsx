@@ -59,6 +59,7 @@ import {
   type PaginatedResponse,
 } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -84,7 +85,7 @@ type BenefitProgram = {
   type: string;
   minAge: number;
   maxAge?: number;
-  amount: string;
+  amount: number | null;
   schedule: string;
   funding: string;
   status: "active" | "inactive";
@@ -184,9 +185,7 @@ function BenefitTracking() {
     () =>
       [...programs].sort((a, b) => {
         if (sortProgramsBy === "amount") {
-          const amountA = Number(a.amount.replace(/[^\d.]/g, "")) || 0;
-          const amountB = Number(b.amount.replace(/[^\d.]/g, "")) || 0;
-          return amountB - amountA;
+          return (b.amount ?? 0) - (a.amount ?? 0);
         }
         return a.name.localeCompare(b.name);
       }),
@@ -236,7 +235,7 @@ function BenefitTracking() {
             type: program.benefit_type,
             minAge: program.min_age,
             ...(program.max_age === null ? {} : { maxAge: program.max_age }),
-            amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
+            amount: program.amount ? Number(program.amount) : null,
             schedule:
               program.schedule === "one_time"
                 ? "One-time"
@@ -890,7 +889,13 @@ function BenefitTracking() {
               </div>
 
               <p className="mt-2 font-display text-sm font-extrabold md:mt-3 md:text-2xl">
-                {program.amount}
+                {program.amount === null ? (
+                  "Variable"
+                ) : (
+                  <span title={formatPesoFull(program.amount)}>
+                    {formatPesoAmount(program.amount)}
+                  </span>
+                )}
               </p>
               <p className="text-[10px] text-muted-foreground md:text-xs">{program.schedule}</p>
 
