@@ -31,6 +31,7 @@ import {
   type ReleaseRoster,
 } from "@/lib/api";
 import { downloadCashPayroll } from "@/lib/payroll-pdf";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 
 function longDate(date: string) {
   return new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString("en-PH", {
@@ -41,10 +42,6 @@ function longDate(date: string) {
 function localToday() {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
-}
-
-function peso(value: number) {
-  return `₱${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function fileSize(bytes?: number | null) {
@@ -238,7 +235,10 @@ export function ReleaseRosterDialog({
             <div className="grid grid-cols-3 gap-2">
               {[
                 ["Seniors", items.length],
-                ["Total amount", peso(total)],
+                [
+                  "Total amount",
+                  <span title={formatPesoFull(total)}>{formatPesoAmount(total)}</span>,
+                ],
                 ["Received", `${received} of ${items.length}`],
               ].map(([label, value]) => (
                 <div key={String(label)} className={tileClass}>
@@ -406,7 +406,11 @@ export function ReleaseRosterDialog({
                         <td className="px-3 py-2.5 text-muted-foreground">
                           {item.senior?.barangay?.barangay_name ?? "-"}
                         </td>
-                        <td className="px-3 py-2.5">{peso(Number(item.amount))}</td>
+                        <td className="px-3 py-2.5">
+                          <span title={formatPesoFull(Number(item.amount))}>
+                            {formatPesoAmount(Number(item.amount))}
+                          </span>
+                        </td>
                         <td className="px-3 py-2.5">
                           <StatusPill
                             tone={
