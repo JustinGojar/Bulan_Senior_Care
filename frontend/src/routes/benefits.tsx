@@ -571,8 +571,7 @@ function BenefitTracking() {
       const receivedAmount = rows
         .filter((row) => row.status === "Received")
         .reduce((sum, row) => sum + row.amount, 0);
-      const peso = (value: number) =>
-        `PHP ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const peso = (value: number) => formatPesoAmount(value, "PHP ");
       const summary: Array<[string, string]> = [
         ["Filters", releaseQueueFilterSummary()],
         ["Records", String(rows.length)],
