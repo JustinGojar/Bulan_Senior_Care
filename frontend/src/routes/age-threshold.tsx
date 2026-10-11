@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getStoredUser } from "@/lib/api";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { cn } from "@/lib/utils";
 import {
   BENEFIT_PROGRAMS,
@@ -238,7 +239,13 @@ function AgeThresholdPage() {
                 {program.name}
               </p>
               <p className="mt-0.5 text-[11px] font-semibold text-coral sm:text-xs">
-                {program.amount}
+                {program.amount === null ? (
+                  "Variable"
+                ) : (
+                  <span title={formatPesoFull(program.amount)}>
+                    {formatPesoAmount(program.amount)}
+                  </span>
+                )}
               </p>
               <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary sm:text-xs">
                 View<span className="hidden sm:inline"> seniors</span>

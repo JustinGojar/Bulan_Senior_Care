@@ -13,6 +13,7 @@ import {
 import { getSeniorBenefitRecords, seniorFileUrl, type BenefitTransaction } from "@/lib/api";
 import { downloadClaimForm } from "@/lib/claim-form-pdf";
 import { BENEFIT_PROGRAMS, benefitsFor, type EligibilityFlag } from "@/lib/osca-data";
+import { formatPesoFull } from "@/lib/peso";
 
 function initials(name: string) {
   return name
@@ -138,7 +139,8 @@ export function EligibilityFlagDialog({
                         <span className="font-semibold">{name}</span>
                         {program && (
                           <span className="text-xs text-muted-foreground">
-                            {program.amount} · {program.schedule}
+                            {program.amount === null ? "Variable" : formatPesoFull(program.amount)}{" "}
+                            · {program.schedule}
                           </span>
                         )}
                       </div>
