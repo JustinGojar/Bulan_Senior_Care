@@ -353,6 +353,7 @@ export type ServerNotification = {
   created_at: string;
   source_type?: string | null;
   source_id?: number | null;
+  archived_at?: string | null;
   sender?: { name: string; role: string };
 };
 
@@ -939,6 +940,18 @@ export function getServerUnreadNotificationCount() {
 
 export function markServerNotificationRead(id: number) {
   return apiFetch<ServerNotification>(`/notifications/${id}/read`, { method: "POST" });
+}
+
+export function markServerNotificationUnread(id: number) {
+  return apiFetch<ServerNotification>(`/notifications/${id}/unread`, { method: "POST" });
+}
+
+export function archiveServerNotification(id: number) {
+  return apiFetch<ServerNotification>(`/notifications/${id}/archive`, { method: "POST" });
+}
+
+export function unarchiveServerNotification(id: number) {
+  return apiFetch<ServerNotification>(`/notifications/${id}/unarchive`, { method: "POST" });
 }
 
 export function deleteServerNotification(id: number) {

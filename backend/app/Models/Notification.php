@@ -19,11 +19,12 @@ class Notification extends Model
         'channel',
         'date_sent',
         'status',
+        'archived_at',
     ];
 
     protected function casts(): array
     {
-        return ['date_sent' => 'datetime'];
+        return ['date_sent' => 'datetime', 'archived_at' => 'datetime'];
     }
 
     public function sender(): BelongsTo
