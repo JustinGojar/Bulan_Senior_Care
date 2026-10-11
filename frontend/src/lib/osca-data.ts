@@ -63,7 +63,8 @@ export type BenefitProgram = {
   maxAge?: number;
   /** Expanded Centenarians Act grants are given at these exact ages only. */
   ages?: number[];
-  amount: string;
+  /** Peso amount per senior; null when it varies. */
+  amount: number | null;
   schedule: "Quarterly" | "One-time" | "When funds are available";
   funding: "National" | "Municipal" | "Provincial";
 };
@@ -73,7 +74,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     name: "Social Pension",
     type: "social_pension",
     minAge: 60,
-    amount: "₱3,000",
+    amount: 3_000,
     schedule: "Quarterly",
     funding: "National",
   },
@@ -83,7 +84,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     minAge: 80,
     maxAge: 85,
     ages: [80, 85],
-    amount: "₱10,000",
+    amount: 10_000,
     schedule: "One-time",
     funding: "National",
   },
@@ -93,7 +94,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     minAge: 90,
     maxAge: 95,
     ages: [90, 95],
-    amount: "₱10,000",
+    amount: 10_000,
     schedule: "One-time",
     funding: "National",
   },
@@ -103,7 +104,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     minAge: 100,
     maxAge: 100,
     ages: [100],
-    amount: "₱100,000",
+    amount: 100_000,
     schedule: "One-time",
     funding: "National",
   },
@@ -112,7 +113,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "precentenarian",
     minAge: 85,
     maxAge: 99,
-    amount: "Variable",
+    amount: null,
     schedule: "When funds are available",
     funding: "Municipal",
   },
@@ -121,7 +122,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "provincial",
     minAge: 80,
     maxAge: 99,
-    amount: "₱5,000",
+    amount: 5_000,
     schedule: "When funds are available",
     funding: "Provincial",
   },
