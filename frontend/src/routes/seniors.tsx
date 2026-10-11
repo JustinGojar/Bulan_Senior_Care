@@ -85,6 +85,7 @@ import {
 } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { downloadMasterlist } from "@/lib/masterlist-pdf";
 import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
@@ -1447,7 +1448,9 @@ function SeniorRecords() {
                                 : "-"}
                             </td>
                             <td className="truncate px-2 py-2">
-                              ₱{Number(transaction.amount).toLocaleString()}
+                              <span title={formatPesoFull(Number(transaction.amount))}>
+                                {formatPesoAmount(Number(transaction.amount))}
+                              </span>
                             </td>
                             <td className="truncate px-2 py-2 font-semibold">
                               {transaction.status === "released"
