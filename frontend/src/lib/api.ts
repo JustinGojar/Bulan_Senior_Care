@@ -66,6 +66,10 @@ export function benefitProofUrl(transactionId: number, storedPath: string) {
   return `/benefit-transactions/${transactionId}/attachment?v=${encodeURIComponent(storedPath)}`;
 }
 
+export function messageAttachmentUrl(messageId: number, storedPath: string) {
+  return `/messages/${messageId}/attachment?v=${encodeURIComponent(storedPath)}`;
+}
+
 // Senior photos and documents are private: the API only serves them with the session
 // cookie and header, so they are fetched here and shown through object URLs, kept in
 // memory for this sign-in only.
