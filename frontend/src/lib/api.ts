@@ -54,7 +54,8 @@ function clearResponseCache() {
   privateFiles.clear();
 }
 
-export type SeniorFileKind = "photo" | "id_document" | "valid_id" | "birth_certificate";
+export type SeniorFileKind =
+  "photo" | "id_document" | "valid_id" | "birth_certificate" | "death_certificate";
 
 // The stored path is appended so a replaced upload is fetched again instead of reused.
 export function seniorFileUrl(oscaId: string, kind: SeniorFileKind, storedPath: string) {
@@ -63,6 +64,10 @@ export function seniorFileUrl(oscaId: string, kind: SeniorFileKind, storedPath: 
 
 export function benefitProofUrl(transactionId: number, storedPath: string) {
   return `/benefit-transactions/${transactionId}/attachment?v=${encodeURIComponent(storedPath)}`;
+}
+
+export function messageAttachmentUrl(messageId: number, storedPath: string) {
+  return `/messages/${messageId}/attachment?v=${encodeURIComponent(storedPath)}`;
 }
 
 // Senior photos and documents are private: the API only serves them with the session
@@ -131,7 +136,9 @@ export type ApiSenior = {
   first_name: string;
   last_name: string;
   middle_name?: string | null;
+  suffix?: string | null;
   birthdate: string;
+  registration_date?: string | null;
   place_of_birth?: string | null;
   sex?: "male" | "female";
   civil_status?: string | null;
@@ -150,6 +157,13 @@ export type ApiSenior = {
   birth_certificate_path?: string | null;
   privacy_consent_at?: string | null;
   status: "active" | "pending" | "inactive";
+  /** Why the record is inactive; "deceased" comes with the documentation below. */
+  inactive_reason?: string | null;
+  date_of_death?: string | null;
+  death_certificate_path?: string | null;
+  inactive_remarks?: string | null;
+  inactivated_at?: string | null;
+  inactivator?: { name: string; role: string } | null;
   barangay?: { barangay_name: string } | null;
   /** The program the senior is enrolled in. */
   benefit?: { id: number; benefit_name: string } | null;
@@ -221,7 +235,7 @@ export type BenefitRelease = {
   remarks?: string | null;
   completed_at?: string | null;
   completer?: { name: string; role: string } | null;
-  benefit: { benefit_name: string };
+  benefit: { benefit_name: string; schedule?: string | null };
   creator?: { name: string; role: string } | null;
   updater?: { name: string; role: string } | null;
 };
@@ -343,6 +357,7 @@ export type ServerNotification = {
   created_at: string;
   source_type?: string | null;
   source_id?: number | null;
+  archived_at?: string | null;
   sender?: { name: string; role: string };
 };
 
@@ -625,6 +640,7 @@ export type ReleaseRoster = BenefitRelease & {
       first_name: string;
       middle_name?: string | null;
       last_name: string;
+      suffix?: string | null;
       barangay?: { barangay_name: string } | null;
     } | null;
   }>;
@@ -928,6 +944,18 @@ export function getServerUnreadNotificationCount() {
 
 export function markServerNotificationRead(id: number) {
   return apiFetch<ServerNotification>(`/notifications/${id}/read`, { method: "POST" });
+}
+
+export function markServerNotificationUnread(id: number) {
+  return apiFetch<ServerNotification>(`/notifications/${id}/unread`, { method: "POST" });
+}
+
+export function archiveServerNotification(id: number) {
+  return apiFetch<ServerNotification>(`/notifications/${id}/archive`, { method: "POST" });
+}
+
+export function unarchiveServerNotification(id: number) {
+  return apiFetch<ServerNotification>(`/notifications/${id}/unarchive`, { method: "POST" });
 }
 
 export function deleteServerNotification(id: number) {

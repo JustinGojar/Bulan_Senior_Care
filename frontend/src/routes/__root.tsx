@@ -21,6 +21,8 @@ import {
 } from "@/lib/api";
 import { PUBLIC_PATHS, rolePrefixFor, rolePrefixOf } from "@/lib/role-path";
 import { THEME_KEY } from "@/lib/theme";
+// Registers the service worker and captures Chrome's install prompt for the "Install app" button.
+import "@/lib/pwa";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { FormValidation } from "@/components/FormValidation";
 import { StatusPage } from "@/components/StatusPage";
@@ -234,6 +236,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Bulan Senior Care" },
       { name: "description", content: "OSCA Bulan senior citizen records and benefits portal" },
       { name: "author", content: "Bulan Senior Care" },
+      { name: "theme-color", content: "#1f3254" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "SeniorCare" },
       { property: "og:title", content: "Bulan Senior Care" },
       {
         property: "og:description",
@@ -254,6 +260,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: logo, type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,

@@ -240,7 +240,7 @@ class BenefitReleaseController extends Controller
             'documents' => fn ($documents) => $documents->with('uploader:id,name,role')->latest(),
             'transactions' => fn ($transactions) => $transactions
                 ->when($user->role === 'leader', fn ($query) => $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $user->barangay_id)))
-                ->with(['senior:id,osca_id_number,first_name,middle_name,last_name,barangay_id', 'senior.barangay:id,barangay_name'])
+                ->with(['senior:id,osca_id_number,first_name,middle_name,last_name,suffix,barangay_id', 'senior.barangay:id,barangay_name'])
                 ->orderBy('id'),
         ]);
     }
@@ -318,7 +318,7 @@ class BenefitReleaseController extends Controller
     private function relations(): array
     {
         return [
-            'benefit:id,benefit_name',
+            'benefit:id,benefit_name,schedule',
             'barangays:id,barangay_name',
             'creator:id,name,role',
             'updater:id,name,role',

@@ -1,6 +1,11 @@
 export type Senior = {
   id: string;
   name: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
+  suffix?: string;
+  registrationDate?: string;
   birthdate?: string;
   placeOfBirth?: string;
   sex?: "male" | "female";
@@ -23,6 +28,26 @@ export type Senior = {
   validIdPath?: string | null;
   birthCertificatePath?: string | null;
   privacyConsentAt?: string | null;
+  /** Why the record is inactive (a key of INACTIVE_REASONS), and any remarks. */
+  inactiveReason?: string;
+  inactiveRemarks?: string;
+  /** Set when the senior has died; the record is then inactive. */
+  deceased?: {
+    dateOfDeath: string;
+    certificatePath: string | null;
+    remarks: string;
+    recordedBy: string;
+    recordedAt: string;
+  } | null;
+};
+
+/** Why a senior record can be inactive. A death also needs its date and certificate. */
+export const INACTIVE_REASONS: Record<string, string> = {
+  deceased: "Deceased",
+  transferred: "Transferred to another municipality",
+  withdrawn: "Withdrew from the program",
+  duplicate: "Duplicate record",
+  other: "Other",
 };
 
 export type BenefitProgram = {
@@ -38,7 +63,8 @@ export type BenefitProgram = {
   maxAge?: number;
   /** Expanded Centenarians Act grants are given at these exact ages only. */
   ages?: number[];
-  amount: string;
+  /** Peso amount per senior; null when it varies. */
+  amount: number | null;
   schedule: "Quarterly" | "One-time" | "When funds are available";
   funding: "National" | "Municipal" | "Provincial";
 };
@@ -48,7 +74,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     name: "Social Pension",
     type: "social_pension",
     minAge: 60,
-    amount: "₱3,000",
+    amount: 3_000,
     schedule: "Quarterly",
     funding: "National",
   },
@@ -58,7 +84,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     minAge: 80,
     maxAge: 85,
     ages: [80, 85],
-    amount: "₱10,000",
+    amount: 10_000,
     schedule: "One-time",
     funding: "National",
   },
@@ -68,7 +94,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     minAge: 90,
     maxAge: 95,
     ages: [90, 95],
-    amount: "₱10,000",
+    amount: 10_000,
     schedule: "One-time",
     funding: "National",
   },
@@ -78,7 +104,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     minAge: 100,
     maxAge: 100,
     ages: [100],
-    amount: "₱100,000",
+    amount: 100_000,
     schedule: "One-time",
     funding: "National",
   },
@@ -87,7 +113,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "precentenarian",
     minAge: 85,
     maxAge: 99,
-    amount: "Variable",
+    amount: null,
     schedule: "When funds are available",
     funding: "Municipal",
   },
@@ -96,7 +122,7 @@ export const BENEFIT_PROGRAMS: BenefitProgram[] = [
     type: "provincial",
     minAge: 80,
     maxAge: 99,
-    amount: "₱5,000",
+    amount: 5_000,
     schedule: "When funds are available",
     funding: "Provincial",
   },
@@ -133,6 +159,7 @@ export function claimMessage(name: string, age: number, grant: string) {
 // Flags only Expanded Centenarians Act milestones (80, 85, 90, 95, 100).
 export function findNewEligibilityFlags(seniors: Senior[]): EligibilityFlag[] {
   return seniors.flatMap((senior) => {
+    if (senior.deceased) return [];
     const program = BENEFIT_PROGRAMS.find(
       (program) => program.ages && qualifiesFor(program, senior.age),
     );

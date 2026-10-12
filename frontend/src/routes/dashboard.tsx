@@ -8,10 +8,10 @@ import {
   ImagePlus,
   Loader2,
   Megaphone,
+  PhilippinePeso,
   PieChart,
   Plus,
   Send,
-  ShieldCheck,
   Trash2,
   UserCheck,
   Users,
@@ -55,6 +55,7 @@ import {
   type Overview,
 } from "@/lib/api";
 import { findNewEligibilityFlags, type EligibilityFlag } from "@/lib/osca-data";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/dashboard")({
@@ -444,12 +445,14 @@ function Dashboard() {
         </Link>
         <Link to="/benefits" className={statCardClass}>
           <StatCardBody
-            icon={ShieldCheck}
+            icon={PhilippinePeso}
             tone="gold"
             label="Benefits Distributed"
             value={
               overview ? (
-                `₱${overview.benefits_distributed_amount.toLocaleString()}`
+                <span title={formatPesoFull(overview.benefits_distributed_amount)}>
+                  {formatPesoAmount(overview.benefits_distributed_amount)}
+                </span>
               ) : (
                 <SkeletonValue className="h-7 w-24" />
               )
