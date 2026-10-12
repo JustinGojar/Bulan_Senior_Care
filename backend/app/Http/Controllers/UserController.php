@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\PhotoBackup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -36,6 +37,7 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['head', 'leader'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'contact_number.regex' => 'Enter an 11-digit mobile number starting with 09.',
             'role.in' => 'Admin accounts cannot be created.',
@@ -55,6 +57,10 @@ class UserController extends Controller
             $data['last_name'],
         ])));
         $data['password'] = Hash::make($data['password']);
+        unset($data['profile_photo']);
+        if ($request->hasFile('profile_photo')) {
+            $data['profile_photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'profile-photos');
+        }
 
         Role::findOrCreate($data['role'], 'web');
 
@@ -82,6 +88,8 @@ class UserController extends Controller
             'role' => ['required', Rule::in($user->role === 'admin' ? ['admin', 'head', 'leader'] : ['head', 'leader'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_profile_photo' => ['nullable', 'boolean'],
         ], [
             'contact_number.regex' => 'Enter an 11-digit mobile number starting with 09.',
             'role.in' => 'Only existing Admin accounts can have the Admin role.',
@@ -103,8 +111,19 @@ class UserController extends Controller
             unset($data['password']);
         }
 
+        $oldPhotoPath = $user->profile_photo_path;
+        if ($request->hasFile('profile_photo')) {
+            $data['profile_photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'profile-photos');
+        } elseif ($request->boolean('remove_profile_photo')) {
+            $data['profile_photo_path'] = null;
+        }
+        unset($data['profile_photo'], $data['remove_profile_photo']);
+
         Role::findOrCreate($data['role'], 'web');
         $user->update($data);
+        if (array_key_exists('profile_photo_path', $data)) {
+            PhotoBackup::delete($oldPhotoPath);
+        }
         $user->syncRoles([$data['role']]);
         if (isset($data['password'])) {
             // A password set by an admin signs the user out everywhere.

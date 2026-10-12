@@ -750,25 +750,24 @@ export async function createManagedUser(data: {
   status: "active" | "inactive";
   password: string;
   passwordConfirmation: string;
+  profilePhoto?: File | null;
 }) {
+  const body = new FormData();
+  body.append("first_name", data.firstName);
+  if (data.middleName) body.append("middle_name", data.middleName);
+  body.append("last_name", data.lastName);
+  body.append("email", data.email);
+  body.append("contact_number", data.contactNumber);
+  body.append("birthdate", data.birthdate);
+  body.append("barangay_id", data.barangayId ? String(data.barangayId) : "");
+  body.append("role", data.role);
+  body.append("status", data.status);
+  body.append("password", data.password);
+  body.append("password_confirmation", data.passwordConfirmation);
+  if (data.profilePhoto) body.append("profile_photo", data.profilePhoto);
   const result = await apiFetch<{ user: ManagedUser; verification_email_sent: boolean }>(
     "/admin/users",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        first_name: data.firstName,
-        middle_name: data.middleName || undefined,
-        last_name: data.lastName,
-        email: data.email,
-        contact_number: data.contactNumber,
-        birthdate: data.birthdate,
-        barangay_id: data.barangayId ?? null,
-        role: data.role,
-        status: data.status,
-        password: data.password,
-        password_confirmation: data.passwordConfirmation,
-      }),
-    },
+    { method: "POST", body },
   );
   return { user: result.user, verificationEmailSent: result.verification_email_sent };
 }
@@ -784,11 +783,20 @@ export function getManagedUsers() {
   return apiFetch<ManagedUser[]>("/admin/users");
 }
 
-export function updateManagedUser(id: number, data: Record<string, unknown>) {
-  return apiFetch<ManagedUser>(`/admin/users/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+export function updateManagedUser(
+  id: number,
+  data: Record<string, string | number | null | undefined>,
+  photo?: { file: File | null; remove: boolean },
+) {
+  // Multipart, so the photo can ride along; PHP only parses files from a POST body.
+  const body = new FormData();
+  body.append("_method", "PUT");
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) body.append(key, value === null ? "" : String(value));
+  }
+  if (photo?.file) body.append("profile_photo", photo.file);
+  else if (photo?.remove) body.append("remove_profile_photo", "1");
+  return apiFetch<ManagedUser>(`/admin/users/${id}`, { method: "POST", body });
 }
 
 export function deleteManagedUser(id: number) {
