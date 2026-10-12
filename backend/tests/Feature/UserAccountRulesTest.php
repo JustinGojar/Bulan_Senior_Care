@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class UserAccountRulesTest extends TestCase
@@ -63,6 +65,49 @@ class UserAccountRulesTest extends TestCase
                 'status' => 'active',
             ])
             ->assertOk();
+    }
+
+    public function test_profile_photo_is_optional_and_can_be_set_replaced_and_removed(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/admin/users', $this->account(['email' => 'nophoto@example.com']))
+            ->assertCreated()
+            ->assertJsonPath('user.profile_photo_path', null);
+
+        $first = $this->actingAs($this->admin, 'sanctum')
+            ->post('/api/admin/users', $this->account([
+                'profile_photo' => UploadedFile::fake()->image('first.jpg'),
+            ]), ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->json('user.profile_photo_path');
+        Storage::disk('public')->assertExists($first);
+
+        /** @var User $user */
+        $user = User::where('profile_photo_path', $first)->firstOrFail();
+        $edit = [
+            '_method' => 'PUT',
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => 'active',
+        ];
+
+        $second = $this->actingAs($this->admin, 'sanctum')
+            ->post("/api/admin/users/{$user->id}", $edit + [
+                'profile_photo' => UploadedFile::fake()->image('second.png'),
+            ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->json('profile_photo_path');
+        Storage::disk('public')->assertExists($second);
+        Storage::disk('public')->assertMissing($first);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->post("/api/admin/users/{$user->id}", $edit + ['remove_profile_photo' => '1'], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('profile_photo_path', null);
+        Storage::disk('public')->assertMissing($second);
     }
 
     public function test_mobile_number_must_be_eleven_digits_starting_with_09(): void

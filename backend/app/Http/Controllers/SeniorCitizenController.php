@@ -27,6 +27,7 @@ class SeniorCitizenController extends Controller
             'barangay:id,barangay_name',
             'benefit:id,benefit_name',
             'encoder:id,name,role',
+            'inactivator:id,name,role',
         ]);
         if ($request->user()->role === 'leader') {
             $query->where('barangay_id', $request->user()->barangay_id);
@@ -127,6 +128,45 @@ class SeniorCitizenController extends Controller
         return response()->json(status: 204);
     }
 
+    /**
+     * Records a senior's death with its documentation and makes the record inactive. Benefit
+     * records still waiting for release are closed, so nothing is paid out after the death.
+     */
+    public function markDeceased(Request $request, SeniorCitizen $senior): JsonResponse
+    {
+        abort_unless(in_array($request->user()->role, ['leader', 'admin'], true), 403, 'Only the barangay leader or Admin can record a death.');
+        $this->authorizeScope($request, $senior);
+        abort_if($senior->inactive_reason === 'deceased', 422, 'This senior is already recorded as deceased.');
+        $data = $request->validate([
+            'date_of_death' => ['required', 'date', 'before_or_equal:today', 'after_or_equal:'.$senior->birthdate->toDateString()],
+            'death_certificate' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+        ], [
+            'death_certificate.required' => 'Attach the death certificate.',
+        ]);
+        $before = ['status' => $senior->status];
+
+        DB::transaction(function () use ($request, $senior, $data) {
+            $senior->update([
+                'status' => 'inactive',
+                'inactive_reason' => 'deceased',
+                'date_of_death' => $data['date_of_death'],
+                'death_certificate_path' => PhotoBackup::store($request->file('death_certificate'), 'senior-documents'),
+                'inactive_remarks' => $data['remarks'] ?? null,
+                'inactivated_by' => $request->user()->id,
+                'inactivated_at' => now(),
+            ]);
+            $this->closePendingBenefits($request, $senior);
+        });
+        AuditLog::record($request->user(), 'updated', $senior, $before, [
+            'status' => 'inactive',
+            'inactive_reason' => 'deceased',
+            'date_of_death' => $data['date_of_death'],
+        ]);
+
+        return response()->json($senior->fresh()->load(['barangay', 'benefit', 'inactivator:id,name,role']));
+    }
+
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
@@ -166,7 +206,7 @@ class SeniorCitizenController extends Controller
             ]);
             $data['barangay_id'] = $barangay->id;
         }
-        abort_if(! $data['barangay_id'], 422, 'A barangay is required.');
+        abort_if(empty($data['barangay_id']), 422, 'A barangay is required.');
         $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
         abort_if($duplicate, 422, 'A senior with the same name and birthdate already exists.');
         $benefitName = [
@@ -344,10 +384,23 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
         $this->authorizeScope($request, $senior);
+        if ($request->input('contact_number') === $senior->contact_number) {
+            // Unchanged. Older records (e.g. bulk imports) may hold a number in another format,
+            // which should not block saving the rest of the record.
+            $request->request->remove('contact_number');
+        }
         $this->normalizeContact($request);
-        $data = $request->validate($this->rules(true));
+        $data = $request->validate([...$this->rules(true), ...$this->inactiveRules($senior)], [
+            'inactive_reason.required_if' => 'Choose the reason the senior is inactive.',
+            'date_of_death.required_if' => 'Enter the date of death.',
+            'inactive_remarks.required_if' => 'Describe the reason in the remarks.',
+        ]);
         if (array_key_exists('barangay', $data)) {
-            $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
+            // Every senior belongs to a barangay, so an unknown name is refused rather than cleared.
+            if (filled($data['barangay'])) {
+                $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
+                abort_unless($data['barangay_id'], 422, 'The selected barangay does not exist.');
+            }
             unset($data['barangay']);
         }
         if (array_key_exists('benefit', $data)) {
@@ -367,8 +420,36 @@ class SeniorCitizenController extends Controller
             $replacedPaths[] = $senior->photo_path;
             $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
+        $newlyDeceased = false;
+        if (($data['status'] ?? $senior->status) === 'inactive' && array_key_exists('inactive_reason', $data)) {
+            $deceased = $data['inactive_reason'] === 'deceased';
+            if ($deceased) {
+                abort_unless($request->hasFile('death_certificate') || $senior->death_certificate_path, 422, 'Attach the death certificate.');
+                if ($request->hasFile('death_certificate')) {
+                    $replacedPaths[] = $senior->death_certificate_path;
+                    $data['death_certificate_path'] = PhotoBackup::store($request->file('death_certificate'), 'senior-documents');
+                }
+            } else {
+                $replacedPaths[] = $senior->death_certificate_path;
+                $data['date_of_death'] = null;
+                $data['death_certificate_path'] = null;
+            }
+            if ($senior->status !== 'inactive' || $senior->inactive_reason !== $data['inactive_reason']) {
+                $data['inactivated_by'] = $request->user()->id;
+                $data['inactivated_at'] = now();
+            }
+            $newlyDeceased = $deceased && $senior->inactive_reason !== 'deceased';
+        } elseif (($data['status'] ?? $senior->status) !== 'inactive') {
+            // Back to active or pending: the inactive reason no longer applies.
+            $replacedPaths[] = $senior->death_certificate_path;
+            $data = [...$data, ...array_fill_keys(['inactive_reason', 'date_of_death', 'death_certificate_path', 'inactive_remarks', 'inactivated_by', 'inactivated_at'], null)];
+        }
+        unset($data['death_certificate']);
         $senior->update($data);
-        foreach ($replacedPaths as $replacedPath) {
+        if ($newlyDeceased) {
+            $this->closePendingBenefits($request, $senior);
+        }
+        foreach (array_filter($replacedPaths) as $replacedPath) {
             PhotoBackup::delete($replacedPath);
         }
         AuditLog::record(
@@ -438,6 +519,28 @@ class SeniorCitizenController extends Controller
             $digits = '63'.substr($digits, 1);
         }
         $request->merge(['contact_number' => '+'.$digits]);
+    }
+
+    /** Why a senior can be made inactive, with the documentation each reason needs. */
+    private function inactiveRules(SeniorCitizen $senior): array
+    {
+        return [
+            'inactive_reason' => ['nullable', 'required_if:status,inactive', Rule::in(SeniorCitizen::INACTIVE_REASONS)],
+            'date_of_death' => ['nullable', 'required_if:inactive_reason,deceased', 'date', 'before_or_equal:today', 'after_or_equal:'.$senior->birthdate->toDateString()],
+            'death_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'inactive_remarks' => ['nullable', 'required_if:inactive_reason,other', 'string', 'max:500'],
+        ];
+    }
+
+    /** Benefit records still waiting for release are closed, so nothing is paid after a death. */
+    private function closePendingBenefits(Request $request, SeniorCitizen $senior): void
+    {
+        $senior->transactions()->where('status', 'pending')->update([
+            'status' => 'failed',
+            'remarks' => 'Senior deceased on '.$senior->date_of_death->format('F j, Y').'.',
+            'updated_by' => $request->user()->id,
+            'updated_at' => now(),
+        ]);
     }
 
     private function authorizeScope(Request $request, SeniorCitizen $senior): void

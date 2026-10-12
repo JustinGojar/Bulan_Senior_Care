@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Models\SeniorCitizen;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MessageController extends Controller
 {
@@ -125,7 +128,8 @@ class MessageController extends Controller
 
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $data['attachment_path'] = $file->store('message-attachments', 'public');
+            // Private: only the sender and recipient can open it, through the attachment route.
+            $data['attachment_path'] = $file->store('message-attachments', SeniorCitizen::FILE_DISK);
             $data['attachment_name'] = mb_substr($file->getClientOriginalName(), 0, 255);
             $data['attachment_mime'] = $file->getMimeType();
         }
@@ -140,6 +144,23 @@ class MessageController extends Controller
         $this->invalidateMessagesCache($request->user()->id, $recipient->id);
 
         return response()->json($message->load(['sender:id,name,role,email', 'recipient:id,name,role,email']), 201);
+    }
+
+    /** Serves a message's attachment to its sender or recipient, while it is in their inbox. */
+    public function attachment(Request $request, Message $message): StreamedResponse
+    {
+        $userId = $request->user()->id;
+        abort_unless(
+            Message::whereKey($message->id)->visibleTo($userId)->exists(),
+            404,
+            'This file is not available.',
+        );
+        /** @var FilesystemAdapter $disk */
+        $disk = Storage::disk(SeniorCitizen::FILE_DISK);
+        abort_unless($message->attachment_path && $disk->exists($message->attachment_path), 404, 'This file is not available.');
+
+        // Private correspondence: never kept by shared caches or on disk by the browser.
+        return $disk->response($message->attachment_path, $message->attachment_name, ['Cache-Control' => 'private, no-store']);
     }
 
     public function read(Request $request, Message $message): JsonResponse
@@ -184,7 +205,7 @@ class MessageController extends Controller
         $conversation->clone()->where('recipient_id', $me)->whereNull('recipient_deleted_at')->update(['recipient_deleted_at' => now()]);
 
         $goneForBoth = $conversation->clone()->whereNotNull('sender_deleted_at')->whereNotNull('recipient_deleted_at');
-        Storage::disk('public')->delete($goneForBoth->clone()->whereNotNull('attachment_path')->pluck('attachment_path')->all());
+        Storage::disk(SeniorCitizen::FILE_DISK)->delete($goneForBoth->clone()->whereNotNull('attachment_path')->pluck('attachment_path')->all());
         $goneForBoth->delete();
         $this->invalidateMessagesCache($me);
 

@@ -30,6 +30,7 @@ $types = [
     'woff2' => 'font/woff2',
     'txt' => 'text/plain; charset=UTF-8',
     'pdf' => 'application/pdf',
+    'webmanifest' => 'application/manifest+json',
 ];
 
 /**
@@ -69,6 +70,15 @@ $sendFile = static function (string $file, string $cacheControl) use ($types): b
 
     return true;
 };
+
+// The installable-app files are built into spa-assets but answered at the site root:
+// a service worker only controls pages under its own path, and the manifest names /icons/.
+if (preg_match('#^/(sw\.js|manifest\.webmanifest|icons/[A-Za-z0-9_-]+\.png)$#', $uri, $match)) {
+    $pwaFile = $publicPath.'/spa-assets/'.$match[1];
+    if (is_file($pwaFile)) {
+        return $sendFile($pwaFile, str_starts_with($match[1], 'icons/') ? 'public, max-age=86400' : 'no-cache');
+    }
+}
 
 $path = realpath($publicPath.$uri);
 $isFile = $path !== false && is_file($path);

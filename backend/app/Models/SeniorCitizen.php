@@ -20,12 +20,16 @@ class SeniorCitizen extends Model
      */
     public const FILE_DISK = 'local';
 
+    /** Why a record can be inactive. A death also needs its date and certificate. */
+    public const INACTIVE_REASONS = ['deceased', 'transferred', 'withdrawn', 'duplicate', 'other'];
+
     /** The file kinds the API serves, mapped to the column holding each path. */
     public const FILE_COLUMNS = [
         'photo' => 'photo_path',
         'id_document' => 'id_document_path',
         'valid_id' => 'valid_id_path',
         'birth_certificate' => 'birth_certificate_path',
+        'death_certificate' => 'death_certificate_path',
     ];
 
     protected $fillable = [
@@ -36,6 +40,8 @@ class SeniorCitizen extends Model
         'living_arrangement', 'registration_date', 'status',
         'photo_path', 'id_document_path', 'valid_id_path', 'birth_certificate_path',
         'privacy_consent_version', 'privacy_consent_at',
+        'inactive_reason', 'date_of_death', 'death_certificate_path', 'inactive_remarks',
+        'inactivated_by', 'inactivated_at',
     ];
 
     protected static function booted(): void
@@ -52,7 +58,13 @@ class SeniorCitizen extends Model
 
     protected function casts(): array
     {
-        return ['birthdate' => 'date', 'registration_date' => 'date', 'privacy_consent_at' => 'datetime'];
+        return [
+            'birthdate' => 'date',
+            'registration_date' => 'date',
+            'privacy_consent_at' => 'datetime',
+            'date_of_death' => 'date',
+            'inactivated_at' => 'datetime',
+        ];
     }
 
     public function getRouteKeyName(): string
@@ -68,6 +80,12 @@ class SeniorCitizen extends Model
     public function encoder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'encoded_by');
+    }
+
+    /** Who recorded the senior as inactive (e.g. deceased). */
+    public function inactivator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'inactivated_by');
     }
 
     /** The program the senior is enrolled in. */

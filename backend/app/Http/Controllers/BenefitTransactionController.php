@@ -116,6 +116,8 @@ class BenefitTransactionController extends Controller
     {
         $senior = $benefitTransaction->senior;
         $this->authorizeTransactionEditor($request);
+        // The senior's record was archived; its benefit records are no longer listed or edited.
+        abort_unless($senior, 404, 'This senior record is no longer available.');
         $this->authorizeScope($request, $senior);
         $beforeValue = $benefitTransaction->only(['benefit_id', 'status', 'amount', 'period_label']);
 
