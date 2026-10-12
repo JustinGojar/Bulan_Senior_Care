@@ -735,7 +735,7 @@ function BenefitTracking() {
       <div className="mb-5 flex flex-wrap items-center gap-2 p-3 sm:p-4">
         <IconSelect
           label="Program"
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<Grid2X2 className="h-4 w-4" />}
           value={selectedBenefit}
           options={benefitOptions.map((benefit) => ({
@@ -746,7 +746,7 @@ function BenefitTracking() {
         />
         <IconSelect
           label="Status"
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<ListFilter className="h-4 w-4" />}
           value={selectedStatus}
           options={[
@@ -759,7 +759,7 @@ function BenefitTracking() {
         />
         <IconSelect
           label="Period"
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<CalendarDays className="h-4 w-4" />}
           value={selectedPeriod}
           options={[
@@ -775,7 +775,7 @@ function BenefitTracking() {
           label="Barangay"
           searchable
           keepWhiteBackground
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={selectedBarangay}
           disabled={isLeader}
@@ -788,7 +788,7 @@ function BenefitTracking() {
         <IconSelect
           label="Sort by"
           prefix="Sort by"
-          className="sm:flex-1 xl:ml-auto xl:w-[205px] xl:flex-none"
+          className="sm:min-w-52 sm:flex-1 xl:ml-auto xl:min-w-0 xl:w-[205px] xl:flex-none"
           icon={<ArrowUpDown className="h-4 w-4" />}
           value={sortProgramsBy}
           defaultValue="name"
