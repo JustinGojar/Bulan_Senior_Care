@@ -94,12 +94,14 @@ class TestCaseFixesTest extends TestCase
 
     public function test_messages_can_carry_an_attachment_without_text(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $sent = $this->actingAs($this->leader, 'sanctum')->post('/api/messages', [
             'recipient_id' => $this->head->id, 'subject' => 'Payout', 'attachment' => UploadedFile::fake()->image('list.jpg'),
         ], ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('attachment_name', 'list.jpg');
 
-        Storage::disk('public')->assertExists($sent->json('attachment_path'));
+        Storage::disk('local')->assertExists($sent->json('attachment_path'));
+        Storage::disk('public')->assertMissing($sent->json('attachment_path'));
         $this->postJson('/api/messages', ['recipient_id' => $this->head->id, 'subject' => 'Empty'])
             ->assertStatus(422)->assertJsonValidationErrors('message');
         $this->postJson('/api/messages', ['recipient_id' => $this->head->id, 'subject' => 'Bad', 'attachment' => UploadedFile::fake()->create('run.exe', 10)])
@@ -108,15 +110,61 @@ class TestCaseFixesTest extends TestCase
         // Deleting hides the conversation for the leader only; the head still has it.
         $this->deleteJson("/api/messages/conversations/{$this->head->id}")->assertNoContent();
         $this->getJson('/api/messages')->assertJsonCount(0, 'data');
-        Storage::disk('public')->assertExists($sent->json('attachment_path'));
+        Storage::disk('local')->assertExists($sent->json('attachment_path'));
         $this->actingAs($this->head, 'sanctum')->getJson('/api/messages')
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.attachment_name', 'list.jpg');
 
         // Once both have deleted it, the message and its attachment are gone.
         $this->deleteJson("/api/messages/conversations/{$this->leader->id}")->assertNoContent();
-        Storage::disk('public')->assertMissing($sent->json('attachment_path'));
+        Storage::disk('local')->assertMissing($sent->json('attachment_path'));
         $this->assertSame(0, Message::count());
+    }
+
+    public function test_message_attachment_opens_only_for_its_sender_and_recipient(): void
+    {
+        Storage::fake('local');
+        $outsider = User::factory()->create(['role' => 'head', 'status' => 'active']);
+        $sent = $this->actingAs($this->leader, 'sanctum')->post('/api/messages', [
+            'recipient_id' => $this->head->id, 'subject' => 'Payout', 'attachment' => UploadedFile::fake()->create('list.pdf', 10, 'application/pdf'),
+        ], ['Accept' => 'application/json'])->assertCreated();
+        $url = "/api/messages/{$sent->json('id')}/attachment";
+
+        $this->getJson($url)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->actingAs($this->head, 'sanctum')->getJson($url)->assertOk();
+        $this->actingAs($outsider, 'sanctum')->getJson($url)->assertNotFound();
+
+        // Once the leader deletes the conversation, only the head can still open it.
+        $this->actingAs($this->leader, 'sanctum')->deleteJson("/api/messages/conversations/{$this->head->id}")->assertNoContent();
+        $this->getJson($url)->assertNotFound();
+        $this->actingAs($this->head, 'sanctum')->getJson($url)->assertOk();
+    }
+
+    public function test_message_attachment_requires_sign_in(): void
+    {
+        $message = Message::create([
+            'sender_id' => $this->leader->id, 'recipient_id' => $this->head->id, 'subject' => 'Payout', 'message' => '',
+            'attachment_path' => 'message-attachments/list.pdf', 'attachment_name' => 'list.pdf',
+        ]);
+
+        $this->getJson("/api/messages/{$message->id}/attachment")->assertUnauthorized();
+    }
+
+    public function test_migration_moves_existing_message_attachments_to_the_private_disk(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        Storage::disk('public')->put('message-attachments/list.pdf', 'payout-list');
+        Message::create([
+            'sender_id' => $this->leader->id, 'recipient_id' => $this->head->id, 'subject' => 'Payout', 'message' => '',
+            'attachment_path' => 'message-attachments/list.pdf', 'attachment_name' => 'list.pdf',
+        ]);
+
+        $migration = require database_path('migrations/2026_10_11_140000_move_message_attachments_to_private_disk.php');
+        $migration->up();
+
+        Storage::disk('public')->assertMissing('message-attachments/list.pdf');
+        $this->assertSame('payout-list', Storage::disk('local')->get('message-attachments/list.pdf'));
     }
 
     public function test_head_approval_applies_every_requested_field_and_keeps_omitted_ones(): void

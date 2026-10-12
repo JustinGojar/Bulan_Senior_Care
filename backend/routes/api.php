@@ -85,10 +85,11 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
     Route::post('/notifications/{notification}/unarchive', [NotificationController::class, 'unarchive']);
 });
 
-// Private senior files. A list page loads many photos at once, so these get their own limit.
+// Private senior files and message attachments. A list page loads many photos at once, so these get their own limit.
 Route::middleware(['token.idle', 'auth:sanctum', 'throttle:files'])->group(function () {
     Route::get('/seniors/{senior}/files/{kind}', [SeniorCitizenController::class, 'file'])
         ->whereIn('kind', array_keys(SeniorCitizen::FILE_COLUMNS));
     Route::get('/benefit-transactions/{benefitTransaction}/attachment', [BenefitTransactionController::class, 'attachment']);
     Route::get('/benefit-releases/{benefitRelease}/documents/{releaseDocument}', [BenefitReleaseController::class, 'document']);
+    Route::get('/messages/{message}/attachment', [MessageController::class, 'attachment']);
 });
