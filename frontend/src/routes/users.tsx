@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  Camera,
   Eye,
   EyeOff,
   Loader2,
@@ -12,7 +13,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
@@ -72,6 +73,12 @@ function getAge(birthdate: string) {
   return age >= 0 ? String(age) : "";
 }
 
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
+function photoUrl(path: string) {
+  return `${API_URL.replace(/\/api$/, "")}/storage/${path}`;
+}
+
 function initials(name: string) {
   return name
     .split(" ")
@@ -101,6 +108,10 @@ function UserManagement() {
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const [role, setRole] = useState<"admin" | "head" | "leader">("leader");
   const [status, setStatus] = useState<"active" | "inactive">("active");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
@@ -117,6 +128,16 @@ function UserManagement() {
         setBarangaysFailed(true);
       });
   }, []);
+
+  useEffect(() => {
+    if (!photo) {
+      setPhotoPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
 
   if (!isAdmin) {
     return (
@@ -150,7 +171,31 @@ function UserManagement() {
     setShowPasswordConfirmation(false);
     setRole("leader");
     setStatus("active");
+    setPhoto(null);
+    setRemovePhoto(false);
     setEditingUser(null);
+  }
+
+  function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Profile picture must be a JPG, PNG, or WEBP image.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError("Profile picture must be 2 MB or smaller.");
+      return;
+    }
+    setError(null);
+    setPhoto(file);
+    setRemovePhoto(false);
+  }
+
+  function clearPhoto() {
+    setPhoto(null);
+    if (editingUser?.profile_photo_path) setRemovePhoto(true);
   }
 
   function openEditForm(user: ManagedUser) {
@@ -164,6 +209,8 @@ function UserManagement() {
     setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
     setRole(user.role as "admin" | "head" | "leader");
     setStatus(user.status);
+    setPhoto(null);
+    setRemovePhoto(false);
     setError(null);
     setShowCreateForm(true);
   }
@@ -187,20 +234,24 @@ function UserManagement() {
     setSubmitting(true);
     try {
       if (editingUser) {
-        const updated = await updateManagedUser(editingUser.id, {
-          name: [firstName, middleName, lastName].filter(Boolean).join(" ") || editingUser.name,
-          first_name: firstName || null,
-          middle_name: middleName || null,
-          last_name: lastName || null,
-          email,
-          contact_number: contactNumber || null,
-          birthdate: birthdate || null,
-          barangay_id: barangayId ? Number(barangayId) : null,
-          role,
-          status,
-          password: password || undefined,
-          password_confirmation: passwordConfirmation || undefined,
-        });
+        const updated = await updateManagedUser(
+          editingUser.id,
+          {
+            name: [firstName, middleName, lastName].filter(Boolean).join(" ") || editingUser.name,
+            first_name: firstName || null,
+            middle_name: middleName || null,
+            last_name: lastName || null,
+            email,
+            contact_number: contactNumber || null,
+            birthdate: birthdate || null,
+            barangay_id: barangayId ? Number(barangayId) : null,
+            role,
+            status,
+            password: password || undefined,
+            password_confirmation: passwordConfirmation || undefined,
+          },
+          { file: photo, remove: removePhoto },
+        );
         setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
         toast.success("User account updated.");
       } else {
@@ -216,6 +267,7 @@ function UserManagement() {
           status,
           password,
           passwordConfirmation,
+          profilePhoto: photo,
         });
         setUsers((current) => [...current, created.user]);
         if (created.verificationEmailSent) {
@@ -255,6 +307,11 @@ function UserManagement() {
   const roleLabel = (value: string) =>
     value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA President";
   const labelClass = "mb-2 block text-sm font-semibold";
+  const currentPhoto =
+    photoPreview ??
+    (editingUser?.profile_photo_path && !removePhoto
+      ? photoUrl(editingUser.profile_photo_path)
+      : null);
   const actionButtonClass =
     "grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground";
 
@@ -303,7 +360,7 @@ function UserManagement() {
                       <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-white ring-2 ring-gold/40">
                         {user.profile_photo_path ? (
                           <img
-                            src={`${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`}
+                            src={photoUrl(user.profile_photo_path)}
                             alt={`${user.name} profile`}
                             className="h-full w-full object-cover"
                             onError={(event) => {
@@ -422,6 +479,53 @@ function UserManagement() {
 
             <div className="space-y-5 p-6">
               {error && <AuthAlert tone="error">{error}</AuthAlert>}
+              <div className="flex items-center gap-4">
+                <div className="bg-navy grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full text-lg font-bold text-white ring-2 ring-gold/40">
+                  {currentPhoto ? (
+                    <img
+                      src={currentPhoto}
+                      alt="Profile picture preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserRound className="h-7 w-7 text-white/80" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    Profile picture{" "}
+                    <span className="font-normal text-muted-foreground">(optional)</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG, or WEBP, up to 2 MB.</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 text-xs font-semibold transition-colors hover:border-ring/40"
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      {currentPhoto ? "Change photo" : "Upload photo"}
+                    </button>
+                    {currentPhoto && (
+                      <button
+                        type="button"
+                        onClick={clearPhoto}
+                        className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={photoInputRef}
+                    id="user-profile-photo"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <label htmlFor="user-first-name" className={labelClass}>
