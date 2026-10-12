@@ -241,6 +241,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#1f3350" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -254,6 +255,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: logo, type: "image/png" },
+      // Square, transparent icons so installed shortcuts show only the logo, not a white tile.
+      { rel: "manifest", href: `${import.meta.env.BASE_URL}manifest.webmanifest` },
+      { rel: "apple-touch-icon", href: `${import.meta.env.BASE_URL}icons/apple-touch-icon.png` },
     ],
   }),
   shellComponent: RootShell,
