@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use App\Models\Announcement;
+use App\Models\SeniorCitizen;
 use App\Support\AgeThresholdNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,8 +39,15 @@ class NotificationController extends Controller
                 ->with('sender:id,name,role')
                 ->latest('created_at')
                 ->get();
+        // Age threshold alerts point at a senior's row id; the senior pages look seniors up by OSCA ID.
+        $seniorOscaIds = SeniorCitizen::query()
+            ->whereIn('id', $notifications->where('source_type', 'age_threshold')->pluck('source_id')->filter())
+            ->pluck('osca_id_number', 'id');
 
-        return response()->json($notifications->map(function (Notification $notification) use ($announcements) {
+        return response()->json($notifications->map(function (Notification $notification) use ($announcements, $seniorOscaIds) {
+            if ($notification->source_type === 'age_threshold') {
+                $notification->setAttribute('senior_osca_id', $seniorOscaIds[$notification->source_id] ?? null);
+            }
             if (! $notification->source_id) {
                 $announcement = $announcements->first(fn (Announcement $item) => str_contains($notification->message, $item->title));
                 if ($announcement) {

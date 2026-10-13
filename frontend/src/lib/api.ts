@@ -357,6 +357,8 @@ export type ServerNotification = {
   created_at: string;
   source_type?: string | null;
   source_id?: number | null;
+  /** OSCA ID of the senior an age threshold alert is about. */
+  senior_osca_id?: string | null;
   archived_at?: string | null;
   sender?: { name: string; role: string };
 };

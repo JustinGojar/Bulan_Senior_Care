@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { EligibilityFlagDialog } from "@/components/EligibilityFlagDialog";
 import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
 import { panelClass, tileClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -22,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  apiFetch,
   archiveServerNotification,
   deleteServerNotification,
   getServerNotifications,
@@ -29,8 +31,16 @@ import {
   markServerNotificationRead,
   markServerNotificationUnread,
   type ServerNotification,
+  type ApiSenior,
   unarchiveServerNotification,
 } from "@/lib/api";
+import {
+  BENEFIT_PROGRAMS,
+  claimMessage,
+  findNewEligibilityFlags,
+  type EligibilityFlag,
+} from "@/lib/osca-data";
+import { mapSenior } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({ meta: [{ title: "Notifications — Bulan SeniorCare" }] }),
@@ -42,6 +52,7 @@ function Notifications() {
   const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
   const [selectedNotificationIds, setSelectedNotificationIds] = useState<number[]>([]);
   const [view, setView] = useState<"inbox" | "archived">("inbox");
+  const [selectedFlag, setSelectedFlag] = useState<EligibilityFlag | null>(null);
 
   // The inbox and archive views each show their own slice; actions only touch what is shown.
   const visibleNotifications = serverNotifications.filter((notification) =>
@@ -180,6 +191,37 @@ function Notifications() {
     if (notification.source_type === "benefit_release" && sourceId) {
       return navigate({ to: "/benefits", search: { release: sourceId } });
     }
+    if (notification.source_type === "age_threshold" && notification.senior_osca_id) {
+      return openAgeThresholdFlag(notification, notification.senior_osca_id);
+    }
+    return openSourcePage(notification);
+  }
+
+  /** Shows the same congratulations pop-up as the Age Threshold page for the alerted senior. */
+  function openAgeThresholdFlag(notification: ServerNotification, oscaId: string) {
+    apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}`)
+      .then((result) => {
+        const senior = mapSenior(result);
+        // The alert names the grant ("... is eligible for Nonagenarian Grant."), which still
+        // applies after the senior's birthday has moved past the exact milestone age.
+        const grantName = notification.message.split(" is eligible for ")[1]?.replace(/\.$/, "");
+        const program =
+          BENEFIT_PROGRAMS.find((item) => item.name === grantName?.trim()) ??
+          findNewEligibilityFlags([senior])[0]?.program;
+        if (!program) {
+          void openSourcePage(notification);
+          return;
+        }
+        setSelectedFlag({
+          senior,
+          program,
+          reason: claimMessage(senior.name, senior.age, program.name),
+        });
+      })
+      .catch(() => openSourcePage(notification));
+  }
+
+  function openSourcePage(notification: ServerNotification) {
     if (notification.source_type === "age_threshold") {
       // Admin and Head review flags on the Age Threshold page; BSCA Presidents cannot open it,
       // so they go to the senior's record instead. The message starts with the senior's name.
@@ -377,6 +419,7 @@ function Notifications() {
           )}
         </div>
       </section>
+      <EligibilityFlagDialog flag={selectedFlag} onClose={() => setSelectedFlag(null)} />
     </AppShell>
   );
 }

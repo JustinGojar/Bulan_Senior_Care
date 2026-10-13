@@ -36,7 +36,7 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   privacyConsent?: boolean;
 };
 
-function mapSenior(senior: ApiSenior): Senior {
+export function mapSenior(senior: ApiSenior): Senior {
   const birthdate = new Date(`${String(senior.birthdate).slice(0, 10)}T00:00:00`);
   const today = new Date();
   const birthdayPassed =
