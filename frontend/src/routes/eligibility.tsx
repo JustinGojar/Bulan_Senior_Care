@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
-  Eye,
   Loader2,
   MapPin,
   Search,
@@ -27,6 +26,7 @@ import {
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
 import { getStoredUser, seniorFileUrl, type SeniorFileKind } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useSeniors } from "@/lib/use-seniors";
 import { BARANGAYS, benefitLabel, type Senior } from "@/lib/osca-data";
 import {
@@ -227,7 +227,10 @@ function EligibilityReview() {
                 type="button"
                 onClick={() => reviewSelected("Inactive")}
                 disabled={bulkReviewing || selectedSeniors.length === 0}
-                className={`${secondaryButtonClass} h-10 justify-center px-3 text-xs text-destructive sm:h-9 hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40`}
+                className={cn(
+                  secondaryButtonClass,
+                  "h-10 justify-center px-3 text-xs text-destructive sm:h-9 hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40",
+                )}
               >
                 <X className="h-3.5 w-3.5" /> Not eligible
               </button>
@@ -235,7 +238,10 @@ function EligibilityReview() {
                 type="button"
                 onClick={() => reviewSelected("Active")}
                 disabled={bulkReviewing || selectedSeniors.length === 0}
-                className={`${primaryButtonClass} h-10 justify-center px-3 text-xs disabled:opacity-40 sm:h-9`}
+                className={cn(
+                  primaryButtonClass,
+                  "h-10 justify-center px-3 text-xs disabled:opacity-40 sm:h-9",
+                )}
               >
                 {bulkReviewing ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -258,7 +264,12 @@ function EligibilityReview() {
             return (
               <article
                 key={senior.id}
-                className={`${tileClass} flex flex-wrap items-center justify-between gap-4`}
+                onClick={(event) => {
+                  // Clicks on the checkbox or the review buttons keep their own behavior.
+                  if ((event.target as HTMLElement).closest("button, input, label")) return;
+                  setViewing(senior);
+                }}
+                className={`${tileClass} flex cursor-pointer flex-wrap items-center justify-between gap-4 transition-colors hover:border-navy/30`}
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <input
@@ -271,7 +282,14 @@ function EligibilityReview() {
                   />
                   <div className="min-w-0">
                     <p className="font-bold">
-                      {senior.name}{" "}
+                      <button
+                        type="button"
+                        onClick={() => setViewing(senior)}
+                        aria-label={`View full information for ${senior.name}`}
+                        className="text-left hover:underline"
+                      >
+                        {senior.name}
+                      </button>{" "}
                       <span className="ml-1 text-xs font-semibold text-muted-foreground">
                         {senior.id}
                       </span>
@@ -289,30 +307,24 @@ function EligibilityReview() {
                     </p>
                   </div>
                 </div>
-                <div className="grid w-full grid-cols-[2.5rem_1fr_1fr] gap-2 sm:flex sm:w-auto sm:flex-wrap">
+                <div className="flex w-full justify-end gap-2 sm:w-auto">
                   <button
-                    onClick={() => setViewing(senior)}
-                    aria-label={`View full information for ${senior.name}`}
-                    className={`${secondaryButtonClass} h-10 justify-center px-0 sm:px-4`}
+                    onClick={() => reviewSenior(senior, "Inactive")}
+                    className={cn(
+                      secondaryButtonClass,
+                      "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
+                    )}
                   >
-                    <Eye className="h-4 w-4" /> <span className="hidden sm:inline">View</span>
+                    <X className="h-3.5 w-3.5" />
+                    Not eligible
                   </button>
-                  <div className="contents sm:flex sm:gap-2">
-                    <button
-                      onClick={() => reviewSenior(senior, "Inactive")}
-                      className={`${secondaryButtonClass} h-10 justify-center px-2 whitespace-nowrap text-destructive sm:px-4 hover:border-destructive/40 hover:bg-destructive/10`}
-                    >
-                      <X className="h-4 w-4" />
-                      Not eligible
-                    </button>
-                    <button
-                      onClick={() => reviewSenior(senior, "Active")}
-                      className={`${primaryButtonClass} h-10 justify-center px-2 sm:px-4`}
-                    >
-                      <Check className="h-4 w-4" />
-                      Eligible
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => reviewSenior(senior, "Active")}
+                    className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Eligible
+                  </button>
                 </div>
               </article>
             );
