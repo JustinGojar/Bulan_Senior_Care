@@ -105,7 +105,7 @@ class OverviewAggregationTest extends TestCase
             ->assertJsonPath('received_by_benefit.0.received_count', 1);
     }
 
-    public function test_overview_reports_month_to_date_percentage_changes_against_the_same_days_last_month(): void
+    public function test_overview_reports_growth_of_each_total_since_the_end_of_last_month(): void
     {
         Carbon::setTestNow('2026-10-05 12:00:00');
 
@@ -126,19 +126,17 @@ class OverviewAggregationTest extends TestCase
             $lastMonthActive = $this->createSenior($admin, $barangay, 'OSCA-SEPT-ACTIVE', 'active');
             $lastMonthPending = $this->createSenior($admin, $barangay, 'OSCA-SEPT-PENDING', 'pending');
             $this->createSenior($admin, $barangay, 'OSCA-OCT-ACTIVE-1', 'active');
-            $this->createSenior($admin, $barangay, 'OSCA-OCT-ACTIVE-2', 'active');
-            $this->createSenior($admin, $barangay, 'OSCA-OCT-PENDING', 'pending');
 
             $lastMonthActive->forceFill(['created_at' => '2026-09-02 12:00:00'])->save();
             $lastMonthPending->forceFill(['created_at' => '2026-09-03 12:00:00'])->save();
-            foreach (['OSCA-OCT-ACTIVE-1', 'OSCA-OCT-ACTIVE-2', 'OSCA-OCT-PENDING'] as $oscaId) {
+            foreach (['OSCA-OCT-ACTIVE-1'] as $oscaId) {
                 SeniorCitizen::where('osca_id_number', $oscaId)
                     ->update(['created_at' => '2026-10-02 12:00:00']);
             }
 
             foreach ([
                 [$lastMonthActive, '1000', '2026-09-02'],
-                [SeniorCitizen::where('osca_id_number', 'OSCA-OCT-ACTIVE-1')->firstOrFail(), '1500', '2026-10-02'],
+                [SeniorCitizen::where('osca_id_number', 'OSCA-OCT-ACTIVE-1')->firstOrFail(), '500', '2026-10-02'],
             ] as [$senior, $amount, $dateDistributed]) {
                 BenefitTransaction::create([
                     'senior_citizen_id' => $senior->id,

@@ -112,10 +112,26 @@ function pageFooter(pdf: jsPDF, page: number) {
   pdf.text(`PAGE ${page} OF 4`, 105, 290, { align: "center" });
 }
 
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 function usDate(date?: string) {
   if (!date) return "";
   const [year, month, day] = date.slice(0, 10).split("-");
-  return year && month && day ? `${month}/${day}/${year}` : date;
+  const monthName = MONTH_NAMES[Number(month) - 1];
+  return year && monthName && day ? `${monthName} ${Number(day)}, ${year}` : date;
 }
 
 type FamilyMember = { name: string; relationship: string; age: string };
@@ -693,5 +709,13 @@ export async function downloadClaimForm(senior: Senior) {
   );
   pageFooter(pdf, 4);
 
-  pdf.save(`Annex-A-Grantee-Claim-Form-${senior.id}.pdf`);
+  const fullName =
+    [senior.firstName, senior.middleName, senior.lastName, senior.suffix]
+      .filter(Boolean)
+      .join(" ") || senior.name;
+  const fileName = (fullName ?? "")
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  pdf.save(`${fileName || senior.id} - Annex A Grantee Claim Form.pdf`);
 }

@@ -122,7 +122,7 @@ function MonthlyChange({ value }: { value: number | null | undefined }) {
       className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${isIncrease ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
     >
       <TrendIcon className="h-3.5 w-3.5" />
-      {Math.abs(value)}% vs. last month
+      {Math.min(Math.abs(value), 100)}% vs. last month
     </span>
   );
 }

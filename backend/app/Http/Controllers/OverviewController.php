@@ -17,10 +17,6 @@ class OverviewController extends Controller
         return response()->json(Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request) {
             $now = now();
             $currentMonthStart = $now->copy()->startOfMonth();
-            $previousMonthStart = $currentMonthStart->copy()->subMonth();
-            $previousMonthEnd = $previousMonthStart->copy()
-                ->addDays(min($now->day, $previousMonthStart->daysInMonth) - 1)
-                ->endOfDay();
             $isLeader = $request->user()->role === 'leader';
             $leaderId = $request->user()->id;
             $barangayId = $request->user()->barangay_id;
@@ -65,8 +61,10 @@ class OverviewController extends Controller
                 )
                 ->first();
 
-            $countSeniorsForPeriod = static function ($start, $end, ?string $status = null) use ($isLeader, $leaderId, $barangayId): int {
-                $query = SeniorCitizen::query()->whereBetween('created_at', [$start, $end]);
+            // Compare each running total with what it was at the end of last month,
+            // so the badge reflects real growth instead of swings between monthly batches.
+            $countSeniorsBefore = static function ($cutoff, ?string $status = null) use ($isLeader, $leaderId, $barangayId): int {
+                $query = SeniorCitizen::query()->where('created_at', '<', $cutoff);
                 if ($status !== null) {
                     $query->where('status', $status);
                 }
@@ -76,33 +74,32 @@ class OverviewController extends Controller
 
                 return $query->count();
             };
-            $distributedAmountForPeriod = static function ($start, $end) use ($transactionScope): float {
+            $distributedAmountBefore = static function ($cutoff) use ($transactionScope): float {
                 $query = DB::table('benefit_transactions')
                     ->where('benefit_transactions.status', 'released')
-                    ->whereBetween('benefit_transactions.date_distributed', [
-                        $start->toDateString(),
-                        $end->toDateString(),
-                    ]);
+                    ->where('benefit_transactions.date_distributed', '<', $cutoff->toDateString());
                 $transactionScope($query);
 
                 return (float) $query->sum('benefit_transactions.amount');
             };
-            $monthlyMetrics = static function ($start, $end) use ($countSeniorsForPeriod, $distributedAmountForPeriod): array {
-                return [
-                    'total_registered' => $countSeniorsForPeriod($start, $end),
-                    'active_seniors' => $countSeniorsForPeriod($start, $end, 'active'),
-                    'pending_applications' => $countSeniorsForPeriod($start, $end, 'pending'),
-                    'benefits_distributed_amount' => $distributedAmountForPeriod($start, $end),
-                ];
-            };
-            $currentMonthMetrics = $monthlyMetrics($currentMonthStart, $now);
-            $previousMonthMetrics = $monthlyMetrics($previousMonthStart, $previousMonthEnd);
+            $currentTotals = [
+                'total_registered' => (int) $seniorStats->total_registered,
+                'active_seniors' => (int) $seniorStats->active_seniors,
+                'pending_applications' => (int) $seniorStats->pending_applications,
+                'benefits_distributed_amount' => (float) $transactionStats->distributed_amount,
+            ];
+            $previousTotals = [
+                'total_registered' => $countSeniorsBefore($currentMonthStart),
+                'active_seniors' => $countSeniorsBefore($currentMonthStart, 'active'),
+                'pending_applications' => $countSeniorsBefore($currentMonthStart, 'pending'),
+                'benefits_distributed_amount' => $distributedAmountBefore($currentMonthStart),
+            ];
             $monthlyChange = [];
-            foreach ($currentMonthMetrics as $metric => $currentValue) {
-                $previousValue = $previousMonthMetrics[$metric];
+            foreach ($currentTotals as $metric => $currentValue) {
+                $previousValue = $previousTotals[$metric];
                 $monthlyChange[$metric] = $previousValue > 0
-                    ? (int) round((($currentValue - $previousValue) / $previousValue) * 100)
-                    : null;
+                    ? (int) max(-100, min(100, round((($currentValue - $previousValue) / $previousValue) * 100)))
+                    : ($currentValue > 0 ? 100 : 0);
             }
 
             $receivedByBenefitQuery = DB::table('benefit_transactions')

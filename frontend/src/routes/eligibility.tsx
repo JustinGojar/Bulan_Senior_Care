@@ -222,12 +222,12 @@ function EligibilityReview() {
               Select all on this page
             </label>
             <span className="text-xs text-muted-foreground">{selectedSeniors.length} selected</span>
-            <div className="ml-auto flex flex-wrap gap-2">
+            <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => reviewSelected("Inactive")}
                 disabled={bulkReviewing || selectedSeniors.length === 0}
-                className={`${secondaryButtonClass} h-9 px-3 text-xs text-destructive hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40`}
+                className={`${secondaryButtonClass} h-10 justify-center px-3 text-xs text-destructive sm:h-9 hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40`}
               >
                 <X className="h-3.5 w-3.5" /> Not eligible
               </button>
@@ -235,7 +235,7 @@ function EligibilityReview() {
                 type="button"
                 onClick={() => reviewSelected("Active")}
                 disabled={bulkReviewing || selectedSeniors.length === 0}
-                className={`${primaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+                className={`${primaryButtonClass} h-10 justify-center px-3 text-xs disabled:opacity-40 sm:h-9`}
               >
                 {bulkReviewing ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -289,25 +289,25 @@ function EligibilityReview() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid w-full grid-cols-[2.5rem_1fr_1fr] gap-2 sm:flex sm:w-auto sm:flex-wrap">
                   <button
                     onClick={() => setViewing(senior)}
                     aria-label={`View full information for ${senior.name}`}
-                    className={`${secondaryButtonClass} h-10 px-4`}
+                    className={`${secondaryButtonClass} h-10 justify-center px-0 sm:px-4`}
                   >
-                    <Eye className="h-4 w-4" /> View
+                    <Eye className="h-4 w-4" /> <span className="hidden sm:inline">View</span>
                   </button>
-                  <div className="flex gap-2">
+                  <div className="contents sm:flex sm:gap-2">
                     <button
                       onClick={() => reviewSenior(senior, "Inactive")}
-                      className={`${secondaryButtonClass} h-10 px-4 text-destructive hover:border-destructive/40 hover:bg-destructive/10`}
+                      className={`${secondaryButtonClass} h-10 justify-center px-2 whitespace-nowrap text-destructive sm:px-4 hover:border-destructive/40 hover:bg-destructive/10`}
                     >
                       <X className="h-4 w-4" />
                       Not eligible
                     </button>
                     <button
                       onClick={() => reviewSenior(senior, "Active")}
-                      className={`${primaryButtonClass} h-10 px-4`}
+                      className={`${primaryButtonClass} h-10 justify-center px-2 sm:px-4`}
                     >
                       <Check className="h-4 w-4" />
                       Eligible
