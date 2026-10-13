@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
+import { toast } from "sonner";
 import { EligibilityFlagDialog } from "@/components/EligibilityFlagDialog";
 import {
   EmptyState,
@@ -49,9 +50,19 @@ import {
   type EligibilityFlag,
   type Senior,
 } from "@/lib/osca-data";
-import { useSeniors } from "@/lib/use-seniors";
+import { loadEligibilityFlag, useSeniors } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/age-threshold")({
+  // `senior` (OSCA ID) opens that senior's congratulations pop-up, e.g. from an age threshold alert.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    senior?: string | undefined;
+    grant?: string | undefined;
+  } => ({
+    senior: typeof search["senior"] === "string" && search["senior"] ? search["senior"] : undefined,
+    grant: typeof search["grant"] === "string" && search["grant"] ? search["grant"] : undefined,
+  }),
   head: () => ({ meta: [{ title: "Age Threshold — Bulan SeniorCare" }] }),
   component: AgeThresholdPage,
 });
@@ -121,6 +132,26 @@ function AgeThresholdPage() {
   const [flagsPage, setFlagsPage] = useState(1);
   const [seniorsPage, setSeniorsPage] = useState(1);
   const [selectedBarangay, setSelectedBarangay] = useState("All");
+  const { senior: linkedSeniorId, grant: linkedGrant } = Route.useSearch();
+  useEffect(() => {
+    if (!linkedSeniorId) return;
+    let active = true;
+    loadEligibilityFlag(linkedSeniorId, linkedGrant)
+      .then((flag) => {
+        if (!active) return;
+        if (flag) setSelectedFlag(flag);
+        else toast.error("This senior no longer has a milestone grant to review.");
+      })
+      .catch(() => active && toast.error("Unable to open this senior's record."));
+    return () => {
+      active = false;
+    };
+  }, [linkedSeniorId, linkedGrant]);
+  function closeFlag() {
+    setSelectedFlag(null);
+    // Drop the link so a refresh does not reopen the pop-up.
+    if (linkedSeniorId) void navigate({ to: "/age-threshold", search: {}, replace: true });
+  }
   useEffect(() => {
     if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
   }, [currentUser?.role, navigate]);
@@ -309,7 +340,7 @@ function AgeThresholdPage() {
         />
       </section>
 
-      <EligibilityFlagDialog flag={selectedFlag} onClose={() => setSelectedFlag(null)} />
+      <EligibilityFlagDialog flag={selectedFlag} onClose={closeFlag} />
 
       <Dialog
         open={selectedProgram !== null}

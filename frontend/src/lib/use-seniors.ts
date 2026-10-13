@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, getStoredUser, submitSeniorEditRequest, type ApiSenior } from "./api";
-import { benefitForAge, type Senior } from "./osca-data";
+import {
+  BENEFIT_PROGRAMS,
+  benefitForAge,
+  claimMessage,
+  findNewEligibilityFlags,
+  type EligibilityFlag,
+  type Senior,
+} from "./osca-data";
 import { PRIVACY_CONSENT_VERSION } from "./terms";
 
 type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: number } };
@@ -35,6 +42,24 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   /** The senior agreed to the Data Privacy Consent; sent with new registrations. */
   privacyConsent?: boolean;
 };
+
+/**
+ * Loads one senior's milestone flag for the congratulations pop-up. `grantName` comes from the
+ * age threshold alert ("... is eligible for Nonagenarian Grant."), so the grant still shows after
+ * the senior's birthday has moved past the exact milestone age. Resolves null if none applies.
+ */
+export async function loadEligibilityFlag(
+  oscaId: string,
+  grantName?: string,
+): Promise<EligibilityFlag | null> {
+  const senior = mapSenior(await apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}`));
+  const program =
+    BENEFIT_PROGRAMS.find((item) => item.name === grantName?.trim()) ??
+    findNewEligibilityFlags([senior])[0]?.program;
+  return program
+    ? { senior, program, reason: claimMessage(senior.name, senior.age, program.name) }
+    : null;
+}
 
 export function mapSenior(senior: ApiSenior): Senior {
   const birthdate = new Date(`${String(senior.birthdate).slice(0, 10)}T00:00:00`);

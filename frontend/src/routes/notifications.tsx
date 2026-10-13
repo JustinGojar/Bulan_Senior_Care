@@ -23,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  apiFetch,
   archiveServerNotification,
   deleteServerNotification,
   getServerNotifications,
@@ -31,16 +30,10 @@ import {
   markServerNotificationRead,
   markServerNotificationUnread,
   type ServerNotification,
-  type ApiSenior,
   unarchiveServerNotification,
 } from "@/lib/api";
-import {
-  BENEFIT_PROGRAMS,
-  claimMessage,
-  findNewEligibilityFlags,
-  type EligibilityFlag,
-} from "@/lib/osca-data";
-import { mapSenior } from "@/lib/use-seniors";
+import { type EligibilityFlag } from "@/lib/osca-data";
+import { loadEligibilityFlag } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/notifications")({
   head: () => ({ meta: [{ title: "Notifications — Bulan SeniorCare" }] }),
@@ -192,33 +185,21 @@ function Notifications() {
       return navigate({ to: "/benefits", search: { release: sourceId } });
     }
     if (notification.source_type === "age_threshold" && notification.senior_osca_id) {
-      return openAgeThresholdFlag(notification, notification.senior_osca_id);
+      const grant = notification.message.split(" is eligible for ")[1]?.replace(/\.$/, "").trim();
+      // Admin and Head see the pop-up on the Age Threshold page. BSCA Presidents cannot open
+      // that page, so the pop-up opens here instead.
+      if (getStoredUser()?.role !== "leader") {
+        return navigate({
+          to: "/age-threshold",
+          search: { senior: notification.senior_osca_id, grant },
+        });
+      }
+      loadEligibilityFlag(notification.senior_osca_id, grant)
+        .then((flag) => (flag ? setSelectedFlag(flag) : openSourcePage(notification)))
+        .catch(() => openSourcePage(notification));
+      return;
     }
     return openSourcePage(notification);
-  }
-
-  /** Shows the same congratulations pop-up as the Age Threshold page for the alerted senior. */
-  function openAgeThresholdFlag(notification: ServerNotification, oscaId: string) {
-    apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}`)
-      .then((result) => {
-        const senior = mapSenior(result);
-        // The alert names the grant ("... is eligible for Nonagenarian Grant."), which still
-        // applies after the senior's birthday has moved past the exact milestone age.
-        const grantName = notification.message.split(" is eligible for ")[1]?.replace(/\.$/, "");
-        const program =
-          BENEFIT_PROGRAMS.find((item) => item.name === grantName?.trim()) ??
-          findNewEligibilityFlags([senior])[0]?.program;
-        if (!program) {
-          void openSourcePage(notification);
-          return;
-        }
-        setSelectedFlag({
-          senior,
-          program,
-          reason: claimMessage(senior.name, senior.age, program.name),
-        });
-      })
-      .catch(() => openSourcePage(notification));
   }
 
   function openSourcePage(notification: ServerNotification) {
