@@ -434,12 +434,12 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
   const seniorName =
     [draft.firstName, draft.middleName, draft.lastName].filter((part) => part?.trim()).join(" ") ||
     draft.name ||
-    "senior";
+    "";
   const fileName = seniorName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  document.save(`osca-registration-${fileName || "senior"}.pdf`);
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  document.save(`${fileName || "Senior"} - Registration Form.pdf`);
 }
 
 function changedFields(request: SeniorEditRequest) {
