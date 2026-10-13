@@ -59,6 +59,7 @@ import {
   type PaginatedResponse,
 } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -84,7 +85,7 @@ type BenefitProgram = {
   type: string;
   minAge: number;
   maxAge?: number;
-  amount: string;
+  amount: number | null;
   schedule: string;
   funding: string;
   status: "active" | "inactive";
@@ -184,9 +185,7 @@ function BenefitTracking() {
     () =>
       [...programs].sort((a, b) => {
         if (sortProgramsBy === "amount") {
-          const amountA = Number(a.amount.replace(/[^\d.]/g, "")) || 0;
-          const amountB = Number(b.amount.replace(/[^\d.]/g, "")) || 0;
-          return amountB - amountA;
+          return (b.amount ?? 0) - (a.amount ?? 0);
         }
         return a.name.localeCompare(b.name);
       }),
@@ -236,7 +235,7 @@ function BenefitTracking() {
             type: program.benefit_type,
             minAge: program.min_age,
             ...(program.max_age === null ? {} : { maxAge: program.max_age }),
-            amount: program.amount ? `₱${Number(program.amount).toLocaleString()}` : "Variable",
+            amount: program.amount ? Number(program.amount) : null,
             schedule:
               program.schedule === "one_time"
                 ? "One-time"
@@ -572,8 +571,7 @@ function BenefitTracking() {
       const receivedAmount = rows
         .filter((row) => row.status === "Received")
         .reduce((sum, row) => sum + row.amount, 0);
-      const peso = (value: number) =>
-        `PHP ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const peso = (value: number) => formatPesoAmount(value, "PHP ");
       const summary: Array<[string, string]> = [
         ["Filters", releaseQueueFilterSummary()],
         ["Records", String(rows.length)],
@@ -737,7 +735,7 @@ function BenefitTracking() {
       <div className="mb-5 flex flex-wrap items-center gap-2 p-3 sm:p-4">
         <IconSelect
           label="Program"
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<Grid2X2 className="h-4 w-4" />}
           value={selectedBenefit}
           options={benefitOptions.map((benefit) => ({
@@ -748,7 +746,7 @@ function BenefitTracking() {
         />
         <IconSelect
           label="Status"
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<ListFilter className="h-4 w-4" />}
           value={selectedStatus}
           options={[
@@ -761,7 +759,7 @@ function BenefitTracking() {
         />
         <IconSelect
           label="Period"
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<CalendarDays className="h-4 w-4" />}
           value={selectedPeriod}
           options={[
@@ -777,7 +775,7 @@ function BenefitTracking() {
           label="Barangay"
           searchable
           keepWhiteBackground
-          className="sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={selectedBarangay}
           disabled={isLeader}
@@ -790,7 +788,7 @@ function BenefitTracking() {
         <IconSelect
           label="Sort by"
           prefix="Sort by"
-          className="sm:flex-1 xl:ml-auto xl:w-[205px] xl:flex-none"
+          className="sm:min-w-52 sm:flex-1 xl:ml-auto xl:min-w-0 xl:w-[205px] xl:flex-none"
           icon={<ArrowUpDown className="h-4 w-4" />}
           value={sortProgramsBy}
           defaultValue="name"
@@ -890,7 +888,13 @@ function BenefitTracking() {
               </div>
 
               <p className="mt-2 font-display text-sm font-extrabold md:mt-3 md:text-2xl">
-                {program.amount}
+                {program.amount === null ? (
+                  "Variable"
+                ) : (
+                  <span title={formatPesoFull(program.amount)}>
+                    {formatPesoAmount(program.amount)}
+                  </span>
+                )}
               </p>
               <p className="text-[10px] text-muted-foreground md:text-xs">{program.schedule}</p>
 

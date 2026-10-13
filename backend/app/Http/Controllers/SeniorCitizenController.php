@@ -206,7 +206,7 @@ class SeniorCitizenController extends Controller
             ]);
             $data['barangay_id'] = $barangay->id;
         }
-        abort_if(! $data['barangay_id'], 422, 'A barangay is required.');
+        abort_if(empty($data['barangay_id']), 422, 'A barangay is required.');
         $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
         abort_if($duplicate, 422, 'A senior with the same name and birthdate already exists.');
         $benefitName = [
@@ -384,6 +384,11 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
         $this->authorizeScope($request, $senior);
+        if ($request->input('contact_number') === $senior->contact_number) {
+            // Unchanged. Older records (e.g. bulk imports) may hold a number in another format,
+            // which should not block saving the rest of the record.
+            $request->request->remove('contact_number');
+        }
         $this->normalizeContact($request);
         $data = $request->validate([...$this->rules(true), ...$this->inactiveRules($senior)], [
             'inactive_reason.required_if' => 'Choose the reason the senior is inactive.',
@@ -391,7 +396,11 @@ class SeniorCitizenController extends Controller
             'inactive_remarks.required_if' => 'Describe the reason in the remarks.',
         ]);
         if (array_key_exists('barangay', $data)) {
-            $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
+            // Every senior belongs to a barangay, so an unknown name is refused rather than cleared.
+            if (filled($data['barangay'])) {
+                $data['barangay_id'] = Barangay::where('barangay_name', $data['barangay'])->value('id');
+                abort_unless($data['barangay_id'], 422, 'The selected barangay does not exist.');
+            }
             unset($data['barangay']);
         }
         if (array_key_exists('benefit', $data)) {
