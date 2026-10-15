@@ -26,6 +26,7 @@ import "@/lib/pwa";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { FormValidation } from "@/components/FormValidation";
 import { StatusPage } from "@/components/StatusPage";
+import { SplashScreen, splashCss, splashScript, useSplashDismiss } from "@/components/SplashScreen";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { Home, LayoutGrid, MapPinOff, RotateCw, TriangleAlert } from "lucide-react";
 
@@ -278,9 +279,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: splashScript }} />
+        <style dangerouslySetInnerHTML={{ __html: splashCss }} />
         <HeadContent />
       </head>
       <body>
+        <SplashScreen />
         {children}
         <Scripts />
       </body>
@@ -291,6 +295,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  useSplashDismiss();
 
   useEffect(() => {
     // On a full page load the root beforeLoad runs on the server, where it cannot see the
