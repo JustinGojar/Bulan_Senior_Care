@@ -4,7 +4,7 @@ import splashLogo from "@/images/splash-logo.webp";
 
 const SHOWN_KEY = "bulan-splash-shown";
 /** Keep the splash up at least this long after launch, so the animation reads as intentional. */
-const MIN_VISIBLE_MS = 1600;
+const MIN_VISIBLE_MS = 3000;
 /** Length of the fade-out in splashCss below. */
 const FADE_MS = 450;
 
