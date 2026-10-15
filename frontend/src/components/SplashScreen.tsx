@@ -3,8 +3,10 @@ import { useEffect } from "react";
 import splashLogo from "@/images/splash-logo.webp";
 
 const SHOWN_KEY = "bulan-splash-shown";
-/** Keep the splash up at least this long after launch, so the animation reads as intentional. */
-const MIN_VISIBLE_MS = 3000;
+/** How long the progress bar takes to fill from 0% to 100%. */
+const PROGRESS_MS = 5000;
+/** Pause at 100% before fading, so the full bar registers. */
+const HOLD_MS = 250;
 /** Length of the fade-out in splashCss below. */
 const FADE_MS = 450;
 
@@ -34,14 +36,21 @@ html.splash.splash-out #app-splash{opacity:0;transform:scale(1.03);pointer-event
 .splash-title{margin:0;font-size:28px;font-weight:800;letter-spacing:-.01em;line-height:1.15;animation:splash-rise .7s .25s ease-out both}
 .splash-title span{color:#e2b552}
 .splash-sub{margin:10px 0 0;max-width:280px;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:500;line-height:1.5;opacity:.68;animation:splash-rise .7s .4s ease-out both}
-.splash-loader{width:168px;animation:splash-rise .7s .55s ease-out both}
-.splash-bar{position:relative;height:4px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
-.splash-bar::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;border-radius:999px;background:linear-gradient(90deg,#d6a83e,#f0cf7a,#d6a83e);animation:splash-slide 1.3s cubic-bezier(.65,0,.35,1) infinite}
-.splash-status{margin:12px 0 0;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;opacity:.55}
+.splash-loader{width:min(240px,70vw);animation:splash-rise .7s .55s ease-out both}
+.splash-bar{position:relative;height:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.splash-fill{position:relative;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#c9962b,#e2b552 60%,#f3d68a);box-shadow:0 0 12px rgba(226,181,82,.55);overflow:hidden;animation:splash-fill ${PROGRESS_MS}ms cubic-bezier(.4,0,.6,1) forwards}
+.splash-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transform:translateX(-100%);animation:splash-shine 1.4s ease-in-out infinite}
+.splash-meta{display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 0;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.splash-status{opacity:.55}
+.splash-pct{color:#e2b552;font-variant-numeric:tabular-nums;letter-spacing:.04em;counter-reset:pct var(--pct);animation:splash-count ${PROGRESS_MS}ms cubic-bezier(.4,0,.6,1) forwards}
+.splash-pct::after{content:counter(pct) "%"}
 @keyframes splash-ring{from{opacity:.9;transform:scale(.92)}to{opacity:0;transform:scale(1.16)}}
 @keyframes splash-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@keyframes splash-slide{from{transform:translateX(-110%)}to{transform:translateX(260%)}}
-@media (prefers-reduced-motion:reduce){#app-splash *,#app-splash *::before,#app-splash *::after{animation-duration:.01ms!important;animation-iteration-count:1!important}.splash-bar::after{width:100%;transform:none}}
+@property --pct{syntax:"<integer>";inherits:false;initial-value:0}
+@keyframes splash-fill{to{width:100%}}
+@keyframes splash-count{from{--pct:0}to{--pct:100}}
+@keyframes splash-shine{to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.splash-logo,.splash-logo::before,.splash-logo::after,.splash-text *,.splash-loader,.splash-fill::after{animation:none!important}.splash-logo::before,.splash-logo::after{opacity:0}}
 `;
 
 /** Static markup rendered into the HTML shell; hidden unless splashScript turned it on. */
@@ -63,15 +72,22 @@ export function SplashScreen() {
           LGU Bulan, Sorsogon
         </p>
       </div>
+      {/* Pure CSS (fill width plus a counted percentage), so it runs from the first paint,
+          before the app's JavaScript has loaded. */}
       <div className="splash-loader">
-        <div className="splash-bar" />
-        <p className="splash-status">Loading</p>
+        <div className="splash-bar">
+          <div className="splash-fill" />
+        </div>
+        <p className="splash-meta">
+          <span className="splash-status">Loading</span>
+          <span className="splash-pct" />
+        </p>
       </div>
     </div>
   );
 }
 
-/** Fades the splash out once the first page has finished loading. */
+/** Fades the splash out once the progress bar reaches 100% and the first page has loaded. */
 export function useSplashDismiss() {
   const pending = useRouterState({ select: (state) => state.status === "pending" });
 
@@ -79,17 +95,29 @@ export function useSplashDismiss() {
     const root = document.documentElement;
     if (pending || !root.classList.contains("splash")) return;
 
-    const wait = Math.max(0, MIN_VISIBLE_MS - performance.now());
-    const fadeTimer = window.setTimeout(() => {
-      try {
-        sessionStorage.setItem(SHOWN_KEY, "1");
-      } catch {
-        // Private mode can block storage; the splash then just shows again next launch.
-      }
-      root.classList.add("splash-out");
-      // Not cancelled on cleanup: once the fade has started, it finishes.
-      window.setTimeout(() => root.classList.remove("splash", "splash-out"), FADE_MS);
-    }, wait);
-    return () => window.clearTimeout(fadeTimer);
+    let cancelled = false;
+    let fadeTimer: number | undefined;
+    const fill = document.querySelector<HTMLElement>("#app-splash .splash-fill");
+    // The fill animation started at first paint; wait for it to reach 100%.
+    const filled = Promise.all((fill?.getAnimations?.() ?? []).map((a) => a.finished)).catch(
+      () => undefined,
+    );
+    void filled.then(() => {
+      if (cancelled) return;
+      fadeTimer = window.setTimeout(() => {
+        try {
+          sessionStorage.setItem(SHOWN_KEY, "1");
+        } catch {
+          // Private mode can block storage; the splash then just shows again next launch.
+        }
+        root.classList.add("splash-out");
+        // Not cancelled on cleanup: once the fade has started, it finishes.
+        window.setTimeout(() => root.classList.remove("splash", "splash-out"), FADE_MS);
+      }, HOLD_MS);
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fadeTimer);
+    };
   }, [pending]);
 }
