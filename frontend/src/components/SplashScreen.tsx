@@ -15,13 +15,16 @@ const FADE_MS = 450;
  */
 export const splashScript = `try{var d=document.documentElement,m=function(q){return window.matchMedia(q).matches};if((m("(display-mode: standalone)")||navigator.standalone===true||m("(max-width: 767px)"))&&!sessionStorage.getItem(${JSON.stringify(SHOWN_KEY)})){d.classList.add("splash");setTimeout(function(){d.classList.remove("splash")},10000)}}catch(e){}`;
 
-/** Inline so the splash is styled on the very first paint, before the app stylesheet arrives. */
+/**
+ * Inline so the splash is styled on the very first paint, before the app stylesheet arrives.
+ * The navy (#17213a) matches background_color in manifest.webmanifest, which Android uses for
+ * its own launch screen, so the two screens read as one in both themes.
+ */
 export const splashCss = `
 #app-splash{display:none}
 html.splash{overflow:hidden}
-html.splash #app-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:24px 24px calc(32px + env(safe-area-inset-bottom));background:radial-gradient(120% 80% at 50% 50%,#ffffff 0%,#ffffff 60%,#f3f5f9 100%);color:#1f3254;font-family:"Sora","Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;text-align:center;transition:opacity ${FADE_MS}ms ease,transform ${FADE_MS}ms ease}
+html.splash #app-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:24px 24px calc(32px + env(safe-area-inset-bottom));background:radial-gradient(120% 80% at 50% 50%,#17213a 0%,#17213a 60%,#111a2d 100%);color:#f2f4f8;font-family:"Sora","Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;text-align:center;transition:opacity ${FADE_MS}ms ease,transform ${FADE_MS}ms ease}
 html.splash.splash-out #app-splash{opacity:0;transform:scale(1.03);pointer-events:none}
-html.dark.splash #app-splash{background:radial-gradient(120% 70% at 50% 40%,#22314f 0%,#17213a 60%,#121a2e 100%);color:#f2f4f8}
 #app-splash{--logo:min(47vw,220px)}
 .splash-logo{position:absolute;left:50%;top:50%;width:var(--logo);height:var(--logo);margin:calc(var(--logo) / -2) 0 0 calc(var(--logo) / -2)}
 .splash-logo img{position:relative;display:block;width:100%;height:100%;border-radius:50%}
@@ -29,12 +32,10 @@ html.dark.splash #app-splash{background:radial-gradient(120% 70% at 50% 40%,#223
 .splash-logo::before,.splash-logo::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:2px solid rgba(214,168,62,.55);opacity:0;animation:splash-ring 2.2s .3s ease-out infinite}
 .splash-logo::after{animation-delay:1.4s}
 .splash-title{margin:0;font-size:28px;font-weight:800;letter-spacing:-.01em;line-height:1.15;animation:splash-rise .7s .25s ease-out both}
-.splash-title span{color:#c9962b}
-html.dark .splash-title span{color:#e2b552}
+.splash-title span{color:#e2b552}
 .splash-sub{margin:10px 0 0;max-width:280px;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:500;line-height:1.5;opacity:.68;animation:splash-rise .7s .4s ease-out both}
 .splash-loader{width:168px;animation:splash-rise .7s .55s ease-out both}
-.splash-bar{position:relative;height:4px;border-radius:999px;background:rgba(31,50,84,.1);overflow:hidden}
-html.dark .splash-bar{background:rgba(255,255,255,.12)}
+.splash-bar{position:relative;height:4px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
 .splash-bar::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;border-radius:999px;background:linear-gradient(90deg,#d6a83e,#f0cf7a,#d6a83e);animation:splash-slide 1.3s cubic-bezier(.65,0,.35,1) infinite}
 .splash-status{margin:12px 0 0;font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;opacity:.55}
 @keyframes splash-ring{from{opacity:.9;transform:scale(.92)}to{opacity:0;transform:scale(1.16)}}
