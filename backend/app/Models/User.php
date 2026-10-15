@@ -55,6 +55,18 @@ class User extends Authenticatable
     }
 
     /**
+     * After an email change: the new address is unverified, every session ends, and a
+     * verification link goes to the new address. Returns whether the email was sent.
+     */
+    public function requireEmailReverification(): bool
+    {
+        $this->forceFill(['email_verified_at' => null])->save();
+        $this->tokens()->delete();
+
+        return $this->trySendEmailVerification();
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>

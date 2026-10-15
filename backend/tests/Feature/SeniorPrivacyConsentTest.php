@@ -54,6 +54,22 @@ class SeniorPrivacyConsentTest extends TestCase
         ], $overrides));
     }
 
+    public function test_new_registration_is_found_right_away_in_a_list_that_was_just_loaded(): void
+    {
+        $search = '/api/seniors?per_page=10&page=1&search=Juan+Dela+Cruz';
+        $this->actingAs($this->admin, 'sanctum')->getJson($search)->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/seniors?summary_only=1')->assertJson(['total' => 0, 'pending' => 0]);
+
+        $this->register()->assertStatus(201);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson($search)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.last_name', 'Dela Cruz');
+        $this->getJson('/api/seniors?summary_only=1')->assertJson(['total' => 1, 'pending' => 1]);
+    }
+
     public function test_registration_is_refused_without_privacy_consent(): void
     {
         $this->register(['privacy_consent' => false])

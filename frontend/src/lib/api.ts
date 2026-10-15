@@ -20,8 +20,9 @@ const MAX_STALE_AGE = 5 * 60_000;
 const LEGACY_STORAGE_KEYS = ["bulan-api-token", "bulan-api-user", "bulan-api-cache"];
 // Polled counters must always reach the server.
 const UNCACHED_PATHS = ["/user", "/messages/unread-summary", "/notifications/unread-count"];
-// Inbox-like data that other people change: reuse briefly, never show it stale.
-const LIVE_PATHS = ["/notifications", "/messages"];
+// Data that other people change: reuse briefly, never show it stale. Senior records are
+// here so a record another account just registered is never hidden behind an old list.
+const LIVE_PATHS = ["/notifications", "/messages", "/seniors"];
 const LIVE_FRESH_TTL = 10_000;
 
 type CacheEntry = { session: string | null; data: unknown; fetchedAt: number; freshTtl: number };
@@ -118,6 +119,7 @@ export type ApiUser = {
   contact_number?: string | null;
   address?: string | null;
   profile_photo_path?: string | null;
+  email_verified_at?: string | null;
   roles?: Array<{ name: string }>;
 };
 
@@ -267,7 +269,8 @@ export type SeniorEditRequest = {
   requester: { id: number; name: string; role: string };
 };
 
-export type ArchivedSenior = Pick<ApiSenior, "osca_id_number" | "first_name" | "last_name"> & {
+export type ArchivedSenior = ApiSenior & {
+  archived_by?: string | null;
   deleted_at: string;
 };
 
@@ -559,7 +562,12 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
     { message?: string; errors?: Record<string, string[]> } | T | null;
   if (!response.ok) {
     // A 401 for a session that was already replaced or ended must not end the current one.
-    if (response.status === 401 && path !== "/login" && session && getSessionId() === session) {
+    // The server also ends the session of an account whose email is no longer verified.
+    const sessionRejected =
+      response.status === 401 ||
+      (response.status === 403 &&
+        (body as { email_unverified?: boolean } | null)?.email_unverified === true);
+    if (sessionRejected && path !== "/login" && session && getSessionId() === session) {
       noteSessionEnded((body as { message?: string } | null)?.message);
       clearSession();
       broadcastAuthChange();

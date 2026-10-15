@@ -59,6 +59,53 @@ class EmailVerificationTest extends TestCase
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 
+    public function test_unverified_account_cannot_reach_protected_routes(): void
+    {
+        $user = User::factory()->unverified()->create(['role' => 'admin', 'status' => 'active']);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/user')
+            ->assertStatus(403)
+            ->assertJson(['email_unverified' => true]);
+    }
+
+    public function test_admin_changing_an_email_requires_verifying_the_new_address(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $head = User::factory()->create(['role' => 'head', 'status' => 'active', 'email' => 'old@example.com']);
+        $head->createToken('existing');
+
+        $payload = ['name' => $head->name, 'role' => 'head', 'status' => 'active'];
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/admin/users/{$head->id}", [...$payload, 'email' => 'old@example.com'])
+            ->assertOk();
+        $this->assertTrue($head->fresh()->hasVerifiedEmail());
+        Notification::assertNothingSent();
+
+        $this->putJson("/api/admin/users/{$head->id}", [...$payload, 'email' => 'new@example.com'])
+            ->assertOk();
+
+        $head->refresh();
+        $this->assertFalse($head->hasVerifiedEmail());
+        $this->assertSame(0, $head->tokens()->count());
+        Notification::assertSentTo($head, VerifyEmailNotification::class);
+    }
+
+    public function test_changing_own_email_signs_out_until_the_new_address_is_verified(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['role' => 'head', 'status' => 'active', 'email' => 'old@example.com']);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/profile', ['name' => $user->name, 'email' => 'new@example.com'])
+            ->assertOk()
+            ->assertJson(['email_verification_required' => true, 'verification_email_sent' => true]);
+
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+        Notification::assertSentTo($user, VerifyEmailNotification::class);
+    }
+
     public function test_verification_email_uses_branded_template(): void
     {
         config(['app.frontend_url' => 'https://seniorcare.example']);

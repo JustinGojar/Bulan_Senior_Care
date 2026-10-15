@@ -120,7 +120,12 @@ class UserController extends Controller
         unset($data['profile_photo'], $data['remove_profile_photo']);
 
         Role::findOrCreate($data['role'], 'web');
-        $user->update($data);
+        $user->fill($data);
+        $emailChanged = $user->isDirty('email');
+        $user->save();
+        if ($emailChanged) {
+            $user->requireEmailReverification();
+        }
         if (array_key_exists('profile_photo_path', $data)) {
             PhotoBackup::delete($oldPhotoPath);
         }

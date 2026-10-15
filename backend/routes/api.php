@@ -25,7 +25,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middle
 Route::post('/verify-email', [AuthController::class, 'verifyEmail'])->middleware('throttle:6,1');
 Route::get('/announcements', [AnnouncementController::class, 'index']);
 
-Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(function () {
+Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/overview', OverviewController::class);
@@ -86,9 +86,10 @@ Route::middleware(['token.idle', 'auth:sanctum', 'throttle:api'])->group(functio
 });
 
 // Private senior files and message attachments. A list page loads many photos at once, so these get their own limit.
-Route::middleware(['token.idle', 'auth:sanctum', 'throttle:files'])->group(function () {
+Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:files'])->group(function () {
     Route::get('/seniors/{senior}/files/{kind}', [SeniorCitizenController::class, 'file'])
-        ->whereIn('kind', array_keys(SeniorCitizen::FILE_COLUMNS));
+        ->whereIn('kind', array_keys(SeniorCitizen::FILE_COLUMNS))
+        ->withTrashed();
     Route::get('/benefit-transactions/{benefitTransaction}/attachment', [BenefitTransactionController::class, 'attachment']);
     Route::get('/benefit-releases/{benefitRelease}/documents/{releaseDocument}', [BenefitReleaseController::class, 'document']);
     Route::get('/messages/{message}/attachment', [MessageController::class, 'attachment']);

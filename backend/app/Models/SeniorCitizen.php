@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class SeniorCitizen extends Model
 {
@@ -44,8 +46,17 @@ class SeniorCitizen extends Model
         'inactivated_by', 'inactivated_at',
     ];
 
+    /** Part of every cached senior list key; bumping it makes those lists reload. */
+    public const LIST_CACHE_VERSION_KEY = 'seniors:list-version';
+
     protected static function booted(): void
     {
+        // A saved, archived or restored record must show up in the next list request.
+        $bumpListVersion = fn () => Cache::forever(self::LIST_CACHE_VERSION_KEY, (string) Str::uuid());
+        static::saved($bumpListVersion);
+        static::deleted($bumpListVersion);
+        static::restored($bumpListVersion);
+
         // Alert the barangay leader as soon as a senior becomes active (e.g. approved)
         // or has their birthdate corrected, instead of waiting for the daily check.
         static::saved(function (SeniorCitizen $senior) {

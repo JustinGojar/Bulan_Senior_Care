@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Http\Request;
 use App\Http\Middleware\AuthenticateFromCookie;
+use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnforceTokenIdleTimeout;
 use App\Http\Middleware\SecurityHeaders;
 
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AuthenticateFromCookie::class);
         $middleware->alias([
             'token.idle' => EnforceTokenIdleTimeout::class,
+            'verified.api' => EnsureEmailIsVerified::class,
         ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, EnforceTokenIdleTimeout::class);
     })

@@ -7,8 +7,8 @@ import {
   ChevronRight,
   Clipboard,
   Download,
+  FileText,
   Eye,
-  HeartOff,
   FilePenLine,
   HandCoins,
   Loader2,
@@ -17,7 +17,6 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Trash2,
   Undo2,
   Upload,
   UserRound,
@@ -45,8 +44,7 @@ import {
   tileClass,
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
-import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
-import { MarkDeceasedDialog } from "@/components/MarkDeceasedDialog";
+import { PrivateFileLink, PrivateImage, PrivatePdfPreview } from "@/components/PrivateFile";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
   AlertDialog,
@@ -87,7 +85,8 @@ import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest 
 import { loadPdfLogo } from "@/lib/pdf";
 import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { downloadMasterlist } from "@/lib/masterlist-pdf";
-import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
+import { downloadArchivedSeniorReport } from "@/lib/archived-senior-pdf";
+import { mapSenior, useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -140,6 +139,25 @@ function avatarUrl(senior: Senior) {
 
 function isImageDocument(path: string) {
   return /\.(jpe?g|png|webp)$/i.test(path);
+}
+
+/** A thumbnail of an uploaded document: the image itself, or the first page of a PDF. */
+function DocumentPreview({
+  storedPath,
+  path,
+  alt,
+  className,
+}: {
+  storedPath: string;
+  path: string;
+  alt: string;
+  className: string;
+}) {
+  if (isImageDocument(storedPath))
+    return <PrivateImage path={path} alt={alt} className={className} />;
+  if (/\.pdf$/i.test(storedPath))
+    return <PrivatePdfPreview path={path} title={alt} className={className} />;
+  return null;
 }
 
 function normalizeBulkHeader(header: unknown) {
@@ -536,6 +554,7 @@ function SeniorRecords() {
     createSenior,
     updateSenior,
     deleteSenior,
+    reload,
   } = useSeniors({
     page,
     perPage: 10,
@@ -547,9 +566,13 @@ function SeniorRecords() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
+  // Set while the record being viewed comes from the archive.
+  const [viewingArchive, setViewingArchive] = useState<{ at: string; by: string | null } | null>(
+    null,
+  );
+  const [downloadingReport, setDownloadingReport] = useState(false);
   const [downloadingForm, setDownloadingForm] = useState(false);
   const [deleting, setDeleting] = useState<Senior | null>(null);
-  const [markingDeceased, setMarkingDeceased] = useState<Senior | null>(null);
   const [editRequests, setEditRequests] = useState<SeniorEditRequest[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
@@ -630,6 +653,8 @@ function SeniorRecords() {
     try {
       await apiFetch(`/seniors/archive/${encodeURIComponent(oscaId)}/restore`, { method: "POST" });
       setArchivedRecords((records) => records.filter((record) => record.osca_id_number !== oscaId));
+      if (viewingArchive && viewing?.id === oscaId) setViewing(null);
+      reload();
       toast.success(`${oscaId} was restored.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to restore the record.");
@@ -1052,24 +1077,14 @@ function SeniorRecords() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
-                      {(isLeader || isAdmin) && !s.deceased && (
-                        <button
-                          aria-label={`Mark ${s.name} as deceased`}
-                          title="Mark as deceased"
-                          onClick={() => setMarkingDeceased(s)}
-                          className={actionButtonClass}
-                        >
-                          <HeartOff className="h-4 w-4" />
-                        </button>
-                      )}
                       {isAdmin && (
                         <button
-                          aria-label={`Delete record of ${s.name}`}
-                          title="Delete record"
+                          aria-label={`Archive record of ${s.name}`}
+                          title="Archive record"
                           onClick={() => setDeleting(s)}
-                          className={`${actionButtonClass} hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive`}
+                          className={actionButtonClass}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </button>
                       )}
                       {!isAdmin && (
@@ -1215,8 +1230,11 @@ function SeniorRecords() {
       <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display">Deleted record archive</DialogTitle>
-            <DialogDescription>OSCA IDs for records deleted by an administrator.</DialogDescription>
+            <DialogTitle className="font-display">Archived records</DialogTitle>
+            <DialogDescription>
+              Archived records are kept with all their information. Select one to view it, or
+              restore it to the registry.
+            </DialogDescription>
           </DialogHeader>
           {archiveLoading ? (
             <div className="space-y-2">
@@ -1231,23 +1249,31 @@ function SeniorRecords() {
             <EmptyState
               compact
               icon={Archive}
-              title="No deleted records"
-              description="Records an administrator deletes are kept here by OSCA ID."
+              title="No archived records"
+              description="Records that are archived are kept here with all their information."
             />
           ) : (
             <div className="max-h-80 space-y-2 overflow-y-auto">
               {archivedRecords.map((record) => (
                 <div
                   key={record.osca_id_number}
-                  className={`${tileClass} flex items-center justify-between gap-4 py-3`}
+                  className={`${tileClass} flex items-center justify-between gap-4 py-3 transition-colors hover:border-ring/40`}
                 >
-                  <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewing(mapSenior(record));
+                      setViewingArchive({ at: record.deleted_at, by: record.archived_by ?? null });
+                    }}
+                    aria-label={`View archived record ${record.osca_id_number}`}
+                    className="min-w-0 flex-1 text-left"
+                  >
                     <p className="text-sm font-semibold">{record.osca_id_number}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[record["first_name"], record["last_name"]].filter(Boolean).join(" ")} ·
-                      Deleted {new Date(record.deleted_at).toLocaleDateString()}
+                      {[record.first_name, record.last_name].filter(Boolean).join(" ")} · Archived{" "}
+                      {new Date(record.deleted_at).toLocaleDateString()}
                     </p>
-                  </div>
+                  </button>
                   <button
                     onClick={() => restoreRecord(record.osca_id_number)}
                     aria-label={`Restore ${record.osca_id_number}`}
@@ -1302,7 +1328,14 @@ function SeniorRecords() {
         />
       )}
 
-      <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
+      <Dialog
+        open={!!viewing}
+        onOpenChange={(o) => {
+          if (o) return;
+          setViewing(null);
+          setViewingArchive(null);
+        }}
+      >
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-4">
@@ -1333,6 +1366,11 @@ function SeniorRecords() {
                   {viewing && (
                     <StatusPill tone={STATUS_TONE[viewing.status] ?? "neutral"}>
                       {viewing.status}
+                    </StatusPill>
+                  )}
+                  {viewingArchive && (
+                    <StatusPill tone="gold">
+                      Archived {new Date(viewingArchive.at).toLocaleDateString()}
                     </StatusPill>
                   )}
                 </DialogDescription>
@@ -1552,17 +1590,16 @@ function SeniorRecords() {
                   )}
                   className="mt-3 flex w-28 flex-col gap-2 text-xs font-semibold"
                 >
-                  {isImageDocument(viewing.deceased.certificatePath) && (
-                    <PrivateImage
-                      path={seniorFileUrl(
-                        viewing.id,
-                        "death_certificate",
-                        viewing.deceased.certificatePath,
-                      )}
-                      alt="Death certificate"
-                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
-                    />
-                  )}
+                  <DocumentPreview
+                    storedPath={viewing.deceased.certificatePath}
+                    path={seniorFileUrl(
+                      viewing.id,
+                      "death_certificate",
+                      viewing.deceased.certificatePath,
+                    )}
+                    alt="Death certificate"
+                    className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                  />
                   <span className="text-primary hover:underline">Death certificate</span>
                 </PrivateFileLink>
               ) : (
@@ -1594,13 +1631,12 @@ function SeniorRecords() {
                     path={seniorFileUrl(viewing.id, "id_document", viewing.idDocumentPath)}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
-                    {isImageDocument(viewing.idDocumentPath) && (
-                      <PrivateImage
-                        path={seniorFileUrl(viewing.id, "id_document", viewing.idDocumentPath)}
-                        alt="Valid ID"
-                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
-                      />
-                    )}
+                    <DocumentPreview
+                      storedPath={viewing.idDocumentPath}
+                      path={seniorFileUrl(viewing.id, "id_document", viewing.idDocumentPath)}
+                      alt="Valid ID"
+                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                    />
                     <span>Valid ID</span>
                   </PrivateFileLink>
                 )}
@@ -1609,13 +1645,12 @@ function SeniorRecords() {
                     path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
-                    {isImageDocument(viewing.validIdPath) && (
-                      <PrivateImage
-                        path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
-                        alt="Valid ID"
-                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
-                      />
-                    )}
+                    <DocumentPreview
+                      storedPath={viewing.validIdPath}
+                      path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
+                      alt="Valid ID"
+                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                    />
                     <span>Valid ID</span>
                   </PrivateFileLink>
                 )}
@@ -1628,17 +1663,16 @@ function SeniorRecords() {
                     )}
                     className="flex w-20 flex-col gap-2 text-xs font-semibold"
                   >
-                    {isImageDocument(viewing.birthCertificatePath) && (
-                      <PrivateImage
-                        path={seniorFileUrl(
-                          viewing.id,
-                          "birth_certificate",
-                          viewing.birthCertificatePath,
-                        )}
-                        alt="Birth Certificate"
-                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
-                      />
-                    )}
+                    <DocumentPreview
+                      storedPath={viewing.birthCertificatePath}
+                      path={seniorFileUrl(
+                        viewing.id,
+                        "birth_certificate",
+                        viewing.birthCertificatePath,
+                      )}
+                      alt="Birth Certificate"
+                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                    />
                     <span>Birth Certificate</span>
                   </PrivateFileLink>
                 )}
@@ -1650,7 +1684,44 @@ function SeniorRecords() {
               </div>
             </div>
           )}
-          {viewing && (
+          {viewing && viewingArchive && (
+            <button
+              type="button"
+              onClick={async () => {
+                setDownloadingReport(true);
+                try {
+                  await downloadArchivedSeniorReport(viewing, {
+                    archivedAt: viewingArchive.at,
+                    archivedBy: viewingArchive.by,
+                    generatedBy: currentUser?.name ?? null,
+                  });
+                  toast.success("Archived record report downloaded.");
+                } catch (reason) {
+                  console.error(reason);
+                  toast.error(
+                    reason instanceof Error && reason.message
+                      ? reason.message
+                      : "Unable to download the report.",
+                  );
+                } finally {
+                  setDownloadingReport(false);
+                }
+              }}
+              disabled={downloadingReport}
+              className={`${primaryButtonClass} mt-3 h-12 w-full disabled:opacity-70`}
+            >
+              {downloadingReport ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Preparing Report...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" /> Download Report
+                </>
+              )}
+            </button>
+          )}
+          {viewing && !viewingArchive && (
             <button
               type="button"
               onClick={async () => {
@@ -1696,34 +1767,35 @@ function SeniorRecords() {
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this senior record?</AlertDialogTitle>
+            <AlertDialogTitle>Archive this senior record?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting?.name} ({deleting?.id}) will be removed from the OSCA registry. This action
-              cannot be undone.
+              {deleting?.name} ({deleting?.id}) will move to the archive and leave the registry
+              list. All of the record&apos;s information is kept, and it can be restored from the
+              archive.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-none bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
                 if (!deleting) return;
-                deleteSenior(deleting.id);
-                toast.success(`${deleting.name}'s record was deleted.`);
+                const record = deleting;
                 setDeleting(null);
+                deleteSenior(record.id)
+                  .then(() => toast.success(`${record.name}'s record was archived.`))
+                  .catch((reason: unknown) =>
+                    toast.error(
+                      reason instanceof Error ? reason.message : "Unable to archive the record.",
+                    ),
+                  );
               }}
             >
-              Delete record
+              Archive record
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {confirmDialog}
-      <MarkDeceasedDialog
-        senior={markingDeceased}
-        onClose={() => setMarkingDeceased(null)}
-        onSaved={() => window.location.reload()}
-      />
     </AppShell>
   );
 }

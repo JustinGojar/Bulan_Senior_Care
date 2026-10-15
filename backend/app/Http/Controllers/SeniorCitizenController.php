@@ -67,7 +67,8 @@ class SeniorCitizenController extends Controller
             $query->whereHas('benefit', fn ($benefitQuery) => $benefitQuery->where('benefit_name', $benefit));
         }
 
-        $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
+        $cacheKey = 'seniors:' . Cache::get(SeniorCitizen::LIST_CACHE_VERSION_KEY, '0') . ':'
+            . $request->user()->id . ':' . sha1((string) $request->getQueryString());
         $cacheTtl = 3;
 
         if ($request->boolean('summary_only')) {
@@ -105,7 +106,24 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role !== 'admin', 403, 'Only Admin can view the archive.');
 
-        return response()->json(SeniorCitizen::onlyTrashed()->latest('deleted_at')->paginate(25));
+        // With the same relations as the list, so an archived record opens in the same view.
+        $archived = SeniorCitizen::onlyTrashed()
+            ->with(['barangay:id,barangay_name', 'benefit:id,benefit_name', 'encoder:id,name,role', 'inactivator:id,name,role'])
+            ->latest('deleted_at')
+            ->paginate(25);
+        // Who archived each record, from its latest "deleted" audit entry.
+        $archivers = AuditLog::query()
+            ->with('actor:id,name')
+            ->where('action', 'deleted')
+            ->where('target_type', SeniorCitizen::class)
+            ->whereIn('target_id', $archived->getCollection()->modelKeys())
+            ->latest('id')
+            ->get()
+            ->unique('target_id')
+            ->mapWithKeys(fn (AuditLog $log) => [$log->target_id => $log->actor?->name]);
+        $archived->getCollection()->each(fn (SeniorCitizen $senior) => $senior->setAttribute('archived_by', $archivers[$senior->id] ?? null));
+
+        return response()->json($archived);
     }
 
     public function restore(Request $request, string $oscaId): JsonResponse
@@ -365,6 +383,8 @@ class SeniorCitizenController extends Controller
 
     public function file(Request $request, SeniorCitizen $senior, string $kind): StreamedResponse
     {
+        // Archived records' files are only for the Admin, who manages the archive.
+        abort_if($senior->trashed() && $request->user()->role !== 'admin', 404);
         $this->authorizeScope($request, $senior);
         $path = $senior->{SeniorCitizen::FILE_COLUMNS[$kind]};
         // Older records kept the valid ID in id_document_path.

@@ -336,10 +336,23 @@ class AuthController extends Controller
             $data['profile_photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'profile-photos');
         }
         unset($data['profile_photo']);
-        $user->update($data);
+        $user->fill($data);
+        $emailChanged = $user->isDirty('email');
+        $user->save();
 
         if (isset($data['profile_photo_path'])) {
             PhotoBackup::delete($oldPhotoPath);
+        }
+
+        if ($emailChanged) {
+            // The new address must be verified before this account can sign in again.
+            $sent = $user->requireEmailReverification();
+
+            return response()->json([
+                'user' => $user->fresh()->load('roles'),
+                'email_verification_required' => true,
+                'verification_email_sent' => $sent,
+            ])->withCookie(AuthenticateFromCookie::forget($request));
         }
 
         return response()->json($user->fresh()->load('roles'));

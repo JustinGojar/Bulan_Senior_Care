@@ -263,15 +263,12 @@ export function useSeniors(
         method: "POST",
         body,
       });
-      const mapped = mapSenior(result);
-      if (!excludePending || mapped.status !== "Pending") {
-        setSeniors((prev) => [mapped, ...prev]);
-        setTotalCount((count) => count + 1);
-      }
-      if (mapped.status === "Pending") setPendingCount((count) => count + 1);
-      return mapped;
+      // Reload from the server so the new record is placed by the current search, filters
+      // and page, and the counts stay exact.
+      reload();
+      return mapSenior(result);
     },
-    [excludePending],
+    [reload],
   );
 
   const updateSenior = useCallback(

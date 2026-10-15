@@ -35,3 +35,26 @@ export function PrivateFileLink({ path, children, ...props }: PrivateFileLinkPro
     </a>
   );
 }
+
+type PrivatePdfPreviewProps = {
+  path: string | null | undefined;
+  title: string;
+  className?: string;
+};
+
+/** Shows the first page of a private PDF as a thumbnail; it ignores clicks so a wrapping link still opens the file. */
+export function PrivatePdfPreview({ path, title, className = "" }: PrivatePdfPreviewProps) {
+  const url = usePrivateFile(path);
+  return (
+    <span className={`relative block overflow-hidden bg-white ${className}`}>
+      {url && (
+        <iframe
+          src={`${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+          title={title}
+          tabIndex={-1}
+          className="pointer-events-none absolute inset-0 h-full w-full border-0"
+        />
+      )}
+    </span>
+  );
+}

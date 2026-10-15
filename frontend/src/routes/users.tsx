@@ -5,7 +5,9 @@ import {
   EyeOff,
   Loader2,
   Pencil,
+  Search,
   ShieldAlert,
+  ToggleRight,
   Trash2,
   UserCog,
   UserPlus,
@@ -25,7 +27,7 @@ import {
   panelClass,
   tableMessageClass,
 } from "@/components/design-kit";
-import { IconActionButton } from "@/components/IconActionButton";
+import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import {
   Select,
@@ -115,6 +117,9 @@ function UserManagement() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
@@ -253,7 +258,13 @@ function UserManagement() {
           { file: photo, remove: removePhoto },
         );
         setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-        toast.success("User account updated.");
+        if (updated.email !== editingUser.email) {
+          toast.success(
+            `User account updated. ${updated.email} must be verified before this account can log in again.`,
+          );
+        } else {
+          toast.success("User account updated.");
+        }
       } else {
         const created = await createManagedUser({
           firstName,
@@ -307,6 +318,24 @@ function UserManagement() {
   const roleLabel = (value: string) =>
     value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA President";
   const labelClass = "mb-2 block text-sm font-semibold";
+  const barangayScope = (user: ManagedUser) =>
+    user.role === "leader"
+      ? (barangays.find((item) => item.id === user.barangay_id)?.barangay_name ?? "Unassigned")
+      : "All barangays";
+  // An account cannot log in until its email is verified, whatever its status says.
+  const accountStatus = (user: ManagedUser) =>
+    user.status !== "active" ? "inactive" : user.email_verified_at ? "active" : "pending";
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredUsers = users.filter(
+    (user) =>
+      (!roleFilter || user.role === roleFilter) &&
+      (!statusFilter || accountStatus(user) === statusFilter) &&
+      (!normalizedSearch ||
+        [user.name, user.email, roleLabel(user.role), barangayScope(user)].some((value) =>
+          value.toLowerCase().includes(normalizedSearch),
+        )),
+  );
+  const hasFilters = Boolean(search || roleFilter || statusFilter);
   const currentPhoto =
     photoPreview ??
     (editingUser?.profile_photo_path && !removePhoto
@@ -336,9 +365,70 @@ function UserManagement() {
           icon={UserCog}
           title="Login accounts"
           subtitle="Role enforcement belongs on the API; this view mirrors the approved accounts."
-          badge={<span className={badgeClass}>{users.length} accounts</span>}
+          badge={
+            <span className={badgeClass}>
+              {hasFilters ? `${filteredUsers.length} of ${users.length}` : users.length} accounts
+            </span>
+          }
         />
-        <div className="mt-6 @container overflow-x-auto rounded-lg border border-border/60">
+        <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
+          <label className="relative block min-w-0 flex-1 basis-full sm:basis-0">
+            <span className="sr-only">Search login accounts</span>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search name, email, or barangay"
+              className={`${fieldClass} h-10 pl-10 sm:h-11`}
+            />
+          </label>
+          <IconSelect
+            label="Role"
+            icon={<UserCog className="h-4 w-4" />}
+            value={roleFilter}
+            defaultValue=""
+            className="sm:w-48"
+            options={[
+              { value: "", label: "All roles" },
+              { value: "admin", label: "OSCA Admin" },
+              { value: "head", label: "OSCA Head" },
+              { value: "leader", label: "BSCA President" },
+            ]}
+            onChange={setRoleFilter}
+          />
+          <IconSelect
+            label="Status"
+            icon={<ToggleRight className="h-4 w-4" />}
+            value={statusFilter}
+            defaultValue=""
+            className="sm:w-40"
+            options={[
+              { value: "", label: "All statuses" },
+              { value: "active", label: "Active" },
+              { value: "pending", label: "Pending verification" },
+              { value: "inactive", label: "Inactive" },
+            ]}
+            onChange={setStatusFilter}
+          />
+          {hasFilters && (
+            <IconActionButton
+              label="Clear filters"
+              variant="outline"
+              icon={<X className="h-4 w-4" />}
+              className="h-10 w-10 text-xs hover:translate-y-0 sm:h-11 sm:px-4"
+              onClick={() => {
+                setSearch("");
+                setRoleFilter("");
+                setStatusFilter("");
+              }}
+            />
+          )}
+        </div>
+        <div className="mt-4 @container overflow-x-auto rounded-lg border border-border/60">
           <table className="w-full min-w-[720px] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
             <thead>
               <tr className="bg-muted text-left">
@@ -353,7 +443,7 @@ function UserManagement() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="border-t border-border/60">
                   <td className="px-4 py-3.5 font-semibold">
                     <div className="flex items-center gap-3">
@@ -393,15 +483,16 @@ function UserManagement() {
                     </span>
                   </td>
                   <td className="px-4 py-3.5 text-muted-foreground">
-                    {user.role === "leader"
-                      ? (barangays.find((item) => item.id === user.barangay_id)?.barangay_name ??
-                        "Unassigned")
-                      : "All barangays"}
+                    {barangayScope(user)}
                   </td>
                   <td className="px-4 py-3.5">
-                    <StatusPill tone={user.status === "active" ? "success" : "danger"}>
-                      {user.status === "active" ? "Active" : "Inactive"}
-                    </StatusPill>
+                    {accountStatus(user) === "pending" ? (
+                      <StatusPill tone="gold">Pending verification</StatusPill>
+                    ) : (
+                      <StatusPill tone={user.status === "active" ? "success" : "danger"}>
+                        {user.status === "active" ? "Active" : "Inactive"}
+                      </StatusPill>
+                    )}
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="flex gap-1.5">
@@ -425,15 +516,19 @@ function UserManagement() {
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={6}>
                     <div className={tableMessageClass}>
                       <EmptyState
                         bare
                         icon={UserRound}
-                        title="No login accounts yet"
-                        description="Accounts you create will be listed here."
+                        title={hasFilters ? "No matching accounts" : "No login accounts yet"}
+                        description={
+                          hasFilters
+                            ? "Try a different search or clear the filters."
+                            : "Accounts you create will be listed here."
+                        }
                         className="py-12"
                       />
                     </div>
@@ -634,24 +729,35 @@ function UserManagement() {
                   <label htmlFor="user-role" className={labelClass}>
                     Role
                   </label>
-                  <Select
-                    name="role"
-                    required
-                    value={role}
-                    onValueChange={(value) => setRole(value as typeof role)}
-                  >
-                    <SelectTrigger id="user-role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* New Admin accounts cannot be made here; existing ones keep their role. */}
-                      {editingUser?.role === "admin" && (
-                        <SelectItem value="admin">Admin</SelectItem>
-                      )}
-                      <SelectItem value="head">Head</SelectItem>
-                      <SelectItem value="leader">BSCA President</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Accounts made here are always BSCA President (there is only one OSCA
+                      Head); existing Admin and Head accounts keep their role. */}
+                  {editingUser?.role === "admin" || editingUser?.role === "head" ? (
+                    <Select
+                      name="role"
+                      required
+                      value={role}
+                      onValueChange={(value) => setRole(value as typeof role)}
+                    >
+                      <SelectTrigger id="user-role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {editingUser.role === "admin" ? (
+                          <SelectItem value="admin">Admin</SelectItem>
+                        ) : (
+                          <SelectItem value="head">Head</SelectItem>
+                        )}
+                        <SelectItem value="leader">BSCA President</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <input
+                      id="user-role"
+                      value="BSCA President"
+                      readOnly
+                      className={`${fieldClass} h-11 bg-muted/60`}
+                    />
+                  )}
                 </div>
                 <div>
                   <label htmlFor="user-status" className={labelClass}>

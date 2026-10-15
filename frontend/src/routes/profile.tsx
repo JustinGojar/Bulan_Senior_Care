@@ -38,6 +38,7 @@ import {
   getAuditLogs,
   getStoredUser,
   logout,
+  noteSessionEnded,
   setStoredUser,
   type ApiUser,
   type AuditLog,
@@ -153,7 +154,21 @@ function ProfilePage() {
       form.append("contact_number", contact);
       form.append("address", address);
       if (photo) form.append("profile_photo", photo);
-      const updated = await apiFetch<ApiUser>("/profile", { method: "POST", body: form });
+      const result = await apiFetch<
+        ApiUser | { user: ApiUser; email_verification_required: true; verification_email_sent: boolean }
+      >("/profile", { method: "POST", body: form });
+      if ("email_verification_required" in result) {
+        // The server ended this session; the new address must be verified before signing in.
+        noteSessionEnded(
+          result.verification_email_sent
+            ? `Your email was changed. Verify ${result.user.email} using the link we sent, then log in again.`
+            : `Your email was changed to ${result.user.email}. Log in to get a verification link.`,
+        );
+        clearSession();
+        window.location.href = "/login";
+        return;
+      }
+      const updated = result;
       setUser(updated);
       setStoredUser(updated);
       setPhoto(null);
