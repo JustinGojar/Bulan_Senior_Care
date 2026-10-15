@@ -237,7 +237,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Bulan Senior Care" },
       { name: "description", content: "OSCA Bulan senior citizen records and benefits portal" },
       { name: "author", content: "Bulan Senior Care" },
-      { name: "theme-color", content: "#1f3254" },
+      { name: "theme-color", content: "#17213a" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "SeniorCare" },
