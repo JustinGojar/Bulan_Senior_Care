@@ -233,9 +233,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      // Phones open the app at 80% (desktop browsers ignore this): the page is laid out 25% wider
-      // and shown scaled to fit, like setting the browser zoom to 80%.
-      { name: "viewport", content: "width=device-width, initial-scale=0.8, viewport-fit=cover" },
+      // Phones open the app at 90% (desktop browsers ignore this): the page is laid out about 11%
+      // wider and shown scaled to fit, like setting the browser zoom to 90%.
+      { name: "viewport", content: "width=device-width, initial-scale=0.9, viewport-fit=cover" },
       { title: "Bulan Senior Care" },
       { name: "description", content: "OSCA Bulan senior citizen records and benefits portal" },
       { name: "author", content: "Bulan Senior Care" },
