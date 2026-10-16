@@ -27,7 +27,7 @@ export const splashCss = `
 html.splash{overflow:hidden}
 html.splash #app-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:24px 24px calc(32px + env(safe-area-inset-bottom));background:radial-gradient(120% 80% at 50% 50%,#17213a 0%,#17213a 60%,#111a2d 100%);color:#f2f4f8;font-family:"Sora","Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;text-align:center;transition:opacity ${FADE_MS}ms ease,transform ${FADE_MS}ms ease}
 html.splash.splash-out #app-splash{opacity:0;transform:scale(1.03);pointer-events:none}
-#app-splash{--logo:min(47vw,220px)}
+#app-splash{--logo:min(40vw,188px)}
 .splash-logo{position:absolute;left:50%;top:50%;width:var(--logo);height:var(--logo);margin:calc(var(--logo) / -2) 0 0 calc(var(--logo) / -2)}
 .splash-logo img{position:relative;display:block;width:100%;height:100%;border-radius:50%}
 .splash-text{position:absolute;left:24px;right:24px;top:calc(50% + var(--logo) / 2 + 28px);display:flex;flex-direction:column;align-items:center}
@@ -60,7 +60,7 @@ export function SplashScreen() {
       {/* Same size and place as the logo on Android's own launch screen, so the hand-off from
           that screen to this one is seamless: the logo stays put and the title fades in. */}
       <div className="splash-logo">
-        <img src={splashLogo} alt="" width={220} height={220} decoding="async" />
+        <img src={splashLogo} alt="" width={188} height={188} decoding="async" />
       </div>
       <div className="splash-text">
         <h1 className="splash-title">
