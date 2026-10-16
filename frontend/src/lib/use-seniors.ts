@@ -7,6 +7,9 @@ type SeniorResponse = { data: ApiSenior[]; total?: number; meta?: { total?: numb
 type PaginatedSeniorsResponse = SeniorResponse & { current_page: number; last_page: number };
 type SeniorSummaryResponse = { total: number; active: number; pending: number; inactive: number };
 
+/** Shown for a senior with no contact number on file. */
+const NO_CONTACT = "Not provided";
+
 export type SeniorDraft = Omit<Senior, "id"> & {
   id?: string;
   firstName?: string;
@@ -26,6 +29,9 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   validId?: File | null;
   birthCertificate?: File | null;
   profilePhoto?: File | null;
+  /** Documentation when the status is set to Inactive. */
+  dateOfDeath?: string;
+  deathCertificate?: File | null;
   /** The senior agreed to the Data Privacy Consent; sent with new registrations. */
   privacyConsent?: boolean;
 };
@@ -44,6 +50,11 @@ function mapSenior(senior: ApiSenior): Senior {
   return {
     id: senior.osca_id_number,
     name: [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" "),
+    lastName: senior.last_name,
+    firstName: senior.first_name,
+    middleName: senior.middle_name ?? "",
+    suffix: senior.suffix ?? "",
+    registrationDate: senior.registration_date ? String(senior.registration_date).slice(0, 10) : "",
     birthdate: String(senior.birthdate).slice(0, 10),
     placeOfBirth: senior.place_of_birth ?? "",
     sex: senior.sex ?? "female",
@@ -58,7 +69,7 @@ function mapSenior(senior: ApiSenior): Senior {
     age,
     barangay: senior.barangay?.barangay_name ?? "Unassigned",
     address: senior.address ?? "",
-    contact: senior.contact_number ?? "Not provided",
+    contact: senior.contact_number ?? NO_CONTACT,
     benefit: senior.benefit?.benefit_name ?? senior.benefits?.[0]?.benefit_name ?? fallbackBenefit,
     status:
       senior.status === "active" ? "Active" : senior.status === "pending" ? "Pending" : "Inactive",
@@ -67,6 +78,18 @@ function mapSenior(senior: ApiSenior): Senior {
     validIdPath: senior.valid_id_path ?? senior.id_document_path ?? null,
     birthCertificatePath: senior.birth_certificate_path ?? null,
     privacyConsentAt: senior.privacy_consent_at ?? null,
+    inactiveReason: senior.inactive_reason ?? "",
+    inactiveRemarks: senior.inactive_remarks ?? "",
+    deceased:
+      senior.inactive_reason === "deceased"
+        ? {
+            dateOfDeath: String(senior.date_of_death ?? "").slice(0, 10),
+            certificatePath: senior.death_certificate_path ?? null,
+            remarks: senior.inactive_remarks ?? "",
+            recordedBy: senior.inactivator?.name ?? "",
+            recordedAt: senior.inactivated_at ?? "",
+          }
+        : null,
   };
 }
 
@@ -80,6 +103,12 @@ export function useSeniors(
     search?: string;
     barangay?: string;
     benefit?: string;
+    /** "latest" or "oldest" by date added; omitted is A–Z by name. */
+    sort?: "latest" | "oldest";
+    sex?: "male" | "female";
+    /** Age range in whole years, either end optional. */
+    ageMin?: number;
+    ageMax?: number;
   } = {},
 ) {
   const {
@@ -91,6 +120,10 @@ export function useSeniors(
     search = "",
     barangay = "",
     benefit = "",
+    sort,
+    sex,
+    ageMin,
+    ageMax,
   } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
   const [matchingCount, setMatchingCount] = useState(0);
@@ -122,9 +155,25 @@ export function useSeniors(
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (barangay) params.set("barangay", barangay);
       if (benefit) params.set("benefit", benefit);
+      if (sort) params.set("sort", sort);
+      if (sex) params.set("sex", sex);
+      if (ageMin !== undefined) params.set("age_min", String(ageMin));
+      if (ageMax !== undefined) params.set("age_max", String(ageMax));
       return `/seniors?${params.toString()}`;
     },
-    [pendingOnly, excludePending, perPage, status, debouncedSearch, barangay, benefit],
+    [
+      pendingOnly,
+      excludePending,
+      perPage,
+      status,
+      debouncedSearch,
+      barangay,
+      benefit,
+      sort,
+      sex,
+      ageMin,
+      ageMax,
+    ],
   );
   const listPath = makeListPath(page);
 
@@ -228,6 +277,8 @@ export function useSeniors(
 
   const updateSenior = useCallback(
     async (id: string, draft: SeniorDraft) => {
+      // The "Not provided" placeholder is for display only, never a number to save.
+      const contact = draft.contact === NO_CONTACT ? "" : draft.contact.trim();
       if (getStoredUser()?.role === "leader") {
         await submitSeniorEditRequest(id, {
           first_name: draft.firstName?.trim() ?? draft.name.trim(),
@@ -245,7 +296,7 @@ export function useSeniors(
           association_membership_date: draft.associationMembershipDate || null,
           association_position: draft.associationPosition?.trim() || null,
           address: draft.address.trim(),
-          contact_number: draft.contact.trim() || null,
+          contact_number: contact || null,
           barangay: draft.barangay,
           benefit: draft.benefit,
         });
@@ -274,10 +325,19 @@ export function useSeniors(
       if (draft.associationPosition?.trim())
         body.append("association_position", draft.associationPosition.trim());
       if (draft.address.trim()) body.append("address", draft.address.trim());
-      if (draft.contact.trim()) body.append("contact_number", draft.contact.trim());
+      if (contact) body.append("contact_number", contact);
       if (draft.barangay) body.append("barangay", draft.barangay);
       if (draft.benefit) body.append("benefit", draft.benefit);
       body.append("status", draft.status.toLowerCase());
+      if (draft.status === "Inactive") {
+        body.append("inactive_reason", draft.inactiveReason ?? "");
+        if (draft.inactiveRemarks?.trim())
+          body.append("inactive_remarks", draft.inactiveRemarks.trim());
+        if (draft.inactiveReason === "deceased") {
+          body.append("date_of_death", draft.dateOfDeath ?? "");
+          if (draft.deathCertificate) body.append("death_certificate", draft.deathCertificate);
+        }
+      }
       if (draft.validId) body.append("valid_id", draft.validId);
       if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
       if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);

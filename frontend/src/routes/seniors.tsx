@@ -2,12 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Archive,
   ArrowRight,
+  ArrowUpDown,
+  Cake,
   Check,
   ChevronLeft,
   ChevronRight,
   Clipboard,
   Download,
   Eye,
+  HeartOff,
   FilePenLine,
   HandCoins,
   Loader2,
@@ -20,6 +23,7 @@ import {
   Undo2,
   Upload,
   UserRound,
+  VenusAndMars,
   X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -45,6 +49,7 @@ import {
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
+import { MarkDeceasedDialog } from "@/components/MarkDeceasedDialog";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
 import {
   AlertDialog,
@@ -63,7 +68,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { BARANGAYS, benefitForAge, benefitLabel, type Senior } from "@/lib/osca-data";
+import {
+  BARANGAYS,
+  INACTIVE_REASONS,
+  benefitForAge,
+  benefitLabel,
+  type Senior,
+} from "@/lib/osca-data";
 import {
   apiFetch,
   bulkCreateSeniors,
@@ -77,6 +88,8 @@ import {
 } from "@/lib/api";
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
+import { downloadMasterlist } from "@/lib/masterlist-pdf";
 import { useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
 export const Route = createFileRoute("/seniors")({
@@ -460,8 +473,36 @@ function changedFields(request: SeniorEditRequest) {
     fields.push(["Benefit", enrolledBenefit || "None", changes.benefit]);
   if (senior && (senior.address ?? "") !== (changes.address ?? ""))
     fields.push(["Address", senior.address || "None", changes.address || "None"]);
+  const otherFields: Array<[string, keyof SeniorEditRequest["changes"]]> = [
+    ["Place of birth", "place_of_birth"],
+    ["Sex", "sex"],
+    ["Civil status", "civil_status"],
+    ["Educational attainment", "educational_attainment"],
+    ["Other skills", "other_skills"],
+    ["Family composition", "family_composition"],
+    ["Association", "association_name"],
+    ["Association address", "association_address"],
+    ["Membership date", "association_membership_date"],
+    ["Association position", "association_position"],
+  ];
+  for (const [label, key] of otherFields) {
+    // Requests made before these fields existed leave them out; those keep the current value.
+    if (!senior || !(key in changes)) continue;
+    const current = String(senior[key] ?? "");
+    const next = String(changes[key] ?? "");
+    if (current !== next) fields.push([label, current || "None", next || "None"]);
+  }
   return fields;
 }
+
+/** The age groups used on the Analytics page; `max` is left off for the open-ended group. */
+const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
+  { value: "60–69", min: 60, max: 69 },
+  { value: "70–79", min: 70, max: 79 },
+  { value: "80–89", min: 80, max: 89 },
+  { value: "90–99", min: 90, max: 99 },
+  { value: "100+", min: 100 },
+];
 
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
@@ -490,6 +531,10 @@ function SeniorRecords() {
       .catch(() => setLeaderBarangay(undefined));
   }, [isLeader, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
+  const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
+  const [ageRange, setAgeRange] = useState("All");
+  const [sexFilter, setSexFilter] = useState<"All" | "male" | "female">("All");
+  const selectedAgeRange = AGE_RANGES.find((range) => range.value === ageRange);
   const [benefitOptions, setBenefitOptions] = useState<string[]>([]);
   const [query, setQuery] = useState(q ?? "");
   const [page, setPage] = useState(1);
@@ -514,12 +559,16 @@ function SeniorRecords() {
     search: query,
     barangay: barangayFilter === "All" ? "" : barangayFilter,
     benefit: benefitFilter === "All" ? "" : benefitFilter,
+    ...(sortBy === "name" ? {} : { sort: sortBy }),
+    ...(sexFilter === "All" ? {} : { sex: sexFilter }),
+    ...(selectedAgeRange ? { ageMin: selectedAgeRange.min, ageMax: selectedAgeRange.max } : {}),
   });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
   const [downloadingForm, setDownloadingForm] = useState(false);
   const [deleting, setDeleting] = useState<Senior | null>(null);
+  const [markingDeceased, setMarkingDeceased] = useState<Senior | null>(null);
   const [editRequests, setEditRequests] = useState<SeniorEditRequest[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
@@ -697,54 +746,8 @@ function SeniorRecords() {
         toast.error("There are no senior records to export.");
         return;
       }
-      const { jsPDF } = await import("jspdf");
-      const document = new jsPDF({ orientation: "landscape" });
-      const generatedDate = new Date();
-      const logoDataUrl = await loadPdfLogo();
-
-      document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
-      document.setFontSize(18);
-      document.text("Bulan SeniorCare", 32, 18);
-      document.setFontSize(13);
-      document.text("Senior Citizen Records", 14, 28);
-      document.setFontSize(9);
-      document.text(`Generated: ${generatedDate.toLocaleDateString()}`, 14, 36);
-      document.text(`Records: ${exportRows.length}`, 14, 43);
-
-      let y = 56;
-      document.setFontSize(9);
-      document.setFont("helvetica", "bold");
-      document.text("Senior ID", 14, y);
-      document.text("Name", 48, y);
-      document.text("Age", 118, y);
-      document.text("Barangay", 138, y);
-      document.text("Contact", 195, y);
-      document.text("Benefit", 235, y);
-      document.text("Status", 275, y);
-      document.setFont("helvetica", "normal");
-      y += 7;
-
-      exportRows.forEach((senior) => {
-        if (y > 195) {
-          document.addPage();
-          y = 18;
-        }
-        document.text(senior.id, 14, y);
-        document.text(document.splitTextToSize(senior.name, 62)[0] ?? senior.name, 48, y);
-        document.text(String(senior.age), 118, y);
-        document.text(document.splitTextToSize(senior.barangay, 52)[0] ?? senior.barangay, 138, y);
-        document.text(document.splitTextToSize(senior.contact, 34)[0] ?? senior.contact, 195, y);
-        document.text(
-          document.splitTextToSize(benefitLabel(senior.benefit), 34)[0] ?? senior.benefit,
-          235,
-          y,
-        );
-        document.text(senior.status, 275, y);
-        y += 7;
-      });
-
-      document.save(`bulan-seniorcare-records-${generatedDate.toISOString().slice(0, 10)}.pdf`);
-      toast.success("Senior records exported as PDF.");
+      await downloadMasterlist(exportRows);
+      toast.success("Masterlist of senior citizens exported as PDF.");
     } catch {
       toast.error("Unable to export senior records.");
     } finally {
@@ -882,6 +885,54 @@ function SeniorRecords() {
             setPage(1);
           }}
         />
+        <IconSelect
+          label="Sex"
+          className="sm:flex-1 xl:w-32 xl:flex-none"
+          icon={<VenusAndMars className="h-4 w-4" />}
+          value={sexFilter}
+          dotClassName={null}
+          options={[
+            { value: "All", label: "All Sexes" },
+            { value: "male", label: "Male" },
+            { value: "female", label: "Female" },
+          ]}
+          onChange={(value) => {
+            setSexFilter(value as typeof sexFilter);
+            setPage(1);
+          }}
+        />
+        <IconSelect
+          label="Age"
+          className="sm:flex-1 xl:w-36 xl:flex-none"
+          icon={<Cake className="h-4 w-4" />}
+          value={ageRange}
+          dotClassName={null}
+          options={[
+            { value: "All", label: "All Ages" },
+            ...AGE_RANGES.map((range) => ({ value: range.value, label: `${range.value} yrs` })),
+          ]}
+          onChange={(value) => {
+            setAgeRange(value);
+            setPage(1);
+          }}
+        />
+        <IconSelect
+          label="Sort by"
+          prefix="Sort by"
+          className="sm:flex-1 xl:w-[205px] xl:flex-none"
+          icon={<ArrowUpDown className="h-4 w-4" />}
+          value={sortBy}
+          defaultValue="name"
+          options={[
+            { value: "name", label: "Name (A–Z)" },
+            { value: "latest", label: "Latest record" },
+            { value: "oldest", label: "Oldest record" },
+          ]}
+          onChange={(value) => {
+            setSortBy(value as typeof sortBy);
+            setPage(1);
+          }}
+        />
         <IconActionButton
           label="Reset"
           variant="outline"
@@ -893,6 +944,9 @@ function SeniorRecords() {
             setBarangayFilter(isLeader ? (leaderBarangay ?? "All") : "All");
             setFilter("All");
             setBenefitFilter("All");
+            setSortBy("name");
+            setAgeRange("All");
+            setSexFilter("All");
           }}
         />
       </div>
@@ -989,7 +1043,7 @@ function SeniorRecords() {
               ].map((h) => (
                 <th
                   key={h}
-                  className={`px-4 py-3.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
+                  className={`px-4 py-3.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
                 >
                   {h}
                 </th>
@@ -1021,7 +1075,7 @@ function SeniorRecords() {
                 <tr key={s.id} className="border-t border-border/60 first:border-t-0">
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white ring-2 ring-gold/40">
+                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[0.6875rem] font-bold text-white ring-2 ring-gold/40">
                         <PrivateImage
                           path={avatarUrl(s)}
                           alt={`${s.name} profile`}
@@ -1041,7 +1095,11 @@ function SeniorRecords() {
                   </td>
                   <td className="max-w-40 px-4 py-3.5">{benefitLabel(s.benefit)}</td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
-                    <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                    {s.deceased ? (
+                      <StatusPill tone="neutral">Deceased</StatusPill>
+                    ) : (
+                      <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                    )}
                   </td>
                   <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
                     <div className="flex gap-1.5">
@@ -1064,6 +1122,16 @@ function SeniorRecords() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
+                      {(isLeader || isAdmin) && !s.deceased && (
+                        <button
+                          aria-label={`Mark ${s.name} as deceased`}
+                          title="Mark as deceased"
+                          onClick={() => setMarkingDeceased(s)}
+                          className={actionButtonClass}
+                        >
+                          <HeartOff className="h-4 w-4" />
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           aria-label={`Delete record of ${s.name}`}
@@ -1170,7 +1238,7 @@ function SeniorRecords() {
           <div className="max-h-80 overflow-auto rounded-lg border border-border/60">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-muted">
-                <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                <tr className="text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                   <th className="px-3 py-2.5 font-semibold">Name</th>
                   <th className="px-3 py-2.5 font-semibold">Birthdate</th>
                   <th className="px-3 py-2.5 font-semibold">Sex</th>
@@ -1349,7 +1417,7 @@ function SeniorRecords() {
               ["Benefits", viewing && benefitLabel(viewing.benefit)],
             ].map(([label, value]) => (
               <div key={String(label)} className={`${tileClass} p-3`}>
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                   {label}
                 </dt>
                 <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>
@@ -1448,7 +1516,7 @@ function SeniorRecords() {
                   <div className="mt-3 overflow-x-auto rounded-lg border border-border/60">
                     <table className="w-full table-fixed text-xs">
                       <thead>
-                        <tr className="bg-muted/60 text-left text-[11px] tracking-wider text-muted-foreground uppercase">
+                        <tr className="bg-muted/60 text-left text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                           <th className="w-[34%] px-2 py-2 font-semibold">Release period</th>
                           <th className="w-[22%] px-2 py-2 font-semibold">Actual date</th>
                           <th className="w-[20%] px-2 py-2 font-semibold">Amount</th>
@@ -1469,7 +1537,9 @@ function SeniorRecords() {
                                 : "-"}
                             </td>
                             <td className="truncate px-2 py-2">
-                              ₱{Number(transaction.amount).toLocaleString()}
+                              <span title={formatPesoFull(Number(transaction.amount))}>
+                                {formatPesoAmount(Number(transaction.amount))}
+                              </span>
                             </td>
                             <td className="truncate px-2 py-2 font-semibold">
                               {transaction.status === "released"
@@ -1487,6 +1557,89 @@ function SeniorRecords() {
               </div>
             );
           })()}
+          {viewing &&
+            viewing.status === "Inactive" &&
+            viewing.inactiveReason &&
+            !viewing.deceased && (
+              <div className="mt-2 rounded-xl border border-border bg-muted/50 p-4 text-sm">
+                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Reason for inactive
+                </p>
+                <p className="mt-2 font-semibold">
+                  {INACTIVE_REASONS[viewing.inactiveReason] ?? viewing.inactiveReason}
+                </p>
+                {viewing.inactiveRemarks && (
+                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                    {viewing.inactiveRemarks}
+                  </p>
+                )}
+              </div>
+            )}
+          {viewing?.deceased && (
+            <div className="mt-2 rounded-xl border border-border bg-muted/50 p-4">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Deceased record
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Date of death</dt>
+                  <dd className="font-semibold">
+                    {viewing.deceased.dateOfDeath
+                      ? new Date(`${viewing.deceased.dateOfDeath}T00:00:00`).toLocaleDateString(
+                          undefined,
+                          { dateStyle: "long" },
+                        )
+                      : "Not provided"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Recorded</dt>
+                  <dd className="font-semibold">
+                    {[
+                      viewing.deceased.recordedBy,
+                      viewing.deceased.recordedAt &&
+                        new Date(viewing.deceased.recordedAt).toLocaleDateString(),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Not provided"}
+                  </dd>
+                </div>
+                {viewing.deceased.remarks && (
+                  <div className="col-span-2">
+                    <dt className="text-xs text-muted-foreground">Remarks</dt>
+                    <dd className="font-semibold whitespace-pre-wrap">
+                      {viewing.deceased.remarks}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {viewing.deceased.certificatePath ? (
+                <PrivateFileLink
+                  path={seniorFileUrl(
+                    viewing.id,
+                    "death_certificate",
+                    viewing.deceased.certificatePath,
+                  )}
+                  className="mt-3 flex w-28 flex-col gap-2 text-xs font-semibold"
+                >
+                  {isImageDocument(viewing.deceased.certificatePath) && (
+                    <PrivateImage
+                      path={seniorFileUrl(
+                        viewing.id,
+                        "death_certificate",
+                        viewing.deceased.certificatePath,
+                      )}
+                      alt="Death certificate"
+                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                    />
+                  )}
+                  <span className="text-primary hover:underline">Death certificate</span>
+                </PrivateFileLink>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">No death certificate on file.</p>
+              )}
+            </div>
+          )}
           {viewing && (
             <div className="mt-2 border-t border-border/60 pt-5">
               <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
@@ -1636,6 +1789,11 @@ function SeniorRecords() {
         </AlertDialogContent>
       </AlertDialog>
       {confirmDialog}
+      <MarkDeceasedDialog
+        senior={markingDeceased}
+        onClose={() => setMarkingDeceased(null)}
+        onSaved={() => window.location.reload()}
+      />
     </AppShell>
   );
 }

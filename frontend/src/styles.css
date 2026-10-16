@@ -16,7 +16,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  /* Sora has no ₱ glyph; Plus Jakarta Sans fills it in. */
+  --font-display: "Sora", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -193,6 +194,15 @@
 
   html {
     scroll-behavior: smooth;
+  }
+
+  /* Desktop shows every page at 90%, like setting the browser zoom to 90%. Sizes are in rem, so
+     they all scale with this; breakpoints don't, as media queries use the browser's 16px.
+     Phones and tablets get the same 90% from initial-scale=0.9 in __root.tsx instead. */
+  @media (hover: hover) and (pointer: fine) {
+    html {
+      font-size: 90%;
+    }
   }
 
   body {

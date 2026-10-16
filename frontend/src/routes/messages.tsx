@@ -29,6 +29,7 @@ import {
   secondaryButtonClass,
 } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
+import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  API_URL,
   getMessageRecipients,
   getMessagePresence,
   getMessages,
@@ -45,6 +45,7 @@ import {
   getStoredUser,
   deleteConversation as deleteConversationApi,
   markConversationRead,
+  messageAttachmentUrl,
   sendMessage,
   type Message,
   type MessageRecipient,
@@ -767,7 +768,7 @@ function ConversationDetail({
                 {item.attachment_path && <MessageAttachment item={item} mine={mine} />}
                 {item.message && <p className="whitespace-pre-wrap">{item.message}</p>}
                 <p
-                  className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}
+                  className={`mt-1 text-[0.625rem] ${mine ? "text-white/70" : "text-muted-foreground"}`}
                 >
                   {new Date(item.created_at).toLocaleTimeString([], {
                     hour: "numeric",
@@ -918,29 +919,29 @@ const EMOJIS = [
 ];
 
 function MessageAttachment({ item, mine }: { item: Message; mine: boolean }) {
-  const url = `${API_URL.replace(/\/api$/, "")}/storage/${item.attachment_path}`;
+  // Attachments are private: fetched with the session and shown through object URLs.
+  const path = item.attachment_path ? messageAttachmentUrl(item.id, item.attachment_path) : null;
   const name = item.attachment_name ?? "Attachment";
   if (item.attachment_mime?.startsWith("image/")) {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="mb-1.5 block">
-        <img
-          src={url}
+      <PrivateFileLink path={path} className="mb-1.5 block">
+        <PrivateImage
+          path={path}
           alt={name}
-          loading="lazy"
           className="max-h-60 w-full rounded-lg object-cover"
+          fallback={<div className="h-40 w-full animate-pulse rounded-lg bg-muted" />}
         />
-      </a>
+      </PrivateFileLink>
     );
   }
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
+    <PrivateFileLink
+      path={path}
+      download={name}
       className={`mb-1.5 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold underline-offset-2 hover:underline ${mine ? "bg-white/15" : "bg-card"}`}
     >
       <Paperclip className="h-4 w-4 shrink-0" />
       <span className="min-w-0 truncate">{name}</span>
-    </a>
+    </PrivateFileLink>
   );
 }

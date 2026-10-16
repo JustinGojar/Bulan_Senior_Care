@@ -139,7 +139,7 @@ export function IconActionButton({
         {!!badge && (
           <span
             className={cn(
-              "absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] leading-none font-bold text-white",
+              "absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[0.625rem] leading-none font-bold text-white",
               !iconOnly && "sm:hidden",
             )}
           >
@@ -220,7 +220,7 @@ export function IconSelect({
       </span>
       <span className="hidden min-w-0 flex-1 truncate text-left text-xs font-semibold sm:block">
         {prefix && (
-          <span className="mr-1.5 text-[10px] font-normal text-muted-foreground">{prefix}</span>
+          <span className="mr-1.5 text-[0.625rem] font-normal text-muted-foreground">{prefix}</span>
         )}
         {current}
       </span>
@@ -293,7 +293,7 @@ export function IconSelect({
           sideOffset={6}
           className="z-[60] max-h-[min(20rem,var(--radix-select-content-available-height))] min-w-[max(var(--radix-select-trigger-width),12rem)] overflow-hidden rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-[var(--shadow-card)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
         >
-          <p className="border-b border-border/60 px-3 py-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <p className="border-b border-border/60 px-3 py-2 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
             {label}
           </p>
           <SelectPrimitive.ScrollUpButton className="flex h-6 items-center justify-center text-muted-foreground">

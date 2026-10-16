@@ -16,6 +16,7 @@ class NotificationController extends Controller
         $count = Notification::query()
             ->where('recipient_account_id', $request->user()->id)
             ->where('status', 'unread')
+            ->whereNull('archived_at')
             ->count();
 
         return response()->json(['count' => $count]);
@@ -55,6 +56,31 @@ class NotificationController extends Controller
     {
         abort_unless($notification->recipient_account_id === $request->user()->id, 403);
         $notification->update(['status' => 'read']);
+
+        return response()->json($notification->fresh());
+    }
+
+    public function unread(Request $request, Notification $notification): JsonResponse
+    {
+        abort_unless($notification->recipient_account_id === $request->user()->id, 403);
+        $notification->update(['status' => 'unread']);
+
+        return response()->json($notification->fresh());
+    }
+
+    /** Archiving moves the notification out of the inbox without deleting it. */
+    public function archive(Request $request, Notification $notification): JsonResponse
+    {
+        abort_unless($notification->recipient_account_id === $request->user()->id, 403);
+        $notification->update(['archived_at' => now()]);
+
+        return response()->json($notification->fresh());
+    }
+
+    public function unarchive(Request $request, Notification $notification): JsonResponse
+    {
+        abort_unless($notification->recipient_account_id === $request->user()->id, 403);
+        $notification->update(['archived_at' => null]);
 
         return response()->json($notification->fresh());
     }
