@@ -95,7 +95,13 @@ class SeniorCitizenController extends Controller
 
         $perPage = min(100, max(10, $request->integer('per_page', 50)));
 
-        $loadSeniors = fn () => $query->orderBy('last_name')->orderBy('first_name')->orderBy('id')->paginate($perPage)->toArray();
+        // "latest"/"oldest" order by when the record was added; anything else is A–Z by name.
+        match ($request->string('sort')->toString()) {
+            'latest' => $query->orderByDesc('created_at')->orderByDesc('id'),
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            default => $query->orderBy('last_name')->orderBy('first_name')->orderBy('id'),
+        };
+        $loadSeniors = fn () => $query->paginate($perPage)->toArray();
         $result = Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), $loadSeniors);
 
         return response()->json($result);
