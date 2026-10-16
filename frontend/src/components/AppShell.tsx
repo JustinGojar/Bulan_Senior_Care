@@ -372,7 +372,7 @@ export function AppShell({
                   />
                 )}
                 <Icon
-                  className={`h-[18px] w-[18px] shrink-0 ${active ? "text-gold" : "transition-colors group-hover:text-foreground"}`}
+                  className={`h-[1.125rem] w-[1.125rem] shrink-0 ${active ? "text-gold" : "transition-colors group-hover:text-foreground"}`}
                 />
                 <span className="truncate">{label}</span>
               </Link>
@@ -524,7 +524,7 @@ export function AppShell({
                 >
                   {matchingPages.length > 0 && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                      <p className="px-3 pt-2 pb-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                         Pages
                       </p>
                       {matchingPages.map(({ to, label, icon: Icon }) => (
@@ -545,7 +545,7 @@ export function AppShell({
                   )}
                   {announcementMatches.length > 0 && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                      <p className="px-3 pt-2 pb-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                         Announcements
                       </p>
                       {announcementMatches.map((announcement) => (
@@ -570,7 +570,7 @@ export function AppShell({
                   )}
                   {seniorMatches.length > 0 && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                      <p className="px-3 pt-2 pb-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                         Senior records
                       </p>
                       {seniorMatches.map((senior) => (
@@ -626,7 +626,7 @@ export function AppShell({
                 >
                   <Mail className="h-5 w-5" />
                   {unreadMessageCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[10px] leading-none font-bold text-white ring-2 ring-card">
+                    <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-white ring-2 ring-card">
                       {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                     </span>
                   )}
@@ -641,7 +641,7 @@ export function AppShell({
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[10px] leading-none font-bold text-white ring-2 ring-card">
+                  <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-white ring-2 ring-card">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}

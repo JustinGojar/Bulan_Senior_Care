@@ -18,11 +18,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       offset={{ top: 80, right: 24 }}
       mobileOffset={{ top: 72, right: 16, left: 16 }}
       icons={{
-        success: <CheckCircle2 className="h-[18px] w-[18px]" />,
-        error: <XCircle className="h-[18px] w-[18px]" />,
-        warning: <AlertTriangle className="h-[18px] w-[18px]" />,
-        info: <Info className="h-[18px] w-[18px]" />,
-        loading: <Loader2 className="h-[18px] w-[18px] animate-spin" />,
+        success: <CheckCircle2 className="h-[1.125rem] w-[1.125rem]" />,
+        error: <XCircle className="h-[1.125rem] w-[1.125rem]" />,
+        warning: <AlertTriangle className="h-[1.125rem] w-[1.125rem]" />,
+        info: <Info className="h-[1.125rem] w-[1.125rem]" />,
+        loading: <Loader2 className="h-[1.125rem] w-[1.125rem] animate-spin" />,
       }}
       toastOptions={{
         unstyled: true,
@@ -32,7 +32,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           icon: "grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border/60 bg-muted text-muted-foreground group-data-[type=success]/toast:border-success/30 group-data-[type=success]/toast:bg-success/10 group-data-[type=success]/toast:text-success group-data-[type=error]/toast:border-destructive/30 group-data-[type=error]/toast:bg-destructive/10 group-data-[type=error]/toast:text-destructive group-data-[type=warning]/toast:border-gold/40 group-data-[type=warning]/toast:bg-gold/15 group-data-[type=warning]/toast:text-gold-foreground dark:group-data-[type=warning]/toast:text-gold",
           content: "min-w-0 flex-1 self-center",
           title: "font-display text-sm leading-5 font-bold text-foreground",
-          description: "mt-0.5 text-[13px] leading-5 text-muted-foreground",
+          description: "mt-0.5 text-[0.8125rem] leading-5 text-muted-foreground",
           actionButton:
             "bg-navy mt-0.5 inline-flex h-8 shrink-0 cursor-pointer items-center self-center rounded-lg px-3 text-xs font-bold text-white shadow-[var(--shadow-soft)]",
           cancelButton:

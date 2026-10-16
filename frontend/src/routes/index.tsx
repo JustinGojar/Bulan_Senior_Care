@@ -192,7 +192,7 @@ function Landing() {
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/70 sm:h-10 sm:w-10" />
             <div className="min-w-0">
               <p className="font-display truncate text-xs font-bold sm:text-sm">Bulan SeniorCare</p>
-              <p className="truncate text-[11px] text-muted-foreground sm:text-xs">
+              <p className="truncate text-[0.6875rem] text-muted-foreground sm:text-xs">
                 OSCA · Bulan, Sorsogon
               </p>
             </div>
@@ -457,7 +457,7 @@ function SectionIntro({
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase">
+    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold-foreground uppercase">
       {children}
     </span>
   );

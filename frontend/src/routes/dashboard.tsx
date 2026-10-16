@@ -112,7 +112,7 @@ function greeting() {
 
 function MonthlyChange({ value }: { value: number | null | undefined }) {
   if (value == null) {
-    return <span className="text-[11px] text-muted-foreground">— vs. last month</span>;
+    return <span className="text-[0.6875rem] text-muted-foreground">— vs. last month</span>;
   }
 
   const isIncrease = value >= 0;
@@ -120,7 +120,7 @@ function MonthlyChange({ value }: { value: number | null | undefined }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${isIncrease ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
+      className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${isIncrease ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}
     >
       <TrendIcon className="h-3.5 w-3.5" />
       {Math.abs(value)}% vs. last month
@@ -147,7 +147,7 @@ function StatCardBody({
     <>
       <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+        <p className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
           {label}
         </p>
         <span
@@ -162,7 +162,7 @@ function StatCardBody({
       <p className="mt-3">
         <MonthlyChange value={change} />
       </p>
-      <p className="mt-3 text-[11px] leading-snug text-muted-foreground sm:text-xs">
+      <p className="mt-3 text-[0.6875rem] leading-snug text-muted-foreground sm:text-xs">
         {description}
       </p>
     </>
@@ -404,7 +404,7 @@ function Dashboard() {
         <div className="absolute inset-0 bg-gradient-to-r from-[oklch(0.22_0.06_258/0.96)] via-[oklch(0.25_0.06_258/0.9)] to-[oklch(0.26_0.06_258/0.62)]" />
         <div className="relative flex flex-wrap items-end justify-between gap-5 p-5 sm:p-8">
           <div className="min-w-0">
-            <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold uppercase">
+            <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold uppercase">
               {today}
             </span>
             <p className="font-display mt-4 text-2xl leading-tight font-extrabold tracking-[-0.02em] sm:text-3xl">
@@ -888,7 +888,9 @@ function Dashboard() {
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-xs font-bold">{reply.user.name}</p>
                             <div className="flex items-center gap-2">
-                              <p className="text-[11px] text-muted-foreground">{reply.user.role}</p>
+                              <p className="text-[0.6875rem] text-muted-foreground">
+                                {reply.user.role}
+                              </p>
                               {canDeleteComment(reply) && (
                                 <button
                                   type="button"

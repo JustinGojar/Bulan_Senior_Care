@@ -115,7 +115,7 @@ function KpiTile({
     <div className={`${statCardClass} hover:translate-y-0`}>
       <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+        <p className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
           {label}
         </p>
         <span
@@ -180,7 +180,7 @@ function ReleaseProgress({ records }: { records: ReleaseStatusRecord[] }) {
           ["Release rate", `${percent(totals.released, totals.total)}%`],
         ].map(([label, value]) => (
           <div key={label} className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5">
-            <dt className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-[11px]">
+            <dt className="text-[0.625rem] font-semibold tracking-wider text-muted-foreground uppercase sm:text-[0.6875rem]">
               {label}
             </dt>
             <dd className="font-display mt-1 text-xl leading-none font-extrabold sm:text-2xl">
@@ -550,7 +550,7 @@ function Analytics() {
                 {["Barangay", "Registered", "Benefits Released", "Coverage"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                    className="px-4 py-3 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase"
                   >
                     {h}
                   </th>
