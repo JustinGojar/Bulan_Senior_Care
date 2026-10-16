@@ -768,7 +768,7 @@ function ConversationDetail({
                 {item.attachment_path && <MessageAttachment item={item} mine={mine} />}
                 {item.message && <p className="whitespace-pre-wrap">{item.message}</p>}
                 <p
-                  className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}
+                  className={`mt-1 text-[0.625rem] ${mine ? "text-white/70" : "text-muted-foreground"}`}
                 >
                   {new Date(item.created_at).toLocaleTimeString([], {
                     hour: "numeric",

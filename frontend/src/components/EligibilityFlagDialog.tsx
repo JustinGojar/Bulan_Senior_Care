@@ -168,14 +168,14 @@ export function EligibilityFlagDialog({
                 ["Contact", senior.contact],
               ].map(([label, value]) => (
                 <div key={String(label)} className={`${tileClass} p-3`}>
-                  <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                     {label}
                   </dt>
                   <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>
                 </div>
               ))}
               <div className={`${tileClass} col-span-2 p-3`}>
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                   Address
                 </dt>
                 <dd className="mt-1 font-semibold">{senior.address || "Not provided"}</dd>

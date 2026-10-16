@@ -51,7 +51,7 @@ export function AuthLayout({
             </div>
 
             <div className="mt-auto pt-16">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold uppercase">
+              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold uppercase">
                 Office of Senior Citizens Affairs
               </span>
               <p className="font-display mt-5 text-4xl leading-tight font-extrabold tracking-[-0.02em]">

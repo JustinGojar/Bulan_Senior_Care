@@ -998,7 +998,7 @@ function SeniorRecords() {
               ].map((h) => (
                 <th
                   key={h}
-                  className={`px-4 py-3.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
+                  className={`px-4 py-3.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
                 >
                   {h}
                 </th>
@@ -1030,7 +1030,7 @@ function SeniorRecords() {
                 <tr key={s.id} className="border-t border-border/60 first:border-t-0">
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white ring-2 ring-gold/40">
+                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[0.6875rem] font-bold text-white ring-2 ring-gold/40">
                         <PrivateImage
                           path={avatarUrl(s)}
                           alt={`${s.name} profile`}
@@ -1183,7 +1183,7 @@ function SeniorRecords() {
           <div className="max-h-80 overflow-auto rounded-lg border border-border/60">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-muted">
-                <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                <tr className="text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                   <th className="px-3 py-2.5 font-semibold">Name</th>
                   <th className="px-3 py-2.5 font-semibold">Birthdate</th>
                   <th className="px-3 py-2.5 font-semibold">Sex</th>
@@ -1385,7 +1385,7 @@ function SeniorRecords() {
               ["Benefits", viewing && benefitLabel(viewing.benefit)],
             ].map(([label, value]) => (
               <div key={String(label)} className={`${tileClass} p-3`}>
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                   {label}
                 </dt>
                 <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>
@@ -1484,7 +1484,7 @@ function SeniorRecords() {
                   <div className="mt-3 overflow-x-auto rounded-lg border border-border/60">
                     <table className="w-full table-fixed text-xs">
                       <thead>
-                        <tr className="bg-muted/60 text-left text-[11px] tracking-wider text-muted-foreground uppercase">
+                        <tr className="bg-muted/60 text-left text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                           <th className="w-[34%] px-2 py-2 font-semibold">Release period</th>
                           <th className="w-[22%] px-2 py-2 font-semibold">Actual date</th>
                           <th className="w-[20%] px-2 py-2 font-semibold">Amount</th>

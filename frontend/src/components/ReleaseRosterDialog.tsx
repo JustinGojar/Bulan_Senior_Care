@@ -242,7 +242,7 @@ export function ReleaseRosterDialog({
                 ["Received", `${received} of ${items.length}`],
               ].map(([label, value]) => (
                 <div key={String(label)} className={tileClass}>
-                  <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  <p className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                     {label}
                   </p>
                   <p className="mt-1 text-lg font-bold">{value}</p>
@@ -388,7 +388,7 @@ export function ReleaseRosterDialog({
                       {["#", "OSCA ID", "Senior", "Barangay", "Amount", "Status"].map((heading) => (
                         <th
                           key={heading}
-                          className="px-3 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                          className="px-3 py-3 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase"
                         >
                           {heading}
                         </th>

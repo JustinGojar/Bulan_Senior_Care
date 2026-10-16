@@ -435,7 +435,7 @@ function UserManagement() {
                 {["Name", "Email", "Role", "Barangay scope", "Status", "Actions"].map((heading) => (
                   <th
                     key={heading}
-                    className="px-4 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                    className="px-4 py-3 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase"
                   >
                     {heading}
                   </th>
