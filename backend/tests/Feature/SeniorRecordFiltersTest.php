@@ -128,6 +128,25 @@ class SeniorRecordFiltersTest extends TestCase
         $this->assertSame(['OSCA-101'], $ids('&age_min=100'));
     }
 
+    public function test_seniors_filter_by_sex(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $this->createSenior($admin, $zone, 'OSCA-F', 'Ana', 'Abad');
+        $this->createSenior($admin, $zone, 'OSCA-M', 'Ben', 'Bautista')->update(['sex' => 'male']);
+
+        $ids = fn (string $query) => array_column(
+            $this->actingAs($admin, 'sanctum')->getJson('/api/seniors?per_page=100'.$query)->assertOk()->json('data'),
+            'osca_id_number',
+        );
+
+        $this->assertSame(['OSCA-M'], $ids('&sex=male'));
+        $this->assertSame(['OSCA-F'], $ids('&sex=female'));
+        // An unknown value is ignored rather than hiding every record.
+        $this->assertSame(['OSCA-F', 'OSCA-M'], $ids('&sex=other'));
+    }
+
     private function createSenior(
         User $encoder,
         Barangay $barangay,

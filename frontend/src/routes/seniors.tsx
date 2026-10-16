@@ -22,6 +22,7 @@ import {
   Undo2,
   Upload,
   UserRound,
+  VenusAndMars,
   X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -550,6 +551,7 @@ function SeniorRecords() {
   const [benefitFilter, setBenefitFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
   const [ageRange, setAgeRange] = useState("All");
+  const [sexFilter, setSexFilter] = useState<"All" | "male" | "female">("All");
   const selectedAgeRange = AGE_RANGES.find((range) => range.value === ageRange);
   const [benefitOptions, setBenefitOptions] = useState<string[]>([]);
   const [query, setQuery] = useState(q ?? "");
@@ -577,6 +579,7 @@ function SeniorRecords() {
     barangay: barangayFilter === "All" ? "" : barangayFilter,
     benefit: benefitFilter === "All" ? "" : benefitFilter,
     ...(sortBy === "name" ? {} : { sort: sortBy }),
+    ...(sexFilter === "All" ? {} : { sex: sexFilter }),
     ...(selectedAgeRange ? { ageMin: selectedAgeRange.min, ageMax: selectedAgeRange.max } : {}),
   });
   const [formOpen, setFormOpen] = useState(false);
@@ -908,6 +911,22 @@ function SeniorRecords() {
           }}
         />
         <IconSelect
+          label="Sex"
+          className="sm:flex-1 xl:w-32 xl:flex-none"
+          icon={<VenusAndMars className="h-4 w-4" />}
+          value={sexFilter}
+          dotClassName={null}
+          options={[
+            { value: "All", label: "All Sexes" },
+            { value: "male", label: "Male" },
+            { value: "female", label: "Female" },
+          ]}
+          onChange={(value) => {
+            setSexFilter(value as typeof sexFilter);
+            setPage(1);
+          }}
+        />
+        <IconSelect
           label="Age"
           className="sm:flex-1 xl:w-36 xl:flex-none"
           icon={<Cake className="h-4 w-4" />}
@@ -952,6 +971,7 @@ function SeniorRecords() {
             setBenefitFilter("All");
             setSortBy("name");
             setAgeRange("All");
+            setSexFilter("All");
           }}
         />
       </div>
