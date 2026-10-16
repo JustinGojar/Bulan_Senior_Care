@@ -3,6 +3,7 @@ import {
   Archive,
   ArrowRight,
   ArrowUpDown,
+  Cake,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -511,6 +512,15 @@ function changedFields(request: SeniorEditRequest) {
   return fields;
 }
 
+/** The age groups used on the Analytics page; `max` is left off for the open-ended group. */
+const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
+  { value: "60–69", min: 60, max: 69 },
+  { value: "70–79", min: 70, max: 79 },
+  { value: "80–89", min: 80, max: 89 },
+  { value: "90–99", min: 90, max: 99 },
+  { value: "100+", min: 100 },
+];
+
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
   const { q, status } = Route.useSearch();
@@ -539,6 +549,8 @@ function SeniorRecords() {
   }, [isLeader, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
+  const [ageRange, setAgeRange] = useState("All");
+  const selectedAgeRange = AGE_RANGES.find((range) => range.value === ageRange);
   const [benefitOptions, setBenefitOptions] = useState<string[]>([]);
   const [query, setQuery] = useState(q ?? "");
   const [page, setPage] = useState(1);
@@ -565,6 +577,7 @@ function SeniorRecords() {
     barangay: barangayFilter === "All" ? "" : barangayFilter,
     benefit: benefitFilter === "All" ? "" : benefitFilter,
     ...(sortBy === "name" ? {} : { sort: sortBy }),
+    ...(selectedAgeRange ? { ageMin: selectedAgeRange.min, ageMax: selectedAgeRange.max } : {}),
   });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
@@ -895,6 +908,21 @@ function SeniorRecords() {
           }}
         />
         <IconSelect
+          label="Age"
+          className="sm:flex-1 xl:w-36 xl:flex-none"
+          icon={<Cake className="h-4 w-4" />}
+          value={ageRange}
+          dotClassName={null}
+          options={[
+            { value: "All", label: "All Ages" },
+            ...AGE_RANGES.map((range) => ({ value: range.value, label: `${range.value} yrs` })),
+          ]}
+          onChange={(value) => {
+            setAgeRange(value);
+            setPage(1);
+          }}
+        />
+        <IconSelect
           label="Sort by"
           prefix="Sort by"
           className="sm:flex-1 xl:w-[205px] xl:flex-none"
@@ -923,6 +951,7 @@ function SeniorRecords() {
             setFilter("All");
             setBenefitFilter("All");
             setSortBy("name");
+            setAgeRange("All");
           }}
         />
       </div>
