@@ -217,19 +217,21 @@ function ProfilePage() {
           >
             <div className="absolute inset-0 bg-gradient-to-b from-[oklch(0.24_0.06_258/0.25)] to-[oklch(0.2_0.05_258/0.75)]" />
             <div className="absolute inset-x-0 bottom-0 flex justify-center translate-y-1/2">
-              <div className="bg-navy relative grid h-[128px] w-[128px] place-items-center overflow-hidden rounded-full text-[2.1rem] font-black text-white ring-4 ring-card">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.src = defaultProfileImage;
-                    }}
-                  />
-                ) : (
-                  initials
-                )}
+              <div className="relative h-[128px] w-[128px]">
+                <div className="bg-navy grid h-full w-full place-items-center overflow-hidden rounded-full text-[2.1rem] font-black text-white ring-4 ring-card">
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = defaultProfileImage;
+                      }}
+                    />
+                  ) : (
+                    initials
+                  )}
+                </div>
                 <label
                   htmlFor="profile-photo"
                   className="absolute right-1 bottom-1 z-10 grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-gold text-gold-foreground shadow-lg ring-2 ring-card"
