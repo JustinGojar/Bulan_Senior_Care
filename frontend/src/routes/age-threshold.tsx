@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getStoredUser } from "@/lib/api";
+import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { cn } from "@/lib/utils";
 import {
   BENEFIT_PROGRAMS,
@@ -215,10 +216,10 @@ function AgeThresholdPage() {
             >
               <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR.gold}`} />
               <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-                <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
+                <p className="text-[0.625rem] font-semibold tracking-wider text-muted-foreground uppercase sm:text-xs">
                   {programAgeLabel(program)}
                 </p>
-                <span className={cn(badgeClass, "max-sm:px-1.5 max-sm:text-[10px]")}>
+                <span className={cn(badgeClass, "max-sm:px-1.5 max-sm:text-[0.625rem]")}>
                   {loading ? (
                     <SkeletonValue className="h-3 w-6 sm:w-12" />
                   ) : (
@@ -237,10 +238,16 @@ function AgeThresholdPage() {
               <p className="mt-2 text-xs leading-tight font-bold wrap-break-word sm:text-sm">
                 {program.name}
               </p>
-              <p className="mt-0.5 text-[11px] font-semibold text-coral sm:text-xs">
-                {program.amount}
+              <p className="mt-0.5 text-[0.6875rem] font-semibold text-coral sm:text-xs">
+                {program.amount === null ? (
+                  "Variable"
+                ) : (
+                  <span title={formatPesoFull(program.amount)}>
+                    {formatPesoAmount(program.amount)}
+                  </span>
+                )}
               </p>
-              <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-primary sm:text-xs">
+              <span className="mt-2 inline-flex items-center gap-1 text-[0.6875rem] font-semibold text-primary sm:text-xs">
                 View<span className="hidden sm:inline"> seniors</span>
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </span>

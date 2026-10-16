@@ -1,16 +1,35 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Bell,
+  Check,
+  CheckCheck,
+  Mail,
+  MoreVertical,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
-import { panelClass, secondaryButtonClass, tileClass } from "@/components/design-kit";
+import { panelClass, tileClass } from "@/components/design-kit";
 import { IconActionButton } from "@/components/IconActionButton";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  archiveServerNotification,
   deleteServerNotification,
   getServerNotifications,
   getStoredUser,
   markServerNotificationRead,
+  markServerNotificationUnread,
   type ServerNotification,
+  unarchiveServerNotification,
 } from "@/lib/api";
 
 export const Route = createFileRoute("/notifications")({
@@ -22,9 +41,22 @@ function Notifications() {
   const navigate = useNavigate();
   const [serverNotifications, setServerNotifications] = useState<ServerNotification[]>([]);
   const [selectedNotificationIds, setSelectedNotificationIds] = useState<number[]>([]);
+  const [view, setView] = useState<"inbox" | "archived">("inbox");
+
+  // The inbox and archive views each show their own slice; actions only touch what is shown.
+  const visibleNotifications = serverNotifications.filter((notification) =>
+    view === "archived" ? Boolean(notification.archived_at) : !notification.archived_at,
+  );
+  const archivedCount = serverNotifications.filter(
+    (notification) => notification.archived_at,
+  ).length;
+  const visibleUnreadCount = visibleNotifications.filter(
+    (notification) => notification.status === "unread",
+  ).length;
 
   const allSelected =
-    serverNotifications.length > 0 && selectedNotificationIds.length === serverNotifications.length;
+    visibleNotifications.length > 0 &&
+    visibleNotifications.every((notification) => selectedNotificationIds.includes(notification.id));
 
   function notificationTitle(notification: ServerNotification) {
     if (notification.source_type === "benefit_release") return "Benefit release schedule";
@@ -45,9 +77,39 @@ function Notifications() {
       .catch(() => setServerNotifications([]));
   }, []);
 
+  function replaceNotification(updated: ServerNotification) {
+    setServerNotifications((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+    window.dispatchEvent(new Event("bulan-unread-updated"));
+  }
+
+  function runNotificationAction(action: Promise<ServerNotification>) {
+    action.then(replaceNotification).catch(() => undefined);
+  }
+
+  function archiveNotification(notification: ServerNotification) {
+    const action = notification.archived_at
+      ? unarchiveServerNotification(notification.id)
+      : archiveServerNotification(notification.id);
+    action
+      .then((updated) => {
+        replaceNotification(updated);
+        setSelectedNotificationIds((current) =>
+          current.filter((selectedId) => selectedId !== notification.id),
+        );
+      })
+      .catch(() => undefined);
+  }
+
+  function switchView(next: "inbox" | "archived") {
+    setView(next);
+    setSelectedNotificationIds([]);
+  }
+
   function markAllServerNotificationsRead() {
     Promise.all(
-      serverNotifications
+      visibleNotifications
         .filter((notification) => notification.status === "unread")
         .map((notification) => markServerNotificationRead(notification.id)),
     )
@@ -68,13 +130,14 @@ function Notifications() {
           current.filter((notification) => notification.id !== id),
         );
         setSelectedNotificationIds((current) => current.filter((selectedId) => selectedId !== id));
+        window.dispatchEvent(new Event("bulan-unread-updated"));
       })
       .catch(() => undefined);
   }
 
   function toggleSelectAll() {
     setSelectedNotificationIds(
-      allSelected ? [] : serverNotifications.map((notification) => notification.id),
+      allSelected ? [] : visibleNotifications.map((notification) => notification.id),
     );
   }
 
@@ -93,6 +156,7 @@ function Notifications() {
           current.filter((notification) => !selectedIds.has(notification.id)),
         );
         setSelectedNotificationIds([]);
+        window.dispatchEvent(new Event("bulan-unread-updated"));
       })
       .catch(() => undefined);
   }
@@ -101,11 +165,7 @@ function Notifications() {
     const markRead =
       notification.status === "unread"
         ? markServerNotificationRead(notification.id)
-            .then((updated) =>
-              setServerNotifications((current) =>
-                current.map((item) => (item.id === updated.id ? updated : item)),
-              ),
-            )
+            .then(replaceNotification)
             .catch(() => undefined)
         : Promise.resolve();
     void markRead.then(() => openSource(notification));
@@ -145,26 +205,40 @@ function Notifications() {
           title="Inbox"
           subtitle="Age threshold, benefit, report, and workflow notifications."
           badge={
-            serverNotifications.some((notification) => notification.status === "unread") ? (
-              <StatusPill tone="gold">
-                {
-                  serverNotifications.filter((notification) => notification.status === "unread")
-                    .length
-                }{" "}
-                unread
-              </StatusPill>
+            visibleUnreadCount > 0 ? (
+              <StatusPill tone="gold">{visibleUnreadCount} unread</StatusPill>
             ) : undefined
           }
         />
         <div
-          className={`${tileClass} mt-6 flex flex-wrap items-center justify-between gap-3 py-2.5`}
+          role="tablist"
+          aria-label="Notification folders"
+          className="mt-6 inline-flex rounded-lg border border-border/60 bg-muted/60 p-1"
+        >
+          {(["inbox", "archived"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="tab"
+              aria-selected={view === option}
+              onClick={() => switchView(option)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${view === option ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              {option === "inbox"
+                ? "Inbox"
+                : `Archived${archivedCount ? ` (${archivedCount})` : ""}`}
+            </button>
+          ))}
+        </div>
+        <div
+          className={`${tileClass} mt-3 flex flex-wrap items-center justify-between gap-3 py-2.5`}
         >
           <label className="inline-flex items-center gap-2 text-sm font-semibold">
             <input
               type="checkbox"
               checked={allSelected}
               onChange={toggleSelectAll}
-              disabled={serverNotifications.length === 0}
+              disabled={visibleNotifications.length === 0}
               className="h-4 w-4 accent-[var(--navy)]"
             />
             Select all
@@ -176,9 +250,7 @@ function Notifications() {
               icon={<CheckCheck className="h-4 w-4" />}
               className="h-10 w-10 text-xs hover:translate-y-0 sm:h-9 sm:px-3 sm:shadow-none"
               onClick={markAllServerNotificationsRead}
-              disabled={
-                !serverNotifications.some((notification) => notification.status === "unread")
-              }
+              disabled={visibleUnreadCount === 0}
             />
             <IconActionButton
               label={
@@ -196,7 +268,7 @@ function Notifications() {
           </div>
         </div>
         <div className="mt-3 space-y-3">
-          {serverNotifications.map((notification) => (
+          {visibleNotifications.map((notification) => (
             <div
               key={`server-${notification.id}`}
               onClick={() => handleOpenServerNotification(notification)}
@@ -215,8 +287,8 @@ function Notifications() {
               >
                 <Bell className="h-4 w-4" />
               </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-                <span className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1">
+                <span className="block">
                   <strong className="flex items-center gap-2 text-sm leading-snug">
                     {notificationTitle(notification)}
                     {notification.status === "unread" && (
@@ -230,46 +302,77 @@ function Notifications() {
                     {new Date(notification.created_at).toLocaleDateString()}
                   </small>
                 </span>
-                <div className="flex items-center gap-2 sm:shrink-0">
-                  {notification.status === "unread" && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        markServerNotificationRead(notification.id)
-                          .then((updated) =>
-                            setServerNotifications((current) =>
-                              current.map((item) => (item.id === updated.id ? updated : item)),
-                            ),
-                          )
-                          .catch(() => undefined);
-                      }}
-                      className={`${secondaryButtonClass} h-8 px-3 text-xs`}
-                    >
-                      <Check className="h-3.5 w-3.5" /> Mark as read
-                    </button>
-                  )}
+              </div>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      deleteNotification(notification.id);
-                    }}
-                    aria-label="Delete notification"
-                    title="Delete notification"
-                    className="grid h-8 w-8 place-items-center rounded-lg border border-border/60 bg-card text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label="Notification options"
+                    title="More options"
+                    className="-mr-1 -mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-44"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {notification.status === "unread" ? (
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        runNotificationAction(markServerNotificationRead(notification.id))
+                      }
+                    >
+                      <Check className="h-4 w-4" />
+                      Mark as read
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        runNotificationAction(markServerNotificationUnread(notification.id))
+                      }
+                    >
+                      <Mail className="h-4 w-4" />
+                      Mark as unread
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onSelect={() => archiveNotification(notification)}>
+                    {notification.archived_at ? (
+                      <>
+                        <ArchiveRestore className="h-4 w-4" />
+                        Move to inbox
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-4 w-4" />
+                        Archive
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() => deleteNotification(notification.id)}
+                    className="font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
-          {serverNotifications.length === 0 && (
+          {visibleNotifications.length === 0 && (
             <EmptyState
-              icon={CheckCheck}
-              title="Your inbox is clear"
-              description="New alerts will show up here."
+              icon={view === "archived" ? Archive : CheckCheck}
+              title={view === "archived" ? "No archived notifications" : "Your inbox is clear"}
+              description={
+                view === "archived"
+                  ? "Notifications you archive will show up here."
+                  : "New alerts will show up here."
+              }
             />
           )}
         </div>

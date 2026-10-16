@@ -38,7 +38,7 @@ The root `Dockerfile` builds the frontend and Laravel application into one Railw
    - `LOG_CHANNEL=stderr`
    - `FILESYSTEM_DISK=public`
 4. Railway supplies `PORT` at runtime. The configured **Start Command** creates Laravel's storage symlink, caches production configuration, and runs `php artisan serve --host=0.0.0.0 --port=$PORT`.
-5. The configured pre-deploy command runs `php artisan migrate --force`; `/up` is the health check. Add a Railway volume mounted at `/app/backend/storage/app/public` to retain uploaded photos and documents across deployments.
+5. The configured pre-deploy command runs `php artisan migrate --force`; `/up` is the health check. Add a Railway volume mounted at `/app/backend/storage/app` to retain uploaded photos, documents and message attachments across deployments. Private files (senior documents, benefit proofs, release documents and message attachments) live outside `storage/app/public`, so a volume on that folder alone does not keep them.
 
 Set `FACEBOOK_PAGE_ID` and `FACEBOOK_PAGE_ACCESS_TOKEN` as server-side Railway variables to enable Facebook Page imports. Never put the access token in a frontend variable or commit it. To run Facebook imports and daily scheduled tasks, configure a Railway Cron service using the same image to run `php artisan schedule:run` every minute.
 

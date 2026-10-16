@@ -2,6 +2,7 @@ import { createFileRoute, Link, useBlocker, useNavigate, useRouter } from "@tans
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { login, takeSessionNotice } from "@/lib/api";
 
 export const Route = createFileRoute("/login")({
@@ -156,6 +157,8 @@ function LoginPage() {
         <ShieldCheck className="h-4 w-4 shrink-0 text-success" />
         <span>Authorized personnel only. Accounts are issued by the OSCA administrator.</span>
       </div>
+
+      <InstallAppButton className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-border/70 px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted" />
     </AuthLayout>
   );
 }

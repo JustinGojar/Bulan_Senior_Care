@@ -264,7 +264,7 @@ function ProfilePage() {
             <div className="text-center">
               <h2 className="text-3xl font-extrabold">{user?.name ?? "Your profile"}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
-              <span className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase dark:text-gold">
+              <span className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold-foreground uppercase dark:text-gold">
                 {roleLabel}
               </span>
             </div>
@@ -508,7 +508,7 @@ function ProfilePage() {
             <div className="mt-6 overflow-hidden rounded-lg border border-border/60">
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="bg-muted">
-                  <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <tr className="text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                     <th className="px-4 py-3 font-semibold">Date &amp; Time</th>
                     <th className="px-4 py-3 font-semibold">Action</th>
                     <th className="px-4 py-3 font-semibold">Details</th>

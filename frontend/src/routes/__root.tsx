@@ -21,9 +21,12 @@ import {
 } from "@/lib/api";
 import { PUBLIC_PATHS, rolePrefixFor, rolePrefixOf } from "@/lib/role-path";
 import { THEME_KEY } from "@/lib/theme";
+// Registers the service worker and captures Chrome's install prompt for the "Install app" button.
+import "@/lib/pwa";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { FormValidation } from "@/components/FormValidation";
 import { StatusPage } from "@/components/StatusPage";
+import { SplashScreen, splashCss, splashScript, useSplashDismiss } from "@/components/SplashScreen";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 import { Home, LayoutGrid, MapPinOff, RotateCw, TriangleAlert } from "lucide-react";
 
@@ -230,10 +233,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      // Phones open the app at 80% (desktop browsers ignore this): the page is laid out 25% wider
+      // and shown scaled to fit, like setting the browser zoom to 80%.
+      { name: "viewport", content: "width=device-width, initial-scale=0.8, viewport-fit=cover" },
       { title: "Bulan Senior Care" },
       { name: "description", content: "OSCA Bulan senior citizen records and benefits portal" },
       { name: "author", content: "Bulan Senior Care" },
+      { name: "theme-color", content: "#17213a" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "SeniorCare" },
       { property: "og:title", content: "Bulan Senior Care" },
       {
         property: "og:description",
@@ -254,6 +263,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: logo, type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -270,9 +281,12 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: splashScript }} />
+        <style dangerouslySetInnerHTML={{ __html: splashCss }} />
         <HeadContent />
       </head>
       <body>
+        <SplashScreen />
         {children}
         <Scripts />
       </body>
@@ -283,6 +297,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
+  useSplashDismiss();
 
   useEffect(() => {
     // On a full page load the root beforeLoad runs on the server, where it cannot see the
