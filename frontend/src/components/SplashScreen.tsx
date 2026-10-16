@@ -20,15 +20,15 @@ export const splashScript = `try{var d=document.documentElement,m=function(q){re
 /**
  * Inline so the splash is styled on the very first paint, before the app stylesheet arrives.
  * The navy (#17213a) matches background_color in manifest.webmanifest, which Android uses for
- * its own launch screen, so the two screens read as one in both themes. The logo's 235px cap
- * is 188px on screen at the 80% initial-scale set in __root.tsx.
+ * its own launch screen, so the two screens read as one in both themes. The logo's 209px cap
+ * is 188px on screen at the 90% initial-scale set in __root.tsx.
  */
 export const splashCss = `
 #app-splash{display:none}
 html.splash{overflow:hidden}
 html.splash #app-splash{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:24px 24px calc(56px + env(safe-area-inset-bottom));background:radial-gradient(120% 80% at 50% 50%,#17213a 0%,#17213a 60%,#111a2d 100%);color:#f2f4f8;font-family:"Sora","Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;text-align:center;transition:opacity ${FADE_MS}ms ease,transform ${FADE_MS}ms ease}
 html.splash.splash-out #app-splash{opacity:0;transform:scale(1.03);pointer-events:none}
-#app-splash{--logo:min(40vw,235px);--lift:9vh}
+#app-splash{--logo:min(40vw,209px);--lift:9vh}
 .splash-logo{position:absolute;left:50%;top:50%;width:var(--logo);height:var(--logo);margin:calc(var(--logo) / -2) 0 0 calc(var(--logo) / -2);animation:splash-lift .7s .15s cubic-bezier(.2,.8,.2,1) forwards}
 .splash-logo img{position:relative;display:block;width:100%;height:100%;border-radius:50%}
 .splash-text{position:absolute;left:24px;right:24px;top:calc(50% + var(--logo) / 2 + 28px);display:flex;flex-direction:column;align-items:center;animation:splash-lift .7s .15s cubic-bezier(.2,.8,.2,1) forwards}

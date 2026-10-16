@@ -196,12 +196,12 @@
     scroll-behavior: smooth;
   }
 
-  /* Desktop shows every page at 80%, like setting the browser zoom to 80%. Sizes are in rem, so
+  /* Desktop shows every page at 90%, like setting the browser zoom to 90%. Sizes are in rem, so
      they all scale with this; breakpoints don't, as media queries use the browser's 16px.
-     Phones and tablets get the same 80% from initial-scale=0.8 in __root.tsx instead. */
+     Phones and tablets get the same 90% from initial-scale=0.9 in __root.tsx instead. */
   @media (hover: hover) and (pointer: fine) {
     html {
-      font-size: 80%;
+      font-size: 90%;
     }
   }
 
