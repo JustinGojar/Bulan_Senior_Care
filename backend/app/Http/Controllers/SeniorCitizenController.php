@@ -66,6 +66,14 @@ class SeniorCitizenController extends Controller
             $benefit = $request->string('benefit')->toString();
             $query->whereHas('benefit', fn ($benefitQuery) => $benefitQuery->where('benefit_name', $benefit));
         }
+        // Age range in whole years, as birthdate bounds: aged at least N means born on or before
+        // today N years ago; aged at most N means born after today N + 1 years ago.
+        if ($request->filled('age_min')) {
+            $query->whereDate('birthdate', '<=', now()->subYearsNoOverflow($request->integer('age_min'))->toDateString());
+        }
+        if ($request->filled('age_max')) {
+            $query->whereDate('birthdate', '>', now()->subYearsNoOverflow($request->integer('age_max') + 1)->toDateString());
+        }
 
         $cacheKey = 'seniors:' . $request->user()->id . ':' . sha1((string) $request->getQueryString());
         $cacheTtl = 3;
