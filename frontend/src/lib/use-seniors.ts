@@ -128,6 +128,8 @@ export function useSeniors(
     search?: string;
     barangay?: string;
     benefit?: string;
+    /** "latest" or "oldest" by date added; omitted is A–Z by name. */
+    sort?: "latest" | "oldest";
   } = {},
 ) {
   const {
@@ -139,6 +141,7 @@ export function useSeniors(
     search = "",
     barangay = "",
     benefit = "",
+    sort,
   } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
   const [matchingCount, setMatchingCount] = useState(0);
@@ -170,9 +173,10 @@ export function useSeniors(
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (barangay) params.set("barangay", barangay);
       if (benefit) params.set("benefit", benefit);
+      if (sort) params.set("sort", sort);
       return `/seniors?${params.toString()}`;
     },
-    [pendingOnly, excludePending, perPage, status, debouncedSearch, barangay, benefit],
+    [pendingOnly, excludePending, perPage, status, debouncedSearch, barangay, benefit, sort],
   );
   const listPath = makeListPath(page);
 

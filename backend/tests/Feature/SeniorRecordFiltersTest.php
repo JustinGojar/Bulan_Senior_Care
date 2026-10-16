@@ -84,6 +84,28 @@ class SeniorRecordFiltersTest extends TestCase
             ->assertJsonPath('data.0.osca_id_number', 'OSCA-1');
     }
 
+    public function test_seniors_sort_by_name_or_by_date_added(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $this->createSenior($admin, $zone, 'OSCA-OLD', 'Ana', 'Bautista')
+            ->forceFill(['created_at' => now()->subDays(2)])->save();
+        $this->createSenior($admin, $zone, 'OSCA-NEW', 'Ben', 'Zamora')
+            ->forceFill(['created_at' => now()])->save();
+        $this->createSenior($admin, $zone, 'OSCA-MID', 'Carla', 'Abad')
+            ->forceFill(['created_at' => now()->subDay()])->save();
+
+        $order = fn (string $query) => array_column(
+            $this->actingAs($admin, 'sanctum')->getJson('/api/seniors?per_page=100'.$query)->assertOk()->json('data'),
+            'osca_id_number',
+        );
+
+        $this->assertSame(['OSCA-MID', 'OSCA-OLD', 'OSCA-NEW'], $order(''));
+        $this->assertSame(['OSCA-NEW', 'OSCA-MID', 'OSCA-OLD'], $order('&sort=latest'));
+        $this->assertSame(['OSCA-OLD', 'OSCA-MID', 'OSCA-NEW'], $order('&sort=oldest'));
+    }
+
     private function createSenior(
         User $encoder,
         Barangay $barangay,

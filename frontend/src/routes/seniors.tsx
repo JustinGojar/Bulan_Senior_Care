@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Archive,
   ArrowRight,
+  ArrowUpDown,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -537,6 +538,7 @@ function SeniorRecords() {
       .catch(() => setLeaderBarangay(undefined));
   }, [isLeader, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
+  const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
   const [benefitOptions, setBenefitOptions] = useState<string[]>([]);
   const [query, setQuery] = useState(q ?? "");
   const [page, setPage] = useState(1);
@@ -562,6 +564,7 @@ function SeniorRecords() {
     search: query,
     barangay: barangayFilter === "All" ? "" : barangayFilter,
     benefit: benefitFilter === "All" ? "" : benefitFilter,
+    ...(sortBy === "name" ? {} : { sort: sortBy }),
   });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
@@ -891,6 +894,23 @@ function SeniorRecords() {
             setPage(1);
           }}
         />
+        <IconSelect
+          label="Sort by"
+          prefix="Sort by"
+          className="sm:flex-1 xl:w-[205px] xl:flex-none"
+          icon={<ArrowUpDown className="h-4 w-4" />}
+          value={sortBy}
+          defaultValue="name"
+          options={[
+            { value: "name", label: "Name (A–Z)" },
+            { value: "latest", label: "Latest record" },
+            { value: "oldest", label: "Oldest record" },
+          ]}
+          onChange={(value) => {
+            setSortBy(value as typeof sortBy);
+            setPage(1);
+          }}
+        />
         <IconActionButton
           label="Reset"
           variant="outline"
@@ -902,6 +922,7 @@ function SeniorRecords() {
             setBarangayFilter(isLeader ? (leaderBarangay ?? "All") : "All");
             setFilter("All");
             setBenefitFilter("All");
+            setSortBy("name");
           }}
         />
       </div>
