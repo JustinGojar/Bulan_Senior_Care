@@ -91,7 +91,7 @@ function ReleaseHistoryPage() {
       subtitle="Every release batch, its seniors and its documents"
       breadcrumb={["Dashboard", "Benefit Tracking", "Release History"]}
     >
-      <section className={`${panelClass} p-4 sm:p-7`}>
+      <section className={`${panelClass} p-5 sm:p-7`}>
         <SectionHeader
           icon={History}
           title="Release batches"

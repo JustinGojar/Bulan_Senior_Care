@@ -987,7 +987,7 @@ function BenefitTracking() {
           />
         )}
       </div>
-      <section id="release-queue" className={`${panelClass} mt-5 overflow-hidden p-4 sm:p-6`}>
+      <section id="release-queue" className={`${panelClass} mt-6 overflow-hidden p-5 sm:p-7`}>
         <SectionHeader
           icon={ShieldCheck}
           title="Release queue"

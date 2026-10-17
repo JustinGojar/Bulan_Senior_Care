@@ -165,7 +165,7 @@ function AuditLogsPage() {
       subtitle="Recent account, senior record, and benefit activities"
       breadcrumb={["Dashboard", "Settings", "Audit Logs"]}
     >
-      <section className={`${panelClass} p-4 sm:p-7`}>
+      <section className={`${panelClass} p-5 sm:p-7`}>
         <SectionHeader
           icon={ClipboardList}
           title="Activity history"

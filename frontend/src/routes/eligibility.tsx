@@ -147,7 +147,7 @@ function EligibilityReview() {
       subtitle="Verify age-threshold flags before enrollment"
       breadcrumb={["Dashboard", "Eligibility Review"]}
     >
-      <section className={`${panelClass} p-4 sm:p-7`}>
+      <section className={`${panelClass} p-5 sm:p-7`}>
         <SectionHeader
           icon={ClipboardCheck}
           title="Pending senior registrations"

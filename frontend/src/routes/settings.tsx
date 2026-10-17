@@ -289,7 +289,9 @@ function SettingsPage() {
                   <span
                     className={`grid h-4 w-4 place-items-center rounded-full bg-white shadow-sm transition-transform ${notificationSettings[label] ? "translate-x-5" : ""}`}
                   >
-                    {notificationSettings[label] && <Check className="h-3 w-3 text-[#173A52]" />}
+                    {notificationSettings[label] && (
+                      <Check className="h-3 w-3 text-gold-foreground" />
+                    )}
                   </span>
                 </button>
               </div>

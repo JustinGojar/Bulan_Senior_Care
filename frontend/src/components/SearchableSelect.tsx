@@ -62,7 +62,10 @@ export function SearchMenu({
           >
             {option.label}
             {option.value === value && (
-              <Check className="absolute right-2.5 h-4 w-4 text-gold" aria-hidden="true" />
+              <Check
+                className="absolute right-2.5 h-4 w-4 text-primary dark:text-gold"
+                aria-hidden="true"
+              />
             )}
           </CommandItem>
         ))}
