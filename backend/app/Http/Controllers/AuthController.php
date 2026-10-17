@@ -26,6 +26,8 @@ class AuthController extends Controller
 {
     private const RESET_CODE_MAX_ATTEMPTS = 5;
 
+    private const SAME_PASSWORD_MESSAGE = 'You used your old password. Please create a new password that is different from your current one.';
+
     private const RESET_TOKEN_INVALID_MESSAGE = 'This password reset link is invalid or has expired. Please request a new one.';
 
     public function barangays(Request $request): JsonResponse
@@ -205,7 +207,7 @@ class AuthController extends Controller
         }
 
         $record = self::resetTokens()->where('email', $data['email'])->first();
-        $expired = $record && Carbon::parse($record->created_at)->addMinutes(self::resetExpiryMinutes())->isPast();
+        $expired = $record && Carbon::parse($record->created_at)->addMinutes(self::resetCodeExpiryMinutes())->isPast();
         if (! $record || $expired || ! Hash::check($data['code'], $record->token)) {
             RateLimiter::hit($attemptsKey, self::resetExpiryMinutes() * 60);
             if (RateLimiter::tooManyAttempts($attemptsKey, self::RESET_CODE_MAX_ATTEMPTS)) {
@@ -242,6 +244,11 @@ class AuthController extends Controller
         return (int) config('auth.passwords.users.expire');
     }
 
+    private static function resetCodeExpiryMinutes(): int
+    {
+        return (int) config('auth.passwords.users.code_expire');
+    }
+
     private static function resetCodeAttemptsKey(string $email): string
     {
         return 'reset-code:'.Str::lower($email);
@@ -273,6 +280,12 @@ class AuthController extends Controller
             'token.string' => self::RESET_TOKEN_INVALID_MESSAGE,
             'token.size' => self::RESET_TOKEN_INVALID_MESSAGE,
         ]);
+
+        // Checked only for a valid token, so this cannot be used to guess someone's password.
+        $user = User::where('email', $data['email'])->first();
+        if ($user && PasswordBroker::tokenExists($user, $data['token']) && Hash::check($data['password'], $user->password)) {
+            return response()->json(['message' => self::SAME_PASSWORD_MESSAGE, 'errors' => ['password' => [self::SAME_PASSWORD_MESSAGE]]], 422);
+        }
 
         $status = PasswordBroker::reset(
             $data,
@@ -376,8 +389,8 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
+            'password' => ['required', 'confirmed', 'different:current_password', Password::defaults()],
+        ], ['password.different' => self::SAME_PASSWORD_MESSAGE]);
 
         $request->user()->update(['password' => $data['password']]);
         $request->user()->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
