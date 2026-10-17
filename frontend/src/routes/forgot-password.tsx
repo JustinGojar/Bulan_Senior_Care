@@ -41,7 +41,7 @@ const STEP_TEXT: Record<Step, { title: string; subtitle: string }> = {
   },
   code: {
     title: "Enter verification code",
-    subtitle: "We sent a 6-digit code to your email. It expires in 15 minutes.",
+    subtitle: "We sent a 6-digit code to your email. It expires in 1 minute.",
   },
   password: {
     title: "Create new password",

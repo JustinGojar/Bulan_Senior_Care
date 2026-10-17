@@ -186,6 +186,12 @@ function ProfilePage() {
 
   async function savePassword(event: React.FormEvent) {
     event.preventDefault();
+    if (password === currentPassword) {
+      toast.error(
+        "You used your old password. Please create a new password that is different from your current one.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       await apiFetch<{ message: string }>("/profile/password", {
