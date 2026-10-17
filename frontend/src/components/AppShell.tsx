@@ -626,7 +626,7 @@ export function AppShell({
                 >
                   <Mail className="h-5 w-5" />
                   {unreadMessageCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-white ring-2 ring-card">
+                    <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-coral-foreground ring-2 ring-card">
                       {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
                     </span>
                   )}
@@ -641,7 +641,7 @@ export function AppShell({
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-white ring-2 ring-card">
+                  <span className="absolute -top-1.5 -right-1.5 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-coral-foreground ring-2 ring-card">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}

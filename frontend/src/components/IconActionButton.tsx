@@ -81,7 +81,7 @@ function TapTooltip({
         <TooltipContent
           side="bottom"
           sideOffset={6}
-          className="z-[60] rounded-lg bg-[#173A52] px-3 py-1.5 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(23,58,82,0.3)] dark:bg-white dark:text-[#173A52]"
+          className="z-[60] rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-[var(--shadow-soft)]"
         >
           {label}
         </TooltipContent>
@@ -119,13 +119,12 @@ export function IconActionButton({
         type="button"
         aria-label={label}
         className={cn(
-          "relative inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#173A52]/30 disabled:pointer-events-none disabled:opacity-60 sm:h-12",
+          "relative inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-60 sm:h-12",
           iconOnly ? "sm:w-12" : "sm:w-auto sm:px-5",
           variant === "primary" && "bg-navy text-white shadow-[var(--shadow-card)]",
-          variant === "default" &&
-            "bg-card text-foreground shadow-[var(--shadow-soft)] hover:bg-[#173A52]/5",
-          variant === "outline" &&
-            "border border-[#173A52]/20 bg-white text-[#173A52] shadow-[0_4px_12px_rgba(23,58,82,0.05)] hover:border-[#173A52]/40 hover:bg-[#173A52]/5 dark:bg-card dark:text-foreground",
+          // Secondary actions share one quiet style so the primary action stands out.
+          variant !== "primary" &&
+            "border border-border bg-card text-foreground hover:border-ring/40 hover:bg-muted",
           className,
         )}
         {...props}
@@ -139,7 +138,7 @@ export function IconActionButton({
         {!!badge && (
           <span
             className={cn(
-              "absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[0.625rem] leading-none font-bold text-white",
+              "absolute -top-1 -right-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[0.625rem] leading-none font-bold text-coral-foreground",
               !iconOnly && "sm:hidden",
             )}
           >
@@ -308,7 +307,7 @@ export function IconSelect({
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator className="absolute right-2.5 flex items-center">
-                  <Check className="h-4 w-4 text-gold" />
+                  <Check className="h-4 w-4 text-primary dark:text-gold" />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>
             ))}

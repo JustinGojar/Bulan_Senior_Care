@@ -360,7 +360,7 @@ function MessagesPage() {
     >
       {confirmDialog}
       {composerOpen && canMessage && (
-        <form onSubmit={handleSend} className={`${panelClass} mb-5 p-5 sm:p-6`}>
+        <form onSubmit={handleSend} className={`${panelClass} mb-5 p-5 sm:p-7`}>
           <SectionHeader
             icon={PenLine}
             title="New message"
@@ -494,7 +494,7 @@ function MessagesPage() {
           onSubmit={sendReply}
         />
       ) : (
-        <section className={`${panelClass} overflow-hidden p-4 sm:p-6`}>
+        <section className={`${panelClass} overflow-hidden p-5 sm:p-7`}>
           <SectionHeader
             icon={MessagesSquare}
             title="Conversations"

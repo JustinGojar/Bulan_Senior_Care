@@ -215,7 +215,7 @@ function Landing() {
             <ThemeToggle className="hidden sm:grid" />
             <Link
               to="/login"
-              className={`${primaryButtonClass} group h-9 px-4 transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-[oklch(0.45_0.08_258)] hover:bg-none focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0 sm:h-10 sm:px-5`}
+              className={`${primaryButtonClass} group h-9 px-4 transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-navy-hover hover:bg-none focus-visible:ring-4 focus-visible:ring-navy-hover/35 active:translate-y-0 sm:h-10 sm:px-5`}
             >
               Log in{" "}
               <ArrowRight className="hidden h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 sm:block" />
@@ -275,7 +275,7 @@ function Landing() {
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               to="/login"
-              className="group bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-[oklch(0.45_0.08_258)] hover:bg-none hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0 sm:text-base"
+              className="group bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-navy-hover hover:bg-none hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-navy-hover/35 active:translate-y-0 sm:text-base"
             >
               Get Started{" "}
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -409,7 +409,7 @@ function Landing() {
             </div>
             <Link
               to="/login"
-              className="group hover:bg-navy inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:text-white hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0"
+              className="group hover:bg-navy inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:text-white hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-navy-hover/35 active:translate-y-0"
             >
               Log in to the portal{" "}
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />

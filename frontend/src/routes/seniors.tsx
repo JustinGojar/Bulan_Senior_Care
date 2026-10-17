@@ -880,11 +880,7 @@ function SeniorRecords() {
           icon={<UserRound className="h-4 w-4" />}
           value={filter}
           dotClassName={
-            filter === "Active"
-              ? "bg-success"
-              : filter === "Pending"
-                ? "bg-orange-500"
-                : "bg-destructive"
+            filter === "Active" ? "bg-success" : filter === "Pending" ? "bg-gold" : "bg-destructive"
           }
           options={filters.map((item) => ({
             value: item.key,
@@ -977,7 +973,7 @@ function SeniorRecords() {
       </div>
 
       {isHead && editRequests.length > 0 && (
-        <section className={`${panelClass} mt-5 p-5 sm:p-6`}>
+        <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
           <SectionHeader
             icon={FilePenLine}
             title="Senior record edit requests"
@@ -1052,7 +1048,7 @@ function SeniorRecords() {
         </section>
       )}
 
-      <div className={`${panelClass} mt-5 @container overflow-x-auto`}>
+      <div className={`${panelClass} mt-6 @container overflow-x-auto`}>
         <table className="w-full min-w-[880px] border-collapse text-sm [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-border/60 bg-muted text-left">
