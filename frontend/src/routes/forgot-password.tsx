@@ -16,9 +16,15 @@ import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { requestPasswordReset, resetPassword, verifyResetCode } from "@/lib/api";
+import { publicPageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Forgot Password - Bulan SeniorCare" }] }),
+  head: () =>
+    publicPageHead(
+      "/forgot-password",
+      "Forgot Password - Bulan SeniorCare",
+      "Reset the password for your Bulan SeniorCare OSCA portal account with a code sent to your email.",
+    ),
   component: ForgotPasswordPage,
 });
 
