@@ -225,7 +225,7 @@ function Notifications() {
       subtitle="System alerts and operational messages"
       breadcrumb={["Dashboard", "Notifications"]}
     >
-      <section className={`${panelClass} p-4 sm:p-7`}>
+      <section className={`${panelClass} p-5 sm:p-7`}>
         <SectionHeader
           icon={Bell}
           title="Inbox"

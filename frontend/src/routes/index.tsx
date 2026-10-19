@@ -20,26 +20,10 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { SectionHeader } from "@/components/DesignKit";
 import { TONE_BAR, panelClass, primaryButtonClass, tileClass } from "@/components/design-kit";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { publicPageHead, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Bulan SeniorCare — OSCA Senior Profiling & Benefit Portal" },
-      {
-        name: "description",
-        content:
-          "Web-based senior citizen profiling and benefit monitoring system with descriptive analytics for the Office of Senior Citizen Affairs of LGU-Bulan, Sorsogon.",
-      },
-      { property: "og:title", content: "Bulan SeniorCare — OSCA Portal" },
-      {
-        property: "og:description",
-        content:
-          "Registration, eligibility verification, benefit tracking, and barangay-level analytics for OSCA Bulan.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => publicPageHead("/", SITE_TITLE, SITE_DESCRIPTION),
   component: Landing,
 });
 
@@ -192,7 +176,7 @@ function Landing() {
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/70 sm:h-10 sm:w-10" />
             <div className="min-w-0">
               <p className="font-display truncate text-xs font-bold sm:text-sm">Bulan SeniorCare</p>
-              <p className="truncate text-[11px] text-muted-foreground sm:text-xs">
+              <p className="truncate text-[0.6875rem] text-muted-foreground sm:text-xs">
                 OSCA · Bulan, Sorsogon
               </p>
             </div>
@@ -215,7 +199,7 @@ function Landing() {
             <ThemeToggle className="hidden sm:grid" />
             <Link
               to="/login"
-              className={`${primaryButtonClass} group h-9 px-4 transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-[oklch(0.45_0.08_258)] hover:bg-none focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0 sm:h-10 sm:px-5`}
+              className={`${primaryButtonClass} group h-9 px-4 transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-navy-hover hover:bg-none focus-visible:ring-4 focus-visible:ring-navy-hover/35 active:translate-y-0 sm:h-10 sm:px-5`}
             >
               Log in{" "}
               <ArrowRight className="hidden h-4 w-4 transition-transform duration-200 group-hover:translate-x-1 sm:block" />
@@ -275,7 +259,7 @@ function Landing() {
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               to="/login"
-              className="group bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-[oklch(0.45_0.08_258)] hover:bg-none hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0 sm:text-base"
+              className="group bg-navy inline-flex items-center gap-2 rounded-full px-7 py-4 text-sm font-semibold text-white shadow-[var(--shadow-card)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:bg-navy-hover hover:bg-none hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-navy-hover/35 active:translate-y-0 sm:text-base"
             >
               Get Started{" "}
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -409,7 +393,7 @@ function Landing() {
             </div>
             <Link
               to="/login"
-              className="group hover:bg-navy inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:text-white hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 active:translate-y-0"
+              className="group hover:bg-navy inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none hover:-translate-y-0.5 hover:text-white hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] focus-visible:ring-4 focus-visible:ring-navy-hover/35 active:translate-y-0"
             >
               Log in to the portal{" "}
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
@@ -457,7 +441,7 @@ function SectionIntro({
 
 function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase">
+    <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold-foreground uppercase">
       {children}
     </span>
   );

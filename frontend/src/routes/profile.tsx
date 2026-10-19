@@ -186,6 +186,12 @@ function ProfilePage() {
 
   async function savePassword(event: React.FormEvent) {
     event.preventDefault();
+    if (password === currentPassword) {
+      toast.error(
+        "You used your old password. Please create a new password that is different from your current one.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       await apiFetch<{ message: string }>("/profile/password", {
@@ -232,19 +238,21 @@ function ProfilePage() {
           >
             <div className="absolute inset-0 bg-gradient-to-b from-[oklch(0.24_0.06_258/0.25)] to-[oklch(0.2_0.05_258/0.75)]" />
             <div className="absolute inset-x-0 bottom-0 flex justify-center translate-y-1/2">
-              <div className="bg-navy relative grid h-[128px] w-[128px] place-items-center overflow-hidden rounded-full text-[2.1rem] font-black text-white ring-4 ring-card">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.src = defaultProfileImage;
-                    }}
-                  />
-                ) : (
-                  initials
-                )}
+              <div className="relative h-[128px] w-[128px]">
+                <div className="bg-navy grid h-full w-full place-items-center overflow-hidden rounded-full text-[2.1rem] font-black text-white ring-4 ring-card">
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = defaultProfileImage;
+                      }}
+                    />
+                  ) : (
+                    initials
+                  )}
+                </div>
                 <label
                   htmlFor="profile-photo"
                   className="absolute right-1 bottom-1 z-10 grid h-8 w-8 cursor-pointer place-items-center rounded-full bg-gold text-gold-foreground shadow-lg ring-2 ring-card"
@@ -279,7 +287,7 @@ function ProfilePage() {
             <div className="text-center">
               <h2 className="text-3xl font-extrabold">{user?.name ?? "Your profile"}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
-              <span className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold-foreground uppercase dark:text-gold">
+              <span className="mt-4 inline-flex rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold-foreground uppercase dark:text-gold">
                 {roleLabel}
               </span>
             </div>
@@ -523,7 +531,7 @@ function ProfilePage() {
             <div className="mt-6 overflow-hidden rounded-lg border border-border/60">
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="bg-muted">
-                  <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <tr className="text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                     <th className="px-4 py-3 font-semibold">Date &amp; Time</th>
                     <th className="px-4 py-3 font-semibold">Action</th>
                     <th className="px-4 py-3 font-semibold">Details</th>

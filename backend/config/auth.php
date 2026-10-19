@@ -95,6 +95,8 @@ return [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 15,
+            // Minutes the emailed 6-digit code stays valid; 'expire' covers the reset token issued for it.
+            'code_expire' => 1,
             'throttle' => 60,
         ],
     ],

@@ -20,6 +20,7 @@ import {
   type ApiUser,
 } from "@/lib/api";
 import { PUBLIC_PATHS, rolePrefixFor, rolePrefixOf } from "@/lib/role-path";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/seo";
 import { THEME_KEY } from "@/lib/theme";
 // Registers the service worker and captures Chrome's install prompt for the "Install app" button.
 import "@/lib/pwa";
@@ -233,21 +234,31 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      // Phones open the app at 90% (desktop browsers ignore this): the page is laid out about 11%
+      // wider and shown scaled to fit, like setting the browser zoom to 90%.
+      { name: "viewport", content: "width=device-width, initial-scale=0.9, viewport-fit=cover" },
       { title: "Bulan Senior Care" },
-      { name: "description", content: "OSCA Bulan senior citizen records and benefits portal" },
+      { name: "description", content: SITE_DESCRIPTION },
       { name: "author", content: "Bulan Senior Care" },
       { name: "theme-color", content: "#17213a" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "SeniorCare" },
-      { property: "og:title", content: "Bulan Senior Care" },
-      {
-        property: "og:description",
-        content: "OSCA Bulan senior citizen records and benefits portal",
-      },
+      // The app is served as a single-page shell, so link previews (Facebook, Messenger, X) only
+      // ever see these root tags. Public pages override them once the page loads, which Google uses.
+      { property: "og:title", content: SITE_TITLE },
+      { property: "og:description", content: SITE_DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Bulan SeniorCare" },
+      { property: "og:locale", content: "en_PH" },
+      { property: "og:image", content: `${SITE_URL}/og-image.png` },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: SITE_TITLE },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: SITE_TITLE },
+      { name: "twitter:description", content: SITE_DESCRIPTION },
+      { name: "twitter:image", content: `${SITE_URL}/og-image.png` },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

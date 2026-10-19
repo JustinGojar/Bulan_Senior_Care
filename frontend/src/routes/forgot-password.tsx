@@ -8,6 +8,7 @@ import {
   Lock,
   LockKeyhole,
   Mail,
+  RotateCcw,
   Send,
   ShieldCheck,
 } from "lucide-react";
@@ -15,9 +16,15 @@ import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { requestPasswordReset, resetPassword, verifyResetCode } from "@/lib/api";
+import { publicPageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Forgot Password - Bulan SeniorCare" }] }),
+  head: () =>
+    publicPageHead(
+      "/forgot-password",
+      "Forgot Password - Bulan SeniorCare",
+      "Reset the password for your Bulan SeniorCare OSCA portal account with a code sent to your email.",
+    ),
   component: ForgotPasswordPage,
 });
 
@@ -26,6 +33,13 @@ type Step = "email" | "code" | "password";
 /** The server sends at most one code a minute, so the resend button waits that long. */
 const RESEND_SECONDS = 60;
 
+/** Matches the server's reset_token lifetime (auth.passwords.users.expire). */
+const RESET_TOKEN_MINUTES = 15;
+
+/** The server's answer for a used, expired or replaced reset token. */
+const RESET_LINK_INVALID =
+  "This password reset link is invalid or has expired. Please request a new one.";
+
 const STEP_TEXT: Record<Step, { title: string; subtitle: string }> = {
   email: {
     title: "Forgot password?",
@@ -33,7 +47,7 @@ const STEP_TEXT: Record<Step, { title: string; subtitle: string }> = {
   },
   code: {
     title: "Enter verification code",
-    subtitle: "We sent a 6-digit code to your email. It expires in 15 minutes.",
+    subtitle: "We sent a 6-digit code to your email. It expires in 1 minute.",
   },
   password: {
     title: "Create new password",
@@ -47,6 +61,8 @@ function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [resetToken, setResetToken] = useState("");
+  const [resetTokenIssuedAt, setResetTokenIssuedAt] = useState(0);
+  const [resetLinkInvalid, setResetLinkInvalid] = useState(false);
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -76,6 +92,7 @@ function ForgotPasswordPage() {
       const result = await requestPasswordReset(email);
       setMessage(result.message);
       setCode("");
+      setResetLinkInvalid(false);
       setStep("code");
       setResendIn(RESEND_SECONDS);
     });
@@ -89,14 +106,30 @@ function ForgotPasswordPage() {
         throw reason;
       });
       setResetToken(result.reset_token);
+      setResetTokenIssuedAt(Date.now());
+      setResetLinkInvalid(false);
       setMessage(result.message);
       setStep("password");
     });
   }
 
+  function rejectResetLink(): never {
+    setResetToken("");
+    setResetLinkInvalid(true);
+    throw new Error(RESET_LINK_INVALID);
+  }
+
   function savePassword() {
     run(async () => {
-      const result = await resetPassword(resetToken, email, password, passwordConfirmation);
+      if (!resetToken || Date.now() - resetTokenIssuedAt > RESET_TOKEN_MINUTES * 60_000) {
+        rejectResetLink();
+      }
+      const result = await resetPassword(resetToken, email, password, passwordConfirmation).catch(
+        (reason: Error) => {
+          if (reason.message === RESET_LINK_INVALID) rejectResetLink();
+          throw reason;
+        },
+      );
       setMessage(result.message);
       setPasswordSaved(true);
       // Give the user a moment to read the confirmation before going to log in.
@@ -104,9 +137,17 @@ function ForgotPasswordPage() {
     });
   }
 
+  /** Sends a fresh code to the same email after the reset token stopped working. */
+  function requestNewCode() {
+    setPassword("");
+    setPasswordConfirmation("");
+    sendCode();
+  }
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (step === "email") sendCode();
+    if (resetLinkInvalid) requestNewCode();
+    else if (step === "email") sendCode();
     else if (step === "code") checkCode();
     else savePassword();
   }
@@ -115,6 +156,7 @@ function ForgotPasswordPage() {
     setStep("email");
     setCode("");
     setResetToken("");
+    setResetLinkInvalid(false);
     setMessage(null);
     setError(null);
   }
@@ -201,7 +243,7 @@ function ForgotPasswordPage() {
           </div>
         )}
 
-        {step === "password" && (
+        {step === "password" && !resetLinkInvalid && (
           <>
             <div>
               <label htmlFor="new-password" className="mb-2 block text-sm font-semibold">
@@ -264,11 +306,16 @@ function ForgotPasswordPage() {
           {submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              {step === "email"
+              {step === "email" || resetLinkInvalid
                 ? "Sending code..."
                 : step === "code"
                   ? "Verifying..."
                   : "Saving..."}
+            </>
+          ) : resetLinkInvalid ? (
+            <>
+              <RotateCcw className="h-4 w-4" />
+              Request a new code
             </>
           ) : step === "email" ? (
             <>

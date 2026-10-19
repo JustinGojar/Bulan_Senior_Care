@@ -112,7 +112,7 @@ function RecordedChanges({ log }: { log: AuditLog }) {
   return (
     <div className="mt-2 overflow-x-auto rounded-lg border border-border/60 bg-card">
       <table className="w-full text-left">
-        <thead className="bg-muted/50 text-[11px] tracking-wider text-muted-foreground uppercase">
+        <thead className="bg-muted/50 text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
           <tr>
             <th className="px-3 py-2 font-semibold">Field</th>
             {showBefore && <th className="px-3 py-2 font-semibold">Before</th>}
@@ -165,7 +165,7 @@ function AuditLogsPage() {
       subtitle="Recent account, senior record, and benefit activities"
       breadcrumb={["Dashboard", "Settings", "Audit Logs"]}
     >
-      <section className={`${panelClass} p-4 sm:p-7`}>
+      <section className={`${panelClass} p-5 sm:p-7`}>
         <SectionHeader
           icon={ClipboardList}
           title="Activity history"

@@ -623,7 +623,7 @@ function ReportView({ report }: { report: AnalyticsReport }) {
         ).map(([label, value, tone]) => (
           <div key={label} className={`${tileClass} relative overflow-hidden`}>
             <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR[tone]}`} />
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            <p className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
               {label}
             </p>
             <p className="font-display mt-2 text-2xl font-extrabold">{value.toLocaleString()}</p>
@@ -847,7 +847,7 @@ function ReportTable({
               {headings.map((heading) => (
                 <th
                   key={heading}
-                  className="px-3 py-3 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+                  className="px-3 py-3 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase"
                 >
                   {heading}
                 </th>

@@ -26,6 +26,10 @@ class AuthController extends Controller
 {
     private const RESET_CODE_MAX_ATTEMPTS = 5;
 
+    private const SAME_PASSWORD_MESSAGE = 'You used your old password. Please create a new password that is different from your current one.';
+
+    private const RESET_TOKEN_INVALID_MESSAGE = 'This password reset link is invalid or has expired. Please request a new one.';
+
     public function barangays(Request $request): JsonResponse
     {
         // Saving a barangay clears this entry.
@@ -166,6 +170,7 @@ class AuthController extends Controller
                 ['token' => Hash::make($code), 'created_at' => now()],
             );
             RateLimiter::clear(self::resetCodeAttemptsKey($user->email));
+            RateLimiter::hit(self::resetCodeSentKey($user->email), 60);
 
             try {
                 $user->notify(new PasswordResetCodeNotification($code));
@@ -173,6 +178,7 @@ class AuthController extends Controller
                 report($exception);
                 // Drop the unsent code so an immediate retry sends a new one.
                 self::resetTokens()->where('email', $user->email)->delete();
+                RateLimiter::clear(self::resetCodeSentKey($user->email));
 
                 return response()->json([
                     'message' => 'We could not send the verification code right now. Please try again later.',
@@ -201,7 +207,7 @@ class AuthController extends Controller
         }
 
         $record = self::resetTokens()->where('email', $data['email'])->first();
-        $expired = $record && Carbon::parse($record->created_at)->addMinutes(self::resetExpiryMinutes())->isPast();
+        $expired = $record && Carbon::parse($record->created_at)->addMinutes(self::resetCodeExpiryMinutes())->isPast();
         if (! $record || $expired || ! Hash::check($data['code'], $record->token)) {
             RateLimiter::hit($attemptsKey, self::resetExpiryMinutes() * 60);
             if (RateLimiter::tooManyAttempts($attemptsKey, self::RESET_CODE_MAX_ATTEMPTS)) {
@@ -216,6 +222,8 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($attemptsKey);
+        // The code is used up, so asking for another one must send it straight away.
+        RateLimiter::clear(self::resetCodeSentKey($data['email']));
         // The password broker checks this token on the final step; the code itself stops working.
         $token = Str::random(64);
         self::resetTokens()->where('email', $data['email'])->update([
@@ -236,16 +244,28 @@ class AuthController extends Controller
         return (int) config('auth.passwords.users.expire');
     }
 
+    private static function resetCodeExpiryMinutes(): int
+    {
+        return (int) config('auth.passwords.users.code_expire');
+    }
+
     private static function resetCodeAttemptsKey(string $email): string
     {
         return 'reset-code:'.Str::lower($email);
     }
 
+    private static function resetCodeSentKey(string $email): string
+    {
+        return 'reset-code-sent:'.Str::lower($email);
+    }
+
+    /**
+     * True while an unused code sent in the last minute is still waiting to be entered.
+     */
     private static function resetCodeRecentlySent(string $email): bool
     {
-        $createdAt = self::resetTokens()->where('email', $email)->value('created_at');
-
-        return $createdAt !== null && Carbon::parse($createdAt)->addMinute()->isFuture();
+        return RateLimiter::tooManyAttempts(self::resetCodeSentKey($email), 1)
+            && self::resetTokens()->where('email', $email)->exists();
     }
 
     public function resetPassword(Request $request): JsonResponse
@@ -255,7 +275,17 @@ class AuthController extends Controller
             'token' => ['required', 'string', 'size:64'],
             'email' => ['required', 'email'],
             'password' => ['required', 'confirmed', Password::defaults()],
+        ], [
+            'token.required' => self::RESET_TOKEN_INVALID_MESSAGE,
+            'token.string' => self::RESET_TOKEN_INVALID_MESSAGE,
+            'token.size' => self::RESET_TOKEN_INVALID_MESSAGE,
         ]);
+
+        // Checked only for a valid token, so this cannot be used to guess someone's password.
+        $user = User::where('email', $data['email'])->first();
+        if ($user && PasswordBroker::tokenExists($user, $data['token']) && Hash::check($data['password'], $user->password)) {
+            return response()->json(['message' => self::SAME_PASSWORD_MESSAGE, 'errors' => ['password' => [self::SAME_PASSWORD_MESSAGE]]], 422);
+        }
 
         $status = PasswordBroker::reset(
             $data,
@@ -266,11 +296,8 @@ class AuthController extends Controller
         );
 
         if ($status !== PasswordBroker::PASSWORD_RESET) {
-            $message = $status === PasswordBroker::INVALID_TOKEN
-                ? 'Your password reset session has expired. Please request a new code.'
-                : __($status);
-
-            return response()->json(['message' => $message], 422);
+            // A used, expired or replaced token and an unknown email get the same answer.
+            return response()->json(['message' => self::RESET_TOKEN_INVALID_MESSAGE], 422);
         }
 
         return response()->json(['message' => 'Your password has been reset. You can now log in.']);
@@ -362,8 +389,8 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
+            'password' => ['required', 'confirmed', 'different:current_password', Password::defaults()],
+        ], ['password.different' => self::SAME_PASSWORD_MESSAGE]);
 
         $request->user()->update(['password' => $data['password']]);
         $request->user()->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();

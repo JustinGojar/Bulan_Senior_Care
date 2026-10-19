@@ -6,6 +6,11 @@
 
 /*
  * Bulan SeniorCare design system — navy / gold / coral on soft porcelain.
+ *
+ * Palette rules: four colors over neutrals — navy (primary actions, headings), gold (highlights),
+ * green (success) and coral (alerts and errors; coral and destructive are the same red). Accent
+ * hues share one saturation band (chroma ~0.11-0.16) so none jumps out, and every text color
+ * reaches WCAG AA (4.5:1) against the background, card and muted surfaces it sits on.
  */
 
 @theme inline {
@@ -27,6 +32,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-navy-hover: var(--navy-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -73,23 +79,23 @@
   --secondary: oklch(0.945 0.008 250);
   --secondary-foreground: oklch(0.32 0.062 258);
   --muted: oklch(0.948 0.007 250);
-  --muted-foreground: oklch(0.55 0.028 254);
+  --muted-foreground: oklch(0.5 0.03 256);
   --accent: oklch(0.93 0.014 250);
   --accent-foreground: oklch(0.32 0.062 258);
   --gold: oklch(0.77 0.125 82);
   --gold-foreground: oklch(0.26 0.05 258);
-  --coral: oklch(0.66 0.17 26);
+  --coral: oklch(0.55 0.16 27);
   --coral-foreground: oklch(0.99 0.003 250);
-  --success: oklch(0.62 0.13 162);
+  --success: oklch(0.52 0.11 160);
   --success-foreground: oklch(0.99 0.003 250);
-  --destructive: oklch(0.6 0.21 26);
+  --destructive: oklch(0.55 0.16 27);
   --destructive-foreground: oklch(0.99 0.003 250);
   --border: oklch(0.9 0.01 250);
   --input: oklch(0.9 0.01 250);
   --ring: oklch(0.32 0.062 258);
   --chart-1: oklch(0.32 0.062 258);
   --chart-2: oklch(0.77 0.125 82);
-  --chart-3: oklch(0.62 0.19 26);
+  --chart-3: oklch(0.6 0.15 27);
   --chart-4: oklch(0.66 0.11 165);
   --chart-5: oklch(0.55 0.07 250);
   /* Benefit release progress: one navy hue, dark → light by stage. */
@@ -98,7 +104,7 @@
   --release-failed: oklch(0.86 0.02 255);
   /* Benefit categories: one fixed hue per benefit (validated for color-blind separation). */
   --benefit-social: oklch(0.32 0.062 258);
-  --benefit-octo: oklch(0.62 0.17 30);
+  --benefit-octo: oklch(0.62 0.15 30);
   --benefit-nona: oklch(0.72 0.14 75);
   --benefit-cent: oklch(0.58 0.11 165);
   /* Age groups: one navy hue, light (60s) → dark (100+). */
@@ -125,6 +131,9 @@
   --shadow-soft: 0 18px 40px -24px oklch(0.32 0.062 258 / 0.35);
   --shadow-card: 0 24px 60px -32px oklch(0.32 0.062 258 / 0.4);
   --app-background-image: url("./images/bg.jpg");
+  /* Checkbox accent; the hover shade is for navy buttons in both themes. */
+  --navy: oklch(0.32 0.062 258);
+  --navy-hover: oklch(0.45 0.08 258);
 }
 
 .dark {
@@ -139,30 +148,30 @@
   --secondary: oklch(0.28 0.035 258);
   --secondary-foreground: oklch(0.96 0.005 250);
   --muted: oklch(0.28 0.035 258);
-  --muted-foreground: oklch(0.72 0.02 250);
+  --muted-foreground: oklch(0.74 0.02 250);
   --accent: oklch(0.3 0.04 258);
   --accent-foreground: oklch(0.96 0.005 250);
   --gold: oklch(0.79 0.12 82);
   --gold-foreground: oklch(0.22 0.04 258);
-  --coral: oklch(0.68 0.16 26);
-  --coral-foreground: oklch(0.99 0.003 250);
-  --success: oklch(0.7 0.13 162);
+  --coral: oklch(0.7 0.15 27);
+  --coral-foreground: oklch(0.2 0.04 258);
+  --success: oklch(0.72 0.12 160);
   --success-foreground: oklch(0.2 0.04 258);
-  --destructive: oklch(0.68 0.18 26);
-  --destructive-foreground: oklch(0.99 0.003 250);
+  --destructive: oklch(0.7 0.15 27);
+  --destructive-foreground: oklch(0.2 0.04 258);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.72 0.03 250);
   --chart-1: oklch(0.7 0.06 250);
   --chart-2: oklch(0.79 0.12 82);
-  --chart-3: oklch(0.68 0.17 26);
+  --chart-3: oklch(0.7 0.15 27);
   --chart-4: oklch(0.7 0.12 165);
   --chart-5: oklch(0.6 0.06 250);
   --release-done: oklch(0.86 0.05 250);
   --release-pending: oklch(0.62 0.08 255);
   --release-failed: oklch(0.42 0.035 255);
   --benefit-social: oklch(0.58 0.1 260);
-  --benefit-octo: oklch(0.58 0.19 22);
+  --benefit-octo: oklch(0.6 0.15 27);
   --benefit-nona: oklch(0.66 0.14 95);
   --benefit-cent: oklch(0.64 0.13 170);
   --age-1: oklch(0.42 0.06 255);
@@ -185,6 +194,7 @@
     oklch(0.19 0.03 258) 60%
   );
   --app-background-image: url("./images/DM.webp");
+  --navy: oklch(0.88 0.03 250);
 }
 
 @layer base {
@@ -194,6 +204,15 @@
 
   html {
     scroll-behavior: smooth;
+  }
+
+  /* Desktop shows every page at 90%, like setting the browser zoom to 90%. Sizes are in rem, so
+     they all scale with this; breakpoints don't, as media queries use the browser's 16px.
+     Phones and tablets get the same 90% from initial-scale=0.9 in __root.tsx instead. */
+  @media (hover: hover) and (pointer: fine) {
+    html {
+      font-size: 90%;
+    }
   }
 
   body {
@@ -359,25 +378,10 @@
     [role="combobox"]:not([aria-disabled="true"])
   ):hover {
     background-color: var(--accent);
-    border-color: #173a52;
+    border-color: var(--ring);
     transition:
       background-color 160ms ease,
       border-color 160ms ease;
-  }
-
-  /* The light-mode navy border disappears against dark surfaces. */
-  .dark
-    :is(
-      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not(
-          [type="button"]
-        ):not([type="submit"]):not([type="reset"]):not([type="color"]):not(:disabled):not(
-          [readonly]
-        ),
-      textarea:not(:disabled):not([readonly]),
-      select:not(:disabled),
-      [role="combobox"]:not([aria-disabled="true"])
-    ):hover {
-    border-color: var(--ring);
   }
 }
 

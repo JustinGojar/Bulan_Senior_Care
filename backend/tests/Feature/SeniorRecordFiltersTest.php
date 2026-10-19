@@ -84,6 +84,69 @@ class SeniorRecordFiltersTest extends TestCase
             ->assertJsonPath('data.0.osca_id_number', 'OSCA-1');
     }
 
+    public function test_seniors_sort_by_name_or_by_date_added(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $this->createSenior($admin, $zone, 'OSCA-OLD', 'Ana', 'Bautista')
+            ->forceFill(['created_at' => now()->subDays(2)])->save();
+        $this->createSenior($admin, $zone, 'OSCA-NEW', 'Ben', 'Zamora')
+            ->forceFill(['created_at' => now()])->save();
+        $this->createSenior($admin, $zone, 'OSCA-MID', 'Carla', 'Abad')
+            ->forceFill(['created_at' => now()->subDay()])->save();
+
+        $order = fn (string $query) => array_column(
+            $this->actingAs($admin, 'sanctum')->getJson('/api/seniors?per_page=100'.$query)->assertOk()->json('data'),
+            'osca_id_number',
+        );
+
+        $this->assertSame(['OSCA-MID', 'OSCA-OLD', 'OSCA-NEW'], $order(''));
+        $this->assertSame(['OSCA-NEW', 'OSCA-MID', 'OSCA-OLD'], $order('&sort=latest'));
+        $this->assertSame(['OSCA-OLD', 'OSCA-MID', 'OSCA-NEW'], $order('&sort=oldest'));
+    }
+
+    public function test_seniors_filter_by_age_range(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $born = fn (int $years, int $days = 0) => now()->subYears($years)->addDays($days)->toDateString();
+        $this->createSenior($admin, $zone, 'OSCA-69', 'Ana', 'Abad')->update(['birthdate' => $born(70, 1)]);
+        $this->createSenior($admin, $zone, 'OSCA-70', 'Ben', 'Bautista')->update(['birthdate' => $born(70)]);
+        $this->createSenior($admin, $zone, 'OSCA-79', 'Carla', 'Cruz')->update(['birthdate' => $born(80, 1)]);
+        $this->createSenior($admin, $zone, 'OSCA-101', 'Dino', 'Diaz')->update(['birthdate' => $born(101)]);
+
+        $ids = fn (string $query) => array_column(
+            $this->actingAs($admin, 'sanctum')->getJson('/api/seniors?per_page=100'.$query)->assertOk()->json('data'),
+            'osca_id_number',
+        );
+
+        // A 70th birthday today moves a senior out of 60-69 and into 70-79.
+        $this->assertSame(['OSCA-69'], $ids('&age_min=60&age_max=69'));
+        $this->assertSame(['OSCA-70', 'OSCA-79'], $ids('&age_min=70&age_max=79'));
+        $this->assertSame(['OSCA-101'], $ids('&age_min=100'));
+    }
+
+    public function test_seniors_filter_by_sex(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $this->createSenior($admin, $zone, 'OSCA-F', 'Ana', 'Abad');
+        $this->createSenior($admin, $zone, 'OSCA-M', 'Ben', 'Bautista')->update(['sex' => 'male']);
+
+        $ids = fn (string $query) => array_column(
+            $this->actingAs($admin, 'sanctum')->getJson('/api/seniors?per_page=100'.$query)->assertOk()->json('data'),
+            'osca_id_number',
+        );
+
+        $this->assertSame(['OSCA-M'], $ids('&sex=male'));
+        $this->assertSame(['OSCA-F'], $ids('&sex=female'));
+        // An unknown value is ignored rather than hiding every record.
+        $this->assertSame(['OSCA-F', 'OSCA-M'], $ids('&sex=other'));
+    }
+
     private function createSenior(
         User $encoder,
         Barangay $barangay,

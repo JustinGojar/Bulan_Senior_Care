@@ -10,11 +10,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const SAME_PASSWORD = 'You used your old password. Please create a new password that is different from your current one.';
+
+    private const INVALID_LINK = 'This password reset link is invalid or has expired. Please request a new one.';
 
     public function test_user_can_reset_password_with_the_emailed_code(): void
     {
@@ -50,7 +55,127 @@ class PasswordResetTest extends TestCase
             'email' => 'leader@example.com',
             'password' => 'Another#2026',
             'password_confirmation' => 'Another#2026',
-        ])->assertStatus(422);
+        ])->assertStatus(422)->assertJson(['message' => self::INVALID_LINK]);
+        $this->assertTrue(Hash::check('NewPass#2026', $user->fresh()->password));
+    }
+
+    public function test_expired_reset_token_cannot_change_the_password(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $original = $user->password;
+        $token = $this->verifiedToken('leader@example.com');
+
+        $this->travel(16)->minutes();
+
+        $this->postJson('/api/reset-password', [
+            'token' => $token,
+            'email' => 'leader@example.com',
+            'password' => 'NewPass#2026',
+            'password_confirmation' => 'NewPass#2026',
+        ])->assertStatus(422)->assertJson(['message' => self::INVALID_LINK]);
+        $this->assertSame($original, $user->fresh()->password);
+    }
+
+    public function test_reset_token_still_works_after_the_one_minute_code_lifetime(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $token = $this->verifiedToken('leader@example.com');
+
+        // The code lasts a minute, but the user still has time to type a new password.
+        $this->travel(10)->minutes();
+
+        $this->resetWith($token, 'NewPass#2026')->assertOk();
+    }
+
+    public function test_reset_rejects_the_current_password(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active', 'password' => 'OldPass#2026']);
+        $token = $this->verifiedToken('leader@example.com');
+
+        $this->resetWith($token, 'OldPass#2026')
+            ->assertStatus(422)
+            ->assertJson(['message' => self::SAME_PASSWORD]);
+
+        // The token is not used up, so the user can pick a different password.
+        $this->resetWith($token, 'NewPass#2026')->assertOk();
+        $this->assertTrue(Hash::check('NewPass#2026', $user->fresh()->password));
+    }
+
+    public function test_old_password_check_needs_a_valid_token(): void
+    {
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active', 'password' => 'OldPass#2026']);
+
+        // Without a valid token the answer must not reveal whether the password matched.
+        $this->resetWith(str_repeat('x', 64), 'OldPass#2026')
+            ->assertStatus(422)
+            ->assertJson(['message' => self::INVALID_LINK]);
+    }
+
+    public function test_changing_password_rejects_the_current_password(): void
+    {
+        $user = User::factory()->create(['status' => 'active', 'password' => 'OldPass#2026']);
+
+        $this->withToken($user->createToken('test')->plainTextToken)
+            ->postJson('/api/profile/password', [
+                'current_password' => 'OldPass#2026',
+                'password' => 'OldPass#2026',
+                'password_confirmation' => 'OldPass#2026',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.password.0', self::SAME_PASSWORD);
+        $this->assertTrue(Hash::check('OldPass#2026', $user->fresh()->password));
+    }
+
+    public function test_tampered_token_or_unknown_email_gets_the_invalid_link_message(): void
+    {
+        Notification::fake();
+        User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $token = $this->verifiedToken('leader@example.com');
+
+        foreach ([
+            ['token' => 'short', 'email' => 'leader@example.com'],
+            ['token' => str_repeat('x', 64), 'email' => 'leader@example.com'],
+            ['token' => $token, 'email' => 'nobody@example.com'],
+        ] as $input) {
+            $this->postJson('/api/reset-password', $input + [
+                'password' => 'NewPass#2026',
+                'password_confirmation' => 'NewPass#2026',
+            ])->assertStatus(422)->assertJson(['message' => self::INVALID_LINK]);
+        }
+    }
+
+    public function test_a_new_code_works_after_the_reset_token_expired_or_was_used(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+
+        // Expired token: a new request sends a code that leads to a working reset.
+        $this->verifiedToken('leader@example.com');
+        $this->travel(16)->minutes();
+        $this->resetWith($this->verifiedToken('leader@example.com'), 'NewPass#2026')->assertOk();
+        $this->assertTrue(Hash::check('NewPass#2026', $user->fresh()->password));
+
+        // Used token: asking again straight away still sends a fresh code.
+        $this->resetWith($this->verifiedToken('leader@example.com'), 'Second#2026')->assertOk();
+        $this->assertTrue(Hash::check('Second#2026', $user->fresh()->password));
+        Notification::assertSentToTimes($user, PasswordResetCodeNotification::class, 3);
+    }
+
+    public function test_a_new_code_is_sent_right_after_the_previous_one_was_verified(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
+        $oldToken = $this->verifiedToken('leader@example.com');
+
+        // Within the same minute, the new request must not be swallowed by the resend limit.
+        $newToken = $this->verifiedToken('leader@example.com');
+        Notification::assertSentToTimes($user, PasswordResetCodeNotification::class, 2);
+
+        $this->resetWith($oldToken, 'NewPass#2026')->assertStatus(422)->assertJson(['message' => self::INVALID_LINK]);
+        $this->resetWith($newToken, 'NewPass#2026')->assertOk();
     }
 
     public function test_the_code_cannot_be_used_directly_as_a_reset_token(): void
@@ -83,13 +208,13 @@ class PasswordResetTest extends TestCase
         $this->assertSame(0, DB::table('password_reset_tokens')->count());
     }
 
-    public function test_code_expires_after_fifteen_minutes(): void
+    public function test_code_expires_after_one_minute(): void
     {
         Notification::fake();
         User::factory()->create(['email' => 'leader@example.com', 'status' => 'active']);
         $code = $this->requestCode('leader@example.com');
 
-        $this->travel(16)->minutes();
+        $this->travel(61)->seconds();
 
         $this->postJson('/api/verify-reset-code', ['email' => 'leader@example.com', 'code' => $code])
             ->assertStatus(422)
@@ -260,7 +385,26 @@ class PasswordResetTest extends TestCase
         $this->assertStringContainsString('src="https://seniorcare.example/email-logo.png"', $html);
         $this->assertStringContainsString('Hello Maria Santos,', $html);
         $this->assertStringContainsString('042917', $html);
-        $this->assertStringContainsString('<strong>15 minutes</strong>', $html);
+        $this->assertStringContainsString('<strong>1 minute</strong>', $html);
+    }
+
+    private function verifiedToken(string $email): string
+    {
+        $code = $this->requestCode($email);
+
+        return $this->postJson('/api/verify-reset-code', ['email' => $email, 'code' => $code])
+            ->assertOk()
+            ->json('reset_token');
+    }
+
+    private function resetWith(string $token, string $password): TestResponse
+    {
+        return $this->postJson('/api/reset-password', [
+            'token' => $token,
+            'email' => 'leader@example.com',
+            'password' => $password,
+            'password_confirmation' => $password,
+        ]);
     }
 
     private function requestCode(string $email): string

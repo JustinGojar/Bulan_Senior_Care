@@ -147,7 +147,7 @@ function EligibilityReview() {
       subtitle="Verify age-threshold flags before enrollment"
       breadcrumb={["Dashboard", "Eligibility Review"]}
     >
-      <section className={`${panelClass} p-4 sm:p-7`}>
+      <section className={`${panelClass} p-5 sm:p-7`}>
         <SectionHeader
           icon={ClipboardCheck}
           title="Pending senior registrations"
@@ -397,7 +397,7 @@ function EligibilityReview() {
               ["Status", viewing?.status],
             ].map(([label, value]) => (
               <div key={String(label)} className={`${tileClass} p-3`}>
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                   {label}
                 </dt>
                 <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>

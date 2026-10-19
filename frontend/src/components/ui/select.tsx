@@ -99,7 +99,7 @@ const SelectLabel = React.forwardRef<
   <SelectPrimitive.Label
     ref={ref}
     className={cn(
-      "px-3 pt-2 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase",
+      "px-3 pt-2 pb-1 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase",
       className,
     )}
     {...props}
@@ -121,7 +121,7 @@ const SelectItem = React.forwardRef<
   >
     <span className="absolute right-2.5 flex h-4 w-4 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4 text-gold" />
+        <Check className="h-4 w-4 text-primary dark:text-gold" />
       </SelectPrimitive.ItemIndicator>
     </span>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

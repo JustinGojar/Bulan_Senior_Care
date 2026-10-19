@@ -870,7 +870,7 @@ function BenefitTracking() {
                 </div>
                 <div className="min-w-0 w-full flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="font-display text-[11px] font-bold leading-tight md:text-base">
+                    <h2 className="font-display text-[0.6875rem] font-bold leading-tight md:text-base">
                       {program.name}
                     </h2>
                     <span className="hidden shrink-0 md:inline-flex">
@@ -896,13 +896,13 @@ function BenefitTracking() {
                   </span>
                 )}
               </p>
-              <p className="text-[10px] text-muted-foreground md:text-xs">{program.schedule}</p>
+              <p className="text-[0.625rem] text-muted-foreground md:text-xs">{program.schedule}</p>
 
               <div className="mt-3 hidden grid-cols-2 gap-3 border-t md:grid border-border/70 pt-3">
                 <div className="flex min-w-0 gap-2">
                   <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground">Release date</p>
+                    <p className="text-[0.625rem] text-muted-foreground">Release date</p>
                     <p className="truncate text-xs font-semibold">
                       {latestRelease ? (
                         <button
@@ -918,7 +918,7 @@ function BenefitTracking() {
                       )}
                     </p>
                     {latestRelease?.status === "scheduled" && (
-                      <p className="text-[10px] font-semibold text-gold-foreground dark:text-gold">
+                      <p className="text-[0.625rem] font-semibold text-gold-foreground dark:text-gold">
                         Not yet closed
                       </p>
                     )}
@@ -927,7 +927,7 @@ function BenefitTracking() {
                 <div className="flex min-w-0 gap-2 border-l border-border/70 pl-3">
                   <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground">Next release</p>
+                    <p className="text-[0.625rem] text-muted-foreground">Next release</p>
                     <p className="truncate text-xs font-semibold">
                       {nextRelease ? (
                         <button
@@ -947,14 +947,14 @@ function BenefitTracking() {
               </div>
 
               <div className={`${tileClass} mt-3 hidden px-3 py-2 md:block`}>
-                <p className="text-[10px] text-muted-foreground">Related to</p>
+                <p className="text-[0.625rem] text-muted-foreground">Related to</p>
                 <p className="mt-0.5 truncate text-xs font-semibold">
                   {isLeader ? `BSCA - ${relatedBarangay}` : relatedBarangay}
                 </p>
               </div>
 
               <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2 md:pt-3">
-                <div className="hidden flex-wrap md:flex gap-1.5 text-[10px] font-semibold">
+                <div className="hidden flex-wrap md:flex gap-1.5 text-[0.625rem] font-semibold">
                   <StatusPill tone="success">Released {received}</StatusPill>
                   <StatusPill tone="gold">Pending {pending}</StatusPill>
                   {notReceived > 0 && (
@@ -969,7 +969,7 @@ function BenefitTracking() {
                       .getElementById("release-queue")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="w-full rounded-lg border border-border bg-card px-2 py-1 text-[10px] font-bold text-foreground transition-colors hover:border-ring/40 hover:bg-muted md:w-auto md:px-3 md:py-1.5 md:text-xs"
+                  className="w-full rounded-lg border border-border bg-card px-2 py-1 text-[0.625rem] font-bold text-foreground transition-colors hover:border-ring/40 hover:bg-muted md:w-auto md:px-3 md:py-1.5 md:text-xs"
                 >
                   View Records
                 </button>
@@ -987,7 +987,7 @@ function BenefitTracking() {
           />
         )}
       </div>
-      <section id="release-queue" className={`${panelClass} mt-5 overflow-hidden p-4 sm:p-6`}>
+      <section id="release-queue" className={`${panelClass} mt-6 overflow-hidden p-5 sm:p-7`}>
         <SectionHeader
           icon={ShieldCheck}
           title="Release queue"
@@ -1059,11 +1059,11 @@ function BenefitTracking() {
           </div>
         )}
         <div className="mt-5 @container overflow-x-auto rounded-lg border border-border/60">
-          <table className="w-full min-w-[1040px] text-[13px]">
+          <table className="w-full min-w-[1040px] text-[0.8125rem]">
             <thead>
               <tr className="bg-muted text-left">
                 {canUpdateTransactions && (
-                  <th className="px-3 py-2.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  <th className="px-3 py-2.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                     Select
                   </th>
                 )}
@@ -1080,7 +1080,7 @@ function BenefitTracking() {
                 ].map((heading) => (
                   <th
                     key={heading}
-                    className={`px-3 py-2.5 text-[11px] font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase ${heading === "Action" ? "w-[190px]" : ""}`}
+                    className={`px-3 py-2.5 text-[0.6875rem] font-semibold tracking-wider whitespace-nowrap text-muted-foreground uppercase ${heading === "Action" ? "w-[190px]" : ""}`}
                   >
                     {heading}
                   </th>
@@ -1138,7 +1138,9 @@ function BenefitTracking() {
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground">
                       {transaction.senior.encoder?.role === "leader" && (
-                        <p className="text-[11px] font-semibold tracking-wider uppercase">BSCA</p>
+                        <p className="text-[0.6875rem] font-semibold tracking-wider uppercase">
+                          BSCA
+                        </p>
                       )}
                       <p
                         className="max-w-36 truncate"

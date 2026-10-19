@@ -4,25 +4,15 @@ import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { login, takeSessionNotice } from "@/lib/api";
+import { publicPageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({
-    meta: [
-      { title: "Log In — Bulan SeniorCare OSCA Portal" },
-      {
-        name: "description",
-        content:
-          "Sign in to the Bulan SeniorCare portal to manage senior citizen profiles, benefits, and analytics for OSCA Bulan.",
-      },
-      { property: "og:title", content: "Log In — Bulan SeniorCare" },
-      {
-        property: "og:description",
-        content: "Role-based access for OSCA admins, heads, and barangay leaders.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () =>
+    publicPageHead(
+      "/login",
+      "Log In — Bulan SeniorCare OSCA Portal",
+      "Sign in to the Bulan SeniorCare portal to manage senior citizen profiles, benefits, and analytics for OSCA Bulan.",
+    ),
   component: LoginPage,
 });
 

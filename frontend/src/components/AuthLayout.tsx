@@ -8,7 +8,7 @@ export const authInputClass =
   "h-12 w-full rounded-lg border border-input bg-background/60 pr-4 pl-11 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground/80 focus:border-ring focus:ring-4 focus:ring-ring/15";
 
 export const authSubmitClass =
-  "bg-navy group flex h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none focus-visible:ring-4 focus-visible:ring-[oklch(0.45_0.08_258)]/35 enabled:hover:-translate-y-0.5 enabled:hover:bg-[oklch(0.45_0.08_258)] enabled:hover:bg-none enabled:hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] enabled:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70";
+  "bg-navy group flex h-12 w-full items-center justify-center gap-2 rounded-lg text-sm font-bold text-white shadow-[var(--shadow-soft)] transition-[background-color,color,transform,box-shadow] duration-200 outline-none focus-visible:ring-4 focus-visible:ring-navy-hover/35 enabled:hover:-translate-y-0.5 enabled:hover:bg-navy-hover enabled:hover:bg-none enabled:hover:shadow-[0_12px_28px_-8px_rgb(0_0_0/0.35)] enabled:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70";
 
 const highlights = [
   { icon: Users, label: "Senior citizen profiling across every barangay" },
@@ -51,7 +51,7 @@ export function AuthLayout({
             </div>
 
             <div className="mt-auto pt-16">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[11px] font-semibold tracking-wider text-gold uppercase">
+              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-[0.6875rem] font-semibold tracking-wider text-gold uppercase">
                 Office of Senior Citizens Affairs
               </span>
               <p className="font-display mt-5 text-4xl leading-tight font-extrabold tracking-[-0.02em]">

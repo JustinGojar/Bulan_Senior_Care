@@ -66,6 +66,17 @@ class SeniorCitizenController extends Controller
             $benefit = $request->string('benefit')->toString();
             $query->whereHas('benefit', fn ($benefitQuery) => $benefitQuery->where('benefit_name', $benefit));
         }
+        if (in_array($request->string('sex')->toString(), ['male', 'female'], true)) {
+            $query->where('sex', $request->string('sex')->toString());
+        }
+        // Age range in whole years, as birthdate bounds: aged at least N means born on or before
+        // today N years ago; aged at most N means born after today N + 1 years ago.
+        if ($request->filled('age_min')) {
+            $query->whereDate('birthdate', '<=', now()->subYearsNoOverflow($request->integer('age_min'))->toDateString());
+        }
+        if ($request->filled('age_max')) {
+            $query->whereDate('birthdate', '>', now()->subYearsNoOverflow($request->integer('age_max') + 1)->toDateString());
+        }
 
         $cacheKey = 'seniors:' . Cache::get(SeniorCitizen::LIST_CACHE_VERSION_KEY, '0') . ':'
             . $request->user()->id . ':' . sha1((string) $request->getQueryString());
@@ -96,7 +107,13 @@ class SeniorCitizenController extends Controller
 
         $perPage = min(100, max(10, $request->integer('per_page', 50)));
 
-        $loadSeniors = fn () => $query->orderBy('last_name')->orderBy('first_name')->orderBy('id')->paginate($perPage)->toArray();
+        // "latest"/"oldest" order by when the record was added; anything else is A–Z by name.
+        match ($request->string('sort')->toString()) {
+            'latest' => $query->orderByDesc('created_at')->orderByDesc('id'),
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            default => $query->orderBy('last_name')->orderBy('first_name')->orderBy('id'),
+        };
+        $loadSeniors = fn () => $query->paginate($perPage)->toArray();
         $result = Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), $loadSeniors);
 
         return response()->json($result);

@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Archive,
   ArrowRight,
+  ArrowUpDown,
+  Cake,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +22,7 @@ import {
   Undo2,
   Upload,
   UserRound,
+  VenusAndMars,
   X,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -510,6 +513,15 @@ function changedFields(request: SeniorEditRequest) {
   return fields;
 }
 
+/** The age groups used on the Analytics page; `max` is left off for the open-ended group. */
+const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
+  { value: "60–69", min: 60, max: 69 },
+  { value: "70–79", min: 70, max: 79 },
+  { value: "80–89", min: 80, max: 89 },
+  { value: "90–99", min: 90, max: 99 },
+  { value: "100+", min: 100 },
+];
+
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
   const { q, status } = Route.useSearch();
@@ -537,6 +549,10 @@ function SeniorRecords() {
       .catch(() => setLeaderBarangay(undefined));
   }, [isLeader, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
+  const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
+  const [ageRange, setAgeRange] = useState("All");
+  const [sexFilter, setSexFilter] = useState<"All" | "male" | "female">("All");
+  const selectedAgeRange = AGE_RANGES.find((range) => range.value === ageRange);
   const [benefitOptions, setBenefitOptions] = useState<string[]>([]);
   const [query, setQuery] = useState(q ?? "");
   const [page, setPage] = useState(1);
@@ -562,6 +578,9 @@ function SeniorRecords() {
     search: query,
     barangay: barangayFilter === "All" ? "" : barangayFilter,
     benefit: benefitFilter === "All" ? "" : benefitFilter,
+    ...(sortBy === "name" ? {} : { sort: sortBy }),
+    ...(sexFilter === "All" ? {} : { sex: sexFilter }),
+    ...(selectedAgeRange ? { ageMin: selectedAgeRange.min, ageMax: selectedAgeRange.max } : {}),
   });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Senior | null>(null);
@@ -861,11 +880,7 @@ function SeniorRecords() {
           icon={<UserRound className="h-4 w-4" />}
           value={filter}
           dotClassName={
-            filter === "Active"
-              ? "bg-success"
-              : filter === "Pending"
-                ? "bg-orange-500"
-                : "bg-destructive"
+            filter === "Active" ? "bg-success" : filter === "Pending" ? "bg-gold" : "bg-destructive"
           }
           options={filters.map((item) => ({
             value: item.key,
@@ -891,6 +906,54 @@ function SeniorRecords() {
             setPage(1);
           }}
         />
+        <IconSelect
+          label="Sex"
+          className="sm:flex-1 xl:w-32 xl:flex-none"
+          icon={<VenusAndMars className="h-4 w-4" />}
+          value={sexFilter}
+          dotClassName={null}
+          options={[
+            { value: "All", label: "All Sexes" },
+            { value: "male", label: "Male" },
+            { value: "female", label: "Female" },
+          ]}
+          onChange={(value) => {
+            setSexFilter(value as typeof sexFilter);
+            setPage(1);
+          }}
+        />
+        <IconSelect
+          label="Age"
+          className="sm:flex-1 xl:w-36 xl:flex-none"
+          icon={<Cake className="h-4 w-4" />}
+          value={ageRange}
+          dotClassName={null}
+          options={[
+            { value: "All", label: "All Ages" },
+            ...AGE_RANGES.map((range) => ({ value: range.value, label: `${range.value} yrs` })),
+          ]}
+          onChange={(value) => {
+            setAgeRange(value);
+            setPage(1);
+          }}
+        />
+        <IconSelect
+          label="Sort by"
+          prefix="Sort by"
+          className="sm:flex-1 xl:w-[205px] xl:flex-none"
+          icon={<ArrowUpDown className="h-4 w-4" />}
+          value={sortBy}
+          defaultValue="name"
+          options={[
+            { value: "name", label: "Name (A–Z)" },
+            { value: "latest", label: "Latest record" },
+            { value: "oldest", label: "Oldest record" },
+          ]}
+          onChange={(value) => {
+            setSortBy(value as typeof sortBy);
+            setPage(1);
+          }}
+        />
         <IconActionButton
           label="Reset"
           variant="outline"
@@ -902,12 +965,15 @@ function SeniorRecords() {
             setBarangayFilter(isLeader ? (leaderBarangay ?? "All") : "All");
             setFilter("All");
             setBenefitFilter("All");
+            setSortBy("name");
+            setAgeRange("All");
+            setSexFilter("All");
           }}
         />
       </div>
 
       {isHead && editRequests.length > 0 && (
-        <section className={`${panelClass} mt-5 p-5 sm:p-6`}>
+        <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
           <SectionHeader
             icon={FilePenLine}
             title="Senior record edit requests"
@@ -982,7 +1048,7 @@ function SeniorRecords() {
         </section>
       )}
 
-      <div className={`${panelClass} mt-5 @container overflow-x-auto`}>
+      <div className={`${panelClass} mt-6 @container overflow-x-auto`}>
         <table className="w-full min-w-[880px] border-collapse text-sm [&_th]:whitespace-nowrap">
           <thead>
             <tr className="border-b border-border/60 bg-muted text-left">
@@ -998,7 +1064,7 @@ function SeniorRecords() {
               ].map((h) => (
                 <th
                   key={h}
-                  className={`px-4 py-3.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
+                  className={`px-4 py-3.5 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase ${h === "Actions" ? "sticky right-0 bg-muted shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]" : ""}`}
                 >
                   {h}
                 </th>
@@ -1030,7 +1096,7 @@ function SeniorRecords() {
                 <tr key={s.id} className="border-t border-border/60 first:border-t-0">
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[11px] font-bold text-white ring-2 ring-gold/40">
+                      <span className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-[0.6875rem] font-bold text-white ring-2 ring-gold/40">
                         <PrivateImage
                           path={avatarUrl(s)}
                           alt={`${s.name} profile`}
@@ -1183,7 +1249,7 @@ function SeniorRecords() {
           <div className="max-h-80 overflow-auto rounded-lg border border-border/60">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-muted">
-                <tr className="text-[11px] tracking-wider text-muted-foreground uppercase">
+                <tr className="text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                   <th className="px-3 py-2.5 font-semibold">Name</th>
                   <th className="px-3 py-2.5 font-semibold">Birthdate</th>
                   <th className="px-3 py-2.5 font-semibold">Sex</th>
@@ -1385,7 +1451,7 @@ function SeniorRecords() {
               ["Benefits", viewing && benefitLabel(viewing.benefit)],
             ].map(([label, value]) => (
               <div key={String(label)} className={`${tileClass} p-3`}>
-                <dt className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                   {label}
                 </dt>
                 <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>
@@ -1484,7 +1550,7 @@ function SeniorRecords() {
                   <div className="mt-3 overflow-x-auto rounded-lg border border-border/60">
                     <table className="w-full table-fixed text-xs">
                       <thead>
-                        <tr className="bg-muted/60 text-left text-[11px] tracking-wider text-muted-foreground uppercase">
+                        <tr className="bg-muted/60 text-left text-[0.6875rem] tracking-wider text-muted-foreground uppercase">
                           <th className="w-[34%] px-2 py-2 font-semibold">Release period</th>
                           <th className="w-[22%] px-2 py-2 font-semibold">Actual date</th>
                           <th className="w-[20%] px-2 py-2 font-semibold">Amount</th>

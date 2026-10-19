@@ -360,7 +360,7 @@ function MessagesPage() {
     >
       {confirmDialog}
       {composerOpen && canMessage && (
-        <form onSubmit={handleSend} className={`${panelClass} mb-5 p-5 sm:p-6`}>
+        <form onSubmit={handleSend} className={`${panelClass} mb-5 p-5 sm:p-7`}>
           <SectionHeader
             icon={PenLine}
             title="New message"
@@ -494,7 +494,7 @@ function MessagesPage() {
           onSubmit={sendReply}
         />
       ) : (
-        <section className={`${panelClass} overflow-hidden p-4 sm:p-6`}>
+        <section className={`${panelClass} overflow-hidden p-5 sm:p-7`}>
           <SectionHeader
             icon={MessagesSquare}
             title="Conversations"
@@ -768,7 +768,7 @@ function ConversationDetail({
                 {item.attachment_path && <MessageAttachment item={item} mine={mine} />}
                 {item.message && <p className="whitespace-pre-wrap">{item.message}</p>}
                 <p
-                  className={`mt-1 text-[10px] ${mine ? "text-white/70" : "text-muted-foreground"}`}
+                  className={`mt-1 text-[0.625rem] ${mine ? "text-white/70" : "text-muted-foreground"}`}
                 >
                   {new Date(item.created_at).toLocaleTimeString([], {
                     hour: "numeric",
