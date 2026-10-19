@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   Clock,
-  CornerUpLeft,
   ImagePlus,
   Loader2,
   Megaphone,
@@ -12,7 +12,6 @@ import {
   PieChart,
   Plus,
   Send,
-  Trash2,
   UserCheck,
   Users,
   X,
@@ -20,13 +19,11 @@ import {
   CheckCircle2,
   Clock3,
   Gift,
-  MessageCircle,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { AnnouncementDialog } from "@/components/AnnouncementDialog";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
-import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { EligibilityFlagDialog } from "@/components/EligibilityFlagDialog";
 import { EmptyState, SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,16 +39,11 @@ import {
 } from "@/components/design-kit";
 import seniorCitizensPhoto from "@/images/img.webp";
 import {
-  API_URL,
   apiFetch,
   createAnnouncement,
-  createAnnouncementComment,
-  deleteAnnouncement,
-  deleteAnnouncementComment,
   getAnnouncements,
   getStoredUser,
   type Announcement,
-  type AnnouncementComment,
   type Overview,
 } from "@/lib/api";
 import { findNewEligibilityFlags, type EligibilityFlag } from "@/lib/osca-data";
@@ -78,30 +70,6 @@ export const Route = createFileRoute("/dashboard")({
   }),
   component: Dashboard,
 });
-
-function announcementImageUrl(announcement: Announcement) {
-  return announcement.image_path
-    ? storageUrl(announcement.image_path)
-    : announcement.source_image_url!;
-}
-
-function storageUrl(path: string) {
-  return `${API_URL.replace(/\/api$/, "")}/storage/${path}`;
-}
-
-function CommentImage({ path }: { path?: string | null | undefined }) {
-  if (!path) return null;
-  const src = storageUrl(path);
-  return (
-    <a href={src} target="_blank" rel="noreferrer" className="mt-2 block w-fit">
-      <img
-        src={src}
-        alt="Comment attachment"
-        className="max-h-64 max-w-full rounded-lg border border-border object-contain"
-      />
-    </a>
-  );
-}
 
 function greeting() {
   const hour = new Date().getHours();
@@ -177,14 +145,7 @@ function Dashboard() {
     currentUser?.roles?.some((role) => role.name.toLowerCase() === "head");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-  const [commentMessage, setCommentMessage] = useState("");
-  const [replyMessage, setReplyMessage] = useState("");
-  const [replyTo, setReplyTo] = useState<number | null>(null);
-  const [commentSaving, setCommentSaving] = useState(false);
-  const [commentImage, setCommentImage] = useState<File | null>(null);
-  const [confirm, confirmDialog] = useConfirmDialog();
   const [selectedFlag, setSelectedFlag] = useState<EligibilityFlag | null>(null);
-  const [commentImagePreview, setCommentImagePreview] = useState<string | null>(null);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
@@ -260,118 +221,6 @@ function Dashboard() {
       );
     } finally {
       setAnnouncementSaving(false);
-    }
-  }
-
-  async function handleDeleteAnnouncement(announcement: Announcement) {
-    const ok = await confirm({
-      title: "Delete this announcement?",
-      description: `"${announcement.title}" and all of its comments will be removed for everyone.`,
-      confirmLabel: "Delete announcement",
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await deleteAnnouncement(announcement.id);
-      setAnnouncements((current) => current.filter((item) => item.id !== announcement.id));
-      setSelectedAnnouncement(null);
-      toast.success("Announcement deleted.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to delete announcement.");
-    }
-  }
-
-  async function handleDeleteComment(comment: AnnouncementComment) {
-    if (!selectedAnnouncement) return;
-    const ok = await confirm({
-      title: "Delete this comment?",
-      description: comment.replies?.length
-        ? "The comment and its replies will be removed for everyone."
-        : "The comment will be removed for everyone.",
-      confirmLabel: "Delete comment",
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await deleteAnnouncementComment(selectedAnnouncement.id, comment.id);
-      const comments = (selectedAnnouncement.comments ?? [])
-        .filter((item) => item.id !== comment.id)
-        .map((item) => ({
-          ...item,
-          replies: item.replies?.filter((reply) => reply.id !== comment.id) ?? [],
-        }));
-      setSelectedAnnouncement({ ...selectedAnnouncement, comments });
-      setAnnouncements((current) =>
-        current.map((announcement) =>
-          announcement.id === selectedAnnouncement.id
-            ? { ...announcement, comments }
-            : announcement,
-        ),
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to delete comment.");
-    }
-  }
-
-  const canDeleteComment = (comment: AnnouncementComment) =>
-    isHead || (currentUser != null && comment.user_id === currentUser.id);
-
-  // A picked image belongs to the announcement it was picked for.
-  useEffect(() => setCommentImage(null), [selectedAnnouncement?.id]);
-
-  useEffect(() => {
-    if (!commentImage) {
-      setCommentImagePreview(null);
-      return;
-    }
-    const previewUrl = URL.createObjectURL(commentImage);
-    setCommentImagePreview(previewUrl);
-    return () => URL.revokeObjectURL(previewUrl);
-  }, [commentImage]);
-
-  async function handleCreateComment(
-    event: React.FormEvent<HTMLFormElement>,
-    parentCommentId?: number,
-  ) {
-    event.preventDefault();
-    if (!selectedAnnouncement) return;
-    const message = parentCommentId ? replyMessage : commentMessage;
-    const image = parentCommentId ? null : commentImage;
-    if (!message.trim() && !image) return;
-    setCommentSaving(true);
-    try {
-      const comment = await createAnnouncementComment(
-        selectedAnnouncement.id,
-        message.trim(),
-        parentCommentId,
-        image,
-      );
-      const comments = parentCommentId
-        ? (selectedAnnouncement.comments ?? []).map((item) =>
-            item.id === parentCommentId
-              ? { ...item, replies: [...(item.replies ?? []), comment] }
-              : item,
-          )
-        : [...(selectedAnnouncement.comments ?? []), comment];
-      setSelectedAnnouncement({ ...selectedAnnouncement, comments });
-      setAnnouncements((current) =>
-        current.map((announcement) =>
-          announcement.id === selectedAnnouncement.id
-            ? { ...announcement, comments }
-            : announcement,
-        ),
-      );
-      if (parentCommentId) {
-        setReplyMessage("");
-        setReplyTo(null);
-      } else {
-        setCommentMessage("");
-        setCommentImage(null);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to send comment.");
-    } finally {
-      setCommentSaving(false);
     }
   }
 
@@ -493,7 +342,7 @@ function Dashboard() {
             badge={<span className={badgeClass}>{announcements.length} total</span>}
           />
           <div className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
-            {announcements.slice(0, 5).map((announcement) => (
+            {announcements.slice(0, 1).map((announcement) => (
               <article
                 key={announcement.id}
                 id={`announcement-${announcement.id}`}
@@ -509,7 +358,9 @@ function Dashboard() {
                 className={`${tileClass} cursor-pointer transition-[border-color,box-shadow] hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring`}
               >
                 <p className="text-sm font-bold">{announcement.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{announcement.message}</p>
+                <p className="mt-1 line-clamp-6 text-sm whitespace-pre-line text-muted-foreground">
+                  {announcement.message}
+                </p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {new Date(announcement.published_at).toLocaleDateString()}
                 </p>
@@ -524,6 +375,17 @@ function Dashboard() {
               />
             )}
           </div>
+          {announcements.length > 0 && (
+            <Link
+              to="/announcements"
+              className="mt-4 inline-flex items-center gap-1.5 self-end text-sm font-bold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {announcements.length > 1
+                ? `See all ${announcements.length} announcements`
+                : "See all announcements"}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
         </section>
         {isHead && (
           <section className="surface-card border border-border/60 p-5 sm:p-7">
@@ -781,237 +643,22 @@ function Dashboard() {
       )}
 
       {selectedAnnouncement && (
-        <div
-          className="fixed inset-0 z-30 grid place-items-center bg-black/50 px-4 backdrop-blur-[2px]"
-          onClick={() => setSelectedAnnouncement(null)}
-        >
-          <article
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="announcement-preview-title"
-            onClick={(event) => event.stopPropagation()}
-            className="surface-card max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-border/60 p-0 shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Announcement
-              </p>
-              <div className="flex items-center gap-2">
-                {isHead && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAnnouncement(selectedAnnouncement)}
-                    aria-label="Delete announcement"
-                    title="Delete announcement"
-                    className={`${iconButtonClass} text-destructive`}
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setSelectedAnnouncement(null)}
-                  aria-label="Close announcement preview"
-                  className={iconButtonClass}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-            {(selectedAnnouncement.image_path || selectedAnnouncement.source_image_url) && (
-              <img
-                src={announcementImageUrl(selectedAnnouncement)}
-                alt=""
-                className="max-h-[65vh] w-full bg-muted object-contain"
-              />
-            )}
-            <div className="p-6">
-              <h2 id="announcement-preview-title" className="text-2xl font-extrabold">
-                {selectedAnnouncement.title}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {new Date(selectedAnnouncement.published_at).toLocaleDateString()}
-              </p>
-              <p className="mt-4 text-base leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                {selectedAnnouncement.message}
-              </p>
-              {selectedAnnouncement.source_url && (
-                <a
-                  href={selectedAnnouncement.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline"
-                >
-                  View original Facebook post
-                </a>
-              )}
-              <div className="mt-6 border-t border-border pt-5">
-                <h3 className="text-lg font-bold">Comments</h3>
-                <div className="mt-3 space-y-3">
-                  {selectedAnnouncement.comments?.map((comment: AnnouncementComment) => (
-                    <div key={comment.id} className={`${tileClass} p-3`}>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold">{comment.user.name}</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">{comment.user.role}</p>
-                          {canDeleteComment(comment) && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteComment(comment)}
-                              aria-label="Delete comment"
-                              title="Delete comment"
-                              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {comment.message && (
-                        <p className="mt-1 text-sm text-muted-foreground">{comment.message}</p>
-                      )}
-                      <CommentImage path={comment.image_path} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setReplyTo((current) => (current === comment.id ? null : comment.id))
-                        }
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-                      >
-                        <CornerUpLeft className="h-3.5 w-3.5" /> Reply
-                      </button>
-                      {comment.replies?.map((reply) => (
-                        <div
-                          key={reply.id}
-                          className="mt-3 ml-5 rounded-lg border-l-2 border-gold/60 bg-card p-3"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs font-bold">{reply.user.name}</p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-[0.6875rem] text-muted-foreground">
-                                {reply.user.role}
-                              </p>
-                              {canDeleteComment(reply) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteComment(reply)}
-                                  aria-label="Delete reply"
-                                  title="Delete reply"
-                                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          {reply.message && (
-                            <p className="mt-1 text-sm text-muted-foreground">{reply.message}</p>
-                          )}
-                          <CommentImage path={reply.image_path} />
-                        </div>
-                      ))}
-                      {replyTo === comment.id && (
-                        <form
-                          onSubmit={(event) => handleCreateComment(event, comment.id)}
-                          className="mt-3 ml-5 flex gap-2"
-                        >
-                          <input
-                            required
-                            maxLength={2000}
-                            autoFocus
-                            value={replyMessage}
-                            onChange={(event) => setReplyMessage(event.target.value)}
-                            placeholder={`Reply to ${comment.user.name}`}
-                            className={`${fieldClass} h-10 min-w-0 flex-1`}
-                          />
-                          <button
-                            type="submit"
-                            disabled={commentSaving}
-                            className="bg-navy h-10 rounded-lg px-4 text-xs font-bold text-white disabled:opacity-70"
-                          >
-                            {commentSaving ? "Sending..." : "Reply"}
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  ))}
-                  {!selectedAnnouncement.comments?.length && (
-                    <EmptyState
-                      compact
-                      icon={MessageCircle}
-                      title="No comments yet"
-                      description="Be the first to reply to this announcement."
-                    />
-                  )}
-                </div>
-                {commentImagePreview && (
-                  <div className="relative mt-4 w-fit">
-                    <img
-                      src={commentImagePreview}
-                      alt="Selected attachment"
-                      className="max-h-40 rounded-lg border border-border object-contain"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setCommentImage(null)}
-                      aria-label="Remove image"
-                      className="absolute -top-2 -right-2 rounded-full bg-card p-1 shadow ring-1 ring-border"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-                <form onSubmit={handleCreateComment} className="mt-4 flex gap-3">
-                  <label
-                    className="inline-flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border bg-card hover:bg-muted"
-                    title="Attach an image"
-                  >
-                    <ImagePlus className="h-5 w-5 text-gold-foreground dark:text-gold" />
-                    <span className="sr-only">Attach an image</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] ?? null;
-                        event.target.value = "";
-                        if (file && file.size > 5 * 1024 * 1024) {
-                          toast.error("Image must be 5 MB or smaller.");
-                          return;
-                        }
-                        setCommentImage(file);
-                      }}
-                    />
-                  </label>
-                  <input
-                    required={!commentImage}
-                    maxLength={2000}
-                    value={commentMessage}
-                    onChange={(event) => setCommentMessage(event.target.value)}
-                    placeholder="Write a comment..."
-                    aria-label="Write a comment"
-                    className={`${fieldClass} h-12 min-w-0 flex-1`}
-                  />
-                  <button
-                    type="submit"
-                    disabled={commentSaving}
-                    className="bg-navy inline-flex h-12 items-center gap-2 rounded-lg px-5 text-sm font-bold text-white disabled:opacity-70"
-                  >
-                    {commentSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    Send
-                  </button>
-                </form>
-              </div>
-            </div>
-          </article>
-        </div>
+        <AnnouncementDialog
+          announcement={selectedAnnouncement}
+          onClose={() => setSelectedAnnouncement(null)}
+          onChange={(updated) => {
+            setSelectedAnnouncement(updated);
+            setAnnouncements((current) =>
+              current.map((item) => (item.id === updated.id ? updated : item)),
+            );
+          }}
+          onDeleted={(deleted) => {
+            setAnnouncements((current) => current.filter((item) => item.id !== deleted.id));
+            setSelectedAnnouncement(null);
+          }}
+        />
       )}
       <EligibilityFlagDialog flag={selectedFlag} onClose={() => setSelectedFlag(null)} />
-      {confirmDialog}
     </AppShell>
   );
 }
