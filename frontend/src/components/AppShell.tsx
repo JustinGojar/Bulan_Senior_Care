@@ -122,6 +122,7 @@ const NAV = [
 
 // Pages reached from inside a section keep that section's menu item highlighted.
 const NAV_PARENT: Record<string, string> = {
+  "/announcements": "/dashboard",
   "/audit-logs": "/settings",
   "/releases": "/benefits",
 };
@@ -315,7 +316,7 @@ export function AppShell({
 
   function openAnnouncement(announcement: Announcement) {
     clearGlobalSearch();
-    navigate({ to: "/dashboard", hash: `announcement-${announcement.id}` });
+    navigate({ to: "/announcements", hash: `announcement-${announcement.id}` });
   }
 
   function openSenior(senior: ApiSenior) {
