@@ -666,6 +666,23 @@ export async function downloadBackup() {
   return filename;
 }
 
+/**
+ * Replaces the system's data with a backup file. The server signs every account out, so the
+ * session ends here too and the login page explains why.
+ */
+export async function restoreBackup(file: File) {
+  const body = new FormData();
+  body.append("backup", file);
+  body.append("confirmation", "RESTORE");
+  const result = await apiFetch<{ message: string }>("/admin/backups/restore", {
+    method: "POST",
+    body,
+  });
+  setSessionNotice(result.message);
+  clearSession();
+  broadcastAuthChange();
+}
+
 export function getAuditLogs(page = 1) {
   return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?page=${page}&per_page=25`);
 }

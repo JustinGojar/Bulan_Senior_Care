@@ -38,10 +38,11 @@ RUN printf '%s\n' \
     > /usr/local/etc/php/conf.d/opcache-production.ini
 
 # PHP's defaults (2M per file, 8M per request) reject posters and phone photos
-# before validation runs; the app's own rules allow up to 10 MB per file.
+# before validation runs; the app's own rules allow up to 10 MB per file, and up to
+# 128 MB for a database backup being restored.
 RUN printf '%s\n' \
-    'upload_max_filesize=12M' \
-    'post_max_size=64M' \
+    'upload_max_filesize=130M' \
+    'post_max_size=132M' \
     > /usr/local/etc/php/conf.d/uploads.ini
 
 # Serve several requests at once (the built-in server reads this).

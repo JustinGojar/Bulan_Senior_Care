@@ -11,19 +11,22 @@ import {
   FileText,
   Gift,
   Hourglass,
+  History,
   KeyRound,
   Loader2,
   Mail,
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
+import { useConfirmDialog } from "@/components/ConfirmDialog";
 import {
   downloadBackup,
   getNotificationChannelSettings,
   getStoredUser,
+  restoreBackup,
   updateNotificationChannelSettings,
   type NotificationChannelSettings,
 } from "@/lib/api";
@@ -154,7 +157,39 @@ function SettingsPage() {
   const [backingUp, setBackingUp] = useState(false);
   const [backupResult, setBackupResult] = useState<{ tone: "success" | "error"; text: string }>();
 
+  const [restoring, setRestoring] = useState(false);
+  const restoreInput = useRef<HTMLInputElement>(null);
+  const [confirm, confirmDialog] = useConfirmDialog();
+
   useEffect(() => setIsAdmin(getStoredUser()?.role === "admin"), []);
+
+  async function restoreFrom(file: File) {
+    const confirmed = await confirm({
+      title: "Restore this backup?",
+      description: (
+        <>
+          All current records will be replaced with the data in <strong>{file.name}</strong>.
+          Anything added or changed since that backup was made will be lost, and every account,
+          yours included, will be signed out.
+        </>
+      ),
+      confirmLabel: "Restore backup",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setRestoring(true);
+    setBackupResult(undefined);
+    try {
+      // On success the session ends and the app moves to the login page.
+      await restoreBackup(file);
+    } catch (error) {
+      setBackupResult({
+        tone: "error",
+        text: error instanceof Error ? error.message : "The backup could not be restored.",
+      });
+      setRestoring(false);
+    }
+  }
 
   async function createBackup() {
     setBackingUp(true);
@@ -363,7 +398,7 @@ function SettingsPage() {
               <button
                 type="button"
                 onClick={() => void createBackup()}
-                disabled={backingUp}
+                disabled={backingUp || restoring}
                 aria-busy={backingUp}
                 className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[8px] bg-navy px-3 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-gold-foreground"
               >
@@ -371,11 +406,43 @@ function SettingsPage() {
                 {backingUp ? "Backing up…" : "Backup Now"}
               </button>
             </div>
+            <div className={`mt-1 ${ROW_CLASS}`}>
+              <SettingIcon icon={History} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Restore from backup</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Upload a backup file to bring the system back to that point, for example after a
+                  crash or data loss. Current records are replaced.
+                </p>
+              </div>
+              <input
+                ref={restoreInput}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void restoreFrom(file);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => restoreInput.current?.click()}
+                disabled={restoring || backingUp}
+                aria-busy={restoring}
+                className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[8px] border border-destructive/40 px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {restoring && <Loader2 className="h-4 w-4 animate-spin" />}
+                {restoring ? "Restoring…" : "Restore"}
+              </button>
+            </div>
             {backupResult && (
               <div className="mt-3">
                 <AuthAlert tone={backupResult.tone}>{backupResult.text}</AuthAlert>
               </div>
             )}
+            {confirmDialog}
           </section>
         )}
 
