@@ -20,26 +20,10 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { SectionHeader } from "@/components/DesignKit";
 import { TONE_BAR, panelClass, primaryButtonClass, tileClass } from "@/components/design-kit";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { publicPageHead, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Bulan SeniorCare — OSCA Senior Profiling & Benefit Portal" },
-      {
-        name: "description",
-        content:
-          "Web-based senior citizen profiling and benefit monitoring system with descriptive analytics for the Office of Senior Citizen Affairs of LGU-Bulan, Sorsogon.",
-      },
-      { property: "og:title", content: "Bulan SeniorCare — OSCA Portal" },
-      {
-        property: "og:description",
-        content:
-          "Registration, eligibility verification, benefit tracking, and barangay-level analytics for OSCA Bulan.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => publicPageHead("/", SITE_TITLE, SITE_DESCRIPTION),
   component: Landing,
 });
 
