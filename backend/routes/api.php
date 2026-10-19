@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BenefitController;
 use App\Http\Controllers\BenefitReleaseController;
 use App\Http\Controllers\BenefitTransactionController;
@@ -31,6 +32,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::get('/overview', OverviewController::class);
     Route::get('/analytics', AnalyticsController::class);
     Route::get('/audit-logs', [SystemDataController::class, 'auditLogs']);
+    Route::post('/admin/backups', [BackupController::class, 'store'])->middleware('throttle:6,1');
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/barangays', [AuthController::class, 'barangays']);
