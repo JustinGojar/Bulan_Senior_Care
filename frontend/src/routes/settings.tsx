@@ -4,6 +4,7 @@ import {
   Bell,
   Building2,
   CalendarDays,
+  DatabaseBackup,
   Check,
   ChevronRight,
   ClipboardList,
@@ -11,6 +12,7 @@ import {
   Gift,
   Hourglass,
   KeyRound,
+  Loader2,
   Mail,
   ShieldCheck,
   SlidersHorizontal,
@@ -19,7 +21,9 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import {
+  downloadBackup,
   getNotificationChannelSettings,
+  getStoredUser,
   updateNotificationChannelSettings,
   type NotificationChannelSettings,
 } from "@/lib/api";
@@ -146,6 +150,26 @@ function SettingsPage() {
   );
   const [savingNotification, setSavingNotification] = useState<string | null>(null);
   const [notificationError, setNotificationError] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupResult, setBackupResult] = useState<{ tone: "success" | "error"; text: string }>();
+
+  useEffect(() => setIsAdmin(getStoredUser()?.role === "admin"), []);
+
+  async function createBackup() {
+    setBackingUp(true);
+    setBackupResult(undefined);
+    try {
+      const filename = await downloadBackup();
+      setBackupResult({ tone: "success", text: `Backup created and downloaded as ${filename}.` });
+    } catch (error) {
+      setBackupResult({
+        tone: "error",
+        text: error instanceof Error ? error.message : "The backup could not be created.",
+      });
+    }
+    setBackingUp(false);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -323,6 +347,37 @@ function SettingsPage() {
             />
           </div>
         </section>
+
+        {isAdmin && (
+          <section>
+            <SettingsGroupTitle>Backup</SettingsGroupTitle>
+            <div className={ROW_CLASS}>
+              <SettingIcon icon={DatabaseBackup} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Database backup</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Download a copy of all records. Store it somewhere safe; it contains personal
+                  data.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void createBackup()}
+                disabled={backingUp}
+                aria-busy={backingUp}
+                className="inline-flex h-9 shrink-0 items-center gap-2 rounded-[8px] bg-navy px-3 text-sm font-medium text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gold dark:text-gold-foreground"
+              >
+                {backingUp && <Loader2 className="h-4 w-4 animate-spin" />}
+                {backingUp ? "Backing up…" : "Backup Now"}
+              </button>
+            </div>
+            {backupResult && (
+              <div className="mt-3">
+                <AuthAlert tone={backupResult.tone}>{backupResult.text}</AuthAlert>
+              </div>
+            )}
+          </section>
+        )}
 
         <section>
           <SettingsGroupTitle>Privacy & security</SettingsGroupTitle>

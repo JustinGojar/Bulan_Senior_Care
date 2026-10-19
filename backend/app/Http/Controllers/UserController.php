@@ -13,11 +13,20 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    /**
+     * The only user fields the account screens need. Listing them keeps secrets and internal
+     * columns out of responses even if new ones are added to the table later.
+     */
+    private const VISIBLE_FIELDS = [
+        'id', 'name', 'first_name', 'middle_name', 'last_name', 'email', 'role', 'status',
+        'barangay_id', 'contact_number', 'birthdate', 'profile_photo_path', 'email_verified_at',
+    ];
+
     public function index(Request $request): JsonResponse
     {
         abort_unless($request->user()->role === 'admin', 403, 'Only Admin can manage users.');
 
-        return response()->json(User::query()->orderBy('name')->get());
+        return response()->json(User::query()->orderBy('name')->get(self::VISIBLE_FIELDS));
     }
 
     public function store(Request $request): JsonResponse
@@ -68,7 +77,7 @@ class UserController extends Controller
         $user->syncRoles([$data['role']]);
         $verificationSent = $user->trySendEmailVerification();
 
-        return response()->json(['user' => $user->fresh()->load('roles'), 'verification_email_sent' => $verificationSent], 201);
+        return response()->json(['user' => $user->fresh()->setVisible(self::VISIBLE_FIELDS), 'verification_email_sent' => $verificationSent], 201);
     }
 
     public function update(Request $request, User $user): JsonResponse
@@ -135,7 +144,7 @@ class UserController extends Controller
             $user->tokens()->delete();
         }
 
-        return response()->json($user->fresh());
+        return response()->json($user->fresh()->setVisible(self::VISIBLE_FIELDS));
     }
 
     public function destroy(Request $request, User $user): JsonResponse

@@ -636,6 +636,36 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   return body as T;
 }
 
+/** Creates a database backup on the server and saves it as a download. */
+export async function downloadBackup() {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/admin/backups`, {
+      method: "POST",
+      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin",
+    });
+  } catch {
+    throw new Error("The backup could not be created. Check the network connection and try again.");
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(body?.message ?? `Backup failed (${response.status})`);
+  }
+  const filename =
+    response.headers.get("Content-Disposition")?.match(/filename="?([^";]+)"?/)?.[1] ??
+    "bulan-seniorcare-backup.json";
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return filename;
+}
+
 export function getAuditLogs(page = 1) {
   return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?page=${page}&per_page=25`);
 }
