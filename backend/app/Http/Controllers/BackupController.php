@@ -2,33 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\AuthenticateFromCookie;
 use App\Models\AuditLog;
+use App\Models\User;
+use App\Support\DatabaseBackup;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use UnexpectedValueException;
 
 class BackupController extends Controller
 {
-    /**
-     * Tables left out of a backup: sign-in secrets and short-lived framework state that a
-     * restore should never bring back.
-     */
-    private const EXCLUDED_TABLES = [
-        'cache',
-        'cache_locks',
-        'failed_jobs',
-        'job_batches',
-        'jobs',
-        'password_reset_tokens',
-        'personal_access_tokens',
-        'sessions',
-    ];
-
-    /** Columns left out of a table's rows, by table. */
-    private const EXCLUDED_COLUMNS = [
-        'users' => ['remember_token'],
-    ];
+    /** Largest backup the portal accepts, in kilobytes. Bigger ones restore with `php artisan backup:restore`. */
+    private const MAX_UPLOAD_KB = 128 * 1024;
 
     /**
      * Streams a JSON backup of every application table, so a large registry never has to fit
@@ -38,32 +24,55 @@ class BackupController extends Controller
     {
         abort_unless($request->user()->role === 'admin', 403, 'Only Admin can create backups.');
 
-        $tables = collect(Schema::getTables())
-            ->pluck('name')
-            ->reject(fn (string $table) => in_array($table, self::EXCLUDED_TABLES, true) || str_starts_with($table, 'sqlite_'))
-            ->sort()
-            ->values()
-            ->all();
+        $tables = DatabaseBackup::tables();
         $createdAt = now();
 
         AuditLog::record($request->user(), 'backup_created', $request->user(), afterValue: ['tables' => count($tables)]);
 
-        return response()->streamDownload(function () use ($tables, $createdAt) {
-            echo '{"app":'.json_encode(config('app.name')).',"created_at":'.json_encode($createdAt->toIso8601String()).',"tables":{';
-            foreach ($tables as $index => $table) {
-                echo ($index > 0 ? ',' : '').json_encode($table).':[';
-                $excluded = array_flip(self::EXCLUDED_COLUMNS[$table] ?? []);
-                $first = true;
-                foreach (DB::table($table)->cursor() as $row) {
-                    echo ($first ? '' : ',').json_encode(array_diff_key((array) $row, $excluded), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-                    $first = false;
-                }
-                echo ']';
-            }
-            echo '}}';
-        }, 'bulan-seniorcare-backup-'.$createdAt->format('Ymd-His').'.json', [
-            'Content-Type' => 'application/json',
-            'Cache-Control' => 'no-store',
+        return response()->streamDownload(
+            fn () => DatabaseBackup::write($tables, $createdAt->toIso8601String()),
+            'bulan-seniorcare-backup-'.$createdAt->format('Ymd-His').'.json',
+            ['Content-Type' => 'application/json', 'Cache-Control' => 'no-store'],
+        );
+    }
+
+    /**
+     * Replaces the system's data with an uploaded backup. Every account is signed out, the
+     * Admin who restored included, so everyone signs in again against the restored accounts.
+     */
+    public function restore(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->role === 'admin', 403, 'Only Admin can restore backups.');
+
+        $request->validate([
+            'backup' => ['required', 'file', 'max:'.self::MAX_UPLOAD_KB],
+            'confirmation' => ['required', 'in:RESTORE'],
+        ], [
+            'backup.max' => 'The backup is larger than 128 MB. Restore it on the server with php artisan backup:restore.',
+            'confirmation.in' => 'Confirm the restore to continue.',
         ]);
+
+        $actorId = $request->user()->id;
+        set_time_limit(0);
+        try {
+            $summary = DatabaseBackup::restore($request->file('backup')->getRealPath());
+        } catch (UnexpectedValueException $exception) {
+            abort(422, $exception->getMessage());
+        }
+
+        // The audit log was replaced too; the restore is recorded if the Admin is still in it.
+        if ($actor = User::find($actorId)) {
+            AuditLog::record($actor, 'backup_restored', $actor, afterValue: [
+                'backup_created_at' => $summary['created_at'],
+                'tables' => count($summary['tables']),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'The backup was restored. Please sign in again.',
+            'backup_created_at' => $summary['created_at'],
+            'tables' => $summary['tables'],
+            'skipped_tables' => $summary['skipped_tables'],
+        ])->withCookie(AuthenticateFromCookie::forget($request));
     }
 }
