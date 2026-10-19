@@ -4,6 +4,7 @@ import {
   Bell,
   ChevronRight,
   ClipboardCheck,
+  FileText,
   HandCoins,
   Home,
   LayoutGrid,
@@ -114,6 +115,7 @@ const NAV = [
   { to: "/age-threshold", label: "Age Threshold", icon: ClipboardCheck },
   { to: "/benefits", label: "Benefit Tracking", icon: HandCoins },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/reports", label: "Reports", icon: FileText },
   { to: "/users", label: "User Management", icon: UserCog },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -121,7 +123,6 @@ const NAV = [
 // Pages reached from inside a section keep that section's menu item highlighted.
 const NAV_PARENT: Record<string, string> = {
   "/audit-logs": "/settings",
-  "/reports": "/analytics",
   "/releases": "/benefits",
 };
 

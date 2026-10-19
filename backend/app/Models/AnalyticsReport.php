@@ -14,11 +14,17 @@ class AnalyticsReport extends Model
         'report_type',
         'total_registered',
         'remarks',
+        'review_remarks',
         'status',
         'approved_by',
+        'published_by',
         'published_at',
         'file_path',
+        'snapshot',
     ];
+
+    /** The snapshot can be large, so only the single-report endpoint returns it. */
+    protected $hidden = ['snapshot'];
 
     protected function casts(): array
     {
@@ -26,6 +32,7 @@ class AnalyticsReport extends Model
             'generated_date' => 'date',
             'published_at' => 'datetime',
             'total_registered' => 'integer',
+            'snapshot' => 'array',
         ];
     }
 
@@ -37,5 +44,15 @@ class AnalyticsReport extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by');
+    }
+
+    public function barangay(): BelongsTo
+    {
+        return $this->belongsTo(Barangay::class);
     }
 }

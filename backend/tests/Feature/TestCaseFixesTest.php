@@ -75,20 +75,23 @@ class TestCaseFixesTest extends TestCase
     public function test_report_moves_from_draft_to_approved_to_published(): void
     {
         $this->senior();
-        $report = $this->actingAs($this->head, 'sanctum')->postJson('/api/reports', ['report_type' => 'Registry'])->assertForbidden();
-        $report = $this->actingAs($this->admin, 'sanctum')->postJson('/api/reports', ['report_type' => 'Registry'])
+        $this->actingAs($this->leader, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
+        $this->actingAs($this->head, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
+        $report = $this->actingAs($this->admin, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])
             ->assertCreated()->assertJsonPath('status', 'draft')->assertJsonPath('total_registered', 1);
         $id = $report->json('id');
 
         $this->patchJson("/api/reports/{$id}", ['status' => 'approved'])->assertForbidden();
-        $this->patchJson("/api/reports/{$id}", ['status' => 'published'])->assertStatus(422);
-        $this->actingAs($this->head, 'sanctum')->patchJson("/api/reports/{$id}", ['status' => 'approved'])
+        $this->patchJson("/api/reports/{$id}", ['status' => 'published'])->assertForbidden();
+        $this->actingAs($this->leader, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(0);
+        $this->actingAs($this->head, 'sanctum')->patchJson("/api/reports/{$id}", ['status' => 'published'])->assertStatus(422);
+        $this->patchJson("/api/reports/{$id}", ['status' => 'approved'])
             ->assertOk()->assertJsonPath('status', 'approved')->assertJsonPath('approver.id', $this->head->id);
-        $this->actingAs($this->admin, 'sanctum')->patchJson("/api/reports/{$id}", ['status' => 'published'])
+        $this->patchJson("/api/reports/{$id}", ['status' => 'published'])
             ->assertOk()->assertJsonPath('status', 'published');
 
         $this->assertNotNull(AnalyticsReport::findOrFail($id)->published_at);
-        $this->actingAs($this->leader, 'sanctum')->getJson('/api/reports')->assertForbidden();
+        $this->actingAs($this->leader, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(1);
         $this->actingAs($this->head, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(1);
     }
 

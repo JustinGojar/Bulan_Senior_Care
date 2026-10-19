@@ -169,7 +169,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     const roleRequirements: Record<string, string[]> = {
       "/users": ["admin"],
       "/eligibility": ["admin", "head"],
-      "/reports": ["admin", "head"],
+      "/reports": ["admin", "head", "leader"],
       "/analytics": ["admin", "head", "leader"],
       "/age-threshold": ["admin", "head"],
     };

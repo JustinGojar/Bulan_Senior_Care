@@ -309,16 +309,72 @@ export type Message = {
   recipient: { id: number; name: string; role: string; email: string };
 };
 
+export type ReportType = "Municipal Summary" | "Barangay Summary" | "Benefit Distribution";
+
+type ReportAccount = { id: number; name: string; role: string } | null;
+
+/** Figures saved when a report is generated, so the approved report never changes. */
+export type ReportSnapshot = {
+  scope: string;
+  totals: {
+    total: number;
+    active: number;
+    pending: number;
+    inactive: number;
+    male: number;
+    female: number;
+  };
+  barangays: Array<{
+    barangay: string;
+    registered: number;
+    active: number;
+    pending: number;
+    inactive: number;
+    released: number;
+    pending_release: number;
+  }>;
+  benefits: Array<{
+    name: string;
+    seniors: number;
+    released: number;
+    pending: number;
+    not_released: number;
+  }>;
+  seniors?: Array<{
+    osca_id: string;
+    name: string;
+    age: number;
+    sex: string | null;
+    status: string;
+    registration_date: string | null;
+  }>;
+  distribution?: Array<{
+    osca_id: string | null;
+    name: string;
+    barangay: string;
+    benefit: string;
+    period: string | null;
+    status: "released" | "pending" | "not_released";
+    date_distributed: string | null;
+    amount: number;
+  }>;
+};
+
 export type AnalyticsReport = {
   id: number;
-  report_type: string;
+  report_type: ReportType;
+  barangay_id: number | null;
+  barangay: { id: number; barangay_name: string } | null;
   generated_date: string;
   total_registered: number;
   remarks: string | null;
-  status: "draft" | "approved" | "published";
+  review_remarks: string | null;
+  status: "draft" | "returned" | "approved" | "published";
   published_at: string | null;
-  generator: { id: number; name: string; role: string } | null;
-  approver: { id: number; name: string; role: string } | null;
+  generator: ReportAccount;
+  approver: ReportAccount;
+  publisher: ReportAccount;
+  snapshot?: ReportSnapshot;
 };
 
 export type MessageRecipient = {

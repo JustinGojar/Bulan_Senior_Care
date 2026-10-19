@@ -181,6 +181,9 @@ function Notifications() {
     if (notification.source_type === "announcement" && sourceId) {
       return navigate({ to: "/dashboard", hash: `announcement-${sourceId}` });
     }
+    if (notification.source_type === "report" && sourceId) {
+      return navigate({ to: "/reports", search: { report: sourceId } });
+    }
     if (notification.source_type === "benefit_release" && sourceId) {
       return navigate({ to: "/benefits", search: { release: sourceId } });
     }

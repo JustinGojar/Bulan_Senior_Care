@@ -47,6 +47,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::apiResource('seniors', SeniorCitizenController::class);
     Route::get('/reports', [ReportController::class, 'index']);
     Route::post('/reports', [ReportController::class, 'store']);
+    Route::get('/reports/{report}', [ReportController::class, 'show'])->whereNumber('report');
     Route::patch('/reports/{report}', [ReportController::class, 'update']);
     Route::get('/senior-edit-requests', [SeniorEditRequestController::class, 'index']);
     Route::post('/senior-edit-requests', [SeniorEditRequestController::class, 'store']);
