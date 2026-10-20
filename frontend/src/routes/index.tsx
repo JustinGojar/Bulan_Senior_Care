@@ -1,17 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  Archive,
   ArrowRight,
   BadgeCheck,
   BarChart3,
   Bell,
   Building2,
+  Cake,
   ClipboardList,
+  DatabaseBackup,
+  FileCheck2,
   HandCoins,
   HelpCircle,
+  History,
   Landmark,
+  Megaphone,
   Menu,
+  MessagesSquare,
   PieChart,
   ShieldCheck,
+  TrendingUp,
   Users,
   X,
 } from "lucide-react";
@@ -19,6 +27,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { SectionHeader } from "@/components/DesignKit";
 import { TONE_BAR, panelClass, primaryButtonClass, tileClass } from "@/components/design-kit";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { publicPageHead, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo";
 
@@ -27,44 +36,114 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const NAV = ["About", "Features", "Benefits", "Analytics", "FAQ"];
+const NAV = ["About", "Features", "Workflow", "Benefits", "Analytics", "FAQ"];
+
+const HIGHLIGHTS = [
+  "Barangay to municipal records",
+  "Admin-reviewed eligibility",
+  "Approved, published reports",
+  "Installable on Android",
+];
 
 const FEATURES = [
   {
     icon: ClipboardList,
     title: "Senior Citizen Registration",
-    body: "Encode profiles, addresses, and supporting documents digitally — no more lost or unreadable paper folders.",
+    body: "Encode profiles, photos, and supporting documents, or bulk-import a barangay list from a CSV or Excel file. Filter by barangay, sex, and age range.",
   },
   {
     icon: BadgeCheck,
-    title: "Eligibility Verification",
-    body: "Validate qualifications against OSCA rules before a beneficiary is endorsed for any program.",
+    title: "Eligibility Review",
+    body: "New registrations and record edits wait for admin review, so no senior is enrolled in a program before their details are verified.",
+  },
+  {
+    icon: Cake,
+    title: "Age Threshold Milestones",
+    body: "Seniors who reach an octogenarian, nonagenarian, or centenarian age bracket are flagged automatically, together with the grant they can claim.",
   },
   {
     icon: HandCoins,
-    title: "Benefit Tracking",
-    body: "Know exactly which benefit each senior already received, and what is still pending release.",
+    title: "Benefit Tracking and Releases",
+    body: "Group releases into dated batches with their documents, print claim forms and payroll masterlists, and block duplicate one-time grants.",
+  },
+  {
+    icon: FileCheck2,
+    title: "Reports with Approval",
+    body: "The admin generates municipal and barangay reports from stored records; the OSCA Head reviews, approves, and publishes them.",
   },
   {
     icon: BarChart3,
-    title: "Reports and Analytics",
-    body: "Descriptive charts for registrations, distribution status, and barangay to municipal summaries.",
+    title: "Descriptive Analytics",
+    body: "Charts for registrations per barangay, age distribution, benefit records, and release activity, plus month-over-month growth on the dashboard.",
   },
   {
-    icon: ShieldCheck,
-    title: "Roles and Access Control",
-    body: "Three access levels — admin, OSCA head, and barangay leader — each seeing only what they should.",
+    icon: MessagesSquare,
+    title: "Messaging",
+    body: "Barangay leaders and the OSCA Head chat inside the portal and share photos and files privately, with live unread counts.",
+  },
+  {
+    icon: Megaphone,
+    title: "Announcements",
+    body: "Post OSCA news with images and comments, or bring in posts from the official Facebook Page, so every barangay reads the same update.",
   },
   {
     icon: Bell,
-    title: "Notifications & Age Thresholds",
-    body: "Email and SMS advisories, plus automatic detection of octogenarian, nonagenarian, and centenarian milestones.",
+    title: "Notifications and Advisories",
+    body: "In-app alerts for reviews, releases, and age milestones, plus optional email and SMS advisories that the admin can switch on or off.",
+  },
+];
+
+const WORKFLOW = [
+  {
+    icon: ClipboardList,
+    title: "Register",
+    body: "Barangay leaders encode seniors in their own barangay, one at a time or by bulk import.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Review",
+    body: "The admin verifies each registration and edit request before it counts toward a program.",
+  },
+  {
+    icon: HandCoins,
+    title: "Release",
+    body: "Benefits are released in dated batches, with claim forms, rosters, and documents kept together.",
+  },
+  {
+    icon: FileCheck2,
+    title: "Report",
+    body: "Reports are built from the records, approved by the OSCA Head, then published to staff.",
+  },
+];
+
+const SAFEGUARDS = [
+  {
+    icon: ShieldCheck,
+    title: "Role-based access",
+    body: "Admin, OSCA Head, and barangay leader accounts, with email verification for every new user.",
+  },
+  {
+    icon: History,
+    title: "Audit logs",
+    body: "Every change to accounts, senior records, and benefits is recorded with who made it and when.",
+  },
+  {
+    icon: DatabaseBackup,
+    title: "Backup and restore",
+    body: "The admin can download a full database backup and restore it from file when needed.",
+  },
+  {
+    icon: Archive,
+    title: "Archived records",
+    body: "Inactive or deceased seniors are archived, not deleted, and their records can still be printed.",
   },
 ];
 
 const ANALYTICS = [
-  { icon: Users, label: "Total number of registered senior citizens" },
-  { icon: PieChart, label: "Benefit distribution status" },
+  { icon: Users, label: "Registered seniors per barangay" },
+  { icon: PieChart, label: "Age distribution by age group" },
+  { icon: HandCoins, label: "Benefit records per program" },
+  { icon: TrendingUp, label: "Benefit release activity" },
   { icon: Building2, label: "Barangay-level summary" },
   { icon: Landmark, label: "Municipal-level summary" },
 ];
@@ -78,28 +157,40 @@ const OBJECTIVES = [
 const BENEFICIARIES = [
   [
     "OSCA Staff",
-    "Register seniors, update details, track distribution, and generate accurate reports.",
+    "Review registrations, release benefits in batches, and publish accurate, approved reports.",
   ],
-  ["Senior Citizens", "Receive the right benefits on time, with a clear view of their own status."],
+  [
+    "Barangay Leaders",
+    "Keep their own barangay's list up to date and message the OSCA Head directly.",
+  ],
+  ["Senior Citizens", "Receive the right benefits on time, including age milestone grants."],
   ["LGU-Bulan", "Better data for planning and decision-making on senior welfare programs."],
 ] as const;
 
 const FAQ = [
   [
+    "Who can create an account?",
+    "Accounts are issued by the OSCA administrator. New users confirm their email address before they can sign in.",
+  ],
+  [
+    "How is access controlled?",
+    "Three role levels — Admins manage accounts and review records, the OSCA Head approves releases and reports, and Barangay Leaders work only with seniors in their own barangay.",
+  ],
+  [
     "Can reports be printed or downloaded?",
-    "Yes. Senior records and benefit release reports can be exported as PDF or Excel files for printing and filing.",
+    "Yes. Masterlists, claim forms, and approved reports download as PDF, and release rosters as Excel files.",
+  ],
+  [
+    "Can I install it on my phone?",
+    "Yes. On Android Chrome and desktop Chrome or Edge, use “Install app” to add Bulan SeniorCare to the home screen.",
+  ],
+  [
+    "Is senior data kept safe?",
+    "Sessions sign out after 30 minutes of inactivity, documents and attachments are private, and every change is written to the audit log.",
   ],
   [
     "Does it work offline?",
     "No. The portal is server-based and needs a stable internet connection.",
-  ],
-  [
-    "Which devices are supported?",
-    "Desktop browsers on Windows 10/11 and Android 7+ phones and tablets.",
-  ],
-  [
-    "How is access controlled?",
-    "Three role levels — Admins manage accounts and all records, the OSCA Head reviews eligibility and releases, and Barangay Leaders work only with seniors in their own barangay.",
   ],
 ] as const;
 
@@ -113,6 +204,7 @@ function Landing() {
     const cardsBySection: Record<string, string> = {
       about: "#about",
       features: "#features .surface-card",
+      workflow: "#workflow .surface-card",
       benefits: "#benefits > .surface-card:first-child",
       analytics: "#analytics",
       faq: "#faq .surface-card",
@@ -256,6 +348,17 @@ function Landing() {
             system for registration, eligibility, benefits, and reporting — built for the Office of
             Senior Citizen Affairs and every barangay leader in the municipality.
           </p>
+          <ul className="mt-6 flex flex-wrap gap-2">
+            {HIGHLIGHTS.map((item) => (
+              <li
+                key={item}
+                className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3 py-1.5 text-xs font-semibold shadow-[var(--shadow-soft)] sm:text-sm"
+              >
+                <BadgeCheck className="h-4 w-4 text-gold-foreground dark:text-gold" />
+                {item}
+              </li>
+            ))}
+          </ul>
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               to="/login"
@@ -264,6 +367,7 @@ function Landing() {
               Get Started{" "}
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
+            <InstallAppButton className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/90 px-7 py-4 text-sm font-semibold text-foreground shadow-[var(--shadow-soft)] transition-colors hover:bg-muted sm:text-base" />
           </div>
         </section>
 
@@ -300,7 +404,7 @@ function Landing() {
 
         <section id="features" className="scroll-mt-20 py-14 sm:scroll-mt-24 sm:py-20">
           <SectionIntro eyebrow="What it does" title="System features">
-            The seven modules defined in the study objectives.
+            Every module in the portal, from registration to published reports.
           </SectionIntro>
           <div className="mt-8 grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, body }) => (
@@ -319,8 +423,59 @@ function Landing() {
         </section>
 
         <section
+          id="workflow"
+          className={`${panelClass} scroll-mt-20 p-5 sm:scroll-mt-24 sm:p-8 lg:p-10`}
+        >
+          <Eyebrow>How it works</Eyebrow>
+          <h2 className="mt-4 max-w-3xl text-2xl font-extrabold sm:text-3xl">
+            From registration to a published report
+          </h2>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            Each step is handled by the right role, and every record carries who created and last
+            modified it.
+          </p>
+          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {WORKFLOW.map(({ icon: Icon, title, body }, index) => (
+              <li key={title} className={`${tileClass} relative overflow-hidden p-5 sm:p-6`}>
+                <span className={`absolute inset-x-0 top-0 h-1 ${TONE_BAR.gold}`} />
+                <div className="flex items-center gap-3">
+                  <span className="bg-navy grid h-10 w-10 place-items-center rounded-lg dark:ring-1 dark:ring-white/20">
+                    <Icon className="h-5 w-5 text-gold" />
+                  </span>
+                  <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    Step {index + 1}
+                  </p>
+                </div>
+                <h3 className="mt-4 text-lg font-bold">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-10 border-t border-border/60 pt-8">
+            <SectionHeader
+              icon={ShieldCheck}
+              title="Built-in safeguards"
+              subtitle="How the portal protects senior records."
+            />
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {SAFEGUARDS.map(({ icon: Icon, title, body }) => (
+                <div key={title} className={`${tileClass} flex gap-3`}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gold/15 text-gold-foreground dark:text-gold">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold">{title}</span>
+                    <span className="mt-0.5 block text-sm text-muted-foreground">{body}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
           id="benefits"
-          className="scroll-mt-20 grid gap-5 sm:scroll-mt-24 sm:gap-6 lg:grid-cols-2"
+          className="mt-14 grid scroll-mt-20 gap-5 sm:mt-20 sm:scroll-mt-24 sm:gap-6 lg:grid-cols-2"
         >
           <div className={`${panelClass} p-5 sm:p-8 lg:p-10`}>
             <SectionHeader
