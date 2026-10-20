@@ -1,11 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ClipboardList, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardList, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, TileSkeletons } from "@/components/DesignKit";
-import { badgeClass, panelClass, secondaryButtonClass, tileClass } from "@/components/design-kit";
-import { getAuditLogs, getStoredUser, type AuditLog, type PaginatedResponse } from "@/lib/api";
+import {
+  badgeClass,
+  fieldClass,
+  panelClass,
+  secondaryButtonClass,
+  tileClass,
+} from "@/components/design-kit";
+import {
+  getAuditLogs,
+  getManagedUsers,
+  getStoredUser,
+  type AuditLog,
+  type ManagedUser,
+  type PaginatedResponse,
+} from "@/lib/api";
 
 export const Route = createFileRoute("/audit-logs")({
   head: () => ({ meta: [{ title: "Audit Logs — Bulan SeniorCare" }] }),
@@ -142,6 +155,18 @@ function AuditLogsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isAdmin = getStoredUser()?.role?.toLowerCase() === "admin";
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [userId, setUserId] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const hasFilters = Boolean(userId || dateFrom || dateTo);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    getManagedUsers()
+      .then((list) => setUsers([...list].sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => setUsers([]));
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -149,7 +174,7 @@ function AuditLogsPage() {
       return;
     }
     setLoading(true);
-    getAuditLogs(page)
+    getAuditLogs(page, { userId, dateFrom, dateTo })
       .then((result: PaginatedResponse<AuditLog>) => {
         setLogs(result.data);
         setLastPage(result.last_page);
@@ -157,7 +182,7 @@ function AuditLogsPage() {
       })
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false));
-  }, [isAdmin, page]);
+  }, [isAdmin, page, userId, dateFrom, dateTo]);
 
   return (
     <AppShell
@@ -178,6 +203,67 @@ function AuditLogsPage() {
           }
         />
 
+        {isAdmin && (
+          <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end">
+            <label className="block text-xs font-semibold text-muted-foreground">
+              User
+              <select
+                value={userId}
+                onChange={(event) => {
+                  setUserId(event.target.value);
+                  setPage(1);
+                }}
+                className={`${fieldClass} mt-1 h-10`}
+              >
+                <option value="">All users</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-semibold text-muted-foreground">
+              From
+              <input
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(event) => {
+                  setDateFrom(event.target.value);
+                  setPage(1);
+                }}
+                className={`${fieldClass} mt-1 h-10`}
+              />
+            </label>
+            <label className="block text-xs font-semibold text-muted-foreground">
+              To
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(event) => {
+                  setDateTo(event.target.value);
+                  setPage(1);
+                }}
+                className={`${fieldClass} mt-1 h-10`}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setUserId("");
+                setDateFrom("");
+                setDateTo("");
+                setPage(1);
+              }}
+              disabled={!hasFilters}
+              className={`${secondaryButtonClass} h-10 px-3`}
+            >
+              <X className="h-4 w-4" /> Clear
+            </button>
+          </div>
+        )}
         {!isAdmin && (
           <div className="mt-6">
             <AuthAlert tone="error">Only administrators can access audit logs.</AuthAlert>
@@ -191,8 +277,12 @@ function AuditLogsPage() {
         {isAdmin && !loading && !error && logs.length === 0 && (
           <EmptyState
             icon={ClipboardList}
-            title="No activity recorded yet"
-            description="Account, senior record and benefit changes will be listed here."
+            title={hasFilters ? "No matching activity" : "No activity recorded yet"}
+            description={
+              hasFilters
+                ? "Try another user or date range."
+                : "Account, senior record and benefit changes will be listed here."
+            }
             className="mt-6"
           />
         )}

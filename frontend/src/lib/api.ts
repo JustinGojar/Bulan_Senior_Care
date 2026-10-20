@@ -22,7 +22,7 @@ const LEGACY_STORAGE_KEYS = ["bulan-api-token", "bulan-api-user", "bulan-api-cac
 const UNCACHED_PATHS = ["/user", "/messages/unread-summary", "/notifications/unread-count"];
 // Data that other people change: reuse briefly, never show it stale. Senior records are
 // here so a record another account just registered is never hidden behind an old list.
-const LIVE_PATHS = ["/notifications", "/messages", "/seniors"];
+const LIVE_PATHS = ["/notifications", "/messages", "/seniors", "/benefit-requests"];
 const LIVE_FRESH_TTL = 10_000;
 
 type CacheEntry = { session: string | null; data: unknown; fetchedAt: number; freshTtl: number };
@@ -121,6 +121,8 @@ export type ApiUser = {
   profile_photo_path?: string | null;
   email_verified_at?: string | null;
   roles?: Array<{ name: string }>;
+  /** What this account's role may do, as the Admin set it in Settings > Roles & permissions. */
+  granted_permissions?: string[];
 };
 
 export type ManagedUser = ApiUser & {
@@ -537,6 +539,17 @@ export async function getCurrentUser() {
   return user;
 }
 
+/** A refused API request, with its HTTP status and, when locked out, the seconds to wait. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly retryAfter?: number,
+  ) {
+    super(message);
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
   if (method !== "GET") {
@@ -632,9 +645,17 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
       broadcastAuthChange();
       throw new Error("Your session has expired. Please log in again before saving your profile.");
     }
-    const errorBody = body as { message?: string; errors?: Record<string, string[]> } | null;
+    const errorBody = body as {
+      message?: string;
+      errors?: Record<string, string[]>;
+      retry_after?: number;
+    } | null;
     const validation = errorBody?.errors ? Object.values(errorBody.errors).flat()[0] : undefined;
-    throw new Error(validation ?? errorBody?.message ?? `Request failed (${response.status})`);
+    throw new ApiError(
+      validation ?? errorBody?.message ?? `Request failed (${response.status})`,
+      response.status,
+      errorBody?.retry_after,
+    );
   }
   return body as T;
 }
@@ -686,8 +707,15 @@ export async function restoreBackup(file: File) {
   broadcastAuthChange();
 }
 
-export function getAuditLogs(page = 1) {
-  return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?page=${page}&per_page=25`);
+export function getAuditLogs(
+  page = 1,
+  filters: { userId?: string; dateFrom?: string; dateTo?: string } = {},
+) {
+  const query = new URLSearchParams({ page: String(page), per_page: "25" });
+  if (filters.userId) query.set("user_id", filters.userId);
+  if (filters.dateFrom) query.set("date_from", filters.dateFrom);
+  if (filters.dateTo) query.set("date_to", filters.dateTo);
+  return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?${query}`);
 }
 
 export async function login(email: string, password: string) {
@@ -915,6 +943,50 @@ export function updateManagedUser(
   return apiFetch<ManagedUser>(`/admin/users/${id}`, { method: "POST", body });
 }
 
+export type Permission =
+  | "export reports"
+  | "approve registrations"
+  | "manage benefit requests"
+  | "schedule benefit releases"
+  | "manage announcements"
+  | "register seniors"
+  | "request benefits";
+
+/**
+ * Whether the signed-in account may do this. Only hides actions; the API enforces it too.
+ * Admin may do everything, and a profile loaded before permissions existed is not limited.
+ */
+export function hasPermission(permission: Permission) {
+  const user = getStoredUser();
+  if (!user) return false;
+  if (user.role === "admin" || !user.granted_permissions) return true;
+  return user.granted_permissions.includes(permission);
+}
+
+export type RolePermissionsState = {
+  permissions: Array<{ key: Permission; label: string; description: string; roles: string[] }>;
+  roles: Record<"head" | "leader", Permission[]>;
+};
+
+export function getRolePermissions() {
+  return apiFetch<RolePermissionsState>("/admin/role-permissions", { cache: "no-store" });
+}
+
+export function updateRolePermissions(role: "head" | "leader", permissions: Permission[]) {
+  return apiFetch<RolePermissionsState>(`/admin/role-permissions/${role}`, {
+    method: "PUT",
+    body: JSON.stringify({ permissions }),
+  });
+}
+
+/** Deactivates (signs out, blocks login) or reactivates an account. */
+export function setManagedUserStatus(id: number, status: "active" | "inactive") {
+  return apiFetch<ManagedUser>(`/admin/users/${id}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
+}
+
 export function deleteManagedUser(id: number) {
   return apiFetch<void>(`/admin/users/${id}`, { method: "DELETE" });
 }
@@ -946,6 +1018,22 @@ export function createAnnouncement(title: string, message: string, image?: File 
     method: "POST",
     body,
   });
+}
+
+export function updateAnnouncement(
+  announcementId: number,
+  title: string,
+  message: string,
+  image?: File | null,
+  removeImage = false,
+) {
+  const body = new FormData();
+  body.append("_method", "PUT");
+  body.append("title", title);
+  body.append("message", message);
+  if (image) body.append("image", image);
+  else if (removeImage) body.append("remove_image", "1");
+  return apiFetch<Announcement>(`/announcements/${announcementId}`, { method: "POST", body });
 }
 
 export function createAnnouncementComment(
@@ -1010,6 +1098,71 @@ export function submitSeniorEditRequest(seniorId: string, changes: SeniorEditReq
   return apiFetch<SeniorEditRequest>("/senior-edit-requests", {
     method: "POST",
     body: JSON.stringify({ senior_id: seniorId, changes }),
+  });
+}
+
+/** The Head turns down a pending registration; the reason is shown to the leader. */
+export function rejectSeniorRegistration(oscaId: string, reason: string) {
+  return apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export type BenefitRequestStatus = "for_verification" | "approved" | "rejected" | "released";
+
+export type BenefitRequest = {
+  id: number;
+  status: BenefitRequestStatus;
+  remarks?: string | null;
+  rejection_reason?: string | null;
+  period_label?: string | null;
+  release_date?: string | null;
+  verified_at?: string | null;
+  created_at: string;
+  senior: {
+    id: number;
+    osca_id_number: string;
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    birthdate?: string | null;
+    barangay?: { barangay_name: string } | null;
+  };
+  benefit: { id: number; benefit_name: string; amount?: string | null; schedule?: string | null };
+  requester?: { name: string; role: string } | null;
+  verifier?: { name: string; role: string } | null;
+  releaser?: { name: string; role: string } | null;
+};
+
+export function getBenefitRequests(params: { status?: BenefitRequestStatus; page?: number } = {}) {
+  const query = new URLSearchParams({ page: String(params.page ?? 1), per_page: "25" });
+  if (params.status) query.set("status", params.status);
+  return apiFetch<PaginatedResponse<BenefitRequest>>(`/benefit-requests?${query}`);
+}
+
+/** `oscaId` is the senior's OSCA ID, as the senior pages identify records. */
+export function createBenefitRequest(oscaId: string, benefitId: number, remarks?: string) {
+  return apiFetch<BenefitRequest>("/benefit-requests", {
+    method: "POST",
+    body: JSON.stringify({
+      senior_id: oscaId,
+      benefit_id: benefitId,
+      remarks: remarks?.trim() || null,
+    }),
+  });
+}
+
+export function reviewBenefitRequest(
+  id: number,
+  review:
+    | { action: "verify" }
+    | { action: "reject"; reason: string }
+    | { action: "release"; release_date: string; period_label?: string },
+) {
+  return apiFetch<BenefitRequest>(`/benefit-requests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(review),
   });
 }
 

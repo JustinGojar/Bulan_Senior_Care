@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { BenefitRequestsPanel } from "@/components/BenefitRequests";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
@@ -54,6 +55,7 @@ import {
   benefitProofUrl,
   getBarangays,
   getStoredUser,
+  hasPermission,
   type BenefitRelease,
   type BenefitTransaction,
   type PaginatedResponse,
@@ -145,7 +147,8 @@ function BenefitTracking() {
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
   // The OSCA Head schedules releases.
-  const canManageReleases = currentUser?.role === "head";
+  const canManageReleases =
+    currentUser?.role === "head" && hasPermission("schedule benefit releases");
   const canUpdateTransactions = currentUser?.role === "leader";
 
   function formatDate(date: string) {
@@ -987,6 +990,7 @@ function BenefitTracking() {
           />
         )}
       </div>
+      <BenefitRequestsPanel role={currentUser?.role} />
       <section id="release-queue" className={`${panelClass} mt-6 overflow-hidden p-5 sm:p-7`}>
         <SectionHeader
           icon={ShieldCheck}

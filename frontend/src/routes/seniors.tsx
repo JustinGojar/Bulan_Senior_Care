@@ -29,6 +29,7 @@ import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { RequestBenefitDialog } from "@/components/BenefitRequests";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import {
@@ -69,13 +70,16 @@ import {
 } from "@/components/ui/dialog";
 import {
   BARANGAYS,
-  INACTIVE_REASONS,
   benefitForAge,
   benefitLabel,
+  INACTIVE_REASONS,
+  NOT_ELIGIBLE_REASON,
+  seniorStatusLabel,
   type Senior,
 } from "@/lib/osca-data";
 import {
   apiFetch,
+  hasPermission,
   bulkCreateSeniors,
   getBarangays,
   getStoredUser,
@@ -525,6 +529,8 @@ const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
 
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
+  // An approved senior a leader is requesting a benefit for.
+  const [requestingBenefit, setRequestingBenefit] = useState<Senior | null>(null);
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -791,7 +797,7 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-2 sm:gap-3">
-          {isLeader && (
+          {isLeader && hasPermission("register seniors") && (
             <>
               <IconActionButton
                 label="Register Senior"
@@ -1122,7 +1128,9 @@ function SeniorRecords() {
                     ) : s.reviewNote ? (
                       <StatusPill tone="gold">In review</StatusPill>
                     ) : (
-                      <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                      <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>
+                        {seniorStatusLabel(s)}
+                      </StatusPill>
                     )}
                   </td>
                   <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
@@ -1392,6 +1400,8 @@ function SeniorRecords() {
               }
             } catch (reason) {
               toast.error(reason instanceof Error ? reason.message : "Unable to register senior.");
+              // The form stays open with the reason, so nothing typed is lost.
+              throw reason;
             }
           }}
         />
@@ -1434,7 +1444,7 @@ function SeniorRecords() {
                   )}
                   {viewing && (
                     <StatusPill tone={STATUS_TONE[viewing.status] ?? "neutral"}>
-                      {viewing.status}
+                      {seniorStatusLabel(viewing)}
                     </StatusPill>
                   )}
                   {viewing?.reviewNote && <StatusPill tone="gold">In review</StatusPill>}
@@ -1619,6 +1629,7 @@ function SeniorRecords() {
                 </p>
                 {viewing.inactiveRemarks && (
                   <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                    {viewing.inactiveReason === NOT_ELIGIBLE_REASON && "Reason: "}
                     {viewing.inactiveRemarks}
                   </p>
                 )}
@@ -1842,8 +1853,25 @@ function SeniorRecords() {
               )}
             </button>
           )}
+          {viewing &&
+            !viewingArchive &&
+            isLeader &&
+            hasPermission("request benefits") &&
+            viewing.status === "Active" && (
+              <button
+                type="button"
+                onClick={() => setRequestingBenefit(viewing)}
+                className={`${secondaryButtonClass} mt-3 h-12 w-full`}
+              >
+                <HandCoins className="h-4 w-4" /> Request Benefit
+              </button>
+            )}
         </DialogContent>
       </Dialog>
+      <RequestBenefitDialog
+        senior={requestingBenefit}
+        onOpenChange={(open) => !open && setRequestingBenefit(null)}
+      />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

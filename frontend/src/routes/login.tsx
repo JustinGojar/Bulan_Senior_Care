@@ -3,7 +3,7 @@ import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from "lucid
 import { useEffect, useState } from "react";
 import { AuthAlert, AuthLayout, authInputClass, authSubmitClass } from "@/components/AuthLayout";
 import { InstallAppButton } from "@/components/InstallAppButton";
-import { login, takeSessionNotice } from "@/lib/api";
+import { ApiError, login, takeSessionNotice } from "@/lib/api";
 import { publicPageHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/login")({
@@ -26,6 +26,22 @@ function LoginPage() {
   // Why the previous session ended (inactivity or its time limit), if it ended on its own.
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // After too many failed attempts sign-in is locked until this time (ms since epoch).
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const lockSeconds = lockedUntil ? Math.max(0, Math.ceil((lockedUntil - now) / 1000)) : 0;
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const timer = window.setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= lockedUntil) {
+        setLockedUntil(null);
+        setError(null);
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [lockedUntil]);
   // The browser back button sends the user to the landing page instead of the previous entry,
   // so a signed-out user can never step back into the account pages they were on before
   // logging out. The blocker first undoes the back step; once that settles, the login entry
@@ -62,12 +78,21 @@ function LoginPage() {
         className="mt-8 space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
+          if (lockSeconds > 0) return;
           setSubmitting(true);
           setError(null);
           setNotice(null);
           login(email, password)
             .then(() => navigate({ to: "/dashboard", replace: true }))
-            .catch((reason: Error) => setError(reason.message))
+            .catch((reason: Error) => {
+              if (reason instanceof ApiError && reason.status === 429 && reason.retryAfter) {
+                setNow(Date.now());
+                setLockedUntil(Date.now() + reason.retryAfter * 1000);
+                setError("Too many failed login attempts. Sign-in is temporarily locked.");
+                return;
+              }
+              setError(reason.message);
+            })
             .finally(() => setSubmitting(false));
         }}
       >
@@ -91,7 +116,21 @@ function LoginPage() {
         </div>
 
         {notice && !error && <AuthAlert tone="info">{notice}</AuthAlert>}
-        {error && <AuthAlert tone="error">{error}</AuthAlert>}
+        {error && (
+          <AuthAlert tone="error">
+            {error}
+            {lockSeconds > 0 && (
+              <>
+                {" "}
+                Try again in{" "}
+                <strong className="tabular-nums">
+                  {Math.floor(lockSeconds / 60)}:{String(lockSeconds % 60).padStart(2, "0")}
+                </strong>
+                .
+              </>
+            )}
+          </AuthAlert>
+        )}
 
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -128,8 +167,17 @@ function LoginPage() {
           </div>
         </div>
 
-        <button type="submit" disabled={submitting} className={`${authSubmitClass} mt-2`}>
-          {submitting ? (
+        <button
+          type="submit"
+          disabled={submitting || lockSeconds > 0}
+          className={`${authSubmitClass} mt-2`}
+        >
+          {lockSeconds > 0 ? (
+            <>
+              <Lock className="h-4 w-4" />
+              Locked ({Math.floor(lockSeconds / 60)}:{String(lockSeconds % 60).padStart(2, "0")})
+            </>
+          ) : submitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Signing in...

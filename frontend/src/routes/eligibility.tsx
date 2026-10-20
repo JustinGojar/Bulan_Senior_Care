@@ -27,7 +27,13 @@ import {
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
-import { getStoredUser, seniorFileUrl, type SeniorFileKind } from "@/lib/api";
+import {
+  getStoredUser,
+  hasPermission,
+  rejectSeniorRegistration,
+  seniorFileUrl,
+  type SeniorFileKind,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { flagSeniorForReview, useSeniors } from "@/lib/use-seniors";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +43,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -109,6 +116,13 @@ function EligibilityReview() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
+  // The Admin can take approving registrations away from the Head in Settings.
+  const canReview = hasPermission("approve registrations");
+  // Registrations being marked not eligible; a reason is required and is shown to the leader.
+  const [rejecting, setRejecting] = useState<Senior[] | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
+  const [rejectSaving, setRejectSaving] = useState(false);
   // Registrations in review wait for corrected documents, so they cannot be decided in bulk.
   const reviewableSeniors = pendingSeniors.filter(isDecidable);
   const selectedSeniors = reviewableSeniors.filter((senior) => selectedIds.includes(senior.id));
@@ -138,6 +152,47 @@ function EligibilityReview() {
       toast.error(error instanceof Error ? error.message : "Could not update eligibility.");
       return false;
     }
+  }
+
+  function startRejecting(seniors: Senior[]) {
+    if (!seniors.length) return;
+    setRejectReason("");
+    setRejectError(null);
+    setRejecting(seniors);
+  }
+
+  async function confirmReject() {
+    if (!rejecting) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setRejectError("Reason is required.");
+      return;
+    }
+    setRejectSaving(true);
+    const results = await Promise.allSettled(
+      rejecting.map((senior) => rejectSeniorRegistration(senior.id, reason)),
+    );
+    setRejectSaving(false);
+    const failed = rejecting.filter((_, index) => results[index]?.status === "rejected");
+    const firstFailure = results.find((result) => result.status === "rejected");
+    setSelectedIds(failed.map((senior) => senior.id));
+    reload();
+    if (failed.length) {
+      const reasonText =
+        firstFailure?.status === "rejected" && firstFailure.reason instanceof Error
+          ? firstFailure.reason.message
+          : "Please try again.";
+      setRejecting(failed);
+      setRejectError(`${failed.length} could not be marked not eligible. ${reasonText}`);
+      return;
+    }
+    toast.success(
+      rejecting.length === 1
+        ? `${rejecting[0]!.name} marked not eligible.`
+        : `${rejecting.length} registrations marked not eligible.`,
+    );
+    if (viewing && rejecting.some((senior) => senior.id === viewing.id)) setViewing(null);
+    setRejecting(null);
   }
 
   async function reviewViewing(status: "Active" | "Inactive") {
@@ -297,7 +352,7 @@ function EligibilityReview() {
             />
           )}
         </div>
-        {pendingSeniors.length > 0 && (
+        {canReview && pendingSeniors.length > 0 && (
           <div className={`${tileClass} mt-5 flex flex-wrap items-center gap-3 py-3`}>
             <label className="inline-flex items-center gap-2 text-sm font-semibold">
               <input
@@ -314,7 +369,7 @@ function EligibilityReview() {
               <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
                 <button
                   type="button"
-                  onClick={() => reviewSelected("Inactive")}
+                  onClick={() => startRejecting(selectedSeniors)}
                   disabled={bulkReviewing || selectedSeniors.length === 0}
                   className={cn(
                     secondaryButtonClass,
@@ -394,7 +449,7 @@ function EligibilityReview() {
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {senior.status === "Inactive"
-                        ? "This registration was marked not eligible."
+                        ? `This registration was marked not eligible.${senior.inactiveRemarks ? ` Reason: ${senior.inactiveRemarks}` : ""}`
                         : senior.reviewNote
                           ? `Waiting for corrected documents: ${senior.reviewNote}`
                           : "Review this registration before it becomes an active record."}
@@ -410,10 +465,10 @@ function EligibilityReview() {
                   <div className="flex w-full justify-end sm:w-auto">
                     <StatusPill tone="gold">In review</StatusPill>
                   </div>
-                ) : (
+                ) : canReview ? (
                   <div className="flex w-full justify-end gap-2 sm:w-auto">
                     <button
-                      onClick={() => reviewSenior(senior, "Inactive")}
+                      onClick={() => startRejecting([senior])}
                       className={cn(
                         secondaryButtonClass,
                         "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
@@ -430,7 +485,7 @@ function EligibilityReview() {
                       Eligible
                     </button>
                   </div>
-                )}
+                ) : null}
               </article>
             );
           })}
@@ -570,7 +625,7 @@ function EligibilityReview() {
             </div>
           </div>
           {/* Only pending registrations are decided here; not eligible ones are view-only. */}
-          {viewing?.status === "Pending" && (
+          {canReview && viewing?.status === "Pending" && (
             <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-border/60 pt-5">
               <button
                 onClick={() => {
@@ -586,7 +641,7 @@ function EligibilityReview() {
               {!viewing?.reviewNote && (
                 <>
                   <button
-                    onClick={() => reviewViewing("Inactive")}
+                    onClick={() => startRejecting([viewing])}
                     className={cn(
                       secondaryButtonClass,
                       "h-9 px-4 text-sm whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
@@ -659,6 +714,67 @@ function EligibilityReview() {
               </button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!rejecting}
+        onOpenChange={(open) => !open && !rejectSaving && setRejecting(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {rejecting?.length === 1
+                ? `Mark ${rejecting[0]!.name} not eligible?`
+                : `Mark ${rejecting?.length ?? 0} registrations not eligible?`}
+            </DialogTitle>
+            <DialogDescription>
+              The barangay leader will see this reason on the senior's record.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <label htmlFor="reject-reason" className="mb-1.5 block text-sm font-semibold">
+              Reason *
+            </label>
+            <textarea
+              id="reject-reason"
+              rows={3}
+              maxLength={500}
+              autoFocus
+              value={rejectReason}
+              onChange={(event) => {
+                setRejectReason(event.target.value);
+                if (event.target.value.trim()) setRejectError(null);
+              }}
+              placeholder="e.g. Incomplete documents"
+              aria-invalid={!!rejectError}
+              aria-describedby={rejectError ? "reject-reason-error" : undefined}
+              className={cn(fieldClass, "py-2.5", rejectError && "border-destructive")}
+            />
+            {rejectError && (
+              <p id="reject-reason-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                {rejectError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setRejecting(null)}
+              disabled={rejectSaving}
+              className={secondaryButtonClass}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmReject()}
+              disabled={rejectSaving}
+              className={cn(primaryButtonClass, "bg-destructive hover:bg-destructive/90")}
+            >
+              {rejectSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Mark not eligible
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {confirmDialog}

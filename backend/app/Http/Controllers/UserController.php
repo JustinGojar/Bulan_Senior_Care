@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\PhotoBackup;
 use Illuminate\Http\JsonResponse;
@@ -143,6 +144,23 @@ class UserController extends Controller
             // A password set by an admin signs the user out everywhere.
             $user->tokens()->delete();
         }
+
+        return response()->json($user->fresh()->setVisible(self::VISIBLE_FIELDS));
+    }
+
+    /** Deactivates or reactivates an account. A deactivated user is signed out and cannot log in. */
+    public function updateStatus(Request $request, User $user): JsonResponse
+    {
+        abort_unless($request->user()->role === 'admin', 403, 'Only Admin can manage users.');
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'inactive'])]]);
+        abort_if($request->user()->is($user) && $data['status'] !== 'active', 422, 'You cannot deactivate your own account.');
+
+        $before = ['status' => $user->status];
+        $user->forceFill(['status' => $data['status']])->save();
+        if ($data['status'] === 'inactive') {
+            $user->tokens()->delete();
+        }
+        AuditLog::record($request->user(), $data['status'] === 'active' ? 'activated' : 'deactivated', $user, $before, ['status' => $user->status]);
 
         return response()->json($user->fresh()->setVisible(self::VISIBLE_FIELDS));
     }

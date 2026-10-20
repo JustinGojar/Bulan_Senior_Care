@@ -240,7 +240,8 @@ export function SeniorFormDialog({
   leaderBarangay?: string | undefined;
   /** Address on the registering leader/BSCA account; becomes the association address. */
   registrarAddress?: string | undefined;
-  onSubmit: (draft: SeniorDraft) => void;
+  /** Saves the record; a rejection (e.g. a possible duplicate) keeps the form open. */
+  onSubmit: (draft: SeniorDraft) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
   const [validId, setValidId] = useState<File | null>(null);
@@ -251,9 +252,13 @@ export function SeniorFormDialog({
   const [familyRows, setFamilyRows] = useState<FamilyRow[]>(() => parseFamilyRows(""));
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  // Why the server refused to save, e.g. a possible duplicate; shown above the buttons.
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setSubmitError(null);
     setFamilyRows(parseFamilyRows(senior?.familyComposition ?? ""));
     setValidId(null);
     setBirthCertificate(null);
@@ -348,7 +353,9 @@ export function SeniorFormDialog({
   if (associationAddress && !associationAddressOptions.includes(associationAddress))
     associationAddressOptions.push(associationAddress);
 
-  function submit() {
+  async function submit() {
+    if (saving) return;
+    setSubmitError(null);
     const values: Record<string, unknown> = {
       ...draft,
       associationAddress,
@@ -395,22 +402,38 @@ export function SeniorFormDialog({
       );
     if (!PH_MOBILE.test(draft.contact))
       return flagFieldById("senior-contact", "Enter 10 digits after +63, starting with 9.");
-    onSubmit({
-      ...draft,
-      age,
-      benefit: benefitForAge(age),
-      name: [draft.firstName, draft.middleName, draft.lastName].filter(Boolean).join(" ").trim(),
-      firstName: (draft.firstName ?? "").trim(),
-      middleName: draft.middleName?.trim() ?? "",
-      lastName: (draft.lastName ?? "").trim(),
-      contact: `+63${draft.contact}`,
-      address: `${draft.address.trim()}, ${associationAddressFor(draft.barangay)}`,
-      associationAddress,
-      validId,
-      birthCertificate,
-      profilePhoto,
-      privacyConsent: !senior && privacyConsent,
-    });
+    setSaving(true);
+    try {
+      await onSubmit({
+        ...draft,
+        age,
+        benefit: benefitForAge(age),
+        name: [draft.firstName, draft.middleName, draft.lastName].filter(Boolean).join(" ").trim(),
+        firstName: (draft.firstName ?? "").trim(),
+        middleName: draft.middleName?.trim() ?? "",
+        lastName: (draft.lastName ?? "").trim(),
+        contact: `+63${draft.contact}`,
+        address: `${draft.address.trim()}, ${associationAddressFor(draft.barangay)}`,
+        associationAddress,
+        validId,
+        birthCertificate,
+        profilePhoto,
+        privacyConsent: !senior && privacyConsent,
+      });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Unable to save the record.";
+      setSubmitError(message);
+      if (/duplicate/i.test(message)) {
+        flagFieldsById([
+          ["senior-last-name", message],
+          ["senior-first-name", message],
+          ["senior-birthdate", message],
+        ]);
+      }
+      return;
+    } finally {
+      setSaving(false);
+    }
     onOpenChange(false);
   }
 
@@ -1089,12 +1112,20 @@ export function SeniorFormDialog({
           }}
         />
 
+        {submitError && (
+          <p
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive"
+          >
+            {submitError}
+          </p>
+        )}
         <DialogFooter>
           <button onClick={() => onOpenChange(false)} className={secondaryButtonClass}>
             Cancel
           </button>
-          <button onClick={submit} className={primaryButtonClass}>
-            {senior ? "Save changes" : "Register senior"}
+          <button onClick={() => void submit()} disabled={saving} className={primaryButtonClass}>
+            {saving ? "Saving..." : senior ? "Save changes" : "Register senior"}
           </button>
         </DialogFooter>
       </DialogContent>

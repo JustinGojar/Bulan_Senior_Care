@@ -6,6 +6,7 @@ use App\Models\Announcement;
 use App\Models\AnnouncementComment;
 use App\Models\Notification;
 use App\Models\User;
+use App\Support\RolePermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -21,6 +22,7 @@ class AnnouncementController extends Controller
     public function store(Request $request): JsonResponse
     {
         abort_unless($request->user()->role === 'head', 403, 'Only Head can create announcements.');
+        RolePermissions::authorize($request->user(), 'manage announcements');
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:180'],
@@ -54,6 +56,40 @@ class AnnouncementController extends Controller
         });
 
         return response()->json($announcement->load('creator'), 201);
+    }
+
+    public function update(Request $request, Announcement $announcement): JsonResponse
+    {
+        abort_unless($request->user()->role === 'head', 403, 'Only Head can edit announcements.');
+        RolePermissions::authorize($request->user(), 'manage announcements');
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:180'],
+            'message' => ['required', 'string', 'max:5000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_image' => ['sometimes', 'boolean'],
+        ]);
+
+        $replacedImage = null;
+        if ($request->hasFile('image')) {
+            $replacedImage = $announcement->image_path;
+            $data['image_path'] = $request->file('image')->store('announcement-posters', 'public');
+        } elseif ($request->boolean('remove_image')) {
+            $replacedImage = $announcement->image_path;
+            $data['image_path'] = null;
+        }
+        unset($data['image'], $data['remove_image']);
+
+        $announcement->update($data);
+        if ($replacedImage) {
+            Storage::disk('public')->delete($replacedImage);
+        }
+        Cache::forget('announcements:dashboard');
+
+        return response()->json($announcement->fresh()->load([
+            'creator',
+            'comments' => fn ($query) => $query->whereNull('parent_comment_id')->with(['user:id,name,role', 'replies']),
+        ]));
     }
 
     public function comment(Request $request, Announcement $announcement): JsonResponse
@@ -105,6 +141,7 @@ class AnnouncementController extends Controller
     public function destroy(Request $request, Announcement $announcement): JsonResponse
     {
         abort_unless($request->user()->role === 'head', 403, 'Only Head can delete announcements.');
+        RolePermissions::authorize($request->user(), 'manage announcements');
 
         Storage::disk('public')->delete(array_filter([
             $announcement->image_path,
