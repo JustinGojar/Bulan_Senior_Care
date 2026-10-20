@@ -67,6 +67,7 @@ function Notifications() {
     if (notification.source_type === "announcement") return "Announcement update";
     if (notification.source_type === "age_threshold") return "Age threshold alert";
     if (notification.source_type === "document_review") return "Document review";
+    if (notification.source_type === "registration_review") return "Registration reviewed";
     if (notification.message.toLowerCase().includes("comment")) return "Announcement comment";
     return "System notification";
   }
@@ -194,6 +195,12 @@ function Notifications() {
       return navigate({
         to: "/seniors",
         search: { q: notification.senior_osca_id ?? undefined, status: "pending" },
+      });
+    }
+    if (notification.source_type === "registration_review") {
+      return navigate({
+        to: "/seniors",
+        search: { q: notification.senior_osca_id ?? undefined, status: undefined },
       });
     }
     if (notification.source_type === "age_threshold" && notification.senior_osca_id) {

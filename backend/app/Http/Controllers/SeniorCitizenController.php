@@ -234,12 +234,34 @@ class SeniorCitizenController extends Controller
         AuditLog::record($request->user(), 'updated', $senior, afterValue: ['review_note' => $data['note']]);
 
         $name = "{$senior->first_name} {$senior->last_name}";
-        $message = "The documents for {$name} ({$senior->osca_id_number}) need to be fixed: {$data['note']}";
+        $this->notifyLeaders(
+            $request,
+            $senior,
+            "Documents for {$name} need to be fixed",
+            "The documents for {$name} ({$senior->osca_id_number}) need to be fixed: {$data['note']}",
+        );
+
+        return response()->json($senior->fresh()->load(['barangay', 'benefit']));
+    }
+
+    /** Tells the barangay leader a pending registration was approved or marked not eligible. */
+    private function notifyLeadersOfDecision(Request $request, SeniorCitizen $senior): void
+    {
+        $name = "{$senior->first_name} {$senior->last_name}";
+        [$subject, $message] = $senior->status === 'active'
+            ? ["{$name} is eligible", "The registration of {$name} ({$senior->osca_id_number}) was approved as eligible. The record is now active."]
+            : ["{$name} is not eligible", "The registration of {$name} ({$senior->osca_id_number}) was marked not eligible."];
+        $this->notifyLeaders($request, $senior, $subject, $message, 'registration_review');
+    }
+
+    /** An in-app notification and an email advisory to the senior's barangay leader. */
+    private function notifyLeaders(Request $request, SeniorCitizen $senior, string $subject, string $message, string $sourceType = 'document_review'): void
+    {
         User::query()
             ->where('role', 'leader')
             ->where('status', 'active')
             ->where('barangay_id', $senior->barangay_id)
-            ->each(function (User $leader) use ($request, $senior, $name, $message): void {
+            ->each(function (User $leader) use ($request, $senior, $subject, $message, $sourceType): void {
                 Notification::create([
                     'recipient_account_id' => $leader->id,
                     'sender_account_id' => $request->user()->id,
@@ -247,13 +269,11 @@ class SeniorCitizenController extends Controller
                     'channel' => 'in_app',
                     'date_sent' => now(),
                     'status' => 'unread',
-                    'source_type' => 'document_review',
+                    'source_type' => $sourceType,
                     'source_id' => $senior->id,
                 ]);
-                AdvisoryDispatcher::emailLeader($leader, "Documents for {$name} need to be fixed", $message);
+                AdvisoryDispatcher::emailLeader($leader, $subject, $message);
             });
-
-        return response()->json($senior->fresh()->load(['barangay', 'benefit']));
     }
 
     /**
@@ -585,7 +605,11 @@ class SeniorCitizenController extends Controller
             $data = [...$data, ...array_fill_keys(['inactive_reason', 'date_of_death', 'death_certificate_path', 'inactive_remarks', 'inactivated_by', 'inactivated_at'], null)];
         }
         unset($data['death_certificate']);
+        $wasPending = $senior->status === 'pending';
         $senior->update($data);
+        if ($wasPending && $senior->status !== 'pending') {
+            $this->notifyLeadersOfDecision($request, $senior);
+        }
         if ($newlyDeceased) {
             $this->closePendingBenefits($request, $senior);
         }

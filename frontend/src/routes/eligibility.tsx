@@ -391,11 +391,6 @@ function EligibilityReview() {
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5" /> {senior.barangay}
                       </span>
-                      {senior.status === "Inactive" ? (
-                        <StatusPill tone="danger">Not eligible</StatusPill>
-                      ) : (
-                        senior.reviewNote && <StatusPill tone="gold">In review</StatusPill>
-                      )}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {senior.status === "Inactive"
@@ -406,7 +401,16 @@ function EligibilityReview() {
                     </p>
                   </div>
                 </div>
-                {isDecidable(senior) && (
+                {/* Where the review buttons go, a record already decided or in review shows its state. */}
+                {senior.status === "Inactive" ? (
+                  <div className="flex w-full justify-end sm:w-auto">
+                    <StatusPill tone="danger">Not eligible</StatusPill>
+                  </div>
+                ) : senior.reviewNote ? (
+                  <div className="flex w-full justify-end sm:w-auto">
+                    <StatusPill tone="gold">In review</StatusPill>
+                  </div>
+                ) : (
                   <div className="flex w-full justify-end gap-2 sm:w-auto">
                     <button
                       onClick={() => reviewSenior(senior, "Inactive")}

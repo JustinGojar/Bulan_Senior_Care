@@ -115,6 +115,37 @@ class DocumentReviewTest extends TestCase
         ], ['Accept' => 'application/json'])->assertForbidden();
     }
 
+    public function test_leader_is_notified_and_emailed_when_a_registration_is_decided(): void
+    {
+        Queue::fake();
+        DB::table('app_settings')->insert([
+            'key' => 'notification_channels',
+            'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        [$senior, $leader] = $this->pendingRegistration();
+        $leader->update(['email' => 'leader@example.test']);
+        Sanctum::actingAs(User::factory()->create(['role' => 'admin', 'status' => 'active']));
+
+        $this->putJson("/api/seniors/{$senior->osca_id_number}", [
+            'status' => 'inactive',
+            'inactive_reason' => 'not_eligible',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('notifications', [
+            'recipient_account_id' => $leader->id,
+            'message' => 'The registration of Lola Reyes (OSCA-REV-001) was marked not eligible.',
+            'source_type' => 'registration_review',
+        ]);
+        Queue::assertPushed(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->recipient === 'leader@example.test'
+            && $job->subject === 'Lola Reyes is not eligible');
+
+        // Later edits to a decided record do not notify again.
+        $this->putJson("/api/seniors/{$senior->osca_id_number}", ['address' => 'Purok 2'])->assertOk();
+        Queue::assertPushed(DeliverAdvisory::class, 1);
+    }
+
     public function test_approving_a_registration_ends_its_review(): void
     {
         [$senior] = $this->pendingRegistration();

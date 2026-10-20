@@ -41,7 +41,7 @@ class NotificationController extends Controller
                 ->get();
         // Age threshold and document review alerts point at a senior's row id; the senior pages
         // look seniors up by OSCA ID.
-        $seniorSources = ['age_threshold', 'document_review'];
+        $seniorSources = ['age_threshold', 'document_review', 'registration_review'];
         $seniorOscaIds = SeniorCitizen::query()
             ->whereIn('id', $notifications->whereIn('source_type', $seniorSources)->pluck('source_id')->filter())
             ->pluck('osca_id_number', 'id');
