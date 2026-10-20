@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 class AgeThresholdNotificationTest extends TestCase
@@ -110,7 +110,7 @@ class AgeThresholdNotificationTest extends TestCase
     /** @return array{0: Barangay, 1: User} */
     public function test_leader_is_emailed_once_when_a_senior_reaches_a_milestone_age(): void
     {
-        Queue::fake();
+        Bus::fake();
         DB::table('app_settings')->insert([
             'key' => 'notification_channels',
             'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
@@ -125,8 +125,8 @@ class AgeThresholdNotificationTest extends TestCase
         Artisan::call('osca:detect-age-thresholds');
         Artisan::call('osca:detect-age-thresholds');
 
-        Queue::assertPushed(DeliverAdvisory::class, 1);
-        Queue::assertPushed(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->channel === 'email'
+        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, 1);
+        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->channel === 'email'
             && $job->recipient === 'leader@example.test'
             && $job->subject === 'Lola Reyes can now claim the Centenarian Award'
             && $job->message === 'Lola Reyes has turned 100. You can now claim these benefits: Social Pension and Centenarian Award.');
@@ -134,11 +134,11 @@ class AgeThresholdNotificationTest extends TestCase
 
     public function test_milestone_email_is_skipped_when_email_advisories_are_off(): void
     {
-        Queue::fake();
+        Bus::fake();
         [$barangay, $leader] = $this->leaderWithCentenarianProgram();
         $this->pendingSenior($barangay, $leader, 100)->update(['status' => 'active']);
 
-        Queue::assertNotPushed(DeliverAdvisory::class);
+        Bus::assertNotDispatchedAfterResponse(DeliverAdvisory::class);
         $this->assertDatabaseHas('notifications', ['recipient_account_id' => $leader->id]);
     }
 

@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -20,7 +20,7 @@ class DocumentReviewTest extends TestCase
 
     public function test_admin_puts_a_registration_in_review_and_the_leader_is_told_what_to_fix(): void
     {
-        Queue::fake();
+        Bus::fake();
         DB::table('app_settings')->insert([
             'key' => 'notification_channels',
             'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
@@ -44,7 +44,7 @@ class DocumentReviewTest extends TestCase
             'source_type' => 'document_review',
             'source_id' => $senior->id,
         ]);
-        Queue::assertPushed(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->channel === 'email'
+        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->channel === 'email'
             && $job->recipient === 'leader@example.test'
             && $job->message === $message);
     }
@@ -117,7 +117,7 @@ class DocumentReviewTest extends TestCase
 
     public function test_leader_is_notified_and_emailed_when_a_registration_is_decided(): void
     {
-        Queue::fake();
+        Bus::fake();
         DB::table('app_settings')->insert([
             'key' => 'notification_channels',
             'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
@@ -138,12 +138,12 @@ class DocumentReviewTest extends TestCase
             'message' => 'The registration of Lola Reyes (OSCA-REV-001) was marked not eligible.',
             'source_type' => 'registration_review',
         ]);
-        Queue::assertPushed(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->recipient === 'leader@example.test'
+        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->recipient === 'leader@example.test'
             && $job->subject === 'Lola Reyes is not eligible');
 
         // Later edits to a decided record do not notify again.
         $this->putJson("/api/seniors/{$senior->osca_id_number}", ['address' => 'Purok 2'])->assertOk();
-        Queue::assertPushed(DeliverAdvisory::class, 1);
+        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, 1);
     }
 
     public function test_approving_a_registration_ends_its_review(): void

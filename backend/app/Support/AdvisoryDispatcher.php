@@ -62,11 +62,15 @@ class AdvisoryDispatcher
             });
     }
 
-    /** Emails one barangay leader (e.g. a milestone grant to claim, or documents to fix). */
+    /**
+     * Emails one barangay leader (e.g. a milestone grant to claim, documents to fix, or a
+     * registration decision). Sent right after the response instead of through the queue, so
+     * it goes out even when no queue worker is running.
+     */
     public static function emailLeader(User $leader, string $subject, string $message): void
     {
         if (AdvisorySettings::enabled('email_advisories') && filled($leader->email)) {
-            DeliverAdvisory::dispatch('email', $leader->email, $subject, $message);
+            DeliverAdvisory::dispatchAfterResponse('email', $leader->email, $subject, $message);
         }
     }
 
