@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  Archive,
   ArrowRight,
   BadgeCheck,
   BarChart3,
@@ -13,8 +12,8 @@ import {
   HandCoins,
   HelpCircle,
   History,
+  Lock,
   Landmark,
-  Megaphone,
   Menu,
   MessagesSquare,
   PieChart,
@@ -40,7 +39,7 @@ const NAV = ["About", "Features", "Workflow", "Benefits", "Analytics", "FAQ"];
 
 const HIGHLIGHTS = [
   "Barangay to municipal records",
-  "Admin-reviewed eligibility",
+  "Verified registrations",
   "Approved, published reports",
   "Installable on Android",
 ];
@@ -53,13 +52,18 @@ const FEATURES = [
   },
   {
     icon: BadgeCheck,
-    title: "Eligibility Review",
-    body: "New registrations and record edits wait for admin review, so no senior is enrolled in a program before their details are verified.",
+    title: "Eligibility and Document Review",
+    body: "The OSCA Head approves or rejects each registration with a reason. Flagged documents go back to the barangay leader to correct and resubmit.",
   },
   {
     icon: Cake,
     title: "Age Threshold Milestones",
     body: "Seniors who reach an octogenarian, nonagenarian, or centenarian age bracket are flagged automatically, together with the grant they can claim.",
+  },
+  {
+    icon: ClipboardList,
+    title: "Benefit Requests",
+    body: "Barangay leaders request benefits for approved seniors. Each request moves from For Verification to Approved for Release to Released, with the date recorded.",
   },
   {
     icon: HandCoins,
@@ -78,13 +82,8 @@ const FEATURES = [
   },
   {
     icon: MessagesSquare,
-    title: "Messaging",
-    body: "Barangay leaders and the OSCA Head chat inside the portal and share photos and files privately, with live unread counts.",
-  },
-  {
-    icon: Megaphone,
-    title: "Announcements",
-    body: "Post OSCA news with images and comments, or bring in posts from the official Facebook Page, so every barangay reads the same update.",
+    title: "Messaging and Announcements",
+    body: "Barangay leaders and the OSCA Head chat and share files privately, while OSCA news, images, and Facebook Page posts reach every barangay.",
   },
   {
     icon: Bell,
@@ -102,12 +101,12 @@ const WORKFLOW = [
   {
     icon: BadgeCheck,
     title: "Review",
-    body: "The admin verifies each registration and edit request before it counts toward a program.",
+    body: "The OSCA Head checks the documents, then approves, rejects with a reason, or flags them for correction.",
   },
   {
     icon: HandCoins,
-    title: "Release",
-    body: "Benefits are released in dated batches, with claim forms, rosters, and documents kept together.",
+    title: "Request and release",
+    body: "Leaders request benefits for approved seniors; the Head verifies them and records each release in dated batches.",
   },
   {
     icon: FileCheck2,
@@ -119,23 +118,23 @@ const WORKFLOW = [
 const SAFEGUARDS = [
   {
     icon: ShieldCheck,
-    title: "Role-based access",
-    body: "Admin, OSCA Head, and barangay leader accounts, with email verification for every new user.",
+    title: "Adjustable permissions",
+    body: "The admin turns permissions such as exporting reports or posting announcements on or off for each role.",
+  },
+  {
+    icon: Lock,
+    title: "Sign-in protection",
+    body: "Email verification for new users, a 5-minute lock after 5 failed sign-ins, and deactivated accounts are signed out.",
   },
   {
     icon: History,
     title: "Audit logs",
-    body: "Every change to accounts, senior records, and benefits is recorded with who made it and when.",
+    body: "Every change to accounts, senior records, and benefits is recorded, and can be filtered by user and date.",
   },
   {
     icon: DatabaseBackup,
     title: "Backup and restore",
     body: "The admin can download a full database backup and restore it from file when needed.",
-  },
-  {
-    icon: Archive,
-    title: "Archived records",
-    body: "Inactive or deceased seniors are archived, not deleted, and their records can still be printed.",
   },
 ];
 
@@ -157,11 +156,11 @@ const OBJECTIVES = [
 const BENEFICIARIES = [
   [
     "OSCA Staff",
-    "Review registrations, release benefits in batches, and publish accurate, approved reports.",
+    "Verify registrations and benefit requests, release benefits, and publish approved reports.",
   ],
   [
     "Barangay Leaders",
-    "Keep their own barangay's list up to date and message the OSCA Head directly.",
+    "Register seniors in their barangay, fix flagged documents, and request benefits.",
   ],
   ["Senior Citizens", "Receive the right benefits on time, including age milestone grants."],
   ["LGU-Bulan", "Better data for planning and decision-making on senior welfare programs."],
@@ -174,11 +173,11 @@ const FAQ = [
   ],
   [
     "How is access controlled?",
-    "Three role levels — Admins manage accounts and review records, the OSCA Head approves releases and reports, and Barangay Leaders work only with seniors in their own barangay.",
+    "Three role levels — Admins manage accounts and set what each role may do, the OSCA Head verifies registrations, benefit requests, and reports, and Barangay Leaders work only with seniors in their own barangay.",
   ],
   [
     "Can reports be printed or downloaded?",
-    "Yes. Masterlists, claim forms, and approved reports download as PDF, and release rosters as Excel files.",
+    "Yes. Reports export as PDF or Excel, masterlists and claim forms as PDF, and release rosters as Excel, for any role the admin allows to export.",
   ],
   [
     "Can I install it on my phone?",
@@ -186,7 +185,7 @@ const FAQ = [
   ],
   [
     "Is senior data kept safe?",
-    "Sessions sign out after 30 minutes of inactivity, documents and attachments are private, and every change is written to the audit log.",
+    "Sign-in locks after repeated failed attempts, sessions end after 30 minutes of inactivity, documents and attachments are private, and every change is written to the audit log.",
   ],
   [
     "Does it work offline?",
