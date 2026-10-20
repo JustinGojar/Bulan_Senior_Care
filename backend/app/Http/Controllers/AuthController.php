@@ -109,7 +109,7 @@ class AuthController extends Controller
             return self::loginLockedResponse($throttleKey);
         }
 
-        $user = User::where('email', $credentials['email'])->where('status', 'active')->first();
+        $user = User::where('email', $credentials['email'])->first();
 
         // Hash even for unknown emails so response time does not reveal which accounts exist.
         $passwordMatches = Hash::check($credentials['password'], $user?->password ?? self::dummyPasswordHash());
@@ -126,6 +126,11 @@ class AuthController extends Controller
                     .($remaining <= 2 ? " {$remaining} ".($remaining === 1 ? 'attempt' : 'attempts').' left before sign-in is locked for '.(self::LOGIN_LOCKOUT_SECONDS / 60).' minutes.' : ''),
                 'attempts_remaining' => $remaining,
             ], 422);
+        }
+
+        // Said only after the right password, so it never reveals which accounts exist.
+        if ($user->status !== 'active') {
+            return response()->json(['message' => 'Account is inactive. Please contact the OSCA administrator.'], 403);
         }
 
         RateLimiter::clear($throttleKey);

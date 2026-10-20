@@ -32,7 +32,11 @@ class AdminTestCaseFixesTest extends TestCase
         $this->actingAs($this->admin, 'sanctum')->postJson("/api/admin/users/{$this->head->id}/status", ['status' => 'inactive'])
             ->assertOk()->assertJsonPath('status', 'inactive');
         $this->app['auth']->forgetGuards();
-        $this->postJson('/api/login', ['email' => 'head@example.com', 'password' => 'StrongPassword123!'])->assertStatus(422);
+        $this->postJson('/api/login', ['email' => 'head@example.com', 'password' => 'StrongPassword123!'])
+            ->assertStatus(403)->assertJsonPath('message', 'Account is inactive. Please contact the OSCA administrator.');
+        // A wrong password gets the usual message, so the account's status is not revealed.
+        $this->postJson('/api/login', ['email' => 'head@example.com', 'password' => 'wrong-password'])
+            ->assertStatus(422)->assertJsonPath('message', 'The provided credentials are incorrect.');
 
         $this->actingAs($this->admin, 'sanctum')->postJson("/api/admin/users/{$this->head->id}/status", ['status' => 'active'])
             ->assertOk()->assertJsonPath('status', 'active');
