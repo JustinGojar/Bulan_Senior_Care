@@ -159,6 +159,9 @@ export type ApiSenior = {
   birth_certificate_path?: string | null;
   privacy_consent_at?: string | null;
   status: "active" | "pending" | "inactive";
+  /** Set while a pending registration is "In review": what is wrong with its documents. */
+  review_note?: string | null;
+  review_flagged_at?: string | null;
   /** Why the record is inactive; "deceased" comes with the documentation below. */
   inactive_reason?: string | null;
   date_of_death?: string | null;

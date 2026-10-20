@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  * Notifies the senior's barangay leader (plus Admin and Head) when an active
  * senior is at an Expanded Centenarians Act milestone age (octogenarian,
  * nonagenarian, centenarian) and has not received that grant since turning it.
- * Notifications are de-duplicated, so running this repeatedly is safe.
+ * The leader is also emailed when email advisories are on. Notifications (and their
+ * emails) are de-duplicated, so running this repeatedly is safe.
  */
 class AgeThresholdNotifier
 {
@@ -80,8 +81,9 @@ class AgeThresholdNotifier
             // in the frontend.
             $message = "{$senior->first_name} {$senior->last_name} has turned {$age}. "
                 ."You can now claim these benefits: Social Pension and {$program->benefit_name}.";
+            $subject = "{$senior->first_name} {$senior->last_name} can now claim the {$program->benefit_name}";
             foreach (self::recipients($senior) as $recipient) {
-                Notification::firstOrCreate([
+                $notification = Notification::firstOrCreate([
                     'recipient_account_id' => $recipient->id,
                     'message' => $message,
                     'source_type' => 'age_threshold',
@@ -91,6 +93,10 @@ class AgeThresholdNotifier
                     'date_sent' => now(),
                     'status' => 'unread',
                 ]);
+                // Email the leader once, alongside the first in-app notice for this milestone.
+                if ($notification->wasRecentlyCreated && $recipient->role === 'leader') {
+                    AdvisoryDispatcher::emailLeader($recipient, $subject, $message);
+                }
             }
             $flags++;
         }

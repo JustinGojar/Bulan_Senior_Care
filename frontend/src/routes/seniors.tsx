@@ -49,6 +49,7 @@ import {
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage, PrivatePdfPreview } from "@/components/PrivateFile";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
+import { DocumentReviewNotice } from "@/components/DocumentReviewNotice";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1118,6 +1119,8 @@ function SeniorRecords() {
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     {s.deceased ? (
                       <StatusPill tone="neutral">Deceased</StatusPill>
+                    ) : s.reviewNote ? (
+                      <StatusPill tone="gold">In review</StatusPill>
                     ) : (
                       <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
                     )}
@@ -1434,6 +1437,7 @@ function SeniorRecords() {
                       {viewing.status}
                     </StatusPill>
                   )}
+                  {viewing?.reviewNote && <StatusPill tone="gold">In review</StatusPill>}
                   {viewingArchive && (
                     <StatusPill tone="gold">
                       Archived {new Date(viewingArchive.at).toLocaleDateString()}
@@ -1443,6 +1447,17 @@ function SeniorRecords() {
               </div>
             </div>
           </DialogHeader>
+          {viewing?.reviewNote && !viewingArchive && (
+            <DocumentReviewNotice
+              key={viewing.id}
+              senior={viewing}
+              canResubmit={isLeader}
+              onResubmitted={(updated) => {
+                setViewing(updated);
+                reload();
+              }}
+            />
+          )}
           <dl className="grid grid-cols-2 gap-3 text-sm">
             {[
               ["Age", viewing?.age],

@@ -4,6 +4,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  FileWarning,
+  ListFilter,
   Loader2,
   MapPin,
   Search,
@@ -27,7 +29,9 @@ import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
 import { getStoredUser, seniorFileUrl, type SeniorFileKind } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useSeniors } from "@/lib/use-seniors";
+import { flagSeniorForReview, useSeniors } from "@/lib/use-seniors";
+import { Textarea } from "@/components/ui/textarea";
+import { DocumentReviewNotice } from "@/components/DocumentReviewNotice";
 import { BARANGAYS, benefitLabel, type Senior } from "@/lib/osca-data";
 import {
   Dialog,
@@ -42,6 +46,33 @@ export const Route = createFileRoute("/eligibility")({
   component: EligibilityReview,
 });
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/** An inactive record needs a reason, so a rejection is saved as "not_eligible". */
+function reviewedDraft(senior: Senior, status: "Active" | "Inactive"): Senior {
+  if (status === "Active") return { ...senior, status };
+  return { ...senior, status, inactiveReason: "not_eligible", inactiveRemarks: "" };
+}
+
+/** A pending registration not waiting for corrected documents, so it can be decided now. */
+function isDecidable(senior: Senior) {
+  return senior.status === "Pending" && !senior.reviewNote;
+}
+
+const REVIEW_FILTERS = [
+  { value: "", label: "All pending" },
+  { value: "awaiting", label: "Awaiting review" },
+  { value: "in_review", label: "In review" },
+  { value: "not_eligible", label: "Not eligible" },
+];
+
 function isImageDocument(path: string) {
   return /\.(jpe?g|png|webp)$/i.test(path);
 }
@@ -52,6 +83,7 @@ function EligibilityReview() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [barangay, setBarangay] = useState("");
+  const [reviewFilter, setReviewFilter] = useState("");
   const {
     seniors: pendingSeniors,
     matchingCount,
@@ -61,18 +93,27 @@ function EligibilityReview() {
     reload,
     updateSenior,
   } = useSeniors({
-    pendingOnly: true,
+    // Not eligible registrations are inactive; every other filter shows pending ones.
+    pendingOnly: reviewFilter !== "not_eligible",
+    review: reviewFilter,
+    sort: "latest",
     page,
     perPage: 10,
     search,
     barangay,
   });
   const [viewing, setViewing] = useState<Senior | null>(null);
+  const [reviewNoteOpen, setReviewNoteOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState("");
+  const [savingReview, setSavingReview] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
-  const selectedSeniors = pendingSeniors.filter((senior) => selectedIds.includes(senior.id));
-  const allSelected = pendingSeniors.length > 0 && selectedSeniors.length === pendingSeniors.length;
+  // Registrations in review wait for corrected documents, so they cannot be decided in bulk.
+  const reviewableSeniors = pendingSeniors.filter(isDecidable);
+  const selectedSeniors = reviewableSeniors.filter((senior) => selectedIds.includes(senior.id));
+  const allSelected =
+    reviewableSeniors.length > 0 && selectedSeniors.length === reviewableSeniors.length;
 
   useEffect(() => {
     if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) {
@@ -90,10 +131,35 @@ function EligibilityReview() {
 
   async function reviewSenior(senior: Senior, status: "Active" | "Inactive") {
     try {
-      await updateSenior(senior.id, { ...senior, status });
+      await updateSenior(senior.id, reviewedDraft(senior, status));
       toast.success(`${senior.name} marked ${status === "Active" ? "eligible" : "not eligible"}.`);
+      return true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update eligibility.");
+      return false;
+    }
+  }
+
+  async function reviewViewing(status: "Active" | "Inactive") {
+    if (!viewing) return;
+    if (await reviewSenior(viewing, status)) setViewing(null);
+  }
+
+  async function submitReviewNote() {
+    if (!viewing || !reviewNote.trim()) return;
+    setSavingReview(true);
+    try {
+      const updated = await flagSeniorForReview(viewing.id, reviewNote.trim());
+      toast.success(`${viewing.name} is in review. The barangay leader was notified.`);
+      setViewing(updated);
+      setReviewNoteOpen(false);
+      reload();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not put this registration in review.",
+      );
+    } finally {
+      setSavingReview(false);
     }
   }
 
@@ -104,7 +170,7 @@ function EligibilityReview() {
   }
 
   function toggleAllSelected() {
-    setSelectedIds(allSelected ? [] : pendingSeniors.map((senior) => senior.id));
+    setSelectedIds(allSelected ? [] : reviewableSeniors.map((senior) => senior.id));
   }
 
   async function reviewSelected(status: "Active" | "Inactive") {
@@ -121,7 +187,7 @@ function EligibilityReview() {
 
     setBulkReviewing(true);
     const results = await Promise.allSettled(
-      selected.map((senior) => updateSenior(senior.id, { ...senior, status })),
+      selected.map((senior) => updateSenior(senior.id, reviewedDraft(senior, status))),
     );
     setBulkReviewing(false);
     const failedIds = selected
@@ -154,7 +220,14 @@ function EligibilityReview() {
           subtitle="Admin review is required before a one-time grant is recorded."
           badge={
             matchingCount > 0 ? (
-              <StatusPill tone="gold">{matchingCount} waiting</StatusPill>
+              <StatusPill tone={reviewFilter === "not_eligible" ? "danger" : "gold"}>
+                {matchingCount}{" "}
+                {reviewFilter === "not_eligible"
+                  ? "not eligible"
+                  : reviewFilter === "in_review"
+                    ? "in review"
+                    : "waiting"}
+              </StatusPill>
             ) : undefined
           }
         />
@@ -194,7 +267,21 @@ function EligibilityReview() {
               setSelectedIds([]);
             }}
           />
-          {(search || barangay) && (
+          <IconSelect
+            label="Review status"
+            icon={<ListFilter className="h-4 w-4" />}
+            value={reviewFilter}
+            defaultValue=""
+            className="sm:w-52"
+            dotClassName={reviewFilter === "not_eligible" ? "bg-destructive" : "bg-gold"}
+            options={REVIEW_FILTERS}
+            onChange={(value) => {
+              setReviewFilter(value);
+              setPage(1);
+              setSelectedIds([]);
+            }}
+          />
+          {(search || barangay || reviewFilter) && (
             <IconActionButton
               label="Clear filters"
               variant="outline"
@@ -203,6 +290,7 @@ function EligibilityReview() {
               onClick={() => {
                 setSearch("");
                 setBarangay("");
+                setReviewFilter("");
                 setPage(1);
                 setSelectedIds([]);
               }}
@@ -222,35 +310,37 @@ function EligibilityReview() {
               Select all on this page
             </label>
             <span className="text-xs text-muted-foreground">{selectedSeniors.length} selected</span>
-            <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
-              <button
-                type="button"
-                onClick={() => reviewSelected("Inactive")}
-                disabled={bulkReviewing || selectedSeniors.length === 0}
-                className={cn(
-                  secondaryButtonClass,
-                  "h-10 justify-center px-3 text-xs text-destructive sm:h-9 hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40",
-                )}
-              >
-                <X className="h-3.5 w-3.5" /> Not eligible
-              </button>
-              <button
-                type="button"
-                onClick={() => reviewSelected("Active")}
-                disabled={bulkReviewing || selectedSeniors.length === 0}
-                className={cn(
-                  primaryButtonClass,
-                  "h-10 justify-center px-3 text-xs disabled:opacity-40 sm:h-9",
-                )}
-              >
-                {bulkReviewing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Check className="h-3.5 w-3.5" />
-                )}
-                Eligible
-              </button>
-            </div>
+            {(selectedSeniors.length > 0 || bulkReviewing) && (
+              <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => reviewSelected("Inactive")}
+                  disabled={bulkReviewing || selectedSeniors.length === 0}
+                  className={cn(
+                    secondaryButtonClass,
+                    "h-10 justify-center px-3 text-xs text-destructive sm:h-9 hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40",
+                  )}
+                >
+                  <X className="h-3.5 w-3.5" /> Not eligible
+                </button>
+                <button
+                  type="button"
+                  onClick={() => reviewSelected("Active")}
+                  disabled={bulkReviewing || selectedSeniors.length === 0}
+                  className={cn(
+                    primaryButtonClass,
+                    "h-10 justify-center px-3 text-xs disabled:opacity-40 sm:h-9",
+                  )}
+                >
+                  {bulkReviewing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )}
+                  Eligible
+                </button>
+              </div>
+            )}
           </div>
         )}
         <div className="mt-6 space-y-3">
@@ -276,7 +366,7 @@ function EligibilityReview() {
                     type="checkbox"
                     checked={selectedIds.includes(senior.id)}
                     onChange={() => toggleSelected(senior.id)}
-                    disabled={bulkReviewing}
+                    disabled={bulkReviewing || !isDecidable(senior)}
                     aria-label={`Select ${senior.name}`}
                     className="mt-1 h-4 w-4 shrink-0 accent-[var(--navy)]"
                   />
@@ -301,41 +391,52 @@ function EligibilityReview() {
                       <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5" /> {senior.barangay}
                       </span>
+                      {senior.status === "Inactive" ? (
+                        <StatusPill tone="danger">Not eligible</StatusPill>
+                      ) : (
+                        senior.reviewNote && <StatusPill tone="gold">In review</StatusPill>
+                      )}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Review this registration before it becomes an active record.
+                      {senior.status === "Inactive"
+                        ? "This registration was marked not eligible."
+                        : senior.reviewNote
+                          ? `Waiting for corrected documents: ${senior.reviewNote}`
+                          : "Review this registration before it becomes an active record."}
                     </p>
                   </div>
                 </div>
-                <div className="flex w-full justify-end gap-2 sm:w-auto">
-                  <button
-                    onClick={() => reviewSenior(senior, "Inactive")}
-                    className={cn(
-                      secondaryButtonClass,
-                      "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
-                    )}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Not eligible
-                  </button>
-                  <button
-                    onClick={() => reviewSenior(senior, "Active")}
-                    className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    Eligible
-                  </button>
-                </div>
+                {isDecidable(senior) && (
+                  <div className="flex w-full justify-end gap-2 sm:w-auto">
+                    <button
+                      onClick={() => reviewSenior(senior, "Inactive")}
+                      className={cn(
+                        secondaryButtonClass,
+                        "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
+                      )}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Not eligible
+                    </button>
+                    <button
+                      onClick={() => reviewSenior(senior, "Active")}
+                      className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Eligible
+                    </button>
+                  </div>
+                )}
               </article>
             );
           })}
           {!loading && !error && pendingSeniors.length === 0 && (
             <EmptyState
-              icon={search || barangay ? Search : CheckCircle2}
-              title={search || barangay ? "No matches" : "All caught up"}
+              icon={search || barangay || reviewFilter ? Search : CheckCircle2}
+              title={search || barangay || reviewFilter ? "No matches" : "All caught up"}
               description={
-                search || barangay
-                  ? "No pending registrations match these filters."
+                search || barangay || reviewFilter
+                  ? "No registrations match these filters."
                   : "There are no pending registrations to review."
               }
             />
@@ -345,7 +446,7 @@ function EligibilityReview() {
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
             <span className="text-xs text-muted-foreground">
               Showing {(page - 1) * 10 + 1}-{Math.min(page * 10, matchingCount)} of {matchingCount}{" "}
-              pending registrations
+              {reviewFilter === "not_eligible" ? "registrations" : "pending registrations"}
             </span>
             <div className="flex items-center gap-3">
               <button
@@ -383,9 +484,30 @@ function EligibilityReview() {
       <Dialog open={!!viewing} onOpenChange={(open) => !open && setViewing(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display">{viewing?.name}</DialogTitle>
-            <DialogDescription>Full senior citizen information</DialogDescription>
+            <div className="flex items-center gap-4">
+              <span className="bg-navy grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold text-white ring-2 ring-gold/50">
+                <PrivateImage
+                  path={
+                    viewing?.photoPath
+                      ? seniorFileUrl(viewing.id, "photo", viewing.photoPath)
+                      : null
+                  }
+                  alt={viewing?.name ?? ""}
+                  className="h-full w-full object-cover"
+                  fallback={initials(viewing?.name ?? "")}
+                />
+              </span>
+              <div className="min-w-0 text-left">
+                <DialogTitle className="font-display truncate">{viewing?.name}</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Full senior citizen information
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
+          {viewing?.reviewNote && (
+            <DocumentReviewNotice senior={viewing} canResubmit={false} onResubmitted={setViewing} />
+          )}
           <dl className="grid grid-cols-2 gap-3 text-sm">
             {[
               ["Senior ID", viewing?.id],
@@ -443,6 +565,96 @@ function EligibilityReview() {
               ))}
             </div>
           </div>
+          {/* Only pending registrations are decided here; not eligible ones are view-only. */}
+          {viewing?.status === "Pending" && (
+            <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-border/60 pt-5">
+              <button
+                onClick={() => {
+                  setReviewNote(viewing?.reviewNote ?? "");
+                  setReviewNoteOpen(true);
+                }}
+                className={cn(secondaryButtonClass, "h-9 px-4 text-sm whitespace-nowrap")}
+              >
+                <FileWarning className="h-4 w-4" />
+                {viewing?.reviewNote ? "Edit review note" : "In review"}
+              </button>
+              {/* A registration in review waits for the leader's corrected documents first. */}
+              {!viewing?.reviewNote && (
+                <>
+                  <button
+                    onClick={() => reviewViewing("Inactive")}
+                    className={cn(
+                      secondaryButtonClass,
+                      "h-9 px-4 text-sm whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
+                    )}
+                  >
+                    <X className="h-4 w-4" />
+                    Not eligible
+                  </button>
+                  <button
+                    onClick={() => reviewViewing("Active")}
+                    className={cn(primaryButtonClass, "h-9 px-4 text-sm")}
+                  >
+                    <Check className="h-4 w-4" />
+                    Eligible
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={reviewNoteOpen}
+        onOpenChange={(open) => !savingReview && setReviewNoteOpen(open)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Put in review</DialogTitle>
+            <DialogDescription>
+              Tell the barangay leader what is wrong with the documents of {viewing?.name}. They
+              will be notified and can upload corrected documents.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitReviewNote();
+            }}
+            className="space-y-4"
+          >
+            <Textarea
+              value={reviewNote}
+              onChange={(event) => setReviewNote(event.target.value)}
+              maxLength={500}
+              rows={4}
+              autoFocus
+              aria-label="What is wrong with the documents"
+              placeholder="e.g. The valid ID is blurry and the birth certificate belongs to someone else."
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setReviewNoteOpen(false)}
+                disabled={savingReview}
+                className={cn(secondaryButtonClass, "h-9 px-4 text-sm")}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingReview || !reviewNote.trim()}
+                className={cn(primaryButtonClass, "h-9 px-4 text-sm")}
+              >
+                {savingReview ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileWarning className="h-4 w-4" />
+                )}
+                Put in review
+              </button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
       {confirmDialog}

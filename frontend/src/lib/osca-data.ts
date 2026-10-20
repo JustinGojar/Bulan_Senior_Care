@@ -28,6 +28,8 @@ export type Senior = {
   validIdPath?: string | null;
   birthCertificatePath?: string | null;
   privacyConsentAt?: string | null;
+  /** Set while a pending registration is "In review": what is wrong with its documents. */
+  reviewNote?: string | null;
   /** Why the record is inactive (a key of INACTIVE_REASONS), and any remarks. */
   inactiveReason?: string;
   inactiveRemarks?: string;
@@ -47,6 +49,7 @@ export const INACTIVE_REASONS: Record<string, string> = {
   transferred: "Transferred to another municipality",
   withdrawn: "Withdrew from the program",
   duplicate: "Duplicate record",
+  not_eligible: "Not eligible",
   other: "Other",
 };
 

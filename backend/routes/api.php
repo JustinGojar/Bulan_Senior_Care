@@ -39,6 +39,8 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::post('/seniors/archive/{oscaId}/restore', [SeniorCitizenController::class, 'restore']);
     Route::post('/seniors/{senior}/archive', [SeniorCitizenController::class, 'archiveRecord']);
     Route::post('/seniors/{senior}/deceased', [SeniorCitizenController::class, 'markDeceased']);
+    Route::post('/seniors/{senior}/review', [SeniorCitizenController::class, 'flagForReview']);
+    Route::post('/seniors/{senior}/documents', [SeniorCitizenController::class, 'resubmitDocuments']);
     Route::post('/seniors/bulk', [SeniorCitizenController::class, 'bulkStore']);
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::post('/admin/users', [UserController::class, 'store']);
