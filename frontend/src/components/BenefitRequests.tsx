@@ -21,6 +21,7 @@ import {
   apiFetch,
   createBenefitRequest,
   getBenefitRequests,
+  hasPermission,
   reviewBenefitRequest,
   type BenefitRequest,
   type BenefitRequestStatus,
@@ -199,6 +200,7 @@ type Review = { request: BenefitRequest; action: "reject" | "release" };
  */
 export function BenefitRequestsPanel({ role }: { role?: string | undefined }) {
   const isHead = role === "head";
+  const canReview = isHead && hasPermission("manage benefit requests");
   const [filter, setFilter] = useState<BenefitRequestStatus | "">(isHead ? "for_verification" : "");
   const [page, setPage] = useState(1);
   const [requests, setRequests] = useState<BenefitRequest[]>([]);
@@ -363,7 +365,7 @@ export function BenefitRequestsPanel({ role }: { role?: string | undefined }) {
                   </p>
                 )}
               </div>
-              {isHead &&
+              {canReview &&
                 (request.status === "for_verification" || request.status === "approved") && (
                   <div className="flex shrink-0 justify-end gap-2">
                     <button

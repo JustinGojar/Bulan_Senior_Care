@@ -10,6 +10,7 @@ use App\Models\SeniorCitizen;
 use App\Models\User;
 use App\Support\AdvisoryDispatcher;
 use App\Support\PhotoBackup;
+use App\Support\RolePermissions;
 use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
@@ -173,6 +174,7 @@ class SeniorCitizenController extends Controller
     public function reject(Request $request, SeniorCitizen $senior): JsonResponse
     {
         abort_unless(in_array($request->user()->role, ['head', 'admin'], true), 403, 'Only the Head or Admin can reject a registration.');
+        RolePermissions::authorize($request->user(), 'approve registrations');
         abort_unless($senior->status === 'pending', 422, 'Only a pending registration can be rejected.');
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:500'],
@@ -260,6 +262,7 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
         abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay leaders.');
+        RolePermissions::authorize($request->user(), 'register seniors');
         $this->normalizeContact($request);
         $data = $request->validate($this->rules());
         // The senior, or their representative, agrees to the data privacy notice before
@@ -336,6 +339,7 @@ class SeniorCitizenController extends Controller
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
         abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay leaders.');
+        RolePermissions::authorize($request->user(), 'register seniors');
         $rows = $request->input('records');
         abort_if(! is_array($rows) || count($rows) === 0, 422, 'At least one senior record is required.');
         abort_if(count($rows) > 500, 422, 'You can import a maximum of 500 records at a time.');
@@ -477,6 +481,10 @@ class SeniorCitizenController extends Controller
             $request->request->remove('contact_number');
         }
         $this->normalizeContact($request);
+        // Approving a pending registration is a permission the Admin can take from the Head.
+        if ($senior->status === 'pending' && $request->filled('status') && $request->input('status') !== 'pending') {
+            RolePermissions::authorize($request->user(), 'approve registrations');
+        }
         $data = $request->validate([...$this->rules(true), ...$this->inactiveRules($senior)], [
             'inactive_reason.required_if' => 'Choose the reason the senior is inactive.',
             'date_of_death.required_if' => 'Enter the date of death.',

@@ -48,6 +48,7 @@ import {
   apiFetch,
   getBarangays,
   getStoredUser,
+  hasPermission,
   type AnalyticsReport,
   type ReportSnapshot,
   type ReportType,
@@ -593,29 +594,31 @@ function ReportView({ report }: { report: AnalyticsReport }) {
           {report.remarks && <p className="mt-1 text-sm">Remarks: {report.remarks}</p>}
         </div>
         <StatusPill tone={STATUS[report.status].tone}>{STATUS[report.status].label}</StatusPill>
-        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto print:hidden">
-          <button onClick={() => window.print()} className={secondaryButtonClass}>
-            <Printer className="h-4 w-4" /> Print
-          </button>
-          <button
-            onClick={() =>
-              exportPdf(report, snapshot).catch(() => toast.error("Could not create the PDF."))
-            }
-            className={primaryButtonClass}
-          >
-            <Download className="h-4 w-4" /> Export PDF
-          </button>
-          <button
-            onClick={() =>
-              exportExcel(report, snapshot).catch(() =>
-                toast.error("Could not create the Excel file."),
-              )
-            }
-            className={secondaryButtonClass}
-          >
-            <FileSpreadsheet className="h-4 w-4" /> Export Excel
-          </button>
-        </div>
+        {hasPermission("export reports") && (
+          <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto print:hidden">
+            <button onClick={() => window.print()} className={secondaryButtonClass}>
+              <Printer className="h-4 w-4" /> Print
+            </button>
+            <button
+              onClick={() =>
+                exportPdf(report, snapshot).catch(() => toast.error("Could not create the PDF."))
+              }
+              className={primaryButtonClass}
+            >
+              <Download className="h-4 w-4" /> Export PDF
+            </button>
+            <button
+              onClick={() =>
+                exportExcel(report, snapshot).catch(() =>
+                  toast.error("Could not create the Excel file."),
+                )
+              }
+              className={secondaryButtonClass}
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Export Excel
+            </button>
+          </div>
+        )}
       </div>
       {report.status !== "published" && (
         <p className="mt-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-semibold">

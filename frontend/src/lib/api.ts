@@ -121,6 +121,8 @@ export type ApiUser = {
   profile_photo_path?: string | null;
   email_verified_at?: string | null;
   roles?: Array<{ name: string }>;
+  /** What this account's role may do, as the Admin set it in Settings > Roles & permissions. */
+  granted_permissions?: string[];
 };
 
 export type ManagedUser = ApiUser & {
@@ -702,8 +704,15 @@ export async function restoreBackup(file: File) {
   broadcastAuthChange();
 }
 
-export function getAuditLogs(page = 1) {
-  return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?page=${page}&per_page=25`);
+export function getAuditLogs(
+  page = 1,
+  filters: { userId?: string; dateFrom?: string; dateTo?: string } = {},
+) {
+  const query = new URLSearchParams({ page: String(page), per_page: "25" });
+  if (filters.userId) query.set("user_id", filters.userId);
+  if (filters.dateFrom) query.set("date_from", filters.dateFrom);
+  if (filters.dateTo) query.set("date_to", filters.dateTo);
+  return apiFetch<PaginatedResponse<AuditLog>>(`/audit-logs?${query}`);
 }
 
 export async function login(email: string, password: string) {
@@ -929,6 +938,50 @@ export function updateManagedUser(
   if (photo?.file) body.append("profile_photo", photo.file);
   else if (photo?.remove) body.append("remove_profile_photo", "1");
   return apiFetch<ManagedUser>(`/admin/users/${id}`, { method: "POST", body });
+}
+
+export type Permission =
+  | "export reports"
+  | "approve registrations"
+  | "manage benefit requests"
+  | "schedule benefit releases"
+  | "manage announcements"
+  | "register seniors"
+  | "request benefits";
+
+/**
+ * Whether the signed-in account may do this. Only hides actions; the API enforces it too.
+ * Admin may do everything, and a profile loaded before permissions existed is not limited.
+ */
+export function hasPermission(permission: Permission) {
+  const user = getStoredUser();
+  if (!user) return false;
+  if (user.role === "admin" || !user.granted_permissions) return true;
+  return user.granted_permissions.includes(permission);
+}
+
+export type RolePermissionsState = {
+  permissions: Array<{ key: Permission; label: string; description: string; roles: string[] }>;
+  roles: Record<"head" | "leader", Permission[]>;
+};
+
+export function getRolePermissions() {
+  return apiFetch<RolePermissionsState>("/admin/role-permissions", { cache: "no-store" });
+}
+
+export function updateRolePermissions(role: "head" | "leader", permissions: Permission[]) {
+  return apiFetch<RolePermissionsState>(`/admin/role-permissions/${role}`, {
+    method: "PUT",
+    body: JSON.stringify({ permissions }),
+  });
+}
+
+/** Deactivates (signs out, blocks login) or reactivates an account. */
+export function setManagedUserStatus(id: number, status: "active" | "inactive") {
+  return apiFetch<ManagedUser>(`/admin/users/${id}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export function deleteManagedUser(id: number) {

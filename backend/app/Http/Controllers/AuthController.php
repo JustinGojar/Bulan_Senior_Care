@@ -7,6 +7,7 @@ use App\Models\Barangay;
 use App\Models\User;
 use App\Notifications\PasswordResetCodeNotification;
 use App\Support\PhotoBackup;
+use App\Support\RolePermissions;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -139,7 +140,7 @@ class AuthController extends Controller
 
         // The token goes in an HttpOnly cookie, never the body, so page scripts cannot read it.
         return response()->json([
-            'user' => $user->load('roles'),
+            'user' => RolePermissions::withGranted($user->load('roles')),
             'session' => self::sessionLimits(),
         ])->withCookie(AuthenticateFromCookie::issue($request, $token));
     }
@@ -370,7 +371,7 @@ class AuthController extends Controller
 
     public function user(Request $request): JsonResponse
     {
-        return response()->json($request->user()->load('roles'));
+        return response()->json(RolePermissions::withGranted($request->user()->load('roles')));
     }
 
     public function updateProfile(Request $request): JsonResponse

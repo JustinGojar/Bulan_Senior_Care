@@ -55,6 +55,7 @@ import {
   benefitProofUrl,
   getBarangays,
   getStoredUser,
+  hasPermission,
   type BenefitRelease,
   type BenefitTransaction,
   type PaginatedResponse,
@@ -146,7 +147,8 @@ function BenefitTracking() {
   const isHead = currentUser?.role === "head";
   const isLeader = currentUser?.role === "leader";
   // The OSCA Head schedules releases.
-  const canManageReleases = currentUser?.role === "head";
+  const canManageReleases =
+    currentUser?.role === "head" && hasPermission("schedule benefit releases");
   const canUpdateTransactions = currentUser?.role === "leader";
 
   function formatDate(date: string) {

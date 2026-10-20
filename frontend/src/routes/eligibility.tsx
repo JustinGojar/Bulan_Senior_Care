@@ -27,6 +27,7 @@ import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
 import {
   getStoredUser,
+  hasPermission,
   rejectSeniorRegistration,
   seniorFileUrl,
   type SeniorFileKind,
@@ -77,6 +78,8 @@ function EligibilityReview() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
+  // The Admin can take approving registrations away from the Head in Settings.
+  const canReview = hasPermission("approve registrations");
   // Registrations being rejected; a reason is required and is shown to the leader.
   const [rejecting, setRejecting] = useState<Senior[] | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -259,7 +262,7 @@ function EligibilityReview() {
             />
           )}
         </div>
-        {pendingSeniors.length > 0 && (
+        {canReview && pendingSeniors.length > 0 && (
           <div className={`${tileClass} mt-5 flex flex-wrap items-center gap-3 py-3`}>
             <label className="inline-flex items-center gap-2 text-sm font-semibold">
               <input
@@ -357,25 +360,27 @@ function EligibilityReview() {
                     </p>
                   </div>
                 </div>
-                <div className="flex w-full justify-end gap-2 sm:w-auto">
-                  <button
-                    onClick={() => startRejecting([senior])}
-                    className={cn(
-                      secondaryButtonClass,
-                      "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
-                    )}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => void approveSenior(senior)}
-                    className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    Eligible
-                  </button>
-                </div>
+                {canReview && (
+                  <div className="flex w-full justify-end gap-2 sm:w-auto">
+                    <button
+                      onClick={() => startRejecting([senior])}
+                      className={cn(
+                        secondaryButtonClass,
+                        "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
+                      )}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => void approveSenior(senior)}
+                      className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Eligible
+                    </button>
+                  </div>
+                )}
               </article>
             );
           })}

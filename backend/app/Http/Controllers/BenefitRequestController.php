@@ -9,6 +9,7 @@ use App\Models\BenefitTransaction;
 use App\Models\Notification;
 use App\Models\SeniorCitizen;
 use App\Models\User;
+use App\Support\RolePermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -47,6 +48,7 @@ class BenefitRequestController extends Controller
     {
         $user = $request->user();
         abort_unless($user->role === 'leader', 403, 'Benefit requests are submitted by barangay leaders.');
+        RolePermissions::authorize($user, 'request benefits');
         $data = $request->validate([
             // The senior's OSCA ID, as the senior pages identify records.
             'senior_id' => ['required', 'string', 'exists:senior_citizens,osca_id_number'],
@@ -92,6 +94,7 @@ class BenefitRequestController extends Controller
     {
         $user = $request->user();
         abort_unless($user->role === 'head', 403, 'Only the Head can verify and release benefit requests.');
+        RolePermissions::authorize($user, 'manage benefit requests');
         $senior = $benefitRequest->senior;
         abort_unless($senior, 404, 'This senior record is no longer available.');
         $data = $request->validate([

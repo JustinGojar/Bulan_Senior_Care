@@ -25,6 +25,7 @@ import {
   deleteAnnouncement,
   deleteAnnouncementComment,
   getStoredUser,
+  hasPermission,
   updateAnnouncement,
   type Announcement,
   type AnnouncementComment,
@@ -69,6 +70,7 @@ export function AnnouncementDialog({
 }) {
   const currentUser = getStoredUser();
   const isHead = isHeadUser();
+  const canManage = isHead && hasPermission("manage announcements");
   const [commentMessage, setCommentMessage] = useState("");
   const [replyMessage, setReplyMessage] = useState("");
   const [replyTo, setReplyTo] = useState<number | null>(null);
@@ -236,7 +238,7 @@ export function AnnouncementDialog({
               Announcement
             </p>
             <div className="flex items-center gap-2">
-              {isHead && !editing && (
+              {canManage && !editing && (
                 <button
                   type="button"
                   onClick={startEditing}
@@ -247,7 +249,7 @@ export function AnnouncementDialog({
                   <Pencil className="h-5 w-5" />
                 </button>
               )}
-              {isHead && (
+              {canManage && (
                 <button
                   type="button"
                   onClick={() => void handleDeleteAnnouncement()}

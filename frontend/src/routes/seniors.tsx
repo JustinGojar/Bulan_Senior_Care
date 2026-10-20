@@ -78,6 +78,7 @@ import {
 } from "@/lib/osca-data";
 import {
   apiFetch,
+  hasPermission,
   bulkCreateSeniors,
   getBarangays,
   getStoredUser,
@@ -795,7 +796,7 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-2 sm:gap-3">
-          {isLeader && (
+          {isLeader && hasPermission("register seniors") && (
             <>
               <IconActionButton
                 label="Register Senior"
@@ -1835,15 +1836,19 @@ function SeniorRecords() {
               )}
             </button>
           )}
-          {viewing && !viewingArchive && isLeader && viewing.status === "Active" && (
-            <button
-              type="button"
-              onClick={() => setRequestingBenefit(viewing)}
-              className={`${secondaryButtonClass} mt-3 h-12 w-full`}
-            >
-              <HandCoins className="h-4 w-4" /> Request Benefit
-            </button>
-          )}
+          {viewing &&
+            !viewingArchive &&
+            isLeader &&
+            hasPermission("request benefits") &&
+            viewing.status === "Active" && (
+              <button
+                type="button"
+                onClick={() => setRequestingBenefit(viewing)}
+                className={`${secondaryButtonClass} mt-3 h-12 w-full`}
+              >
+                <HandCoins className="h-4 w-4" /> Request Benefit
+              </button>
+            )}
         </DialogContent>
       </Dialog>
       <RequestBenefitDialog

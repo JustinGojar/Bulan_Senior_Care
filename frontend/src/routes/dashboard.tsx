@@ -43,6 +43,7 @@ import {
   createAnnouncement,
   getAnnouncements,
   getStoredUser,
+  hasPermission,
   type Announcement,
   type Overview,
 } from "@/lib/api";
@@ -268,7 +269,7 @@ function Dashboard() {
               Here&apos;s what&apos;s happening across senior citizen records and benefits in Bulan.
             </p>
           </div>
-          {isHead && (
+          {isHead && hasPermission("manage announcements") && (
             <button
               type="button"
               onClick={() => setShowAnnouncementForm(true)}
@@ -542,7 +543,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {showAnnouncementForm && isHead && (
+      {showAnnouncementForm && isHead && hasPermission("manage announcements") && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 px-4 backdrop-blur-[2px]">
           <form
             onSubmit={handleCreateAnnouncement}
