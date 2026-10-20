@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgeThresholdRouteImport } from './routes/age-threshold'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AnnouncementsRouteImport } from './routes/announcements'
 import { Route as AuditLogsRouteImport } from './routes/audit-logs'
 import { Route as BenefitsRouteImport } from './routes/benefits'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -42,6 +43,11 @@ const AgeThresholdRoute = AgeThresholdRouteImport.update({
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnnouncementsRoute = AnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuditLogsRoute = AuditLogsRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/age-threshold': typeof AgeThresholdRoute
   '/analytics': typeof AnalyticsRoute
+  '/announcements': typeof AnnouncementsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/benefits': typeof BenefitsRoute
   '/dashboard': typeof DashboardRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/age-threshold': typeof AgeThresholdRoute
   '/analytics': typeof AnalyticsRoute
+  '/announcements': typeof AnnouncementsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/benefits': typeof BenefitsRoute
   '/dashboard': typeof DashboardRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/age-threshold': typeof AgeThresholdRoute
   '/analytics': typeof AnalyticsRoute
+  '/announcements': typeof AnnouncementsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/benefits': typeof BenefitsRoute
   '/dashboard': typeof DashboardRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/'
     | '/age-threshold'
     | '/analytics'
+    | '/announcements'
     | '/audit-logs'
     | '/benefits'
     | '/dashboard'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/'
     | '/age-threshold'
     | '/analytics'
+    | '/announcements'
     | '/audit-logs'
     | '/benefits'
     | '/dashboard'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/'
     | '/age-threshold'
     | '/analytics'
+    | '/announcements'
     | '/audit-logs'
     | '/benefits'
     | '/dashboard'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgeThresholdRoute: typeof AgeThresholdRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  AnnouncementsRoute: typeof AnnouncementsRoute
   AuditLogsRoute: typeof AuditLogsRoute
   BenefitsRoute: typeof BenefitsRoute
   DashboardRoute: typeof DashboardRoute
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/announcements': {
+      id: '/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AnnouncementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/audit-logs': {
@@ -419,6 +439,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgeThresholdRoute: AgeThresholdRoute,
   AnalyticsRoute: AnalyticsRoute,
+  AnnouncementsRoute: AnnouncementsRoute,
   AuditLogsRoute: AuditLogsRoute,
   BenefitsRoute: BenefitsRoute,
   DashboardRoute: DashboardRoute,

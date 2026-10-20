@@ -180,7 +180,7 @@ function Notifications() {
   function openSource(notification: ServerNotification) {
     const sourceId = notification.source_id;
     if (notification.source_type === "announcement" && sourceId) {
-      return navigate({ to: "/dashboard", hash: `announcement-${sourceId}` });
+      return navigate({ to: "/announcements", hash: `announcement-${sourceId}` });
     }
     if (notification.source_type === "report" && sourceId) {
       return navigate({ to: "/reports", search: { report: sourceId } });
