@@ -39,13 +39,15 @@ class NotificationController extends Controller
                 ->with('sender:id,name,role')
                 ->latest('created_at')
                 ->get();
-        // Age threshold alerts point at a senior's row id; the senior pages look seniors up by OSCA ID.
+        // Age threshold and document review alerts point at a senior's row id; the senior pages
+        // look seniors up by OSCA ID.
+        $seniorSources = ['age_threshold', 'document_review', 'registration_review'];
         $seniorOscaIds = SeniorCitizen::query()
-            ->whereIn('id', $notifications->whereIn('source_type', ['age_threshold', 'senior_registration'])->pluck('source_id')->filter())
+            ->whereIn('id', $notifications->whereIn('source_type', $seniorSources)->pluck('source_id')->filter())
             ->pluck('osca_id_number', 'id');
 
-        return response()->json($notifications->map(function (Notification $notification) use ($announcements, $seniorOscaIds) {
-            if (in_array($notification->source_type, ['age_threshold', 'senior_registration'], true)) {
+        return response()->json($notifications->map(function (Notification $notification) use ($announcements, $seniorOscaIds, $seniorSources) {
+            if (in_array($notification->source_type, $seniorSources, true)) {
                 $notification->setAttribute('senior_osca_id', $seniorOscaIds[$notification->source_id] ?? null);
             }
             if (! $notification->source_id) {

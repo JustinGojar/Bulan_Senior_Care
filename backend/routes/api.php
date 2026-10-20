@@ -45,6 +45,8 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::post('/seniors/{senior}/archive', [SeniorCitizenController::class, 'archiveRecord']);
     Route::post('/seniors/{senior}/deceased', [SeniorCitizenController::class, 'markDeceased']);
     Route::post('/seniors/{senior}/reject', [SeniorCitizenController::class, 'reject']);
+    Route::post('/seniors/{senior}/review', [SeniorCitizenController::class, 'flagForReview']);
+    Route::post('/seniors/{senior}/documents', [SeniorCitizenController::class, 'resubmitDocuments']);
     Route::post('/seniors/bulk', [SeniorCitizenController::class, 'bulkStore']);
     Route::get('/admin/role-permissions', [RolePermissionController::class, 'index']);
     Route::put('/admin/role-permissions/{role}', [RolePermissionController::class, 'update']);

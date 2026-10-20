@@ -50,6 +50,7 @@ import {
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage, PrivatePdfPreview } from "@/components/PrivateFile";
 import { SeniorFormDialog } from "@/components/SeniorFormDialog";
+import { DocumentReviewNotice } from "@/components/DocumentReviewNotice";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,8 +72,8 @@ import {
   BARANGAYS,
   benefitForAge,
   benefitLabel,
-  inactiveReasonLabel,
-  REJECTED_REASON,
+  INACTIVE_REASONS,
+  NOT_ELIGIBLE_REASON,
   seniorStatusLabel,
   type Senior,
 } from "@/lib/osca-data";
@@ -1124,6 +1125,8 @@ function SeniorRecords() {
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     {s.deceased ? (
                       <StatusPill tone="neutral">Deceased</StatusPill>
+                    ) : s.reviewNote ? (
+                      <StatusPill tone="gold">In review</StatusPill>
                     ) : (
                       <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>
                         {seniorStatusLabel(s)}
@@ -1444,6 +1447,7 @@ function SeniorRecords() {
                       {seniorStatusLabel(viewing)}
                     </StatusPill>
                   )}
+                  {viewing?.reviewNote && <StatusPill tone="gold">In review</StatusPill>}
                   {viewingArchive && (
                     <StatusPill tone="gold">
                       Archived {new Date(viewingArchive.at).toLocaleDateString()}
@@ -1453,6 +1457,17 @@ function SeniorRecords() {
               </div>
             </div>
           </DialogHeader>
+          {viewing?.reviewNote && !viewingArchive && (
+            <DocumentReviewNotice
+              key={viewing.id}
+              senior={viewing}
+              canResubmit={isLeader}
+              onResubmitted={(updated) => {
+                setViewing(updated);
+                reload();
+              }}
+            />
+          )}
           <dl className="grid grid-cols-2 gap-3 text-sm">
             {[
               ["Age", viewing?.age],
@@ -1609,10 +1624,12 @@ function SeniorRecords() {
                 <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Reason for inactive
                 </p>
-                <p className="mt-2 font-semibold">{inactiveReasonLabel(viewing.inactiveReason)}</p>
+                <p className="mt-2 font-semibold">
+                  {INACTIVE_REASONS[viewing.inactiveReason] ?? viewing.inactiveReason}
+                </p>
                 {viewing.inactiveRemarks && (
                   <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                    {viewing.inactiveReason === REJECTED_REASON && "Reason: "}
+                    {viewing.inactiveReason === NOT_ELIGIBLE_REASON && "Reason: "}
                     {viewing.inactiveRemarks}
                   </p>
                 )}

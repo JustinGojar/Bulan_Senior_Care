@@ -72,12 +72,12 @@ class FailedTestCaseFixesTest extends TestCase
 
         $this->actingAs($this->head, 'sanctum')->postJson("/api/seniors/{$senior->osca_id_number}/reject", ['reason' => 'Incomplete documents'])
             ->assertOk()
-            ->assertJsonPath('inactive_reason', 'rejected')
+            ->assertJsonPath('inactive_reason', 'not_eligible')
             ->assertJsonPath('inactive_remarks', 'Incomplete documents');
 
         $this->actingAs($this->leader, 'sanctum')->getJson("/api/seniors/{$senior->osca_id_number}")
             ->assertOk()->assertJsonPath('inactive_remarks', 'Incomplete documents');
-        $this->assertTrue(Notification::where('recipient_account_id', $this->leader->id)->where('source_type', 'senior_registration')->exists());
+        $this->assertTrue(Notification::where('recipient_account_id', $this->leader->id)->where('source_type', 'registration_review')->where('message', 'like', '%Reason: Incomplete documents')->exists());
     }
 
     /** HD-006 */

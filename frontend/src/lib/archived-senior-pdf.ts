@@ -1,4 +1,4 @@
-import { benefitLabel, inactiveReasonLabel, type Senior } from "@/lib/osca-data";
+import { benefitLabel, INACTIVE_REASONS, type Senior } from "@/lib/osca-data";
 import { loadPdfLogo } from "@/lib/pdf";
 
 export type ArchiveDetails = {
@@ -94,7 +94,9 @@ export async function downloadArchivedSeniorReport(senior: Senior, archive: Arch
   if (senior.status === "Inactive") {
     field(
       "Reason for inactive",
-      senior.inactiveReason ? inactiveReasonLabel(senior.inactiveReason) : "",
+      senior.inactiveReason
+        ? (INACTIVE_REASONS[senior.inactiveReason] ?? senior.inactiveReason)
+        : "",
     );
   }
   if (senior.deceased) {

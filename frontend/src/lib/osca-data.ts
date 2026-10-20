@@ -28,6 +28,8 @@ export type Senior = {
   validIdPath?: string | null;
   birthCertificatePath?: string | null;
   privacyConsentAt?: string | null;
+  /** Set while a pending registration is "In review": what is wrong with its documents. */
+  reviewNote?: string | null;
   /** Why the record is inactive (a key of INACTIVE_REASONS), and any remarks. */
   inactiveReason?: string;
   inactiveRemarks?: string;
@@ -47,23 +49,18 @@ export const INACTIVE_REASONS: Record<string, string> = {
   transferred: "Transferred to another municipality",
   withdrawn: "Withdrew from the program",
   duplicate: "Duplicate record",
+  not_eligible: "Not eligible",
   other: "Other",
 };
 
-/** Set when the Head rejects a pending registration; the reason is in the remarks. */
-export const REJECTED_REASON = "rejected";
+/** Set when the Head marks a pending registration not eligible; the reason is in the remarks. */
+export const NOT_ELIGIBLE_REASON = "not_eligible";
 
-/** The status shown for a record: a rejected registration reads "Rejected", not "Inactive". */
+/** The status shown for a record: a rejected registration reads "Not eligible", not "Inactive". */
 export function seniorStatusLabel(senior: Pick<Senior, "status" | "inactiveReason">) {
-  return senior.status === "Inactive" && senior.inactiveReason === REJECTED_REASON
-    ? "Rejected"
+  return senior.status === "Inactive" && senior.inactiveReason === NOT_ELIGIBLE_REASON
+    ? "Not eligible"
     : senior.status;
-}
-
-export function inactiveReasonLabel(reason: string) {
-  return reason === REJECTED_REASON
-    ? "Registration rejected by the Head"
-    : (INACTIVE_REASONS[reason] ?? reason);
 }
 
 export type BenefitProgram = {

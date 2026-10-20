@@ -43,6 +43,32 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   privacyConsent?: boolean;
 };
 
+/** Puts a pending registration "In review", telling the leader what to fix in its documents. */
+export async function flagSeniorForReview(oscaId: string, note: string): Promise<Senior> {
+  return mapSenior(
+    await apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}/review`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
+  );
+}
+
+/** The leader's corrected documents for a registration in review; this ends the review. */
+export async function resubmitSeniorDocuments(
+  oscaId: string,
+  documents: { validId?: File | null; birthCertificate?: File | null },
+): Promise<Senior> {
+  const body = new FormData();
+  if (documents.validId) body.append("valid_id", documents.validId);
+  if (documents.birthCertificate) body.append("birth_certificate", documents.birthCertificate);
+  return mapSenior(
+    await apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}/documents`, {
+      method: "POST",
+      body,
+    }),
+  );
+}
+
 /**
  * Loads one senior's milestone flag for the congratulations pop-up. `grantName` comes from the
  * age threshold alert ("... is eligible for Nonagenarian Grant."), so the grant still shows after
@@ -103,6 +129,7 @@ export function mapSenior(senior: ApiSenior): Senior {
     validIdPath: senior.valid_id_path ?? senior.id_document_path ?? null,
     birthCertificatePath: senior.birth_certificate_path ?? null,
     privacyConsentAt: senior.privacy_consent_at ?? null,
+    reviewNote: senior.review_note ?? null,
     inactiveReason: senior.inactive_reason ?? "",
     inactiveRemarks: senior.inactive_remarks ?? "",
     deceased:
@@ -134,6 +161,8 @@ export function useSeniors(
     /** Age range in whole years, either end optional. */
     ageMin?: number;
     ageMax?: number;
+    /** Eligibility Review filter: "awaiting", "in_review" or "not_eligible". */
+    review?: string;
   } = {},
 ) {
   const {
@@ -149,6 +178,7 @@ export function useSeniors(
     sex,
     ageMin,
     ageMax,
+    review,
   } = options;
   const [seniors, setSeniors] = useState<Senior[]>([]);
   const [matchingCount, setMatchingCount] = useState(0);
@@ -184,9 +214,11 @@ export function useSeniors(
       if (sex) params.set("sex", sex);
       if (ageMin !== undefined) params.set("age_min", String(ageMin));
       if (ageMax !== undefined) params.set("age_max", String(ageMax));
+      if (review) params.set("review", review);
       return `/seniors?${params.toString()}`;
     },
     [
+      review,
       pendingOnly,
       excludePending,
       perPage,

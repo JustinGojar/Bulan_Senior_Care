@@ -22,11 +22,11 @@ class SeniorCitizen extends Model
      */
     public const FILE_DISK = 'local';
 
-    /** Why a record can be inactive. A death also needs its date and certificate. */
-    public const INACTIVE_REASONS = ['deceased', 'transferred', 'withdrawn', 'duplicate', 'other'];
-
-    /** Set by the Head's rejection of a pending registration; the reason is in inactive_remarks. */
-    public const REJECTED_REASON = 'rejected';
+    /**
+     * Why a record can be inactive. A death also needs its date and certificate; "not_eligible"
+     * is a registration rejected during eligibility review.
+     */
+    public const INACTIVE_REASONS = ['deceased', 'transferred', 'withdrawn', 'duplicate', 'not_eligible', 'other'];
 
     /** The file kinds the API serves, mapped to the column holding each path. */
     public const FILE_COLUMNS = [
@@ -47,7 +47,11 @@ class SeniorCitizen extends Model
         'privacy_consent_version', 'privacy_consent_at',
         'inactive_reason', 'date_of_death', 'death_certificate_path', 'inactive_remarks',
         'inactivated_by', 'inactivated_at',
+        'review_note', 'review_flagged_by', 'review_flagged_at',
     ];
+
+    /** Clears the "In review" flag on a record. */
+    public const CLEARED_REVIEW = ['review_note' => null, 'review_flagged_by' => null, 'review_flagged_at' => null];
 
     /** Part of every cached senior list key; bumping it makes those lists reload. */
     public const LIST_CACHE_VERSION_KEY = 'seniors:list-version';
@@ -59,6 +63,15 @@ class SeniorCitizen extends Model
         static::saved($bumpListVersion);
         static::deleted($bumpListVersion);
         static::restored($bumpListVersion);
+
+        // "In review" only applies to a pending registration whose documents still need fixing:
+        // it ends once the record is reviewed (approved or rejected) or new documents come in.
+        static::saving(function (SeniorCitizen $senior) {
+            if ($senior->review_note !== null && ! $senior->isDirty('review_note')
+                && ($senior->status !== 'pending' || $senior->isDirty(['valid_id_path', 'birth_certificate_path']))) {
+                $senior->fill(self::CLEARED_REVIEW);
+            }
+        });
 
         // Alert the barangay leader as soon as a senior becomes active (e.g. approved)
         // or has their birthdate corrected, instead of waiting for the daily check.
@@ -78,6 +91,7 @@ class SeniorCitizen extends Model
             'privacy_consent_at' => 'datetime',
             'date_of_death' => 'date',
             'inactivated_at' => 'datetime',
+            'review_flagged_at' => 'datetime',
         ];
     }
 

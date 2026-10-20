@@ -44,6 +44,14 @@ class SeniorCitizenController extends Controller
         } elseif ($request->boolean('exclude_pending')) {
             $query->where('status', '!=', 'pending');
         }
+        // Eligibility Review filters: pending registrations awaiting a decision or in review
+        // (waiting for corrected documents), and registrations rejected as not eligible.
+        match ($request->string('review')->toString()) {
+            'awaiting' => $query->where('status', 'pending')->whereNull('review_note'),
+            'in_review' => $query->where('status', 'pending')->whereNotNull('review_note'),
+            'not_eligible' => $query->where('status', 'inactive')->where('inactive_reason', 'not_eligible'),
+            default => null,
+        };
         if ($request->filled('search')) {
             $search = $request->string('search')->trim()->toString();
             $matchesAnyField = fn ($q, string $term) => $q->where('osca_id_number', 'like', "%{$term}%")
@@ -168,8 +176,8 @@ class SeniorCitizenController extends Controller
     }
 
     /**
-     * The Head turns down a pending registration. The reason is required and is kept on the
-     * record, where the barangay leader who registered the senior can read it.
+     * The Head marks a pending registration not eligible. The reason is required and is kept
+     * on the record, where the barangay leader who registered the senior can read it.
      */
     public function reject(Request $request, SeniorCitizen $senior): JsonResponse
     {
@@ -184,37 +192,28 @@ class SeniorCitizenController extends Controller
         $reason = trim($data['reason']);
         abort_if($reason === '', 422, 'Reason is required.');
 
+        // Saved as "not_eligible", the reason Eligibility Review filters rejected registrations by.
         $senior->update([
             'status' => 'inactive',
-            'inactive_reason' => SeniorCitizen::REJECTED_REASON,
+            'inactive_reason' => 'not_eligible',
             'inactive_remarks' => $reason,
             'inactivated_by' => $request->user()->id,
             'inactivated_at' => now(),
         ]);
         AuditLog::record($request->user(), 'rejected', $senior, ['status' => 'pending'], [
             'status' => 'inactive',
-            'inactive_reason' => SeniorCitizen::REJECTED_REASON,
+            'inactive_reason' => 'not_eligible',
             'reason' => $reason,
         ]);
 
-        // The registering leader and the barangay's active leaders are told why.
-        $name = trim("{$senior->first_name} {$senior->last_name}");
-        User::query()
-            ->where('status', 'active')
-            ->where(fn ($leaders) => $leaders
-                ->where('id', $senior->encoded_by)
-                ->orWhere(fn ($barangay) => $barangay->where('role', 'leader')->where('barangay_id', $senior->barangay_id)))
-            ->where('id', '!=', $request->user()->id)
-            ->each(fn (User $leader) => Notification::create([
-                'sender_account_id' => $request->user()->id,
-                'recipient_account_id' => $leader->id,
-                'message' => "The registration of {$name} ({$senior->osca_id_number}) was rejected. Reason: {$reason}",
-                'source_type' => 'senior_registration',
-                'source_id' => $senior->id,
-                'channel' => 'in_app',
-                'date_sent' => now(),
-                'status' => 'unread',
-            ]));
+        $name = "{$senior->first_name} {$senior->last_name}";
+        $this->notifyLeaders(
+            $request,
+            $senior,
+            "{$name} is not eligible",
+            "The registration of {$name} ({$senior->osca_id_number}) was marked not eligible. Reason: {$reason}",
+            'registration_review',
+        );
 
         return response()->json($senior->fresh()->load(['barangay', 'benefit', 'inactivator:id,name,role']));
     }
@@ -256,6 +255,120 @@ class SeniorCitizenController extends Controller
         ]);
 
         return response()->json($senior->fresh()->load(['barangay', 'benefit', 'inactivator:id,name,role']));
+    }
+
+    /**
+     * Puts a pending registration "In review": its documents have a problem, described in the
+     * note. The barangay leader is told what to fix and can then upload new documents.
+     */
+    public function flagForReview(Request $request, SeniorCitizen $senior): JsonResponse
+    {
+        abort_unless(in_array($request->user()->role, ['admin', 'head'], true), 403, 'Only Admin or Head can review registrations.');
+        RolePermissions::authorize($request->user(), 'approve registrations');
+        abort_if($senior->status !== 'pending', 422, 'Only pending registrations can be put in review.');
+        $data = $request->validate([
+            'note' => ['required', 'string', 'max:500'],
+        ], [
+            'note.required' => 'Describe what is wrong with the documents.',
+        ]);
+
+        $senior->update([
+            'review_note' => $data['note'],
+            'review_flagged_by' => $request->user()->id,
+            'review_flagged_at' => now(),
+        ]);
+        AuditLog::record($request->user(), 'updated', $senior, afterValue: ['review_note' => $data['note']]);
+
+        $name = "{$senior->first_name} {$senior->last_name}";
+        $this->notifyLeaders(
+            $request,
+            $senior,
+            "Documents for {$name} need to be fixed",
+            "The documents for {$name} ({$senior->osca_id_number}) need to be fixed: {$data['note']}",
+        );
+
+        return response()->json($senior->fresh()->load(['barangay', 'benefit']));
+    }
+
+    /** Tells the barangay leader a pending registration was approved or marked not eligible. */
+    private function notifyLeadersOfDecision(Request $request, SeniorCitizen $senior): void
+    {
+        $name = "{$senior->first_name} {$senior->last_name}";
+        [$subject, $message] = $senior->status === 'active'
+            ? ["{$name} is eligible", "The registration of {$name} ({$senior->osca_id_number}) was approved as eligible. The record is now active."]
+            : ["{$name} is not eligible", "The registration of {$name} ({$senior->osca_id_number}) was marked not eligible."];
+        $this->notifyLeaders($request, $senior, $subject, $message, 'registration_review');
+    }
+
+    /** An in-app notification and an email advisory to the senior's barangay leader. */
+    private function notifyLeaders(Request $request, SeniorCitizen $senior, string $subject, string $message, string $sourceType = 'document_review'): void
+    {
+        User::query()
+            ->where('role', 'leader')
+            ->where('status', 'active')
+            ->where('barangay_id', $senior->barangay_id)
+            ->each(function (User $leader) use ($request, $senior, $subject, $message, $sourceType): void {
+                Notification::create([
+                    'recipient_account_id' => $leader->id,
+                    'sender_account_id' => $request->user()->id,
+                    'message' => $message,
+                    'channel' => 'in_app',
+                    'date_sent' => now(),
+                    'status' => 'unread',
+                    'source_type' => $sourceType,
+                    'source_id' => $senior->id,
+                ]);
+                AdvisoryDispatcher::emailLeader($leader, $subject, $message);
+            });
+    }
+
+    /**
+     * The barangay leader replaces the documents of a registration in review. This ends the
+     * review, and Admin and Head are told the registration is ready to check again.
+     */
+    public function resubmitDocuments(Request $request, SeniorCitizen $senior): JsonResponse
+    {
+        abort_unless($request->user()->role === 'leader', 403, 'Only the barangay leader can resubmit documents.');
+        $this->authorizeScope($request, $senior);
+        abort_if($senior->status !== 'pending' || $senior->review_note === null, 422, 'This registration is not waiting for new documents.');
+        $request->validate([
+            'valid_id' => ['nullable', 'required_without:birth_certificate', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'birth_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ], [
+            'valid_id.required_without' => 'Attach at least one corrected document.',
+        ]);
+
+        $data = [];
+        $replacedPaths = [];
+        foreach (['valid_id', 'birth_certificate'] as $documentField) {
+            if ($request->hasFile($documentField)) {
+                $replacedPaths[] = $senior->{"{$documentField}_path"};
+                $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
+            }
+        }
+        // New documents end the review (see SeniorCitizen::booted).
+        $senior->update($data);
+        foreach (array_filter($replacedPaths) as $replacedPath) {
+            PhotoBackup::delete($replacedPath);
+        }
+        AuditLog::record($request->user(), 'updated', $senior, afterValue: ['documents' => array_keys($data)]);
+
+        $message = "{$request->user()->name} uploaded new documents for {$senior->first_name} {$senior->last_name} ({$senior->osca_id_number}). The registration is ready for review.";
+        User::query()
+            ->whereIn('role', ['admin', 'head'])
+            ->where('status', 'active')
+            ->each(fn (User $reviewer) => Notification::create([
+                'recipient_account_id' => $reviewer->id,
+                'sender_account_id' => $request->user()->id,
+                'message' => $message,
+                'channel' => 'in_app',
+                'date_sent' => now(),
+                'status' => 'unread',
+                'source_type' => 'document_review',
+                'source_id' => $senior->id,
+            ]));
+
+        return response()->json($senior->fresh()->load(['barangay', 'benefit']));
     }
 
     public function store(Request $request): JsonResponse
@@ -540,7 +653,11 @@ class SeniorCitizenController extends Controller
             $data = [...$data, ...array_fill_keys(['inactive_reason', 'date_of_death', 'death_certificate_path', 'inactive_remarks', 'inactivated_by', 'inactivated_at'], null)];
         }
         unset($data['death_certificate']);
+        $wasPending = $senior->status === 'pending';
         $senior->update($data);
+        if ($wasPending && $senior->status !== 'pending') {
+            $this->notifyLeadersOfDecision($request, $senior);
+        }
         if ($newlyDeceased) {
             $this->closePendingBenefits($request, $senior);
         }
@@ -642,7 +759,7 @@ class SeniorCitizenController extends Controller
     private function inactiveRules(SeniorCitizen $senior): array
     {
         return [
-            'inactive_reason' => ['nullable', 'required_if:status,inactive', Rule::in([...SeniorCitizen::INACTIVE_REASONS, SeniorCitizen::REJECTED_REASON])],
+            'inactive_reason' => ['nullable', 'required_if:status,inactive', Rule::in(SeniorCitizen::INACTIVE_REASONS)],
             'date_of_death' => ['nullable', 'required_if:inactive_reason,deceased', 'date', 'before_or_equal:today', 'after_or_equal:'.$senior->birthdate->toDateString()],
             'death_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'inactive_remarks' => ['nullable', 'required_if:inactive_reason,other', 'string', 'max:500'],
