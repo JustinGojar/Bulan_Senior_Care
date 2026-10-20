@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\Benefit;
+use App\Models\Notification;
 use App\Models\SeniorCitizen;
+use App\Models\User;
 use App\Support\AdvisoryDispatcher;
 use App\Support\PhotoBackup;
 use Illuminate\Database\QueryException;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -164,6 +167,57 @@ class SeniorCitizenController extends Controller
     }
 
     /**
+     * The Head turns down a pending registration. The reason is required and is kept on the
+     * record, where the barangay leader who registered the senior can read it.
+     */
+    public function reject(Request $request, SeniorCitizen $senior): JsonResponse
+    {
+        abort_unless(in_array($request->user()->role, ['head', 'admin'], true), 403, 'Only the Head or Admin can reject a registration.');
+        abort_unless($senior->status === 'pending', 422, 'Only a pending registration can be rejected.');
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ], [
+            'reason.required' => 'Reason is required.',
+        ]);
+        $reason = trim($data['reason']);
+        abort_if($reason === '', 422, 'Reason is required.');
+
+        $senior->update([
+            'status' => 'inactive',
+            'inactive_reason' => SeniorCitizen::REJECTED_REASON,
+            'inactive_remarks' => $reason,
+            'inactivated_by' => $request->user()->id,
+            'inactivated_at' => now(),
+        ]);
+        AuditLog::record($request->user(), 'rejected', $senior, ['status' => 'pending'], [
+            'status' => 'inactive',
+            'inactive_reason' => SeniorCitizen::REJECTED_REASON,
+            'reason' => $reason,
+        ]);
+
+        // The registering leader and the barangay's active leaders are told why.
+        $name = trim("{$senior->first_name} {$senior->last_name}");
+        User::query()
+            ->where('status', 'active')
+            ->where(fn ($leaders) => $leaders
+                ->where('id', $senior->encoded_by)
+                ->orWhere(fn ($barangay) => $barangay->where('role', 'leader')->where('barangay_id', $senior->barangay_id)))
+            ->where('id', '!=', $request->user()->id)
+            ->each(fn (User $leader) => Notification::create([
+                'sender_account_id' => $request->user()->id,
+                'recipient_account_id' => $leader->id,
+                'message' => "The registration of {$name} ({$senior->osca_id_number}) was rejected. Reason: {$reason}",
+                'source_type' => 'senior_registration',
+                'source_id' => $senior->id,
+                'channel' => 'in_app',
+                'date_sent' => now(),
+                'status' => 'unread',
+            ]));
+
+        return response()->json($senior->fresh()->load(['barangay', 'benefit', 'inactivator:id,name,role']));
+    }
+
+    /**
      * Records a senior's death with its documentation and makes the record inactive. Benefit
      * records still waiting for release are closed, so nothing is paid out after the death.
      */
@@ -218,6 +272,8 @@ class SeniorCitizenController extends Controller
         ]);
         $data['privacy_consent_version'] = $consent['privacy_consent_version'];
         $data['privacy_consent_at'] = now();
+        // Checked before any file is stored, so a blocked duplicate leaves no uploads behind.
+        $this->abortIfDuplicate($data);
         foreach (['valid_id', 'birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
                 $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
@@ -242,8 +298,6 @@ class SeniorCitizenController extends Controller
             $data['barangay_id'] = $barangay->id;
         }
         abort_if(empty($data['barangay_id']), 422, 'A barangay is required.');
-        $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])->where('last_name', $data['last_name'])->where('first_name', $data['first_name'])->exists();
-        abort_if($duplicate, 422, 'A senior with the same name and birthdate already exists.');
         $benefitName = [
             'Octogenarian' => 'Octogenarian Grant',
             'Nonagenarian' => 'Nonagenarian Grant',
@@ -335,11 +389,7 @@ class SeniorCitizenController extends Controller
                     ][$data['benefit']] ?? $data['benefit'];
                     $benefit = Benefit::where('benefit_name', $benefitName)->where('status', 'active')->first();
                     abort_if(! $benefit, 422, 'A valid benefit is required.');
-                    $duplicate = SeniorCitizen::whereDate('birthdate', $data['birthdate'])
-                        ->where('last_name', $data['last_name'])
-                        ->where('first_name', $data['first_name'])
-                        ->exists();
-                    abort_if($duplicate, 422, 'A senior with the same name and birthdate already exists.');
+                    $this->abortIfDuplicate($data);
 
                     $oscaId = $data['osca_id_number'] ?? null;
                     if ($oscaId) {
@@ -544,6 +594,28 @@ class SeniorCitizenController extends Controller
     }
 
     /**
+     * Blocks registering a senior who is already on record with the same name and birthdate,
+     * ignoring letter case and extra spaces. Archived records count too: they are restored
+     * from the archive rather than registered again.
+     */
+    private function abortIfDuplicate(array $data): void
+    {
+        $normalize = static fn (?string $value): string => Str::lower(preg_replace('/\s+/', ' ', trim((string) $value)));
+        $existing = SeniorCitizen::withTrashed()
+            ->whereDate('birthdate', $data['birthdate'])
+            ->whereRaw('LOWER(TRIM(last_name)) = ?', [$normalize($data['last_name'] ?? '')])
+            ->get(['id', 'osca_id_number', 'first_name', 'last_name', 'barangay_id', 'deleted_at'])
+            ->first(fn (SeniorCitizen $senior) => $normalize($senior->first_name) === $normalize($data['first_name'] ?? ''));
+        if (! $existing) {
+            return;
+        }
+
+        abort(422, $existing->trashed()
+            ? "Possible duplicate: an archived record (OSCA ID {$existing->osca_id_number}) has the same name and birthdate. Ask the Admin to restore it instead of registering again."
+            : "Possible duplicate: a senior with the same name and birthdate is already registered (OSCA ID {$existing->osca_id_number}). The record was not saved.");
+    }
+
+    /**
      * Store PH mobile numbers as +639XXXXXXXXX, accepting the local 09XXXXXXXXX form too.
      */
     private function normalizeContact(Request $request): void
@@ -562,7 +634,7 @@ class SeniorCitizenController extends Controller
     private function inactiveRules(SeniorCitizen $senior): array
     {
         return [
-            'inactive_reason' => ['nullable', 'required_if:status,inactive', Rule::in(SeniorCitizen::INACTIVE_REASONS)],
+            'inactive_reason' => ['nullable', 'required_if:status,inactive', Rule::in([...SeniorCitizen::INACTIVE_REASONS, SeniorCitizen::REJECTED_REASON])],
             'date_of_death' => ['nullable', 'required_if:inactive_reason,deceased', 'date', 'before_or_equal:today', 'after_or_equal:'.$senior->birthdate->toDateString()],
             'death_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'inactive_remarks' => ['nullable', 'required_if:inactive_reason,other', 'string', 'max:500'],

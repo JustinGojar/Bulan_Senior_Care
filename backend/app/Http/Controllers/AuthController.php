@@ -26,6 +26,11 @@ class AuthController extends Controller
 {
     private const RESET_CODE_MAX_ATTEMPTS = 5;
 
+    /** Failed sign-ins allowed before the account is locked, and how long the lock lasts. */
+    private const LOGIN_MAX_ATTEMPTS = 5;
+
+    private const LOGIN_LOCKOUT_SECONDS = 300;
+
     private const SAME_PASSWORD_MESSAGE = 'You used your old password. Please create a new password that is different from your current one.';
 
     private const RESET_TOKEN_INVALID_MESSAGE = 'This password reset link is invalid or has expired. Please request a new one.';
@@ -77,6 +82,20 @@ class AuthController extends Controller
         return response()->json(['user' => $user->load('roles'), 'verification_email_sent' => $verificationSent], 201);
     }
 
+    /** Sign-in is locked: say how long is left, in seconds the login page can count down. */
+    private static function loginLockedResponse(string $throttleKey): JsonResponse
+    {
+        $seconds = max(1, RateLimiter::availableIn($throttleKey));
+        $wait = $seconds >= 60
+            ? ceil($seconds / 60).' '.(ceil($seconds / 60) == 1 ? 'minute' : 'minutes')
+            : $seconds.' '.($seconds === 1 ? 'second' : 'seconds');
+
+        return response()->json([
+            'message' => "Too many failed login attempts. Sign-in is locked; please try again in {$wait}.",
+            'retry_after' => $seconds,
+        ], 429, ['Retry-After' => (string) $seconds]);
+    }
+
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
@@ -85,10 +104,8 @@ class AuthController extends Controller
         ]);
         $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            return response()->json([
-                'message' => 'Too many login attempts. Please try again in '.RateLimiter::availableIn($throttleKey).' seconds.',
-            ], 429);
+        if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_MAX_ATTEMPTS)) {
+            return self::loginLockedResponse($throttleKey);
         }
 
         $user = User::where('email', $credentials['email'])->where('status', 'active')->first();
@@ -96,9 +113,18 @@ class AuthController extends Controller
         // Hash even for unknown emails so response time does not reveal which accounts exist.
         $passwordMatches = Hash::check($credentials['password'], $user?->password ?? self::dummyPasswordHash());
         if (! $user || ! $passwordMatches) {
-            RateLimiter::hit($throttleKey, 60);
+            RateLimiter::hit($throttleKey, self::LOGIN_LOCKOUT_SECONDS);
+            // The attempt that reaches the limit already locks the sign-in.
+            if (RateLimiter::tooManyAttempts($throttleKey, self::LOGIN_MAX_ATTEMPTS)) {
+                return self::loginLockedResponse($throttleKey);
+            }
+            $remaining = RateLimiter::remaining($throttleKey, self::LOGIN_MAX_ATTEMPTS);
 
-            return response()->json(['message' => 'The provided credentials are incorrect.'], 422);
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.'
+                    .($remaining <= 2 ? " {$remaining} ".($remaining === 1 ? 'attempt' : 'attempts').' left before sign-in is locked for '.(self::LOGIN_LOCKOUT_SECONDS / 60).' minutes.' : ''),
+                'attempts_remaining' => $remaining,
+            ], 422);
         }
 
         RateLimiter::clear($throttleKey);

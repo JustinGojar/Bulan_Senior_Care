@@ -1,15 +1,31 @@
-import { CornerUpLeft, ImagePlus, Loader2, MessageCircle, Send, Trash2, X } from "lucide-react";
+import {
+  CornerUpLeft,
+  ImagePlus,
+  Loader2,
+  MessageCircle,
+  Pencil,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/DesignKit";
-import { fieldClass, iconButtonClass, tileClass } from "@/components/design-kit";
+import {
+  fieldClass,
+  iconButtonClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+  tileClass,
+} from "@/components/design-kit";
 import { announcementImageUrl, storageUrl } from "@/lib/announcements";
 import {
   createAnnouncementComment,
   deleteAnnouncement,
   deleteAnnouncementComment,
   getStoredUser,
+  updateAnnouncement,
   type Announcement,
   type AnnouncementComment,
 } from "@/lib/api";
@@ -60,9 +76,53 @@ export function AnnouncementDialog({
   const [commentImage, setCommentImage] = useState<File | null>(null);
   const [commentImagePreview, setCommentImagePreview] = useState<string | null>(null);
   const [confirm, confirmDialog] = useConfirmDialog();
+  // The Head edits the title, details and poster in place.
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+  const [editImage, setEditImage] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
 
   // A picked image belongs to the announcement it was picked for.
-  useEffect(() => setCommentImage(null), [announcement.id]);
+  useEffect(() => {
+    setCommentImage(null);
+    setEditing(false);
+  }, [announcement.id]);
+
+  function startEditing() {
+    setEditTitle(announcement.title);
+    setEditMessage(announcement.message);
+    setEditImage(null);
+    setRemoveImage(false);
+    setEditing(true);
+  }
+
+  async function handleSaveEdit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editTitle.trim() || !editMessage.trim()) return;
+    setEditSaving(true);
+    try {
+      const updated = await updateAnnouncement(
+        announcement.id,
+        editTitle.trim(),
+        editMessage.trim(),
+        editImage,
+        removeImage,
+      );
+      onChange({
+        ...announcement,
+        ...updated,
+        ...(announcement.comments && { comments: announcement.comments }),
+      });
+      setEditing(false);
+      toast.success("Announcement updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update announcement.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (!commentImage) {
@@ -176,6 +236,17 @@ export function AnnouncementDialog({
               Announcement
             </p>
             <div className="flex items-center gap-2">
+              {isHead && !editing && (
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  aria-label="Edit announcement"
+                  title="Edit announcement"
+                  className={iconButtonClass}
+                >
+                  <Pencil className="h-5 w-5" />
+                </button>
+              )}
               {isHead && (
                 <button
                   type="button"
@@ -205,15 +276,103 @@ export function AnnouncementDialog({
             />
           )}
           <div className="p-6">
-            <h2 id="announcement-preview-title" className="text-2xl font-extrabold">
-              {announcement.title}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {new Date(announcement.published_at).toLocaleDateString()}
-            </p>
-            <p className="mt-4 text-base leading-relaxed whitespace-pre-wrap text-muted-foreground">
-              {announcement.message}
-            </p>
+            {editing ? (
+              <form onSubmit={handleSaveEdit} className="space-y-4">
+                <h2 id="announcement-preview-title" className="text-lg font-bold">
+                  Edit announcement
+                </h2>
+                <div>
+                  <label
+                    htmlFor="announcement-edit-title"
+                    className="mb-1.5 block text-sm font-semibold"
+                  >
+                    Title
+                  </label>
+                  <input
+                    id="announcement-edit-title"
+                    required
+                    maxLength={180}
+                    value={editTitle}
+                    onChange={(event) => setEditTitle(event.target.value)}
+                    className={`${fieldClass} h-11`}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="announcement-edit-message"
+                    className="mb-1.5 block text-sm font-semibold"
+                  >
+                    Details
+                  </label>
+                  <textarea
+                    id="announcement-edit-message"
+                    required
+                    maxLength={5000}
+                    rows={6}
+                    value={editMessage}
+                    onChange={(event) => setEditMessage(event.target.value)}
+                    className={`${fieldClass} py-2.5`}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <label className={`${secondaryButtonClass} cursor-pointer`}>
+                    <ImagePlus className="h-4 w-4" />
+                    {editImage ? editImage.name : "Replace poster"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        event.target.value = "";
+                        if (file && file.size > 5 * 1024 * 1024) {
+                          toast.error("Image must be 5 MB or smaller.");
+                          return;
+                        }
+                        setEditImage(file);
+                        if (file) setRemoveImage(false);
+                      }}
+                    />
+                  </label>
+                  {announcement.image_path && !editImage && (
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={removeImage}
+                        onChange={(event) => setRemoveImage(event.target.checked)}
+                      />
+                      Remove the current poster
+                    </label>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    disabled={editSaving}
+                    className={secondaryButtonClass}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={editSaving} className={primaryButtonClass}>
+                    {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Save changes
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h2 id="announcement-preview-title" className="text-2xl font-extrabold">
+                  {announcement.title}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {new Date(announcement.published_at).toLocaleDateString()}
+                </p>
+                <p className="mt-4 text-base leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                  {announcement.message}
+                </p>
+              </>
+            )}
             {announcement.source_url && (
               <a
                 href={announcement.source_url}

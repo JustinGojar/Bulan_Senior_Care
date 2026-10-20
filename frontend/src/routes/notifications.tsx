@@ -66,6 +66,8 @@ function Notifications() {
     if (notification.source_type === "benefit_release") return "Benefit release schedule";
     if (notification.source_type === "announcement") return "Announcement update";
     if (notification.source_type === "age_threshold") return "Age threshold alert";
+    if (notification.source_type === "senior_registration") return "Registration review";
+    if (notification.source_type === "benefit_request") return "Benefit request";
     if (notification.message.toLowerCase().includes("comment")) return "Announcement comment";
     return "System notification";
   }
@@ -186,6 +188,15 @@ function Notifications() {
     }
     if (notification.source_type === "benefit_release" && sourceId) {
       return navigate({ to: "/benefits", search: { release: sourceId } });
+    }
+    if (notification.source_type === "senior_registration" && notification.senior_osca_id) {
+      return navigate({
+        to: "/seniors",
+        search: { q: notification.senior_osca_id, status: undefined },
+      });
+    }
+    if (notification.source_type === "benefit_request") {
+      return navigate({ to: "/benefits", search: {}, hash: "benefit-requests" });
     }
     if (notification.source_type === "age_threshold" && notification.senior_osca_id) {
       const grant = notification.message.split(" is eligible for ")[1]?.replace(/\.$/, "").trim();

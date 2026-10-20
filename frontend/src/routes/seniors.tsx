@@ -29,6 +29,7 @@ import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { RequestBenefitDialog } from "@/components/BenefitRequests";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import {
@@ -68,9 +69,11 @@ import {
 } from "@/components/ui/dialog";
 import {
   BARANGAYS,
-  INACTIVE_REASONS,
   benefitForAge,
   benefitLabel,
+  inactiveReasonLabel,
+  REJECTED_REASON,
+  seniorStatusLabel,
   type Senior,
 } from "@/lib/osca-data";
 import {
@@ -524,6 +527,8 @@ const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
 
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
+  // An approved senior a leader is requesting a benefit for.
+  const [requestingBenefit, setRequestingBenefit] = useState<Senior | null>(null);
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -1119,7 +1124,9 @@ function SeniorRecords() {
                     {s.deceased ? (
                       <StatusPill tone="neutral">Deceased</StatusPill>
                     ) : (
-                      <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>{s.status}</StatusPill>
+                      <StatusPill tone={STATUS_TONE[s.status] ?? "neutral"}>
+                        {seniorStatusLabel(s)}
+                      </StatusPill>
                     )}
                   </td>
                   <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
@@ -1389,6 +1396,8 @@ function SeniorRecords() {
               }
             } catch (reason) {
               toast.error(reason instanceof Error ? reason.message : "Unable to register senior.");
+              // The form stays open with the reason, so nothing typed is lost.
+              throw reason;
             }
           }}
         />
@@ -1431,7 +1440,7 @@ function SeniorRecords() {
                   )}
                   {viewing && (
                     <StatusPill tone={STATUS_TONE[viewing.status] ?? "neutral"}>
-                      {viewing.status}
+                      {seniorStatusLabel(viewing)}
                     </StatusPill>
                   )}
                   {viewingArchive && (
@@ -1599,11 +1608,10 @@ function SeniorRecords() {
                 <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Reason for inactive
                 </p>
-                <p className="mt-2 font-semibold">
-                  {INACTIVE_REASONS[viewing.inactiveReason] ?? viewing.inactiveReason}
-                </p>
+                <p className="mt-2 font-semibold">{inactiveReasonLabel(viewing.inactiveReason)}</p>
                 {viewing.inactiveRemarks && (
                   <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                    {viewing.inactiveReason === REJECTED_REASON && "Reason: "}
                     {viewing.inactiveRemarks}
                   </p>
                 )}
@@ -1827,8 +1835,21 @@ function SeniorRecords() {
               )}
             </button>
           )}
+          {viewing && !viewingArchive && isLeader && viewing.status === "Active" && (
+            <button
+              type="button"
+              onClick={() => setRequestingBenefit(viewing)}
+              className={`${secondaryButtonClass} mt-3 h-12 w-full`}
+            >
+              <HandCoins className="h-4 w-4" /> Request Benefit
+            </button>
+          )}
         </DialogContent>
       </Dialog>
+      <RequestBenefitDialog
+        senior={requestingBenefit}
+        onOpenChange={(open) => !open && setRequestingBenefit(null)}
+      />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

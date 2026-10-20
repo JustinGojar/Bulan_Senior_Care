@@ -25,6 +25,9 @@ class SeniorCitizen extends Model
     /** Why a record can be inactive. A death also needs its date and certificate. */
     public const INACTIVE_REASONS = ['deceased', 'transferred', 'withdrawn', 'duplicate', 'other'];
 
+    /** Set by the Head's rejection of a pending registration; the reason is in inactive_remarks. */
+    public const REJECTED_REASON = 'rejected';
+
     /** The file kinds the API serves, mapped to the column holding each path. */
     public const FILE_COLUMNS = [
         'photo' => 'photo_path',

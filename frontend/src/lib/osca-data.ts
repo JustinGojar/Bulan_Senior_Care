@@ -50,6 +50,22 @@ export const INACTIVE_REASONS: Record<string, string> = {
   other: "Other",
 };
 
+/** Set when the Head rejects a pending registration; the reason is in the remarks. */
+export const REJECTED_REASON = "rejected";
+
+/** The status shown for a record: a rejected registration reads "Rejected", not "Inactive". */
+export function seniorStatusLabel(senior: Pick<Senior, "status" | "inactiveReason">) {
+  return senior.status === "Inactive" && senior.inactiveReason === REJECTED_REASON
+    ? "Rejected"
+    : senior.status;
+}
+
+export function inactiveReasonLabel(reason: string) {
+  return reason === REJECTED_REASON
+    ? "Registration rejected by the Head"
+    : (INACTIVE_REASONS[reason] ?? reason);
+}
+
 export type BenefitProgram = {
   name: string;
   type:

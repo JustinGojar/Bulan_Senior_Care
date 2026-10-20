@@ -25,7 +25,12 @@ import {
 } from "@/components/design-kit";
 import { IconActionButton, IconSelect } from "@/components/IconActionButton";
 import { PrivateFileLink, PrivateImage } from "@/components/PrivateFile";
-import { getStoredUser, seniorFileUrl, type SeniorFileKind } from "@/lib/api";
+import {
+  getStoredUser,
+  rejectSeniorRegistration,
+  seniorFileUrl,
+  type SeniorFileKind,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useSeniors } from "@/lib/use-seniors";
 import { BARANGAYS, benefitLabel, type Senior } from "@/lib/osca-data";
@@ -33,6 +38,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -71,6 +77,11 @@ function EligibilityReview() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkReviewing, setBulkReviewing] = useState(false);
   const [confirm, confirmDialog] = useConfirmDialog();
+  // Registrations being rejected; a reason is required and is shown to the leader.
+  const [rejecting, setRejecting] = useState<Senior[] | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
+  const [rejectSaving, setRejectSaving] = useState(false);
   const selectedSeniors = pendingSeniors.filter((senior) => selectedIds.includes(senior.id));
   const allSelected = pendingSeniors.length > 0 && selectedSeniors.length === pendingSeniors.length;
 
@@ -88,13 +99,53 @@ function EligibilityReview() {
 
   if (!(["admin", "head"] as string[]).includes(currentUser?.role ?? "")) return null;
 
-  async function reviewSenior(senior: Senior, status: "Active" | "Inactive") {
+  async function approveSenior(senior: Senior) {
     try {
-      await updateSenior(senior.id, { ...senior, status });
-      toast.success(`${senior.name} marked ${status === "Active" ? "eligible" : "not eligible"}.`);
+      await updateSenior(senior.id, { ...senior, status: "Active" });
+      toast.success(`${senior.name}'s registration was approved.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update eligibility.");
     }
+  }
+
+  function startRejecting(seniors: Senior[]) {
+    if (!seniors.length) return;
+    setRejectReason("");
+    setRejectError(null);
+    setRejecting(seniors);
+  }
+
+  async function confirmReject() {
+    if (!rejecting) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setRejectError("Reason is required.");
+      return;
+    }
+    setRejectSaving(true);
+    const results = await Promise.allSettled(
+      rejecting.map((senior) => rejectSeniorRegistration(senior.id, reason)),
+    );
+    setRejectSaving(false);
+    const failed = rejecting.filter((_, index) => results[index]?.status === "rejected");
+    const firstFailure = results.find((result) => result.status === "rejected");
+    setSelectedIds(failed.map((senior) => senior.id));
+    reload();
+    if (failed.length) {
+      const reasonText =
+        firstFailure?.status === "rejected" && firstFailure.reason instanceof Error
+          ? firstFailure.reason.message
+          : "Please try again.";
+      setRejecting(failed);
+      setRejectError(`${failed.length} could not be rejected. ${reasonText}`);
+      return;
+    }
+    toast.success(
+      rejecting.length === 1
+        ? `${rejecting[0]!.name}'s registration was rejected.`
+        : `${rejecting.length} registrations were rejected.`,
+    );
+    setRejecting(null);
   }
 
   function toggleSelected(id: string) {
@@ -107,21 +158,20 @@ function EligibilityReview() {
     setSelectedIds(allSelected ? [] : pendingSeniors.map((senior) => senior.id));
   }
 
-  async function reviewSelected(status: "Active" | "Inactive") {
+  async function approveSelected() {
     const selected = selectedSeniors;
     if (!selected.length) return;
-    const label = status === "Active" ? "eligible" : "not eligible";
+    const label = "eligible";
     const confirmed = await confirm({
       title: `Mark ${selected.length} as ${label}?`,
-      description: `${selected.length} selected ${selected.length === 1 ? "registration" : "registrations"} will be marked ${label}.`,
+      description: `${selected.length} selected ${selected.length === 1 ? "registration" : "registrations"} will be approved.`,
       confirmLabel: `Mark ${label}`,
-      destructive: status === "Inactive",
     });
     if (!confirmed) return;
 
     setBulkReviewing(true);
     const results = await Promise.allSettled(
-      selected.map((senior) => updateSenior(senior.id, { ...senior, status })),
+      selected.map((senior) => updateSenior(senior.id, { ...senior, status: "Active" })),
     );
     setBulkReviewing(false);
     const failedIds = selected
@@ -225,18 +275,18 @@ function EligibilityReview() {
             <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
               <button
                 type="button"
-                onClick={() => reviewSelected("Inactive")}
+                onClick={() => startRejecting(selectedSeniors)}
                 disabled={bulkReviewing || selectedSeniors.length === 0}
                 className={cn(
                   secondaryButtonClass,
                   "h-10 justify-center px-3 text-xs text-destructive sm:h-9 hover:border-destructive/40 hover:bg-destructive/10 disabled:opacity-40",
                 )}
               >
-                <X className="h-3.5 w-3.5" /> Not eligible
+                <X className="h-3.5 w-3.5" /> Reject
               </button>
               <button
                 type="button"
-                onClick={() => reviewSelected("Active")}
+                onClick={() => void approveSelected()}
                 disabled={bulkReviewing || selectedSeniors.length === 0}
                 className={cn(
                   primaryButtonClass,
@@ -309,17 +359,17 @@ function EligibilityReview() {
                 </div>
                 <div className="flex w-full justify-end gap-2 sm:w-auto">
                   <button
-                    onClick={() => reviewSenior(senior, "Inactive")}
+                    onClick={() => startRejecting([senior])}
                     className={cn(
                       secondaryButtonClass,
                       "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
                     )}
                   >
                     <X className="h-3.5 w-3.5" />
-                    Not eligible
+                    Reject
                   </button>
                   <button
-                    onClick={() => reviewSenior(senior, "Active")}
+                    onClick={() => void approveSenior(senior)}
                     className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
                   >
                     <Check className="h-3.5 w-3.5" />
@@ -443,6 +493,67 @@ function EligibilityReview() {
               ))}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!rejecting}
+        onOpenChange={(open) => !open && !rejectSaving && setRejecting(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {rejecting?.length === 1
+                ? `Reject ${rejecting[0]!.name}'s registration?`
+                : `Reject ${rejecting?.length ?? 0} registrations?`}
+            </DialogTitle>
+            <DialogDescription>
+              The barangay leader will see this reason on the senior's record.
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <label htmlFor="reject-reason" className="mb-1.5 block text-sm font-semibold">
+              Reason *
+            </label>
+            <textarea
+              id="reject-reason"
+              rows={3}
+              maxLength={500}
+              autoFocus
+              value={rejectReason}
+              onChange={(event) => {
+                setRejectReason(event.target.value);
+                if (event.target.value.trim()) setRejectError(null);
+              }}
+              placeholder="e.g. Incomplete documents"
+              aria-invalid={!!rejectError}
+              aria-describedby={rejectError ? "reject-reason-error" : undefined}
+              className={cn(fieldClass, "py-2.5", rejectError && "border-destructive")}
+            />
+            {rejectError && (
+              <p id="reject-reason-error" role="alert" className="mt-1.5 text-sm text-destructive">
+                {rejectError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setRejecting(null)}
+              disabled={rejectSaving}
+              className={secondaryButtonClass}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmReject()}
+              disabled={rejectSaving}
+              className={cn(primaryButtonClass, "bg-destructive hover:bg-destructive/90")}
+            >
+              {rejectSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Reject registration
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {confirmDialog}
