@@ -17,13 +17,13 @@ class LoginRateLimitTest extends TestCase
             'password' => 'StrongPassword123!',
         ]);
 
-        foreach (range(1, 5) as $_) {
+        foreach (range(1, 5) as $attempt) {
             $this->postJson('/api/login', [
                 'email' => 'staff@example.com',
                 'password' => 'incorrect-password',
                 'accepted_terms' => true,
                 'terms_version' => '2026-10-07',
-            ])->assertStatus(422);
+            ])->assertStatus($attempt < 5 ? 422 : 429);
         }
 
         $this->postJson('/api/login', [

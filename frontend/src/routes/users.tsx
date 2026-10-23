@@ -7,6 +7,7 @@ import {
   Pencil,
   Search,
   ShieldAlert,
+  ToggleLeft,
   ToggleRight,
   Trash2,
   UserCog,
@@ -44,6 +45,7 @@ import {
   deleteManagedUser,
   getManagedUsers,
   getStoredUser,
+  setManagedUserStatus,
   updateManagedUser,
   type ManagedUser,
 } from "@/lib/api";
@@ -298,6 +300,28 @@ function UserManagement() {
     }
   }
 
+  async function handleToggleStatus(user: ManagedUser) {
+    const deactivate = user.status === "active";
+    const confirmed = await confirm({
+      title: deactivate ? "Deactivate this account?" : "Reactivate this account?",
+      description: deactivate
+        ? `${user.name} will be signed out and cannot log in until the account is reactivated.`
+        : `${user.name} will be able to log in again.`,
+      confirmLabel: deactivate ? "Deactivate" : "Reactivate",
+      destructive: deactivate,
+    });
+    if (!confirmed) return;
+    try {
+      const updated = await setManagedUserStatus(user.id, deactivate ? "inactive" : "active");
+      setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      toast.success(deactivate ? "Account deactivated." : "Account reactivated.");
+    } catch (reason) {
+      toast.error(
+        reason instanceof Error ? reason.message : "Unable to change the account status.",
+      );
+    }
+  }
+
   async function handleDelete(user: ManagedUser) {
     const confirmed = await confirm({
       title: "Delete this account?",
@@ -482,9 +506,7 @@ function UserManagement() {
                       {roleLabel(user.role)}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-muted-foreground">
-                    {barangayScope(user)}
-                  </td>
+                  <td className="px-4 py-3.5 text-muted-foreground">{barangayScope(user)}</td>
                   <td className="px-4 py-3.5">
                     {accountStatus(user) === "pending" ? (
                       <StatusPill tone="gold">Pending verification</StatusPill>
@@ -504,6 +526,22 @@ function UserManagement() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
+                      {user.id !== currentUser?.id && (
+                        <button
+                          onClick={() => handleToggleStatus(user)}
+                          aria-label={`${user.status === "active" ? "Deactivate" : "Reactivate"} ${user.name}`}
+                          title={
+                            user.status === "active" ? "Deactivate account" : "Reactivate account"
+                          }
+                          className={actionButtonClass}
+                        >
+                          {user.status === "active" ? (
+                            <ToggleRight className="h-4 w-4 text-success" />
+                          ) : (
+                            <ToggleLeft className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(user)}
                         aria-label={`Delete ${user.name}`}

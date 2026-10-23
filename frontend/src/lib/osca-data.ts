@@ -53,6 +53,16 @@ export const INACTIVE_REASONS: Record<string, string> = {
   other: "Other",
 };
 
+/** Set when the Head marks a pending registration not eligible; the reason is in the remarks. */
+export const NOT_ELIGIBLE_REASON = "not_eligible";
+
+/** The status shown for a record: a rejected registration reads "Not eligible", not "Inactive". */
+export function seniorStatusLabel(senior: Pick<Senior, "status" | "inactiveReason">) {
+  return senior.status === "Inactive" && senior.inactiveReason === NOT_ELIGIBLE_REASON
+    ? "Not eligible"
+    : senior.status;
+}
+
 export type BenefitProgram = {
   name: string;
   type:

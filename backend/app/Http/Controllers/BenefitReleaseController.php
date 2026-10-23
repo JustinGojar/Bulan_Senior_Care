@@ -13,6 +13,7 @@ use App\Models\SeniorCitizen;
 use App\Models\User;
 use App\Support\AdvisoryDispatcher;
 use App\Support\AgeThresholdNotifier;
+use App\Support\RolePermissions;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -61,6 +62,7 @@ class BenefitReleaseController extends Controller
     public function store(Request $request): JsonResponse
     {
         abort_unless($request->user()->role === 'head', 403, 'Only the Head account can schedule benefit releases.');
+        RolePermissions::authorize($request->user(), 'schedule benefit releases');
         $data = $request->validate([
             'benefit_id' => ['required', 'integer', 'exists:benefits,id'],
             'period_label' => ['required', 'string', 'max:100'],

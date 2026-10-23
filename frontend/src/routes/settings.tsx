@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { RolePermissionsSettings } from "@/components/RolePermissionsSettings";
 import {
   downloadBackup,
   getNotificationChannelSettings,
@@ -382,6 +383,13 @@ function SettingsPage() {
             />
           </div>
         </section>
+
+        {isAdmin && (
+          <section>
+            <SettingsGroupTitle>Roles & permissions</SettingsGroupTitle>
+            <RolePermissionsSettings />
+          </section>
+        )}
 
         {isAdmin && (
           <section>
