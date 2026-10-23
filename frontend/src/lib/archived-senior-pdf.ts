@@ -1,4 +1,5 @@
 import { benefitLabel, INACTIVE_REASONS, type Senior } from "@/lib/osca-data";
+import { saveExport } from "@/lib/export-file";
 import { loadPdfLogo } from "@/lib/pdf";
 
 export type ArchiveDetails = {
@@ -169,5 +170,7 @@ export async function downloadArchivedSeniorReport(senior: Senior, archive: Arch
     pdf.setTextColor(0);
   }
 
-  pdf.save(`${senior.name} - ${senior.id} - Archived Record.pdf`);
+  return saveExport(`${senior.name} - ${senior.id} - Archived Record`, {
+    pdf: () => pdf.output("blob"),
+  });
 }

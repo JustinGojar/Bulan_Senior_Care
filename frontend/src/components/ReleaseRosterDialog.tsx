@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ExportMenu } from "@/components/ExportMenu";
 import {
   completeBenefitRelease,
   deleteReleaseDocument,
@@ -30,7 +31,14 @@ import {
   uploadReleaseDocuments,
   type ReleaseRoster,
 } from "@/lib/api";
-import { downloadCashPayroll } from "@/lib/payroll-pdf";
+import { printCashPayroll } from "@/lib/payroll-pdf";
+import {
+  TABLE_FORMATS,
+  exportErrorMessage,
+  saveExport,
+  type ExportFormat,
+} from "@/lib/export-file";
+import { releaseListExport } from "@/lib/release-list-export";
 import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 
 function longDate(date: string) {
@@ -82,7 +90,7 @@ export function ReleaseRosterDialog({
   const [confirm, confirmDialog] = useConfirmDialog();
   const [roster, setRoster] = useState<ReleaseRoster | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"upload" | "complete" | "payroll" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "complete" | "payroll" | "export" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -107,33 +115,16 @@ export function ReleaseRosterDialog({
     onChanged?.();
   }
 
-  async function exportRoster() {
+  async function exportRoster(format?: ExportFormat) {
     if (!roster) return;
+    setBusy("export");
     try {
-      const XLSX = await import("xlsx");
-      const sheet = XLSX.utils.json_to_sheet(
-        items.map((item, index) => ({
-          "No.": index + 1,
-          "OSCA ID": item.senior?.osca_id_number ?? "",
-          "Last Name": item.senior?.last_name ?? "",
-          "First Name": item.senior?.first_name ?? "",
-          "Middle Name": item.senior?.middle_name ?? "",
-          Barangay: item.senior?.barangay?.barangay_name ?? "",
-          Amount: Number(item.amount),
-          Signature: "",
-        })),
-      );
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, sheet, "Release batch");
-      XLSX.writeFile(
-        workbook,
-        `${roster.benefit.benefit_name}-${roster.release_date.slice(0, 10)}.xlsx`.replace(
-          /\s+/g,
-          "-",
-        ),
-      );
-    } catch {
-      toast.error("Unable to export the release batch.");
+      const { fileName, builders } = releaseListExport(roster);
+      await saveExport(fileName, builders, format);
+    } catch (reason) {
+      toast.error(exportErrorMessage(reason, "Unable to export the release batch."));
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -141,8 +132,7 @@ export function ReleaseRosterDialog({
     if (!roster) return;
     setBusy("payroll");
     try {
-      await downloadCashPayroll(roster);
-      toast.success("Payroll ready to print.");
+      await printCashPayroll(roster);
     } catch {
       toast.error("Unable to create the payroll.");
     } finally {
@@ -351,9 +341,16 @@ export function ReleaseRosterDialog({
                     )}
                     Print payroll
                   </button>
-                  <button type="button" onClick={exportRoster} className={secondaryButtonClass}>
-                    <Download className="h-4 w-4" /> Export list
-                  </button>
+                  <ExportMenu formats={TABLE_FORMATS} onExport={exportRoster}>
+                    <button type="button" disabled={busy !== null} className={secondaryButtonClass}>
+                      {busy === "export" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      Export list
+                    </button>
+                  </ExportMenu>
                 </>
               )}
               {canComplete && roster.status === "scheduled" && (

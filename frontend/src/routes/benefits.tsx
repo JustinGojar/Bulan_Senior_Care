@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Coins,
   Download,
-  FileSpreadsheet,
   Gift,
   Grid2X2,
   HeartHandshake,
@@ -49,6 +48,7 @@ import {
 } from "@/components/design-kit";
 import { PrivateFileLink } from "@/components/PrivateFile";
 import { ReleaseRosterDialog } from "@/components/ReleaseRosterDialog";
+import { ExportMenu } from "@/components/ExportMenu";
 import {
   apiFetch,
   benefitProofUrl,
@@ -58,7 +58,13 @@ import {
   type BenefitTransaction,
   type PaginatedResponse,
 } from "@/lib/api";
-import { loadPdfLogo } from "@/lib/pdf";
+import {
+  TABLE_FORMATS,
+  exportErrorMessage,
+  saveExport,
+  tableExportBuilders,
+  type ExportFormat,
+} from "@/lib/export-file";
 import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -134,7 +140,7 @@ function BenefitTracking() {
   const [sortProgramsBy, setSortProgramsBy] = useState("name");
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<number[]>([]);
   const [bulkUpdating, setBulkUpdating] = useState(false);
-  const [exportingQueue, setExportingQueue] = useState<"pdf" | "excel" | null>(null);
+  const [exportingQueue, setExportingQueue] = useState(false);
   // Transactions waiting for a release date before they are marked received.
   const [releaseDateRequest, setReleaseDateRequest] = useState<{
     transactions: BenefitTransaction[];
@@ -425,76 +431,56 @@ function BenefitTracking() {
     }
   }
 
-  async function exportBenefits() {
+  async function exportBenefits(format?: ExportFormat) {
     if (filteredTransactions.length === 0) {
       setError("There are no matching benefit records to export.");
       return;
     }
     try {
-      const { jsPDF } = await import("jspdf");
-      const document = new jsPDF({ orientation: "landscape" });
-      const generatedDate = new Date();
-      const logoDataUrl = await loadPdfLogo();
-      document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
-      document.setFontSize(18);
-      document.text("Bulan SeniorCare", 32, 18);
-      document.setFontSize(13);
-      document.text("Benefit Tracking Report", 14, 28);
-      document.setFontSize(9);
-      document.text(`Generated: ${generatedDate.toLocaleDateString()}`, 14, 36);
-      document.text(`Records: ${filteredTransactions.length}`, 14, 43);
-
-      let y = 56;
-      document.setFont("helvetica", "bold");
-      document.text("Senior", 14, y);
-      document.text("Program", 82, y);
-      document.text("Barangay", 145, y);
-      document.text("Source", 205, y);
-      document.text("Status", 260, y);
-      document.setFont("helvetica", "normal");
-      y += 7;
-      filteredTransactions.forEach((transaction) => {
-        if (y > 195) {
-          document.addPage();
-          y = 18;
-        }
-        const seniorName = [
-          transaction.senior.first_name,
-          transaction.senior.middle_name,
-          transaction.senior.last_name,
-        ]
-          .filter(Boolean)
-          .join(" ");
-        const source = transaction.senior.encoder?.name ?? "Unknown";
-        const status =
-          transaction.status === "released"
-            ? "Received"
-            : transaction.status === "failed"
-              ? "Not received"
-              : "Pending";
-        document.text(document.splitTextToSize(seniorName, 62)[0] ?? seniorName, 14, y);
-        document.text(
-          document.splitTextToSize(transaction.benefit.benefit_name, 58)[0] ??
-            transaction.benefit.benefit_name,
-          82,
-          y,
-        );
-        document.text(
-          document.splitTextToSize(
-            transaction.senior.barangay?.barangay_name ?? "Unassigned",
-            54,
-          )[0] ?? "Unassigned",
-          145,
-          y,
-        );
-        document.text(document.splitTextToSize(source, 48)[0] ?? source, 205, y);
-        document.text(status, 260, y);
-        y += 7;
-      });
-      document.save(`bulan-seniorcare-benefits-${generatedDate.toISOString().slice(0, 10)}.pdf`);
-      setError(null);
-    } catch {
-      setError("Unable to export benefit records.");
+      const saved = await saveExport(
+        `bulan-seniorcare-benefits-${localToday()}`,
+        tableExportBuilders({
+          title: "Benefit Tracking Report",
+          orientation: "landscape",
+          details: [
+            `Generated: ${new Date().toLocaleString()}`,
+            `Records: ${filteredTransactions.length}`,
+          ],
+          tables: [
+            {
+              title: "Benefit records",
+              columns: [
+                { label: "Senior", weight: 2 },
+                { label: "Program", weight: 1.8 },
+                { label: "Barangay", weight: 1.6 },
+                { label: "Source", weight: 1.5 },
+                { label: "Status", weight: 1 },
+              ],
+              rows: filteredTransactions.map((transaction) => [
+                [
+                  transaction.senior.first_name,
+                  transaction.senior.middle_name,
+                  transaction.senior.last_name,
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                transaction.benefit.benefit_name,
+                transaction.senior.barangay?.barangay_name ?? "Unassigned",
+                transaction.senior.encoder?.name ?? "Unknown",
+                transaction.status === "released"
+                  ? "Received"
+                  : transaction.status === "failed"
+                    ? "Not received"
+                    : "Pending",
+              ]),
+            },
+          ],
+        }),
+        format,
+      );
+      if (saved) setError(null);
+    } catch (reason) {
+      setError(exportErrorMessage(reason, "Unable to export benefit records."));
     }
   }
 
@@ -557,141 +543,70 @@ function BenefitTracking() {
     ].join(" / ");
   }
 
-  async function exportReleaseQueue(format: "pdf" | "excel") {
-    setExportingQueue(format);
+  async function exportReleaseQueue(format?: ExportFormat) {
+    setExportingQueue(true);
+    // The records load once the format is chosen, so the Save dialog opens right away.
+    let exported = 0;
     try {
-      const rows = await loadReleaseQueueReportRows();
-      if (rows.length === 0) {
-        toast.error("There are no release queue records matching these filters.");
-        return;
-      }
-      const generatedDate = new Date();
-      const fileDate = localToday();
-      const count = (status: string) => rows.filter((row) => row.status === status).length;
-      const receivedAmount = rows
-        .filter((row) => row.status === "Received")
-        .reduce((sum, row) => sum + row.amount, 0);
-      const peso = (value: number) => formatPesoAmount(value, "PHP ");
-      const summary: Array<[string, string]> = [
-        ["Filters", releaseQueueFilterSummary()],
-        ["Records", String(rows.length)],
-        ["Received", String(count("Received"))],
-        ["Pending", String(count("Pending"))],
-        ["Not received", String(count("Not received"))],
-        ["Amount received", peso(receivedAmount)],
-      ];
-
-      if (format === "excel") {
-        const XLSX = await import("xlsx");
-        const sheet = XLSX.utils.aoa_to_sheet([
-          ["Bulan SeniorCare - Release Queue Report"],
-          [`Generated: ${generatedDate.toLocaleString()}`],
-          ...summary,
-          [],
-          [
-            "Senior",
-            "OSCA ID",
-            "Program",
-            "Barangay",
-            "Amount",
-            "Period",
-            "Release date",
-            "Status",
-            "Distributed by",
-          ],
-          ...rows.map((row) => [
-            row.senior,
-            row.oscaId,
-            row.program,
-            row.barangay,
-            row.amount,
-            row.period,
-            row.releaseDate,
-            row.status,
-            row.distributedBy,
-          ]),
-        ]);
-        sheet["!cols"] = [28, 16, 24, 20, 12, 24, 14, 14, 22].map((wch) => ({ wch }));
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, sheet, "Release queue");
-        XLSX.writeFile(workbook, `bulan-seniorcare-release-queue-${fileDate}.xlsx`);
-      } else {
-        const { jsPDF } = await import("jspdf");
-        const document = new jsPDF({ orientation: "landscape" });
-        const logoDataUrl = await loadPdfLogo();
-        document.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
-        document.setFontSize(18);
-        document.text("Bulan SeniorCare", 32, 18);
-        document.setFontSize(13);
-        document.text("Release Queue Report", 14, 30);
-        document.setFontSize(9);
-        document.text(`Generated: ${generatedDate.toLocaleString()}`, 14, 37);
-        summary.forEach(([label, value], index) => {
-          const x = 14 + (index % 3) * 90;
-          const y = 45 + Math.floor(index / 3) * 6;
-          document.setFont("helvetica", "bold");
-          document.text(`${label}:`, x, y);
-          document.setFont("helvetica", "normal");
-          document.text(value, x + 30, y);
-        });
-
-        const columns: Array<[string, number, number]> = [
-          ["Senior", 14, 50],
-          ["OSCA ID", 66, 28],
-          ["Program", 96, 42],
-          ["Barangay", 140, 34],
-          ["Amount", 176, 24],
-          ["Period", 202, 34],
-          ["Release date", 238, 24],
-          ["Status", 264, 22],
-        ];
-        const drawHeader = (y: number) => {
-          document.setFont("helvetica", "bold");
-          columns.forEach(([label, x]) => document.text(label, x, y));
-          document.line(14, y + 2, 283, y + 2);
-          document.setFont("helvetica", "normal");
-        };
-        let y = 66;
-        drawHeader(y);
-        y += 8;
-        rows.forEach((row) => {
-          if (y > 195) {
-            document.addPage();
-            y = 18;
-            drawHeader(y);
-            y += 8;
-          }
-          const values = [
-            row.senior,
-            row.oscaId,
-            row.program,
-            row.barangay,
-            peso(row.amount),
-            row.period,
-            row.releaseDate || "-",
-            row.status,
-          ];
-          columns.forEach(([, x, width], index) => {
-            const value = values[index] ?? "";
-            document.text(document.splitTextToSize(value, width - 2)[0] ?? value, x, y);
-          });
-          y += 7;
-        });
-        const pageCount = document.getNumberOfPages();
-        for (let page = 1; page <= pageCount; page += 1) {
-          document.setPage(page);
-          document.setFontSize(8);
-          document.text(`Page ${page} of ${pageCount}`, 283, 205, { align: "right" });
-        }
-        document.save(`bulan-seniorcare-release-queue-${fileDate}.pdf`);
-      }
-      toast.success(
-        `Exported ${rows.length} release queue ${rows.length === 1 ? "record" : "records"}.`,
+      const saved = await saveExport(
+        `bulan-seniorcare-release-queue-${localToday()}`,
+        tableExportBuilders(async () => {
+          const rows = await loadReleaseQueueReportRows();
+          if (rows.length === 0)
+            throw new Error("There are no release queue records matching these filters.");
+          exported = rows.length;
+          const count = (status: string) => rows.filter((row) => row.status === status).length;
+          const receivedAmount = rows
+            .filter((row) => row.status === "Received")
+            .reduce((sum, row) => sum + row.amount, 0);
+          return {
+            title: "Release Queue Report",
+            orientation: "landscape",
+            details: [
+              `Generated: ${new Date().toLocaleString()}`,
+              `Filters: ${releaseQueueFilterSummary()}`,
+              `Records: ${rows.length} · Received: ${count("Received")} · Pending: ${count("Pending")} · Not received: ${count("Not received")}`,
+              `Amount received: ${formatPesoAmount(receivedAmount, "PHP ")}`,
+            ],
+            tables: [
+              {
+                title: "Release queue",
+                columns: [
+                  { label: "Senior", weight: 2 },
+                  { label: "OSCA ID", weight: 1.3 },
+                  { label: "Program", weight: 1.6 },
+                  { label: "Barangay", weight: 1.4 },
+                  { label: "Amount", weight: 1, money: true },
+                  { label: "Period", weight: 1.3 },
+                  { label: "Release date", weight: 1 },
+                  { label: "Status", weight: 1 },
+                  { label: "Distributed by", weight: 1.3 },
+                ],
+                rows: rows.map((row) => [
+                  row.senior,
+                  row.oscaId,
+                  row.program,
+                  row.barangay,
+                  row.amount,
+                  row.period,
+                  row.releaseDate || "-",
+                  row.status,
+                  row.distributedBy,
+                ]),
+              },
+            ],
+          };
+        }),
+        format,
       );
+      if (saved)
+        toast.success(
+          `Exported ${exported} release queue ${exported === 1 ? "record" : "records"}.`,
+        );
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Unable to export the release queue.");
+      toast.error(exportErrorMessage(reason, "Unable to export the release queue."));
     } finally {
-      setExportingQueue(null);
+      setExportingQueue(false);
     }
   }
 
@@ -717,12 +632,13 @@ function BenefitTracking() {
             onClick={() => navigate({ to: "/releases" })}
           />
           {isHead && (
-            <IconActionButton
-              label="Export PDF"
-              variant="outline"
-              icon={<Download className="h-5 w-5" />}
-              onClick={exportBenefits}
-            />
+            <ExportMenu formats={TABLE_FORMATS} onExport={(format) => void exportBenefits(format)}>
+              <IconActionButton
+                label="Export"
+                variant="outline"
+                icon={<Download className="h-5 w-5" />}
+              />
+            </ExportMenu>
           )}
         </div>
       }
@@ -994,32 +910,23 @@ function BenefitTracking() {
           subtitle="Transactions are linked to a senior and program; one-time grants cannot be duplicated."
           badge={
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => exportReleaseQueue("pdf")}
-                disabled={exportingQueue !== null}
-                className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+              <ExportMenu
+                formats={TABLE_FORMATS}
+                onExport={(format) => void exportReleaseQueue(format)}
               >
-                {exportingQueue === "pdf" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Download className="h-3.5 w-3.5" />
-                )}
-                Export PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => exportReleaseQueue("excel")}
-                disabled={exportingQueue !== null}
-                className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
-              >
-                {exportingQueue === "excel" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                )}
-                Export Excel
-              </button>
+                <button
+                  type="button"
+                  disabled={exportingQueue}
+                  className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+                >
+                  {exportingQueue ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  Export
+                </button>
+              </ExportMenu>
             </div>
           }
         />

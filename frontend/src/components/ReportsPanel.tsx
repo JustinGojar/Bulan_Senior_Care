@@ -1,9 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   CheckCircle2,
   Download,
-  Eye,
   FileText,
   Printer,
   RefreshCw,
@@ -24,9 +22,8 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import { AppShell } from "@/components/AppShell";
-import { IconActionButton } from "@/components/IconActionButton";
 import { EmptyState, SectionHeader, SkeletonValue, StatusPill } from "@/components/DesignKit";
+import { ExportMenu } from "@/components/ExportMenu";
 import {
   TONE_BAR,
   fieldClass,
@@ -51,16 +48,14 @@ import {
   type ReportSnapshot,
   type ReportType,
 } from "@/lib/api";
-import { loadPdfLogo } from "@/lib/pdf";
-
-export const Route = createFileRoute("/reports")({
-  head: () => ({ meta: [{ title: "Reports — Bulan SeniorCare" }] }),
-  validateSearch: (search: Record<string, unknown>): { report?: number } => {
-    const report = Number(search["report"]);
-    return Number.isInteger(report) && report > 0 ? { report } : {};
-  },
-  component: Reports,
-});
+import {
+  EXPORT_FORMATS,
+  TABLE_FORMATS,
+  exportErrorMessage,
+  saveExport,
+  tableExportBuilders,
+  type ExportFormat,
+} from "@/lib/export-file";
 
 const REPORT_TYPES: Array<{ value: ReportType; description: string }> = [
   {
@@ -117,9 +112,18 @@ function capitalize(value: string | null | undefined) {
   return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : "—";
 }
 
-function Reports() {
-  const navigate = useNavigate();
-  const { report: linkedReportId } = Route.useSearch();
+/**
+ * The OSCA report workflow, shown as the Reports tab of the Analytics page.
+ * `linkedReportId` opens that report (e.g. from a notification); `onLinkedReportOpened`
+ * lets the page drop the id from the address bar afterwards.
+ */
+export function ReportsPanel({
+  linkedReportId,
+  onLinkedReportOpened,
+}: {
+  linkedReportId?: number | undefined;
+  onLinkedReportOpened?: () => void;
+}) {
   const role = getStoredUser()?.role;
   const isHead = role === "head";
   // Only Admin generates and revises reports; the Head reviews, approves, and publishes them.
@@ -158,10 +162,10 @@ function Reports() {
   useEffect(() => {
     if (!linkedReportId) return;
     openReport(linkedReportId);
-    void navigate({ to: "/reports", search: {}, replace: true });
+    onLinkedReportOpened?.();
     // openReport only reads refs and setters, so it doesn't need to be a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [linkedReportId, navigate]);
+  }, [linkedReportId]);
 
   function scrollToTop() {
     window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
@@ -323,28 +327,24 @@ function Reports() {
   }
 
   return (
-    <AppShell
-      title="Reports"
-      subtitle={
-        canGenerate
-          ? "Generate OSCA reports and send them to the Head for approval"
-          : isHead
-            ? "Review, approve, and publish OSCA reports"
-            : "Published OSCA reports for your barangay"
-      }
-      breadcrumb={["Dashboard", "Reports"]}
-      actions={
-        canGenerate && selectedId === null && !formOpen ? (
-          <IconActionButton
-            label="Generate report"
-            variant="primary"
-            icon={<FileText className="h-5 w-5" />}
-            className="print:hidden"
-            onClick={() => setFormOpen(true)}
-          />
-        ) : undefined
-      }
-    >
+    <>
+      {selectedId === null && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 print:hidden">
+          <p className="mr-auto text-sm text-muted-foreground">
+            {canGenerate
+              ? "Generate OSCA reports and send them to the Head for approval."
+              : isHead
+                ? "Review, approve, and publish OSCA reports."
+                : "Published OSCA reports for your barangay."}
+          </p>
+          {canGenerate && !formOpen && (
+            <button onClick={() => setFormOpen(true)} className={primaryButtonClass}>
+              <FileText className="h-4 w-4" /> Generate report
+            </button>
+          )}
+        </div>
+      )}
+
       {selectedId === null && canGenerate && formOpen && (
         <section className={`${panelClass} p-5 sm:p-7 print:hidden`}>
           <SectionHeader
@@ -450,7 +450,21 @@ function Reports() {
               />
             )}
             {reports?.map((report) => (
-              <div key={report.id} className={`${tileClass} flex flex-wrap items-center gap-4`}>
+              <div
+                key={report.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open ${reportTitle(report)}`}
+                onClick={() => openReport(report.id)}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openReport(report.id);
+                  }
+                }}
+                className={`${tileClass} flex cursor-pointer flex-wrap items-center gap-4 transition-[border-color,box-shadow] hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
+              >
                 <div className="mr-auto min-w-0">
                   <p className="font-bold">{reportTitle(report)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -467,18 +481,16 @@ function Reports() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                {/* Approve, Publish, and the other actions act on the report without opening it. */}
+                <div
+                  className="flex flex-wrap items-center gap-2"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <StatusPill tone={STATUS[report.status].tone}>
                     {STATUS[report.status].label}
                   </StatusPill>
                   {workflowActions(report)}
-                  <button
-                    onClick={() => openReport(report.id)}
-                    className={`${secondaryButtonClass} h-9 px-3`}
-                    aria-label={`View ${reportTitle(report)}`}
-                  >
-                    <Eye className="h-4 w-4" /> View
-                  </button>
                 </div>
               </div>
             ))}
@@ -548,7 +560,7 @@ function Reports() {
           </div>
         </DialogContent>
       </Dialog>
-    </AppShell>
+    </>
   );
 }
 
@@ -596,14 +608,14 @@ function ReportView({ report }: { report: AnalyticsReport }) {
           <button onClick={() => window.print()} className={secondaryButtonClass}>
             <Printer className="h-4 w-4" /> Print
           </button>
-          <button
-            onClick={() =>
-              exportPdf(report, snapshot).catch(() => toast.error("Could not create the PDF."))
-            }
-            className={primaryButtonClass}
+          <ExportMenu
+            formats={TABLE_FORMATS}
+            onExport={(format) => void exportReport(report, snapshot, format)}
           >
-            <Download className="h-4 w-4" /> Export PDF
-          </button>
+            <button className={primaryButtonClass}>
+              <Download className="h-4 w-4" /> Export
+            </button>
+          </ExportMenu>
         </div>
       </div>
       {report.status !== "published" && (
@@ -892,20 +904,17 @@ function ReportTable({
   );
 }
 
-async function exportPdf(report: AnalyticsReport, snapshot: ReportSnapshot) {
-  const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF();
-  const logoDataUrl = await loadPdfLogo();
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  let y = 0;
+type ExportTable = {
+  title: string;
+  /** Column labels with relative widths; the PDF scales them to the page width. */
+  columns: Array<[string, number]>;
+  rows: Array<Array<string | number>>;
+  /** Draws the last row bold, as a totals row. */
+  totalRow?: boolean;
+};
 
-  pdf.addImage(logoDataUrl, "PNG", 14, 7, 14, 14);
-  pdf.setFontSize(18);
-  pdf.text("Bulan SeniorCare", 32, 18);
-  pdf.setFontSize(13);
-  pdf.text(reportTitle(report), 14, 30);
-  pdf.setFontSize(9);
-  const details = [
+function reportDetails(report: AnalyticsReport, snapshot: ReportSnapshot) {
+  return [
     `${snapshot.scope} · Generated ${formatDate(report.generated_date)}${report.generator ? ` by ${report.generator.name}` : ""}`,
     report.approver ? `Approved by ${report.approver.name}` : "Not yet approved",
     report.publisher
@@ -913,129 +922,106 @@ async function exportPdf(report: AnalyticsReport, snapshot: ReportSnapshot) {
       : `Status: ${STATUS[report.status].label} (not yet published)`,
     ...(report.remarks ? [`Remarks: ${report.remarks}`] : []),
   ];
-  y = 37;
-  details.forEach((line) => {
-    pdf.text(pdf.splitTextToSize(line, pageWidth - 28), 14, y);
-    y += 5;
-  });
+}
 
-  y += 3;
-  pdf.setFontSize(10);
+function exportTables(report: AnalyticsReport, snapshot: ReportSnapshot): ExportTable[] {
   const { totals } = snapshot;
-  pdf.text(
-    `Total registered: ${totals.total}   Active: ${totals.active}   Pending: ${totals.pending}   Inactive: ${totals.inactive}   Male: ${totals.male}   Female: ${totals.female}`,
-    14,
-    y,
-  );
-  y += 8;
-
-  const table = (
-    title: string,
-    columns: Array<[string, number]>,
-    rows: Array<Array<string | number>>,
-  ) => {
-    if (y > 260) {
-      pdf.addPage();
-      y = 18;
-    }
-    pdf.setFontSize(11);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(title, 14, y);
-    y += 7;
-    const header = () => {
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "bold");
-      columns.forEach(([label, x]) => pdf.text(label, x, y));
-      pdf.setFont("helvetica", "normal");
-      y += 6;
-    };
-    header();
-    if (rows.length === 0) {
-      pdf.text("None recorded.", 14, y);
-      y += 6;
-    }
-    rows.forEach((row) => {
-      if (y > 282) {
-        pdf.addPage();
-        y = 18;
-        header();
-      }
-      row.forEach((value, index) => {
-        const x = columns[index]![1];
-        const width = (columns[index + 1]?.[1] ?? pageWidth - 10) - x - 2;
-        const text = String(value);
-        pdf.text(pdf.splitTextToSize(text, width)[0] ?? text, x, y);
-      });
-      y += 6;
-    });
-    y += 6;
-  };
-
-  table(
-    report.report_type === "Municipal Summary" ? "Barangay-level summary" : "Summary",
-    [
-      ["Barangay", 14],
-      ["Registered", 70],
-      ["Active", 92],
-      ["Pending", 110],
-      ["Inactive", 128],
-      ["Released", 148],
-      ["Pending rel.", 172],
-    ],
-    [
-      ...snapshot.barangays.map((row) => [
-        row.barangay,
-        row.registered,
-        row.active,
-        row.pending,
-        row.inactive,
-        row.released,
-        row.pending_release,
-      ]),
-      ...(report.report_type === "Municipal Summary"
-        ? [
-            [
-              "TOTAL — Bulan",
-              totals.total,
-              totals.active,
-              totals.pending,
-              totals.inactive,
-              snapshot.barangays.reduce((sum, row) => sum + row.released, 0),
-              snapshot.barangays.reduce((sum, row) => sum + row.pending_release, 0),
-            ],
-          ]
-        : []),
-    ],
-  );
-  table(
-    "Benefit distribution status",
-    [
-      ["Program", 14],
-      ["Seniors", 80],
-      ["Released", 105],
-      ["Pending", 130],
-      ["Not released", 155],
-    ],
-    snapshot.benefits.map((row) => [
-      row.name,
-      row.seniors,
-      row.released,
-      row.pending,
-      row.not_released,
-    ]),
-  );
-  if (snapshot.seniors) {
-    table(
-      "Senior roster",
-      [
-        ["Senior ID", 14],
-        ["Name", 45],
-        ["Age", 110],
-        ["Sex", 125],
-        ["Status", 145],
-        ["Registered", 170],
+  const isMunicipal = report.report_type === "Municipal Summary";
+  const released = snapshot.barangays.reduce((sum, row) => sum + row.released, 0);
+  const pendingRelease = snapshot.barangays.reduce((sum, row) => sum + row.pending_release, 0);
+  const tables: ExportTable[] = [
+    {
+      title: "Overview",
+      columns: [
+        ["Total registered", 1],
+        ["Active", 1],
+        ["Pending", 1],
+        ["Inactive", 1],
+        ["Male", 1],
+        ["Female", 1],
+        ["Releases done", 1],
+        ["Pending releases", 1],
       ],
-      snapshot.seniors.map((senior) => [
+      rows: [
+        [
+          totals.total,
+          totals.active,
+          totals.pending,
+          totals.inactive,
+          totals.male,
+          totals.female,
+          released,
+          pendingRelease,
+        ],
+      ],
+    },
+    {
+      title: isMunicipal ? "Barangay-level summary" : "Summary",
+      columns: [
+        ["Barangay", 2.2],
+        ["Registered", 1],
+        ["Active", 1],
+        ["Pending", 1],
+        ["Inactive", 1],
+        ["Releases done", 1.2],
+        ["Pending releases", 1.3],
+      ],
+      rows: [
+        ...snapshot.barangays.map((row) => [
+          row.barangay,
+          row.registered,
+          row.active,
+          row.pending,
+          row.inactive,
+          row.released,
+          row.pending_release,
+        ]),
+        ...(isMunicipal
+          ? [
+              [
+                "TOTAL — Bulan",
+                totals.total,
+                totals.active,
+                totals.pending,
+                totals.inactive,
+                released,
+                pendingRelease,
+              ],
+            ]
+          : []),
+      ],
+      totalRow: isMunicipal,
+    },
+    {
+      title: "Benefit distribution status",
+      columns: [
+        ["Program", 2.5],
+        ["Seniors", 1],
+        ["Released", 1],
+        ["Pending", 1],
+        ["Not released", 1.2],
+      ],
+      rows: snapshot.benefits.map((row) => [
+        row.name,
+        row.seniors,
+        row.released,
+        row.pending,
+        row.not_released,
+      ]),
+    },
+  ];
+  if (snapshot.seniors) {
+    tables.push({
+      title: "Senior roster",
+      columns: [
+        ["Senior ID", 1.4],
+        ["Name", 2.8],
+        ["Age", 0.6],
+        ["Sex", 0.9],
+        ["Status", 1],
+        ["Registered", 1.2],
+      ],
+      rows: snapshot.seniors.map((senior) => [
         senior.osca_id,
         senior.name,
         senior.age,
@@ -1043,33 +1029,61 @@ async function exportPdf(report: AnalyticsReport, snapshot: ReportSnapshot) {
         capitalize(senior.status),
         formatDate(senior.registration_date),
       ]),
-    );
+    });
   }
   if (snapshot.distribution) {
-    table(
-      "Benefits per senior",
-      [
-        ["Senior ID", 14],
-        ["Name", 40],
-        ["Barangay", 85],
-        ["Benefit", 115],
-        ["Period", 150],
-        ["Status", 172],
+    tables.push({
+      title: "Benefits per senior",
+      columns: [
+        ["Senior ID", 1.3],
+        ["Name", 2],
+        ["Barangay", 1.3],
+        ["Benefit", 1.6],
+        ["Period", 1],
+        ["Status", 1],
+        ["Date released", 1.1],
       ],
-      snapshot.distribution.map((row) => [
+      rows: snapshot.distribution.map((row) => [
         row.osca_id ?? "—",
         row.name,
         row.barangay,
         row.benefit,
         row.period ?? "—",
         RELEASE_LABEL[row.status],
+        formatDate(row.date_distributed),
       ]),
-    );
+    });
   }
-
+  return tables;
+}
+/** The report as PDF, Word, or Excel, with every section as a table. */
+function reportExport(report: AnalyticsReport, snapshot: ReportSnapshot) {
   const slug = reportTitle(report)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-");
-  pdf.save(`bulan-seniorcare-${slug}-${report.generated_date.slice(0, 10)}.pdf`);
-  toast.success("PDF report downloaded.");
+  return {
+    fileName: `bulan-seniorcare-${slug}-${report.generated_date.slice(0, 10)}`,
+    builders: tableExportBuilders({
+      title: reportTitle(report),
+      details: reportDetails(report, snapshot),
+      tables: exportTables(report, snapshot).map(({ columns, ...table }) => ({
+        ...table,
+        columns: columns.map(([label, weight]) => ({ label, weight })),
+      })),
+    }),
+  };
+}
+
+async function exportReport(
+  report: AnalyticsReport,
+  snapshot: ReportSnapshot,
+  format?: ExportFormat,
+) {
+  try {
+    const { fileName, builders } = reportExport(report, snapshot);
+    const saved = await saveExport(fileName, builders, format);
+    if (saved) toast.success(`${EXPORT_FORMATS[saved].label} report saved.`);
+  } catch (reason) {
+    toast.error(exportErrorMessage(reason, "Could not export the report."));
+  }
 }
