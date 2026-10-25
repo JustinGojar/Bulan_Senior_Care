@@ -123,7 +123,7 @@ The dev server proxies `/api` and `/storage` to `http://127.0.0.1:8000`. To poin
 
 ### Demo accounts
 
-The development seeder creates sample accounts (for example `admin@osca-bulan.gov.ph`) with the password `password`.
+The development seeder creates sample accounts for each role. Their sign-in details are defined in `backend/database/seeders/DatabaseSeeder.php`.
 
 > [!WARNING]
 > These accounts are for local development only. Never run the development seeder against a production database.
@@ -213,7 +213,7 @@ Set these on the Railway application service. Enter values directly in Railway, 
 
 ## Security and privacy
 
-- Personal information is processed under the **Data Privacy Act of 2012 (RA 10173)**. The portal publishes a [Privacy Policy](https://bulan-senior-care.vercel.app/privacy-policy), [Terms of Service](https://bulan-senior-care.vercel.app/terms-of-service), [Refund Policy](https://bulan-senior-care.vercel.app/refund-policy), and [Cookie Policy](https://bulan-senior-care.vercel.app/cookie-policy).
+- Personal information is processed under the **Data Privacy Act of 2012 (RA 10173)**. The portal publishes a Privacy Policy, Terms of Service, Refund Policy, and Cookie Policy at `/privacy-policy`, `/terms-of-service`, `/refund-policy`, and `/cookie-policy`.
 - Sessions use an HttpOnly cookie and expire after inactivity. Signed-in profile data and API responses are kept in memory only.
 - Access is controlled by role-based permissions, and changes to records are written to an audit log.
 - Private documents are served only to authorized, signed-in users.
