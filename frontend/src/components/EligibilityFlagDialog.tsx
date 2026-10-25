@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getSeniorBenefitRecords, seniorFileUrl, type BenefitTransaction } from "@/lib/api";
-import { downloadClaimForm } from "@/lib/claim-form-pdf";
+import { printClaimForm as openClaimFormPrint } from "@/lib/claim-form-pdf";
 import { BENEFIT_PROGRAMS, benefitsFor, type EligibilityFlag } from "@/lib/osca-data";
 import { formatPesoAmount } from "@/lib/peso";
 
@@ -72,8 +72,7 @@ export function EligibilityFlagDialog({
     if (!senior) return;
     setPrinting(true);
     try {
-      await downloadClaimForm(senior);
-      toast.success("Claim form ready to print.");
+      await openClaimFormPrint(senior);
     } catch {
       toast.error("Unable to create the claim form.");
     } finally {

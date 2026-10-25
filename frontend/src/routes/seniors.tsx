@@ -92,7 +92,15 @@ import {
 import { getSeniorEditRequests, reviewSeniorEditRequest, type SeniorEditRequest } from "@/lib/api";
 import { loadPdfLogo } from "@/lib/pdf";
 import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
-import { downloadMasterlist } from "@/lib/masterlist-pdf";
+import { masterlistExport } from "@/lib/masterlist-pdf";
+import {
+  EXPORT_FORMATS,
+  TABLE_FORMATS,
+  exportErrorMessage,
+  saveExport,
+  type ExportFormat,
+} from "@/lib/export-file";
+import { ExportMenu } from "@/components/ExportMenu";
 import { downloadArchivedSeniorReport } from "@/lib/archived-senior-pdf";
 import { mapSenior, useSeniors, type SeniorDraft } from "@/lib/use-seniors";
 
@@ -465,7 +473,9 @@ async function downloadRegistrationForm(draft: SeniorDraft) {
     .replace(/[\\/:*?"<>|]+/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  document.save(`${fileName || "Senior"} - Registration Form.pdf`);
+  return saveExport(`${fileName || "Senior"} - Registration Form`, {
+    pdf: () => document.output("blob"),
+  });
 }
 
 function changedFields(request: SeniorEditRequest) {
@@ -770,18 +780,27 @@ function SeniorRecords() {
     }
   }
 
-  async function exportRecords() {
+  async function exportRecords(format?: ExportFormat) {
+    // Checked from the table already on screen, so the Save dialog can open without waiting.
+    if (!loading && seniors.length === 0) {
+      toast.error("There are no senior records to export.");
+      return;
+    }
     setExporting(true);
     try {
-      const exportRows = await loadAllSeniors();
-      if (exportRows.length === 0) {
-        toast.error("There are no senior records to export.");
-        return;
-      }
-      await downloadMasterlist(exportRows);
-      toast.success("Masterlist of senior citizens exported as PDF.");
-    } catch {
-      toast.error("Unable to export senior records.");
+      let records: Promise<Senior[]> | null = null;
+      const { fileName, builders } = masterlistExport(() => {
+        records ??= loadAllSeniors().then((rows) => {
+          if (rows.length === 0) throw new Error("There are no senior records to export.");
+          return rows;
+        });
+        return records;
+      });
+      const saved = await saveExport(fileName, builders, format);
+      if (saved)
+        toast.success(`Masterlist of senior citizens exported as ${EXPORT_FORMATS[saved].label}.`);
+    } catch (reason) {
+      toast.error(exportErrorMessage(reason, "Unable to export senior records."));
     } finally {
       setExporting(false);
     }
@@ -829,19 +848,20 @@ function SeniorRecords() {
               onClick={openArchive}
             />
           )}
-          <IconActionButton
-            label={exporting ? "Preparing export..." : "Export"}
-            icon={
-              exporting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Download className="h-5 w-5" />
-              )
-            }
-            onClick={exportRecords}
-            disabled={exporting}
-            aria-busy={exporting}
-          />
+          <ExportMenu formats={TABLE_FORMATS} onExport={(format) => void exportRecords(format)}>
+            <IconActionButton
+              label={exporting ? "Preparing export..." : "Export"}
+              icon={
+                exporting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5" />
+                )
+              }
+              disabled={exporting}
+              aria-busy={exporting}
+            />
+          </ExportMenu>
         </div>
       }
     >
@@ -1782,12 +1802,12 @@ function SeniorRecords() {
               onClick={async () => {
                 setDownloadingReport(true);
                 try {
-                  await downloadArchivedSeniorReport(viewing, {
+                  const saved = await downloadArchivedSeniorReport(viewing, {
                     archivedAt: viewingArchive.at,
                     archivedBy: viewingArchive.by,
                     generatedBy: currentUser?.name ?? null,
                   });
-                  toast.success("Archived record report downloaded.");
+                  if (saved) toast.success("Archived record report saved.");
                 } catch (reason) {
                   console.error(reason);
                   toast.error(
@@ -1820,14 +1840,14 @@ function SeniorRecords() {
                 setDownloadingForm(true);
                 try {
                   const nameParts = viewing.name.split(" ");
-                  await downloadRegistrationForm({
+                  const saved = await downloadRegistrationForm({
                     ...viewing,
                     firstName: nameParts[0] ?? "",
                     middleName: nameParts.slice(1, -1).join(" "),
                     lastName: nameParts.at(-1) ?? "",
                     status: viewing.status,
                   });
-                  toast.success("Registration form downloaded.");
+                  if (saved) toast.success("Registration form saved.");
                 } catch (reason) {
                   console.error(reason);
                   toast.error(

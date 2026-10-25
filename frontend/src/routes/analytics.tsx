@@ -1,5 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
+  BarChart3,
+  FileText,
   MapPin,
   PieChart as PieIcon,
   TrendingUp,
@@ -30,6 +32,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, SkeletonValue } from "@/components/DesignKit";
+import { ReportsPanel } from "@/components/ReportsPanel";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   TONE_BAR,
@@ -60,8 +63,22 @@ export const Route = createFileRoute("/analytics")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): AnalyticsSearch => {
+    const report = Number(search["report"]);
+    return {
+      ...(search["tab"] === "reports" ? { tab: "reports" as const } : {}),
+      ...(Number.isInteger(report) && report > 0 ? { report } : {}),
+    };
+  },
   component: Analytics,
 });
+
+type AnalyticsSearch = { tab?: "reports"; report?: number };
+
+const TABS = [
+  { tab: undefined, label: "Overview", icon: BarChart3 },
+  { tab: "reports", label: "Reports", icon: FileText },
+] as const;
 
 // Color follows the benefit, never its rank, so a missing benefit doesn't repaint the rest.
 const BENEFIT_COLORS: Record<string, string> = {
@@ -265,8 +282,65 @@ function ReleaseProgress({ records }: { records: ReleaseStatusRecord[] }) {
 }
 
 function Analytics() {
-  const currentUser = getStoredUser();
-  const isLeader = currentUser?.role === "leader";
+  const navigate = useNavigate();
+  const { tab, report } = Route.useSearch();
+  const isLeader = getStoredUser()?.role === "leader";
+
+  return (
+    <AppShell
+      title="Analytics"
+      subtitle={
+        tab === "reports"
+          ? "OSCA reports: generate, review, approve, and publish"
+          : isLeader
+            ? "Barangay-level analytics for your assigned seniors"
+            : "Descriptive analytics across barangays, age groups, and benefits"
+      }
+      breadcrumb={
+        tab === "reports" ? ["Dashboard", "Analytics", "Reports"] : ["Dashboard", "Analytics"]
+      }
+    >
+      <div
+        role="tablist"
+        aria-label="Analytics sections"
+        className="mb-6 inline-flex gap-1 rounded-lg border border-border/60 bg-muted/40 p-1 print:hidden"
+      >
+        {TABS.map(({ tab: value, label, icon: Icon }) => {
+          const active = tab === value;
+          return (
+            <button
+              key={label}
+              role="tab"
+              aria-selected={active}
+              onClick={() =>
+                void navigate({ to: "/analytics", search: value ? { tab: value } : {} })
+              }
+              className={`flex h-9 items-center gap-2 rounded-md px-4 text-sm font-semibold transition-colors ${
+                active
+                  ? "bg-card text-foreground shadow-[var(--shadow-soft)]"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" /> {label}
+            </button>
+          );
+        })}
+      </div>
+      {tab === "reports" ? (
+        <ReportsPanel
+          linkedReportId={report}
+          onLinkedReportOpened={() =>
+            void navigate({ to: "/analytics", search: { tab: "reports" }, replace: true })
+          }
+        />
+      ) : (
+        <AnalyticsOverview isLeader={isLeader} />
+      )}
+    </AppShell>
+  );
+}
+
+function AnalyticsOverview({ isLeader }: { isLeader: boolean }) {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -288,15 +362,7 @@ function Analytics() {
   const trendData = analytics?.trend ?? [];
 
   return (
-    <AppShell
-      title="Analytics"
-      subtitle={
-        isLeader
-          ? "Barangay-level analytics for your assigned seniors"
-          : "Descriptive analytics across barangays, age groups, and benefits"
-      }
-      breadcrumb={["Dashboard", "Analytics"]}
-    >
+    <>
       {error && (
         <div className="mb-6">
           <AuthAlert tone="error">{error}</AuthAlert>
@@ -598,6 +664,6 @@ function Analytics() {
           </table>
         </div>
       </section>
-    </AppShell>
+    </>
   );
 }

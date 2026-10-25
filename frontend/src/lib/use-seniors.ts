@@ -199,9 +199,9 @@ export function useSeniors(
   }, [search]);
 
   const makeListPath = useCallback(
-    (requestedPage: number) => {
+    (requestedPage: number, pageSize = perPage) => {
       const params = new URLSearchParams({
-        per_page: String(perPage),
+        per_page: String(pageSize),
         page: String(requestedPage),
       });
       if (pendingOnly) params.set("pending_only", "1");
@@ -273,17 +273,25 @@ export function useSeniors(
   }, [listPath, reloadKey]);
 
   const loadAllSeniors = useCallback(async () => {
-    const firstPage = await apiFetch<PaginatedSeniorsResponse>(makeListPath(1));
+    // The largest page the API serves, so a full list takes as few requests as possible
+    // rather than one per table page.
+    const pageSize = 100;
+    const concurrent = 6;
+    const firstPage = await apiFetch<PaginatedSeniorsResponse>(makeListPath(1, pageSize));
     const remainingPages: PaginatedSeniorsResponse[] = [];
-    for (let firstPageNumber = 2; firstPageNumber <= firstPage.last_page; firstPageNumber += 4) {
+    for (
+      let firstPageNumber = 2;
+      firstPageNumber <= firstPage.last_page;
+      firstPageNumber += concurrent
+    ) {
       const pageNumbers = Array.from(
-        { length: Math.min(4, firstPage.last_page - firstPageNumber + 1) },
+        { length: Math.min(concurrent, firstPage.last_page - firstPageNumber + 1) },
         (_, index) => firstPageNumber + index,
       );
       remainingPages.push(
         ...(await Promise.all(
           pageNumbers.map((pageNumber) =>
-            apiFetch<PaginatedSeniorsResponse>(makeListPath(pageNumber)),
+            apiFetch<PaginatedSeniorsResponse>(makeListPath(pageNumber, pageSize)),
           ),
         )),
       );

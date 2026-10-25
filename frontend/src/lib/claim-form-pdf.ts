@@ -5,6 +5,7 @@ import arimoItalicUrl from "@/fonts/Arimo-Italic.ttf?url";
 import arimoRegularUrl from "@/fonts/Arimo-Regular.ttf?url";
 import kalamUrl from "@/fonts/Kalam-Regular.ttf?url";
 import type { Senior } from "@/lib/osca-data";
+import { printPdf } from "@/lib/pdf";
 
 // A4 portrait with 12 mm margins.
 const L = 12;
@@ -198,7 +199,7 @@ function paymentSection(
  * 11982), filled in with what the system knows about the senior. Bank details, the NCSC
  * registration number and the staff checklist are completed by hand.
  */
-export async function downloadClaimForm(senior: Senior) {
+export async function printClaimForm(senior: Senior) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   await embedFonts(pdf);
@@ -717,5 +718,6 @@ export async function downloadClaimForm(senior: Senior) {
     .replace(/[\\/:*?"<>|]+/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  pdf.save(`${fileName || senior.id} - Annex A Grantee Claim Form.pdf`);
+  pdf.setProperties({ title: `${fileName || senior.id} - Annex A Grantee Claim Form` });
+  printPdf(pdf);
 }

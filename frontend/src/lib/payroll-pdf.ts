@@ -1,5 +1,5 @@
 import type { ReleaseRoster } from "@/lib/api";
-import { loadPdfLogo } from "@/lib/pdf";
+import { loadPdfLogo, printPdf } from "@/lib/pdf";
 
 type Column = { title: string; width: number; align?: "left" | "center" | "right" };
 
@@ -69,8 +69,9 @@ function longDate(date: string) {
 /**
  * Builds the cash assistance payroll for a release batch: every senior with a signature or
  * thumbmark space, signed on the release day as proof of a cash or clustering payout.
+ * Opens the print dialog with it.
  */
-export async function downloadCashPayroll(roster: ReleaseRoster) {
+export async function printCashPayroll(roster: ReleaseRoster) {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "legal" });
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -244,10 +245,8 @@ export async function downloadCashPayroll(roster: ReleaseRoster) {
     }
   }
 
-  pdf.save(
-    `Cash-Payroll-${roster.benefit.benefit_name}-${roster.release_date.slice(0, 10)}.pdf`.replace(
-      /\s+/g,
-      "-",
-    ),
-  );
+  pdf.setProperties({
+    title: `Cash Payroll - ${roster.benefit.benefit_name} - ${roster.release_date.slice(0, 10)}`,
+  });
+  printPdf(pdf);
 }

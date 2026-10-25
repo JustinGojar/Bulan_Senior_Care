@@ -1,3 +1,9 @@
+import {
+  tablesToExcel,
+  tablesToWord,
+  type ExportBuilders,
+  type ExportDocument,
+} from "@/lib/export-file";
 import type { Senior } from "@/lib/osca-data";
 
 type Column = {
@@ -106,29 +112,73 @@ const COLUMNS: Column[] = [
 COLUMNS[COLUMNS.length - 1]!.width =
   TABLE_WIDTH - COLUMNS.reduce((sum, column) => sum + column.width, 0);
 
-/** The senior records as the Municipality of Bulan's masterlist of senior citizens. */
-export async function downloadMasterlist(seniors: Senior[]) {
-  const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "legal" });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const left = (pageWidth - TABLE_WIDTH) / 2;
-  const rowsPerPage = Math.floor((pageHeight - 16 - TABLE_TOP - HEADER_ROW) / ROW);
-  const generated = new Date();
-
+/** Sorted by barangay then name; "No." restarts in each barangay, "Over-all Total" runs on. */
+function orderedRows(seniors: Senior[]) {
   const rows = [...seniors].sort(
     (first, second) =>
       first.barangay.localeCompare(second.barangay) ||
       (first.lastName ?? first.name).localeCompare(second.lastName ?? second.name) ||
       (first.firstName ?? "").localeCompare(second.firstName ?? ""),
   );
-  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
-  // "No." restarts in each barangay; "Over-all Total" runs through the whole list.
   const inBarangay: number[] = [];
   rows.forEach((senior, index) => {
     const previous = rows[index - 1];
     inBarangay.push(previous?.barangay === senior.barangay ? (inBarangay[index - 1] ?? 0) + 1 : 1);
   });
+  return { rows, inBarangay };
+}
+
+/** The masterlist as a plain table, for Word and Excel. */
+function masterlistDocument(seniors: Senior[], generated: Date): ExportDocument {
+  const { rows, inBarangay } = orderedRows(seniors);
+  return {
+    title: "Masterlist of Senior Citizens",
+    orientation: "landscape",
+    details: [
+      "Republic of the Philippines · Municipality of Bulan, Sorsogon",
+      `Total senior citizens: ${rows.length} · Generated ${generated.toLocaleDateString("en-PH")}`,
+    ],
+    tables: [
+      {
+        title: "Masterlist",
+        columns: COLUMNS.map((column) => ({ label: column.title })),
+        rows: rows.map((senior, index) =>
+          COLUMNS.map((column) =>
+            column.value(senior, { inBarangay: inBarangay[index] ?? 1, overall: index + 1 }),
+          ),
+        ),
+      },
+    ],
+  };
+}
+
+/** The senior records as the Municipality of Bulan's masterlist, as PDF, Word, or Excel. */
+export function masterlistExport(loadSeniors: () => Promise<Senior[]>): {
+  fileName: string;
+  builders: ExportBuilders;
+} {
+  // The records load only once the format is chosen, so the Save dialog opens right away.
+  const generated = new Date();
+  return {
+    fileName: `masterlist-of-senior-citizens-${generated.toISOString().slice(0, 10)}`,
+    builders: {
+      pdf: async () => masterlistPdf(await loadSeniors(), generated),
+      word: async () => tablesToWord(masterlistDocument(await loadSeniors(), generated)),
+      excel: async () => tablesToExcel(masterlistDocument(await loadSeniors(), generated)),
+    },
+  };
+}
+
+/** The masterlist laid out like the paper form, on long bond landscape. */
+async function masterlistPdf(seniors: Senior[], generated: Date) {
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "legal" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const left = (pageWidth - TABLE_WIDTH) / 2;
+  const rowsPerPage = Math.floor((pageHeight - 16 - TABLE_TOP - HEADER_ROW) / ROW);
+  const { rows, inBarangay } = orderedRows(seniors);
+  const pageCount = Math.max(1, Math.ceil(rows.length / rowsPerPage));
 
   const drawHeader = (page: number) => {
     pdf.setFont("helvetica", "bold");
@@ -194,5 +244,5 @@ export async function downloadMasterlist(seniors: Senior[]) {
     });
   }
 
-  pdf.save(`masterlist-of-senior-citizens-${generated.toISOString().slice(0, 10)}.pdf`);
+  return pdf.output("blob");
 }
