@@ -26,6 +26,7 @@ import { THEME_KEY } from "@/lib/theme";
 import "@/lib/pwa";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { FormValidation } from "@/components/FormValidation";
+import { CookieBanner } from "@/components/CookieBanner";
 import { StatusPage } from "@/components/StatusPage";
 import { SplashScreen, splashCss, splashScript, useSplashDismiss } from "@/components/SplashScreen";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
@@ -364,6 +365,7 @@ function RootComponent() {
       <NavigationProgress />
       <FormValidation />
       <Outlet />
+      <CookieBanner />
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
