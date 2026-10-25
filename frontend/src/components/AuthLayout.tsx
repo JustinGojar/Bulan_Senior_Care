@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, Clock, HeartHandshake, ShieldCheck, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { LegalLinks } from "@/components/LegalLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import seniorCitizensPhoto from "@/images/img.webp";
 
@@ -95,7 +96,8 @@ export function AuthLayout({
 
           {children}
 
-          <p className="mt-8 text-center text-xs text-muted-foreground">
+          <LegalLinks className="mt-8 justify-center" />
+          <p className="mt-3 text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} OSCA Bulan · Bulan SeniorCare Portal
           </p>
         </main>

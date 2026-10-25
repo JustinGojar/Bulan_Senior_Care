@@ -15,17 +15,21 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AnnouncementsRouteImport } from './routes/announcements'
 import { Route as AuditLogsRouteImport } from './routes/audit-logs'
 import { Route as BenefitsRouteImport } from './routes/benefits'
+import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EligibilityRouteImport } from './routes/eligibility'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SeniorsRouteImport } from './routes/seniors'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
 import { Route as UnauthorizedRouteImport } from './routes/unauthorized'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
@@ -60,6 +64,11 @@ const BenefitsRoute = BenefitsRouteImport.update({
   path: '/benefits',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CookiePolicyRoute = CookiePolicyRouteImport.update({
+  id: '/cookie-policy',
+  path: '/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -90,9 +99,19 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReleasesRoute = ReleasesRouteImport.update({
@@ -113,6 +132,11 @@ const SeniorsRoute = SeniorsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
+  id: '/terms-of-service',
+  path: '/terms-of-service',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UnauthorizedRoute = UnauthorizedRouteImport.update({
@@ -138,17 +162,21 @@ export interface FileRoutesByFullPath {
   '/announcements': typeof AnnouncementsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/benefits': typeof BenefitsRoute
+  '/cookie-policy': typeof CookiePolicyRoute
   '/dashboard': typeof DashboardRoute
   '/eligibility': typeof EligibilityRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/profile': typeof ProfileRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/users': typeof UsersRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -160,17 +188,21 @@ export interface FileRoutesByTo {
   '/announcements': typeof AnnouncementsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/benefits': typeof BenefitsRoute
+  '/cookie-policy': typeof CookiePolicyRoute
   '/dashboard': typeof DashboardRoute
   '/eligibility': typeof EligibilityRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/profile': typeof ProfileRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/users': typeof UsersRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -183,17 +215,21 @@ export interface FileRoutesById {
   '/announcements': typeof AnnouncementsRoute
   '/audit-logs': typeof AuditLogsRoute
   '/benefits': typeof BenefitsRoute
+  '/cookie-policy': typeof CookiePolicyRoute
   '/dashboard': typeof DashboardRoute
   '/eligibility': typeof EligibilityRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/profile': typeof ProfileRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/releases': typeof ReleasesRoute
   '/reports': typeof ReportsRoute
   '/seniors': typeof SeniorsRoute
   '/settings': typeof SettingsRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/unauthorized': typeof UnauthorizedRoute
   '/users': typeof UsersRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -207,17 +243,21 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/audit-logs'
     | '/benefits'
+    | '/cookie-policy'
     | '/dashboard'
     | '/eligibility'
     | '/forgot-password'
     | '/login'
     | '/messages'
     | '/notifications'
+    | '/privacy-policy'
     | '/profile'
+    | '/refund-policy'
     | '/releases'
     | '/reports'
     | '/seniors'
     | '/settings'
+    | '/terms-of-service'
     | '/unauthorized'
     | '/users'
     | '/verify-email'
@@ -229,17 +269,21 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/audit-logs'
     | '/benefits'
+    | '/cookie-policy'
     | '/dashboard'
     | '/eligibility'
     | '/forgot-password'
     | '/login'
     | '/messages'
     | '/notifications'
+    | '/privacy-policy'
     | '/profile'
+    | '/refund-policy'
     | '/releases'
     | '/reports'
     | '/seniors'
     | '/settings'
+    | '/terms-of-service'
     | '/unauthorized'
     | '/users'
     | '/verify-email'
@@ -251,17 +295,21 @@ export interface FileRouteTypes {
     | '/announcements'
     | '/audit-logs'
     | '/benefits'
+    | '/cookie-policy'
     | '/dashboard'
     | '/eligibility'
     | '/forgot-password'
     | '/login'
     | '/messages'
     | '/notifications'
+    | '/privacy-policy'
     | '/profile'
+    | '/refund-policy'
     | '/releases'
     | '/reports'
     | '/seniors'
     | '/settings'
+    | '/terms-of-service'
     | '/unauthorized'
     | '/users'
     | '/verify-email'
@@ -274,17 +322,21 @@ export interface RootRouteChildren {
   AnnouncementsRoute: typeof AnnouncementsRoute
   AuditLogsRoute: typeof AuditLogsRoute
   BenefitsRoute: typeof BenefitsRoute
+  CookiePolicyRoute: typeof CookiePolicyRoute
   DashboardRoute: typeof DashboardRoute
   EligibilityRoute: typeof EligibilityRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   ProfileRoute: typeof ProfileRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ReleasesRoute: typeof ReleasesRoute
   ReportsRoute: typeof ReportsRoute
   SeniorsRoute: typeof SeniorsRoute
   SettingsRoute: typeof SettingsRoute
+  TermsOfServiceRoute: typeof TermsOfServiceRoute
   UnauthorizedRoute: typeof UnauthorizedRoute
   UsersRoute: typeof UsersRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
@@ -334,6 +386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BenefitsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cookie-policy': {
+      id: '/cookie-policy'
+      path: '/cookie-policy'
+      fullPath: '/cookie-policy'
+      preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -376,11 +435,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/releases': {
@@ -409,6 +482,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms-of-service': {
+      id: '/terms-of-service'
+      path: '/terms-of-service'
+      fullPath: '/terms-of-service'
+      preLoaderRoute: typeof TermsOfServiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/unauthorized': {
@@ -442,17 +522,21 @@ const rootRouteChildren: RootRouteChildren = {
   AnnouncementsRoute: AnnouncementsRoute,
   AuditLogsRoute: AuditLogsRoute,
   BenefitsRoute: BenefitsRoute,
+  CookiePolicyRoute: CookiePolicyRoute,
   DashboardRoute: DashboardRoute,
   EligibilityRoute: EligibilityRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   ProfileRoute: ProfileRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ReleasesRoute: ReleasesRoute,
   ReportsRoute: ReportsRoute,
   SeniorsRoute: SeniorsRoute,
   SettingsRoute: SettingsRoute,
+  TermsOfServiceRoute: TermsOfServiceRoute,
   UnauthorizedRoute: UnauthorizedRoute,
   UsersRoute: UsersRoute,
   VerifyEmailRoute: VerifyEmailRoute,

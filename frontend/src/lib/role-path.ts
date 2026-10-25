@@ -12,7 +12,16 @@ const ROLE_PREFIXES: Record<string, string> = {
 const KNOWN_PREFIXES = new Set(Object.values(ROLE_PREFIXES));
 
 /** Pages anyone can open; they never carry a role prefix. */
-export const PUBLIC_PATHS = new Set(["/", "/login", "/forgot-password", "/reset-password"]);
+export const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/privacy-policy",
+  "/terms-of-service",
+  "/refund-policy",
+  "/cookie-policy",
+]);
 
 export function rolePrefixFor(role: string | null | undefined) {
   return role ? ROLE_PREFIXES[role.toLowerCase()] : undefined;

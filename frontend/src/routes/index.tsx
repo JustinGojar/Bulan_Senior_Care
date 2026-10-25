@@ -27,6 +27,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { SectionHeader } from "@/components/DesignKit";
 import { TONE_BAR, panelClass, primaryButtonClass, tileClass } from "@/components/design-kit";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { LegalLinks } from "@/components/LegalLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { publicPageHead, SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo";
 
@@ -562,7 +563,10 @@ function Landing() {
             <BrandLogo className="h-9 w-9 ring-2 ring-gold/60" />
             <p>Office of Senior Citizen Affairs · Municipality of Bulan, Sorsogon</p>
           </div>
-          <p className="text-xs">© {new Date().getFullYear()} Bulan SeniorCare</p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <LegalLinks />
+            <p className="text-xs">© {new Date().getFullYear()} Bulan SeniorCare</p>
+          </div>
         </footer>
       </div>
     </div>
