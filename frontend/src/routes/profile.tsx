@@ -155,7 +155,8 @@ function ProfilePage() {
       form.append("address", address);
       if (photo) form.append("profile_photo", photo);
       const result = await apiFetch<
-        ApiUser | { user: ApiUser; email_verification_required: true; verification_email_sent: boolean }
+        | ApiUser
+        | { user: ApiUser; email_verification_required: true; verification_email_sent: boolean }
       >("/profile", { method: "POST", body: form });
       if ("email_verification_required" in result) {
         // The server ended this session; the new address must be verified before signing in.
