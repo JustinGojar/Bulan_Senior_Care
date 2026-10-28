@@ -43,7 +43,7 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   privacyConsent?: boolean;
 };
 
-/** Puts a pending registration "In review", telling the leader what to fix in its documents. */
+/** Puts a pending registration "In review", telling the president what to fix in its documents. */
 export async function flagSeniorForReview(oscaId: string, note: string): Promise<Senior> {
   return mapSenior(
     await apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}/review`, {
@@ -53,7 +53,7 @@ export async function flagSeniorForReview(oscaId: string, note: string): Promise
   );
 }
 
-/** The leader's corrected documents for a registration in review; this ends the review. */
+/** The president's corrected documents for a registration in review; this ends the review. */
 export async function resubmitSeniorDocuments(
   oscaId: string,
   documents: { validId?: File | null; birthCertificate?: File | null },
@@ -341,7 +341,7 @@ export function useSeniors(
     async (id: string, draft: SeniorDraft) => {
       // The "Not provided" placeholder is for display only, never a number to save.
       const contact = draft.contact === NO_CONTACT ? "" : draft.contact.trim();
-      if (getStoredUser()?.role === "leader") {
+      if (getStoredUser()?.role === "president") {
         await submitSeniorEditRequest(id, {
           first_name: draft.firstName?.trim() ?? draft.name.trim(),
           middle_name: draft.middleName?.trim() || null,

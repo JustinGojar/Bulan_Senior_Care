@@ -23,7 +23,7 @@ class SeniorBulkUploadTest extends TestCase
 
         /** @var User $user */
         $user = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'barangay_id' => $barangay->id,
         ]);
 
@@ -68,10 +68,10 @@ class SeniorBulkUploadTest extends TestCase
 
     public function test_leader_can_bulk_import_into_their_barangay(): void
     {
-        // Migrations already seed the barangays, so the leader is assigned to the existing one.
+        // Migrations already seed the barangays, so the president is assigned to the existing one.
         $barangay = Barangay::firstOrCreate(['barangay_name' => 'Zone 8 (Loyo)']);
         /** @var User $user */
-        $user = User::factory()->create(['role' => 'leader', 'barangay_id' => $barangay->id]);
+        $user = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
 
         Benefit::create([
             'benefit_name' => 'Social Pension',
@@ -120,7 +120,7 @@ class SeniorBulkUploadTest extends TestCase
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 8']);
         /** @var User $user */
-        $user = User::factory()->create(['role' => 'leader', 'barangay_id' => $barangay->id]);
+        $user = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
         $cutoffDate = now()->subYears(60)->toDateString();
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/seniors/bulk', [

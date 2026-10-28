@@ -118,7 +118,7 @@ function EligibilityReview() {
   const [confirm, confirmDialog] = useConfirmDialog();
   // The Admin can take approving registrations away from the Head in Settings.
   const canReview = hasPermission("approve registrations");
-  // Registrations being marked not eligible; a reason is required and is shown to the leader.
+  // Registrations being marked not eligible; a reason is required and is shown to the president.
   const [rejecting, setRejecting] = useState<Senior[] | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState<string | null>(null);
@@ -205,7 +205,7 @@ function EligibilityReview() {
     setSavingReview(true);
     try {
       const updated = await flagSeniorForReview(viewing.id, reviewNote.trim());
-      toast.success(`${viewing.name} is in review. The barangay leader was notified.`);
+      toast.success(`${viewing.name} is in review. The barangay president was notified.`);
       setViewing(updated);
       setReviewNoteOpen(false);
       reload();
@@ -637,7 +637,7 @@ function EligibilityReview() {
                 <FileWarning className="h-4 w-4" />
                 {viewing?.reviewNote ? "Edit review note" : "In review"}
               </button>
-              {/* A registration in review waits for the leader's corrected documents first. */}
+              {/* A registration in review waits for the president's corrected documents first. */}
               {!viewing?.reviewNote && (
                 <>
                   <button
@@ -671,7 +671,7 @@ function EligibilityReview() {
           <DialogHeader>
             <DialogTitle className="font-display">Put in review</DialogTitle>
             <DialogDescription>
-              Tell the barangay leader what is wrong with the documents of {viewing?.name}. They
+              Tell the barangay president what is wrong with the documents of {viewing?.name}. They
               will be notified and can upload corrected documents.
             </DialogDescription>
           </DialogHeader>
@@ -728,7 +728,7 @@ function EligibilityReview() {
                 : `Mark ${rejecting?.length ?? 0} registrations not eligible?`}
             </DialogTitle>
             <DialogDescription>
-              The barangay leader will see this reason on the senior's record.
+              The barangay president will see this reason on the senior's record.
             </DialogDescription>
           </DialogHeader>
           <div>

@@ -110,7 +110,7 @@ function UserManagement() {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
-  const [role, setRole] = useState<"admin" | "head" | "leader">("leader");
+  const [role, setRole] = useState<"admin" | "head" | "president">("president");
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -176,7 +176,7 @@ function UserManagement() {
     setPasswordConfirmation("");
     setShowPassword(false);
     setShowPasswordConfirmation(false);
-    setRole("leader");
+    setRole("president");
     setStatus("active");
     setPhoto(null);
     setRemovePhoto(false);
@@ -214,7 +214,7 @@ function UserManagement() {
     setContactNumber(toLocalMobile(user.contact_number ?? ""));
     setBirthdate(user.birthdate ?? "");
     setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
-    setRole(user.role as "admin" | "head" | "leader");
+    setRole(user.role as "admin" | "head" | "president");
     setStatus(user.status);
     setPhoto(null);
     setRemovePhoto(false);
@@ -343,7 +343,7 @@ function UserManagement() {
     value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA President";
   const labelClass = "mb-2 block text-sm font-semibold";
   const barangayScope = (user: ManagedUser) =>
-    user.role === "leader"
+    user.role === "president"
       ? (barangays.find((item) => item.id === user.barangay_id)?.barangay_name ?? "Unassigned")
       : "All barangays";
   // An account cannot log in until its email is verified, whatever its status says.
@@ -420,7 +420,7 @@ function UserManagement() {
               { value: "", label: "All roles" },
               { value: "admin", label: "OSCA Admin" },
               { value: "head", label: "OSCA Head" },
-              { value: "leader", label: "BSCA President" },
+              { value: "president", label: "BSCA President" },
             ]}
             onChange={setRoleFilter}
           />
@@ -498,7 +498,7 @@ function UserManagement() {
                   <td className="px-4 py-3.5">
                     <span
                       className={
-                        user.role === "leader"
+                        user.role === "president"
                           ? badgeClass
                           : "rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-foreground dark:text-gold"
                       }
@@ -785,7 +785,7 @@ function UserManagement() {
                         ) : (
                           <SelectItem value="head">Head</SelectItem>
                         )}
-                        <SelectItem value="leader">BSCA President</SelectItem>
+                        <SelectItem value="president">BSCA President</SelectItem>
                       </SelectContent>
                     </Select>
                   ) : (
@@ -824,11 +824,13 @@ function UserManagement() {
                 <SearchableSelect
                   id="user-barangay"
                   label="Barangay"
-                  required={role === "leader"}
-                  disabled={role !== "leader"}
-                  value={role === "leader" ? barangayId : ""}
+                  required={role === "president"}
+                  disabled={role !== "president"}
+                  value={role === "president" ? barangayId : ""}
                   onChange={setBarangayId}
-                  placeholder={role === "leader" ? "Select a barangay" : "No barangay assignment"}
+                  placeholder={
+                    role === "president" ? "Select a barangay" : "No barangay assignment"
+                  }
                   emptyMessage={
                     barangaysFailed
                       ? "Couldn't load barangays. Refresh the page to try again."

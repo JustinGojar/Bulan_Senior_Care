@@ -79,7 +79,7 @@ It is not a formal certification.
 
 | Subcharacteristic | Evidence | Gap |
 | --- | --- | --- |
-| Confidentiality | Token in an HttpOnly, `SameSite=Strict` cookie. Private files on a private disk with `no-store`. Leaders limited to their own barangay (`authorizeScope`). `Cache-Control: no-store` on signed-in API responses. | — |
+| Confidentiality | Token in an HttpOnly, `SameSite=Strict` cookie. Private files on a private disk with `no-store`. Presidents limited to their own barangay (`authorizeScope`). `Cache-Control: no-store` on signed-in API responses. | — |
 | Integrity | Server-side validation on every endpoint. Database transactions for multi-step writes. | — |
 | Non-repudiation, accountability | Audit log of record changes (`AuditLog`, `/audit-logs`). `encoded_by` and `updated_by` on records. | — |
 | Authenticity | Sanctum tokens, email verification, password reset codes. Strong passwords (8+ characters with mixed case, numbers, and symbols). Idle timeout (30 min) and absolute expiry (12 h). | No two-factor sign-in for administrators. |
@@ -107,7 +107,7 @@ It is not a formal certification.
 
 | Subcharacteristic | Evidence |
 | --- | --- |
-| Operational constraint | Role permissions. Leader edits need Head approval (`SeniorEditRequest`). |
+| Operational constraint | Role permissions. President edits need Head approval (`SeniorEditRequest`). |
 | Risk identification | Documents flagged for review. Age thresholds detected automatically. |
 | Fail safe | Archive (soft delete) instead of hard delete. Restore from backup. Session timeout signs out idle users. |
 | Hazard warning | Confirm dialogs for destructive actions. Logout and unsaved-changes prompts. |

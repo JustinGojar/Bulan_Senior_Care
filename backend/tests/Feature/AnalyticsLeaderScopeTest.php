@@ -20,7 +20,7 @@ class AnalyticsLeaderScopeTest extends TestCase
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
         /** @var User $leader */
         $leader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'barangay_id' => $barangay->id,
         ]);
         $localSenior = $this->createSenior($leader, $barangay, 'OSCA-LOCAL-001', 70);

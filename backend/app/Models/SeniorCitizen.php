@@ -73,7 +73,7 @@ class SeniorCitizen extends Model
             }
         });
 
-        // Alert the barangay leader as soon as a senior becomes active (e.g. approved)
+        // Alert the barangay president as soon as a senior becomes active (e.g. approved)
         // or has their birthdate corrected, instead of waiting for the daily check.
         static::saved(function (SeniorCitizen $senior) {
             if ($senior->status === 'active'

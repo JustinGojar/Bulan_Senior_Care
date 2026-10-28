@@ -199,7 +199,7 @@ export function AppShell({
       .catch(() => setAnnouncements([]));
   }, [searchOpen]);
   useEffect(() => {
-    if (user?.role?.toLowerCase() !== "leader" || !user.barangay_id) {
+    if (user?.role?.toLowerCase() !== "president" || !user.barangay_id) {
       setAssignedBarangay("");
       return;
     }
@@ -273,7 +273,7 @@ export function AppShell({
     .slice(0, 2)
     .toUpperCase();
   const roleLabel =
-    user?.role?.toLowerCase() === "leader"
+    user?.role?.toLowerCase() === "president"
       ? `BSCA President${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
       : user?.role?.toLowerCase() === "head"
         ? "OSCA Head"
@@ -289,8 +289,8 @@ export function AppShell({
   const visibleNav = NAV.filter(
     ({ to }) =>
       (to !== "/users" || user?.role === "admin") &&
-      (to !== "/eligibility" || user?.role !== "leader") &&
-      (to !== "/age-threshold" || user?.role !== "leader"),
+      (to !== "/eligibility" || user?.role !== "president") &&
+      (to !== "/age-threshold" || user?.role !== "president"),
   );
   const normalizedSearch = globalSearch.trim().toLowerCase();
   const matchingPages =

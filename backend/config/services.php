@@ -32,11 +32,6 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
-    'semaphore' => [
-        'key' => env('SEMAPHORE_API_KEY'),
-        'sender_name' => env('SEMAPHORE_SENDER_NAME'),
-    ],
-
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

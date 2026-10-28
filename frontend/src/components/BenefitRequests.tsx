@@ -65,7 +65,7 @@ function localToday() {
   return today.toISOString().slice(0, 10);
 }
 
-/** A barangay leader asks for a benefit on behalf of one approved senior. */
+/** A barangay president asks for a benefit on behalf of one approved senior. */
 export function RequestBenefitDialog({
   senior,
   onOpenChange,
@@ -195,7 +195,7 @@ export function RequestBenefitDialog({
 type Review = { request: BenefitRequest; action: "reject" | "release" };
 
 /**
- * Benefit requests from barangay leaders. Leaders follow their barangay's requests; the Head
+ * Benefit requests from barangay presidents. Presidents follow their barangay's requests; the Head
  * verifies them, rejects them with a reason, and records each release.
  */
 export function BenefitRequestsPanel({ role }: { role?: string | undefined }) {
@@ -294,7 +294,7 @@ export function BenefitRequestsPanel({ role }: { role?: string | undefined }) {
         title="Benefit requests"
         subtitle={
           isHead
-            ? "Verify leaders' requests, then record each release."
+            ? "Verify presidents' requests, then record each release."
             : "Requests you submitted for your barangay's seniors and where they stand."
         }
         badge={
@@ -325,7 +325,7 @@ export function BenefitRequestsPanel({ role }: { role?: string | undefined }) {
             title="No benefit requests"
             description={
               isHead
-                ? "Requests submitted by barangay leaders will appear here."
+                ? "Requests submitted by barangay presidents will appear here."
                 : "Open an approved senior's record and choose Request benefit."
             }
           />

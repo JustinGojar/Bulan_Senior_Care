@@ -15,9 +15,9 @@ class MessagePresenceTest extends TestCase
     {
         /** @var User $me */
         $me = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        $active = User::factory()->create(['role' => 'leader', 'status' => 'active']);
-        $idle = User::factory()->create(['role' => 'leader', 'status' => 'active']);
-        $signedOut = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $active = User::factory()->create(['role' => 'president', 'status' => 'active']);
+        $idle = User::factory()->create(['role' => 'president', 'status' => 'active']);
+        $signedOut = User::factory()->create(['role' => 'president', 'status' => 'active']);
 
         $active->createToken('portal')->accessToken->forceFill(['last_used_at' => now()->subSeconds(30)])->save();
         $idle->createToken('portal')->accessToken->forceFill(['last_used_at' => now()->subMinutes(5)])->save();

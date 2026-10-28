@@ -133,24 +133,24 @@ class BenefitReleaseBatchTest extends TestCase
         $this->assertSame(['pending', 'pending'], array_column($roster, 'status'));
         $this->assertSame(['January 2027', 'January 2027'], array_column($roster, 'period_label'));
 
-        // A leader sees only their own barangay's seniors in the batch.
+        // A president sees only their own barangay's seniors in the batch.
         /** @var User $calpiLeader */
-        $calpiLeader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
+        $calpiLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
         $this->actingAs($calpiLeader, 'sanctum')->getJson("/api/benefit-releases/{$releaseId}")
             ->assertOk()
             ->assertJsonCount(1, 'transactions')
             ->assertJsonPath('transactions.0.senior.osca_id_number', 'CALPI-1');
         /** @var User $sigadLeader */
-        $sigadLeader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
+        $sigadLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
         $this->actingAs($sigadLeader, 'sanctum')->getJson("/api/benefit-releases/{$releaseId}")->assertForbidden();
     }
 
     public function test_only_leaders_of_the_batch_are_notified_and_see_it(): void
     {
         /** @var User $calpiLeader */
-        $calpiLeader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
+        $calpiLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
         /** @var User $sigadLeader */
-        $sigadLeader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
+        $sigadLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
 
         $this->schedule([$this->calpi->id])->assertCreated();
 
@@ -289,9 +289,9 @@ class BenefitReleaseBatchTest extends TestCase
         Storage::fake('local');
         $releaseId = $this->schedule([$this->calpi->id])->json('id');
         /** @var User $calpiLeader */
-        $calpiLeader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
+        $calpiLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
         /** @var User $sigadLeader */
-        $sigadLeader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
+        $sigadLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
 
         $documentId = $this->actingAs($calpiLeader, 'sanctum')->post("/api/benefit-releases/{$releaseId}/documents", [
             'documents' => [UploadedFile::fake()->create('signed-list.pdf', 50, 'application/pdf')],

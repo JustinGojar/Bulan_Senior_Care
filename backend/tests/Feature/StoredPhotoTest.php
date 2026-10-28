@@ -151,7 +151,7 @@ class StoredPhotoTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $barangay = Barangay::create(['barangay_name' => 'Bulusan']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         Benefit::create([
             'benefit_name' => 'Social Pension',
             'benefit_type' => 'social_pension',

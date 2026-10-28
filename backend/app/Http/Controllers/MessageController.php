@@ -96,7 +96,7 @@ class MessageController extends Controller
 
         return response()->json(
             User::query()
-                ->whereIn('role', ['leader', 'head'])
+                ->whereIn('role', ['president', 'head'])
                 ->where('status', 'active')
                 ->where('id', '!=', $request->user()->id)
                 ->when($search !== '', fn ($query) => $query->where(fn ($match) =>
@@ -112,7 +112,7 @@ class MessageController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_unless(in_array($request->user()->role, ['admin', 'leader', 'head'], true), 403, 'This account cannot send messages.');
+        abort_unless(in_array($request->user()->role, ['admin', 'president', 'head'], true), 403, 'This account cannot send messages.');
 
         $data = $request->validate([
             'subject' => ['required', 'string', 'max:180'],
@@ -122,7 +122,7 @@ class MessageController extends Controller
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx', 'max:5120'],
         ]);
         $recipient = User::whereKey($data['recipient_id'])
-            ->whereIn('role', ['leader', 'head'])
+            ->whereIn('role', ['president', 'head'])
             ->where('status', 'active')
             ->first();
         abort_unless($recipient, 422, 'The selected account is not available.');

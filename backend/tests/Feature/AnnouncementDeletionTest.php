@@ -20,9 +20,9 @@ class AnnouncementDeletionTest extends TestCase
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         /** @var User $author */
-        $author = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $author = User::factory()->create(['role' => 'president', 'status' => 'active']);
         /** @var User $other */
-        $other = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $other = User::factory()->create(['role' => 'president', 'status' => 'active']);
         $announcement = Announcement::create(['created_by' => $head->id, 'title' => 'T', 'message' => 'M', 'published_at' => now()]);
 
         $commentId = $this->actingAs($author, 'sanctum')
@@ -44,7 +44,7 @@ class AnnouncementDeletionTest extends TestCase
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active']);
         $announcement = Announcement::create(['created_by' => $head->id, 'title' => 'T', 'message' => 'M', 'published_at' => now()]);
         AnnouncementComment::create(['announcement_id' => $announcement->id, 'user_id' => $leader->id, 'message' => 'Hi']);
 

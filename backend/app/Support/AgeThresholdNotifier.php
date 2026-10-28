@@ -13,10 +13,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Notifies the senior's barangay leader (plus Admin and Head) when an active
+ * Notifies the senior's barangay president (plus Admin and Head) when an active
  * senior is at an Expanded Centenarians Act milestone age (octogenarian,
  * nonagenarian, centenarian) and has not received that grant since turning it.
- * The leader is also emailed when email advisories are on. Notifications (and their
+ * The president is also emailed when email advisories are on. Notifications (and their
  * emails) are de-duplicated, so running this repeatedly is safe.
  */
 class AgeThresholdNotifier
@@ -93,8 +93,8 @@ class AgeThresholdNotifier
                     'date_sent' => now(),
                     'status' => 'unread',
                 ]);
-                // Email the leader once, alongside the first in-app notice for this milestone.
-                if ($notification->wasRecentlyCreated && $recipient->role === 'leader') {
+                // Email the president once, alongside the first in-app notice for this milestone.
+                if ($notification->wasRecentlyCreated && $recipient->role === 'president') {
                     AdvisoryDispatcher::emailLeader($recipient, $subject, $message);
                 }
             }
@@ -131,7 +131,7 @@ class AgeThresholdNotifier
             ->where(function ($query) use ($senior) {
                 $query->whereIn('role', ['admin', 'head'])
                     ->orWhere(fn ($leaderQuery) => $leaderQuery
-                        ->where('role', 'leader')
+                        ->where('role', 'president')
                         ->where('barangay_id', $senior->barangay_id));
             })
             ->get();

@@ -21,7 +21,7 @@ class ArchivedSeniorTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Calpi']);
         $pension = Benefit::create(['benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension', 'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national', 'schedule' => 'quarterly', 'status' => 'active']);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         $certificate = UploadedFile::fake()->create('certificate.pdf', 100, 'application/pdf')->store('senior-documents', 'local');
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'BSC-2026-9001', 'barangay_id' => $barangay->id, 'benefit_id' => $pension->id,

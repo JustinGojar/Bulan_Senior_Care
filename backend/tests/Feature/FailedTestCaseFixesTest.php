@@ -26,13 +26,13 @@ class FailedTestCaseFixesTest extends TestCase
         parent::setUp();
         $barangay = Barangay::create(['barangay_name' => 'Zone 1', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
         $this->head = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        $this->leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $this->president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         $this->pension = Benefit::create(['benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension', 'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national', 'schedule' => 'quarterly', 'description' => 'Pension', 'status' => 'active']);
     }
 
     private function register(array $overrides = [])
     {
-        return $this->actingAs($this->leader, 'sanctum')->postJson('/api/seniors', [
+        return $this->actingAs($this->president, 'sanctum')->postJson('/api/seniors', [
             'privacy_consent' => true, 'privacy_consent_version' => '2026-10-07', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
             'birthdate' => '1945-01-01', 'sex' => 'male', 'contact_number' => '09171234567', 'barangay' => 'Zone 1', 'benefit' => 'Social Pension',
             ...$overrides,
@@ -75,9 +75,9 @@ class FailedTestCaseFixesTest extends TestCase
             ->assertJsonPath('inactive_reason', 'not_eligible')
             ->assertJsonPath('inactive_remarks', 'Incomplete documents');
 
-        $this->actingAs($this->leader, 'sanctum')->getJson("/api/seniors/{$senior->osca_id_number}")
+        $this->actingAs($this->president, 'sanctum')->getJson("/api/seniors/{$senior->osca_id_number}")
             ->assertOk()->assertJsonPath('inactive_remarks', 'Incomplete documents');
-        $this->assertTrue(Notification::where('recipient_account_id', $this->leader->id)->where('source_type', 'registration_review')->where('message', 'like', '%Reason: Incomplete documents')->exists());
+        $this->assertTrue(Notification::where('recipient_account_id', $this->president->id)->where('source_type', 'registration_review')->where('message', 'like', '%Reason: Incomplete documents')->exists());
     }
 
     /** HD-006 */
@@ -94,7 +94,7 @@ class FailedTestCaseFixesTest extends TestCase
     {
         $senior = SeniorCitizen::findOrFail($this->register()->json('id'));
 
-        $this->actingAs($this->leader, 'sanctum')->postJson("/api/seniors/{$senior->osca_id_number}/reject", ['reason' => 'No'])->assertForbidden();
+        $this->actingAs($this->president, 'sanctum')->postJson("/api/seniors/{$senior->osca_id_number}/reject", ['reason' => 'No'])->assertForbidden();
     }
 
     /** LDR-013, HD-008, HD-009, HD-010 */
@@ -102,7 +102,7 @@ class FailedTestCaseFixesTest extends TestCase
     {
         $senior = $this->approvedSenior();
 
-        $request = $this->actingAs($this->leader, 'sanctum')->postJson('/api/benefit-requests', [
+        $request = $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
             'senior_id' => $senior->osca_id_number, 'benefit_id' => $this->pension->id,
         ])->assertCreated()->assertJsonPath('status', 'for_verification');
         $id = $request->json('id');
@@ -122,7 +122,7 @@ class FailedTestCaseFixesTest extends TestCase
         $this->assertSame($this->head->id, $transaction->distributed_by);
 
         // HD-010: the same benefit cannot be released twice for the same period.
-        $second = $this->actingAs($this->leader, 'sanctum')->postJson('/api/benefit-requests', [
+        $second = $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
             'senior_id' => $senior->osca_id_number, 'benefit_id' => $this->pension->id,
         ])->assertCreated()->json('id');
         $this->actingAs($this->head, 'sanctum')->patchJson("/api/benefit-requests/{$second}", ['action' => 'verify'])->assertOk();
@@ -133,7 +133,7 @@ class FailedTestCaseFixesTest extends TestCase
     public function test_benefit_request_needs_an_approved_senior_and_no_open_request(): void
     {
         $pending = SeniorCitizen::findOrFail($this->register()->json('id'));
-        $this->actingAs($this->leader, 'sanctum')->postJson('/api/benefit-requests', [
+        $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
             'senior_id' => $pending->osca_id_number, 'benefit_id' => $this->pension->id,
         ])->assertStatus(422);
 
@@ -146,14 +146,14 @@ class FailedTestCaseFixesTest extends TestCase
     public function test_head_rejecting_a_benefit_request_needs_a_reason(): void
     {
         $senior = $this->approvedSenior();
-        $id = $this->actingAs($this->leader, 'sanctum')->postJson('/api/benefit-requests', [
+        $id = $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
             'senior_id' => $senior->osca_id_number, 'benefit_id' => $this->pension->id,
         ])->json('id');
 
         $this->actingAs($this->head, 'sanctum')->patchJson("/api/benefit-requests/{$id}", ['action' => 'reject'])->assertStatus(422);
         $this->patchJson("/api/benefit-requests/{$id}", ['action' => 'reject', 'reason' => 'Not eligible'])
             ->assertOk()->assertJsonPath('status', 'rejected')->assertJsonPath('rejection_reason', 'Not eligible');
-        $this->actingAs($this->leader, 'sanctum')->patchJson("/api/benefit-requests/{$id}", ['action' => 'verify'])->assertForbidden();
+        $this->actingAs($this->president, 'sanctum')->patchJson("/api/benefit-requests/{$id}", ['action' => 'verify'])->assertForbidden();
     }
 
     /** HD-012 */
@@ -164,7 +164,7 @@ class FailedTestCaseFixesTest extends TestCase
         $this->actingAs($this->head, 'sanctum')->putJson("/api/announcements/{$announcement->id}", ['title' => 'Monthly Pension Payout', 'message' => 'New details'])
             ->assertOk()->assertJsonPath('title', 'Monthly Pension Payout');
         $this->getJson('/api/announcements')->assertJsonPath('0.message', 'New details');
-        $this->actingAs($this->leader, 'sanctum')->putJson("/api/announcements/{$announcement->id}", ['title' => 'X', 'message' => 'Y'])->assertForbidden();
+        $this->actingAs($this->president, 'sanctum')->putJson("/api/announcements/{$announcement->id}", ['title' => 'X', 'message' => 'Y'])->assertForbidden();
     }
 
     /** ADM-002 */

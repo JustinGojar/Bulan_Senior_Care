@@ -33,7 +33,7 @@ class BackupAndDataPrivacyTest extends TestCase
     public function test_only_admin_can_create_a_backup(): void
     {
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader']);
+        $leader = User::factory()->create(['role' => 'president']);
 
         $this->actingAs($leader, 'sanctum')->postJson('/api/admin/backups')->assertForbidden();
     }
@@ -42,7 +42,7 @@ class BackupAndDataPrivacyTest extends TestCase
     {
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
-        User::factory()->create(['role' => 'leader', 'remember_token' => 'secret-remember-token']);
+        User::factory()->create(['role' => 'president', 'remember_token' => 'secret-remember-token']);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/users')->assertOk();
 

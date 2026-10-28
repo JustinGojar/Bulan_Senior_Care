@@ -114,7 +114,7 @@ function SettingRow({
     title === "Security settings"
       ? "Change your password and manage account security"
       : title === "Barangay management"
-        ? "Manage barangay leader accounts and their assigned scopes"
+        ? "Manage barangay president accounts and their assigned scopes"
         : title === "Senior record settings"
           ? "Search, register, and manage senior citizen records"
           : description;

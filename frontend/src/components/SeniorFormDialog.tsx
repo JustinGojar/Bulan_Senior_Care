@@ -238,7 +238,7 @@ export function SeniorFormDialog({
   senior?: Senior | null;
   isLeader?: boolean;
   leaderBarangay?: string | undefined;
-  /** Address on the registering leader/BSCA account; becomes the association address. */
+  /** Address on the registering president/BSCA account; becomes the association address. */
   registrarAddress?: string | undefined;
   /** Saves the record; a rejection (e.g. a possible duplicate) keeps the form open. */
   onSubmit: (draft: SeniorDraft) => void | Promise<void>;
@@ -343,7 +343,7 @@ export function SeniorFormDialog({
 
   // Existing records keep the address set when they were registered; new ones use the
   // registering account's address.
-  // Leaders get a locked address; Admin and Head pick one from the barangay list.
+  // Presidents get a locked address; Admin and Head pick one from the barangay list.
   const associationAddress = isLeader
     ? senior?.associationAddress?.trim() ||
       registrarAddress?.trim() ||
@@ -894,7 +894,7 @@ export function SeniorFormDialog({
                       {associationAddress}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Based on the address of the registering leader account.
+                      Based on the address of the registering president account.
                     </p>
                   </>
                 ) : (

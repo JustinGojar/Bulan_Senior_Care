@@ -24,10 +24,9 @@ class AdvisorySettings
             throw new RuntimeException('Stored notification channel settings must be a JSON object.');
         }
 
-        return array_replace([
-            'email_advisories' => false,
-            'sms_advisories' => false,
-        ], $stored ?? []);
+        $defaults = ['email_advisories' => false];
+
+        return array_replace($defaults, array_intersect_key($stored ?? [], $defaults));
     }
 
     public static function enabled(string $channel): bool

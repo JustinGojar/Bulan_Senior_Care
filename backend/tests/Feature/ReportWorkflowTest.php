@@ -35,8 +35,8 @@ class ReportWorkflowTest extends TestCase
         $this->zone2 = Barangay::create(['barangay_name' => 'Zone 2']);
         $this->admin = User::factory()->create(['role' => 'admin']);
         $this->head = User::factory()->create(['role' => 'head']);
-        $this->leader = User::factory()->create(['role' => 'leader', 'barangay_id' => $this->zone1->id]);
-        $this->otherLeader = User::factory()->create(['role' => 'leader', 'barangay_id' => $this->zone2->id]);
+        $this->president = User::factory()->create(['role' => 'president', 'barangay_id' => $this->zone1->id]);
+        $this->otherLeader = User::factory()->create(['role' => 'president', 'barangay_id' => $this->zone2->id]);
 
         // More than one page of seniors, so the report must not stop at the first 50.
         foreach (range(1, 55) as $number) {
@@ -94,13 +94,13 @@ class ReportWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'published')
             ->assertJsonPath('publisher.id', $this->head->id);
-        foreach ([$this->admin, $this->leader, $this->otherLeader] as $recipient) {
+        foreach ([$this->admin, $this->president, $this->otherLeader] as $recipient) {
             $this->assertDatabaseHas('notifications', ['recipient_account_id' => $recipient->id, 'source_id' => $id]);
         }
 
         // A later record does not change the published figures.
         $this->createSenior($this->zone1, 'OSCA-NEW');
-        $this->actingAs($this->leader, 'sanctum')->getJson("/api/reports/{$id}")->assertOk()->assertJsonPath('snapshot.totals.total', 55);
+        $this->actingAs($this->president, 'sanctum')->getJson("/api/reports/{$id}")->assertOk()->assertJsonPath('snapshot.totals.total', 55);
     }
 
     public function test_only_admin_generates_a_barangay_summary_with_its_roster(): void
@@ -137,13 +137,13 @@ class ReportWorkflowTest extends TestCase
         $otherBarangay = $this->report('Barangay Summary', $this->zone2->id, 'published');
         $distribution = $this->report('Benefit Distribution', null, 'published');
 
-        $ids = collect($this->actingAs($this->leader, 'sanctum')->getJson('/api/reports')->assertOk()->json())->pluck('id');
+        $ids = collect($this->actingAs($this->president, 'sanctum')->getJson('/api/reports')->assertOk()->json())->pluck('id');
         $this->assertEqualsCanonicalizing([$municipal->id, $ownBarangay->id], $ids->all());
 
         foreach ([$draft, $otherBarangay, $distribution] as $hidden) {
-            $this->actingAs($this->leader, 'sanctum')->getJson("/api/reports/{$hidden->id}")->assertNotFound();
+            $this->actingAs($this->president, 'sanctum')->getJson("/api/reports/{$hidden->id}")->assertNotFound();
         }
-        $this->actingAs($this->leader, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
+        $this->actingAs($this->president, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
     }
 
     public function test_viewing_an_older_report_without_figures_fills_them_in(): void

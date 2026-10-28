@@ -41,9 +41,9 @@ const SECTIONS: AgreementSection[] = [
     title: "Who can see it",
     body: (
       <p>
-        Only authorized OSCA staff and your barangay senior citizen leader can see your record. OSCA
-        shares your information with other government agencies only when needed to deliver a benefit
-        to you, such as the social pension, or when the law requires it.
+        Only authorized OSCA staff and your barangay senior citizen president can see your record.
+        OSCA shares your information with other government agencies only when needed to deliver a
+        benefit to you, such as the social pension, or when the law requires it.
       </p>
     ),
   },

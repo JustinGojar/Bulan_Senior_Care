@@ -386,7 +386,7 @@ export type MessageRecipient = {
   id: number;
   name: string;
   email: string;
-  role: "leader" | "head";
+  role: "president" | "head";
 };
 
 export type PaginatedResponse<T> = {
@@ -863,7 +863,7 @@ export async function createBarangayLeader(data: {
   passwordConfirmation: string;
 }) {
   const result = await apiFetch<{ user: ApiUser; verification_email_sent: boolean }>(
-    "/admin/barangay-leaders",
+    "/admin/barangay-presidents",
     {
       method: "POST",
       body: JSON.stringify({
@@ -890,7 +890,7 @@ export async function createManagedUser(data: {
   contactNumber: string;
   birthdate: string;
   barangayId?: number | null;
-  role: "admin" | "head" | "leader";
+  role: "admin" | "head" | "president";
   status: "active" | "inactive";
   password: string;
   passwordConfirmation: string;
@@ -965,14 +965,14 @@ export function hasPermission(permission: Permission) {
 
 export type RolePermissionsState = {
   permissions: Array<{ key: Permission; label: string; description: string; roles: string[] }>;
-  roles: Record<"head" | "leader", Permission[]>;
+  roles: Record<"head" | "president", Permission[]>;
 };
 
 export function getRolePermissions() {
   return apiFetch<RolePermissionsState>("/admin/role-permissions", { cache: "no-store" });
 }
 
-export function updateRolePermissions(role: "head" | "leader", permissions: Permission[]) {
+export function updateRolePermissions(role: "head" | "president", permissions: Permission[]) {
   return apiFetch<RolePermissionsState>(`/admin/role-permissions/${role}`, {
     method: "PUT",
     body: JSON.stringify({ permissions }),
@@ -1101,7 +1101,7 @@ export function submitSeniorEditRequest(seniorId: string, changes: SeniorEditReq
   });
 }
 
-/** The Head turns down a pending registration; the reason is shown to the leader. */
+/** The Head turns down a pending registration; the reason is shown to the president. */
 export function rejectSeniorRegistration(oscaId: string, reason: string) {
   return apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}/reject`, {
     method: "POST",
@@ -1245,7 +1245,6 @@ export function clearServerNotifications() {
 
 export type NotificationChannelSettings = {
   email_advisories: boolean;
-  sms_advisories: boolean;
 };
 
 export type NotificationChannelReadiness = NotificationChannelSettings;

@@ -16,7 +16,7 @@ class MessageReadTest extends TestCase
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active']);
         Message::create(['sender_id' => $leader->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'First']);
         Message::create(['sender_id' => $leader->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Second']);
         $sent = Message::create(['sender_id' => $head->id, 'recipient_id' => $leader->id, 'subject' => 'Payout', 'message' => 'Reply']);
@@ -28,7 +28,7 @@ class MessageReadTest extends TestCase
             ->assertJsonPath('updated', 2);
 
         $this->actingAs($head, 'sanctum')->getJson('/api/messages/unread-summary')->assertJsonPath('count', 0);
-        // The leader's own unread copy of the reply is untouched.
+        // The president's own unread copy of the reply is untouched.
         $this->assertNull($sent->fresh()->read_at);
     }
 }

@@ -45,7 +45,7 @@ Connect the repository root (`/`) to Railway. The root Dockerfile builds the fro
 - `GET|POST /api/seniors` and `GET|PUT|DELETE /api/seniors/{senior}`
 - `GET /api/benefits`
 
-Leaders are restricted to their barangay, Heads are read-only for senior registration and updates, and only Admins can delete records. Run `php artisan osca:detect-age-thresholds` daily; Laravel scheduling is configured for 00:05.
+Presidents are restricted to their barangay, Heads are read-only for senior registration and updates, and only Admins can delete records. Run `php artisan osca:detect-age-thresholds` daily; Laravel scheduling is configured for 00:05.
 
 ## Validation
 

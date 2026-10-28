@@ -69,7 +69,7 @@ class OverviewAggregationTest extends TestCase
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
         /** @var User $leader */
         $leader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'barangay_id' => $barangay->id,
         ]);
         $benefit = Benefit::create([

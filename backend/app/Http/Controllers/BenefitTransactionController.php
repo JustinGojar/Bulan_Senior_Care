@@ -26,7 +26,7 @@ class BenefitTransactionController extends Controller
         $cacheKey = "benefit-transactions:{$request->user()->id}:{$page}:{$perPage}:".sha1($period.'|'.$senior);
         $visible = function () use ($request) {
             $query = BenefitTransaction::query()->whereHas('senior')->whereHas('benefit');
-            if ($request->user()->role === 'leader') {
+            if ($request->user()->role === 'president') {
                 $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $request->user()->barangay_id));
             }
 
@@ -185,11 +185,11 @@ class BenefitTransactionController extends Controller
 
     private function authorizeTransactionEditor(Request $request): void
     {
-        abort_unless(in_array($request->user()->role, ['admin', 'leader'], true), 403, 'Only Admin and Leader accounts can update benefit statuses.');
+        abort_unless(in_array($request->user()->role, ['admin', 'president'], true), 403, 'Only Admin and President accounts can update benefit statuses.');
     }
 
     private function authorizeScope(Request $request, \App\Models\SeniorCitizen $senior): void
     {
-        abort_if($request->user()->role === 'leader' && $request->user()->barangay_id !== $senior->barangay_id, 403, 'This record is outside your barangay.');
+        abort_if($request->user()->role === 'president' && $request->user()->barangay_id !== $senior->barangay_id, 403, 'This record is outside your barangay.');
     }
 }

@@ -45,8 +45,8 @@ class BenefitReleaseController extends Controller
                 ->when($filters['date_from'] ?? null, fn ($releases, $from) => $releases->whereDate('release_date', '>=', $from))
                 ->when($filters['date_to'] ?? null, fn ($releases, $to) => $releases->whereDate('release_date', '<=', $to))
                 ->latest('release_date');
-            // Leaders see releases for their own barangay, plus older ones made for every barangay.
-            if ($request->user()->role === 'leader') {
+            // Presidents see releases for their own barangay, plus older ones made for every barangay.
+            if ($request->user()->role === 'president') {
                 $barangayId = $request->user()->barangay_id;
                 $query->where(fn ($releases) => $releases
                     ->whereDoesntHave('barangays')
@@ -111,7 +111,7 @@ class BenefitReleaseController extends Controller
         ]);
 
         $benefitName = $release->load('benefit:id,benefit_name')->benefit->benefit_name;
-        User::query()->where('role', 'leader')->where('status', 'active')->whereIn('barangay_id', $barangayIds)->each(function (User $leader) use ($release, $benefitName, $request) {
+        User::query()->where('role', 'president')->where('status', 'active')->whereIn('barangay_id', $barangayIds)->each(function (User $leader) use ($release, $benefitName, $request) {
             Notification::create([
                 'sender_account_id' => $request->user()->id,
                 'recipient_account_id' => $leader->id,
@@ -241,17 +241,17 @@ class BenefitReleaseController extends Controller
             'completer:id,name,role',
             'documents' => fn ($documents) => $documents->with('uploader:id,name,role')->latest(),
             'transactions' => fn ($transactions) => $transactions
-                ->when($user->role === 'leader', fn ($query) => $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $user->barangay_id)))
+                ->when($user->role === 'president', fn ($query) => $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $user->barangay_id)))
                 ->with(['senior:id,osca_id_number,first_name,middle_name,last_name,suffix,barangay_id', 'senior.barangay:id,barangay_name'])
                 ->orderBy('id'),
         ]);
     }
 
-    /** Leaders reach only batches that include their barangay, or older ones made for every barangay. */
+    /** Presidents reach only batches that include their barangay, or older ones made for every barangay. */
     private function authorizeBatch(Request $request, BenefitRelease $release): void
     {
         $user = $request->user();
-        if ($user->role !== 'leader') {
+        if ($user->role !== 'president') {
             return;
         }
         $covers = ! $release->barangays()->exists()

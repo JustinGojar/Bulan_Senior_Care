@@ -18,7 +18,7 @@ class SeniorProgramEnrollmentTest extends TestCase
     {
         $barangay = Barangay::create(['barangay_name' => 'Calpi']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $pension = Benefit::create([

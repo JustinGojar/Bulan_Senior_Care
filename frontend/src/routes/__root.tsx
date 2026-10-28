@@ -171,8 +171,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     const roleRequirements: Record<string, string[]> = {
       "/users": ["admin"],
       "/eligibility": ["admin", "head"],
-      "/reports": ["admin", "head", "leader"],
-      "/analytics": ["admin", "head", "leader"],
+      "/reports": ["admin", "head", "president"],
+      "/analytics": ["admin", "head", "president"],
       "/age-threshold": ["admin", "head"],
     };
     const isPublic = PUBLIC_PATHS.has(location.pathname);

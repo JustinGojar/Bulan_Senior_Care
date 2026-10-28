@@ -16,7 +16,7 @@ class SystemDataToolsTest extends TestCase
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader']);
+        $leader = User::factory()->create(['role' => 'president']);
         AuditLog::create([
             'actor_id' => $admin->id,
             'action' => 'created',

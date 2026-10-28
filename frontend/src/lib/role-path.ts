@@ -7,7 +7,7 @@ import { getStoredUser } from "@/lib/api";
 const ROLE_PREFIXES: Record<string, string> = {
   admin: "admin",
   head: "head",
-  leader: "bsca",
+  president: "bsca",
 };
 const KNOWN_PREFIXES = new Set(Object.values(ROLE_PREFIXES));
 

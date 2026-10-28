@@ -191,8 +191,8 @@ function Notifications() {
       return navigate({ to: "/benefits", search: { release: sourceId } });
     }
     if (notification.source_type === "document_review") {
-      // Leaders fix the documents from the senior's record; Admin and Head review them again.
-      if (getStoredUser()?.role !== "leader") return navigate({ to: "/eligibility" });
+      // Presidents fix the documents from the senior's record; Admin and Head review them again.
+      if (getStoredUser()?.role !== "president") return navigate({ to: "/eligibility" });
       return navigate({
         to: "/seniors",
         search: { q: notification.senior_osca_id ?? undefined, status: "pending" },
@@ -211,7 +211,7 @@ function Notifications() {
       const grant = notification.message.split(" is eligible for ")[1]?.replace(/\.$/, "").trim();
       // Admin and Head see the pop-up on the Age Threshold page. BSCA Presidents cannot open
       // that page, so the pop-up opens here instead.
-      if (getStoredUser()?.role !== "leader") {
+      if (getStoredUser()?.role !== "president") {
         return navigate({
           to: "/age-threshold",
           search: { senior: notification.senior_osca_id, grant },
@@ -229,7 +229,7 @@ function Notifications() {
     if (notification.source_type === "age_threshold") {
       // Admin and Head review flags on the Age Threshold page; BSCA Presidents cannot open it,
       // so they go to the senior's record instead. The message starts with the senior's name.
-      if (getStoredUser()?.role !== "leader") return navigate({ to: "/age-threshold" });
+      if (getStoredUser()?.role !== "president") return navigate({ to: "/age-threshold" });
       const seniorName = notification.message.split(" is eligible for ")[0]?.trim();
       return navigate({
         to: "/seniors",

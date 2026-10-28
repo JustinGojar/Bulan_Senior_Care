@@ -27,7 +27,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($expectedTotal, SeniorCitizen::withTrashed()->count());
 
         foreach ($barangays as $barangay) {
-            $leader = User::where('barangay_id', $barangay->id)->where('role', 'leader')->first();
+            $leader = User::where('barangay_id', $barangay->id)->where('role', 'president')->first();
 
             $this->assertNotNull($leader);
             $this->assertSame('bsca.'.Str::slug($barangay->barangay_name).'@osca-bulan.gov.ph', $leader->email);
@@ -42,8 +42,8 @@ class DatabaseSeederTest extends TestCase
             $this->assertTrue($seniors->contains(fn ($senior) => $senior->trashed()));
         }
 
-        // A changed leader password survives a re-run, and the sample set is not duplicated.
-        $leader = User::where('role', 'leader')->firstOrFail();
+        // A changed president password survives a re-run, and the sample set is not duplicated.
+        $leader = User::where('role', 'president')->firstOrFail();
         $leader->update(['password' => 'changed-password']);
 
         $this->seed(DatabaseSeeder::class);

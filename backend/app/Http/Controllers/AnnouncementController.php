@@ -42,7 +42,7 @@ class AnnouncementController extends Controller
         ]);
         Cache::forget('announcements:dashboard');
 
-        User::query()->where('role', 'leader')->where('status', 'active')->each(function (User $leader) use ($announcement, $request) {
+        User::query()->where('role', 'president')->where('status', 'active')->each(function (User $leader) use ($announcement, $request) {
             Notification::create([
                 'sender_account_id' => $request->user()->id,
                 'recipient_account_id' => $leader->id,

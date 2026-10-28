@@ -86,8 +86,8 @@ function ProfilePage() {
         setAddress(freshUser.address ?? "");
         setStoredUser(freshUser);
         const isLeader =
-          freshUser.role?.toLowerCase() === "leader" ||
-          freshUser.roles?.some((role) => role.name.toLowerCase() === "leader");
+          freshUser.role?.toLowerCase() === "president" ||
+          freshUser.roles?.some((role) => role.name.toLowerCase() === "president");
         if (isLeader && freshUser.barangay_id) {
           getBarangays()
             .then((barangays) =>
@@ -134,7 +134,7 @@ function ProfilePage() {
       ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
       : defaultProfileImage);
   const roleLabel =
-    user?.role?.toLowerCase() === "leader"
+    user?.role?.toLowerCase() === "president"
       ? `BSCA President${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
       : user?.role?.toLowerCase() === "head"
         ? "OSCA Head"

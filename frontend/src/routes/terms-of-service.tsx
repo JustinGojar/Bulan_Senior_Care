@@ -20,7 +20,7 @@ const SECTIONS: AgreementSection[] = [
       <p>
         Bulan SeniorCare is the senior citizen profiling and benefit monitoring system of the Office
         of Senior Citizen Affairs (OSCA) of the Municipality of Bulan, Sorsogon. It is a government
-        tool for OSCA staff and barangay senior citizen leaders. The public pages are open to
+        tool for OSCA staff and barangay senior citizen presidents. The public pages are open to
         everyone; the rest of the portal is only for authorized users.
       </p>
     ),

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Senior } from "@/lib/osca-data";
 
 /**
- * What is wrong with an "In review" registration's documents. The barangay leader can upload
+ * What is wrong with an "In review" registration's documents. The barangay president can upload
  * corrected documents here, which sends the registration back to Admin and Head for review.
  */
 export function DocumentReviewNotice({
