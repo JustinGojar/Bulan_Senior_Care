@@ -16,6 +16,24 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        // A BSCA President's address is always their assigned barangay; it cannot be edited.
+        static::saving(function (User $user): void {
+            if ($user->role === 'president' && $user->barangay_id) {
+                $user->address = self::presidentAddress($user->barangay_id) ?? $user->address;
+            }
+        });
+    }
+
+    /** "(barangay), Bulan, Sorsogon" for the given barangay, or null if it does not exist. */
+    public static function presidentAddress(int $barangayId): ?string
+    {
+        $name = Barangay::query()->whereKey($barangayId)->value('barangay_name');
+
+        return $name ? "{$name}, Bulan, Sorsogon" : null;
+    }
+
     public function sendEmailVerificationNotification(): void
     {
         $expires = now()->addMinutes((int) config('auth.verification.expire'))->getTimestamp();
