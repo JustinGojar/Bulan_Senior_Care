@@ -18,7 +18,7 @@ class DocumentReviewTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_puts_a_registration_in_review_and_the_leader_is_told_what_to_fix(): void
+    public function test_admin_puts_a_registration_in_review_and_the_president_is_told_what_to_fix(): void
     {
         Bus::fake();
         DB::table('app_settings')->insert([
@@ -27,8 +27,8 @@ class DocumentReviewTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        [$senior, $leader] = $this->pendingRegistration();
-        $leader->update(['email' => 'president@example.test']);
+        [$senior, $president] = $this->pendingRegistration();
+        $president->update(['email' => 'president@example.test']);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         Sanctum::actingAs($admin);
 
@@ -39,7 +39,7 @@ class DocumentReviewTest extends TestCase
 
         $message = 'The documents for Lola Reyes (OSCA-REV-001) need to be fixed: The valid ID is blurry.';
         $this->assertDatabaseHas('notifications', [
-            'recipient_account_id' => $leader->id,
+            'recipient_account_id' => $president->id,
             'message' => $message,
             'source_type' => 'document_review',
             'source_id' => $senior->id,
@@ -63,22 +63,22 @@ class DocumentReviewTest extends TestCase
             ->assertUnprocessable();
     }
 
-    public function test_leaders_cannot_put_a_registration_in_review(): void
+    public function test_presidents_cannot_put_a_registration_in_review(): void
     {
-        [$senior, $leader] = $this->pendingRegistration();
-        Sanctum::actingAs($leader);
+        [$senior, $president] = $this->pendingRegistration();
+        Sanctum::actingAs($president);
 
         $this->postJson("/api/seniors/{$senior->osca_id_number}/review", ['note' => 'Wrong file.'])
             ->assertForbidden();
     }
 
-    public function test_new_documents_from_the_leader_end_the_review_and_notify_reviewers(): void
+    public function test_new_documents_from_the_president_end_the_review_and_notify_reviewers(): void
     {
         Storage::fake('local');
-        [$senior, $leader] = $this->pendingRegistration();
+        [$senior, $president] = $this->pendingRegistration();
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $senior->update(['review_note' => 'The valid ID is blurry.', 'review_flagged_by' => $admin->id, 'review_flagged_at' => now()]);
-        Sanctum::actingAs($leader);
+        Sanctum::actingAs($president);
 
         $this->post("/api/seniors/{$senior->osca_id_number}/documents", [
             'valid_id' => UploadedFile::fake()->image('id.jpg'),
@@ -97,25 +97,25 @@ class DocumentReviewTest extends TestCase
 
     public function test_documents_can_only_be_resubmitted_while_in_review_and_within_the_barangay(): void
     {
-        [$senior, $leader] = $this->pendingRegistration();
-        Sanctum::actingAs($leader);
+        [$senior, $president] = $this->pendingRegistration();
+        Sanctum::actingAs($president);
         $this->post("/api/seniors/{$senior->osca_id_number}/documents", [
             'valid_id' => UploadedFile::fake()->image('id.jpg'),
         ], ['Accept' => 'application/json'])->assertUnprocessable();
 
         $senior->update(['review_note' => 'Wrong file.']);
-        $otherLeader = User::factory()->create([
+        $otherPresident = User::factory()->create([
             'role' => 'president',
             'status' => 'active',
             'barangay_id' => Barangay::create(['barangay_name' => 'Zone 2'])->id,
         ]);
-        Sanctum::actingAs($otherLeader);
+        Sanctum::actingAs($otherPresident);
         $this->post("/api/seniors/{$senior->osca_id_number}/documents", [
             'valid_id' => UploadedFile::fake()->image('id.jpg'),
         ], ['Accept' => 'application/json'])->assertForbidden();
     }
 
-    public function test_leader_is_notified_and_emailed_when_a_registration_is_decided(): void
+    public function test_president_is_notified_and_emailed_when_a_registration_is_decided(): void
     {
         Bus::fake();
         DB::table('app_settings')->insert([
@@ -124,8 +124,8 @@ class DocumentReviewTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        [$senior, $leader] = $this->pendingRegistration();
-        $leader->update(['email' => 'president@example.test']);
+        [$senior, $president] = $this->pendingRegistration();
+        $president->update(['email' => 'president@example.test']);
         Sanctum::actingAs(User::factory()->create(['role' => 'admin', 'status' => 'active']));
 
         $this->putJson("/api/seniors/{$senior->osca_id_number}", [
@@ -134,7 +134,7 @@ class DocumentReviewTest extends TestCase
         ])->assertOk();
 
         $this->assertDatabaseHas('notifications', [
-            'recipient_account_id' => $leader->id,
+            'recipient_account_id' => $president->id,
             'message' => 'The registration of Lola Reyes (OSCA-REV-001) was marked not eligible.',
             'source_type' => 'registration_review',
         ]);
@@ -158,7 +158,7 @@ class DocumentReviewTest extends TestCase
 
     public function test_eligibility_review_filters_registrations_by_review_status(): void
     {
-        [$awaiting, $leader] = $this->pendingRegistration();
+        [$awaiting, $president] = $this->pendingRegistration();
         $inReview = $awaiting->replicate()->fill(['osca_id_number' => 'OSCA-REV-002', 'review_note' => 'Wrong file.']);
         $inReview->save();
         $notEligible = $awaiting->replicate()->fill([
@@ -181,8 +181,8 @@ class DocumentReviewTest extends TestCase
     private function pendingRegistration(): array
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
-        /** @var User $leader */
-        $leader = User::factory()->create([
+        /** @var User $president */
+        $president = User::factory()->create([
             'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
@@ -190,7 +190,7 @@ class DocumentReviewTest extends TestCase
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'OSCA-REV-001',
             'barangay_id' => $barangay->id,
-            'encoded_by' => $leader->id,
+            'encoded_by' => $president->id,
             'first_name' => 'Lola',
             'last_name' => 'Reyes',
             'birthdate' => now()->subYears(70)->toDateString(),
@@ -199,6 +199,6 @@ class DocumentReviewTest extends TestCase
             'status' => 'pending',
         ]);
 
-        return [$senior, $leader];
+        return [$senior, $president];
     }
 }

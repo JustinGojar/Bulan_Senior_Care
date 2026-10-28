@@ -151,7 +151,7 @@ function BenefitTracking() {
   const [error, setError] = useState<string | null>(null);
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
-  const isLeader = currentUser?.role === "president";
+  const isPresident = currentUser?.role === "president";
   // The OSCA Head schedules releases.
   const canManageReleases =
     currentUser?.role === "head" && hasPermission("schedule benefit releases");
@@ -272,7 +272,7 @@ function BenefitTracking() {
     getBarangays()
       .then((result) => {
         setBarangays(result);
-        if (isLeader) {
+        if (isPresident) {
           setSelectedBarangay(
             result.find((barangay) => barangay.id === currentUser?.barangay_id)?.barangay_name ??
               "Unassigned",
@@ -283,7 +283,7 @@ function BenefitTracking() {
     apiFetch<PaginatedResponse<BenefitRelease>>("/benefit-releases?page=1&per_page=50")
       .then((result) => setReleaseSchedules(result.data))
       .catch(() => setReleaseSchedules([]));
-  }, [currentUser?.barangay_id, isLeader, transactionPage, transactionsVersion, selectedPeriod]);
+  }, [currentUser?.barangay_id, isPresident, transactionPage, transactionsVersion, selectedPeriod]);
 
   function resetReleaseForm() {
     setSelectedBenefitId("");
@@ -697,7 +697,7 @@ function BenefitTracking() {
           className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={selectedBarangay}
-          disabled={isLeader}
+          disabled={isPresident}
           options={barangayOptions.map((barangay) => ({
             value: barangay,
             label: barangay === "All" ? "All Barangays" : barangay,
@@ -717,7 +717,7 @@ function BenefitTracking() {
           ]}
           onChange={setSortProgramsBy}
         />
-        {((!isLeader && selectedBarangay !== "All") ||
+        {((!isPresident && selectedBarangay !== "All") ||
           selectedBenefit !== "All" ||
           selectedStatus !== "All" ||
           selectedPeriod !== "All") && (
@@ -727,7 +727,7 @@ function BenefitTracking() {
             icon={<RotateCcw className="h-4 w-4" />}
             className="h-10 w-10 text-xs hover:translate-y-0 sm:h-11 sm:px-4"
             onClick={() => {
-              if (!isLeader) setSelectedBarangay("All");
+              if (!isPresident) setSelectedBarangay("All");
               setSelectedBenefit("All");
               setSelectedStatus("All");
               setSelectedPeriod("All");
@@ -868,7 +868,7 @@ function BenefitTracking() {
               <div className={`${tileClass} mt-3 hidden px-3 py-2 md:block`}>
                 <p className="text-[0.625rem] text-muted-foreground">Related to</p>
                 <p className="mt-0.5 truncate text-xs font-semibold">
-                  {isLeader ? `BSCA - ${relatedBarangay}` : relatedBarangay}
+                  {isPresident ? `BSCA - ${relatedBarangay}` : relatedBarangay}
                 </p>
               </div>
 

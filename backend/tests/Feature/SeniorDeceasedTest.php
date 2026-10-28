@@ -20,30 +20,30 @@ class SeniorDeceasedTest extends TestCase
     {
         $barangay = Barangay::create(['barangay_name' => 'Calpi']);
         $other = Barangay::create(['barangay_name' => 'Gate']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         /** @var User $outsider */
         $outsider = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $other->id]);
         $pension = Benefit::create(['benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension', 'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national', 'schedule' => 'quarterly', 'status' => 'active']);
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'BSC-2026-9001', 'barangay_id' => $barangay->id, 'benefit_id' => $pension->id,
-            'encoded_by' => $leader->id, 'first_name' => 'Lola', 'last_name' => 'Reyes', 'birthdate' => '1940-01-01',
+            'encoded_by' => $president->id, 'first_name' => 'Lola', 'last_name' => 'Reyes', 'birthdate' => '1940-01-01',
             'sex' => 'female', 'registration_date' => '2026-01-01', 'status' => 'active',
         ]);
         $pending = BenefitTransaction::create([
-            'senior_citizen_id' => $senior->id, 'benefit_id' => $pension->id, 'distributed_by' => $leader->id,
+            'senior_citizen_id' => $senior->id, 'benefit_id' => $pension->id, 'distributed_by' => $president->id,
             'amount' => 3000, 'period_label' => 'Q4 2026', 'status' => 'pending',
         ]);
 
-        return [$leader, $outsider, $senior, $pending];
+        return [$president, $outsider, $senior, $pending];
     }
 
-    public function test_leader_records_a_death_with_its_certificate(): void
+    public function test_president_records_a_death_with_its_certificate(): void
     {
         Storage::fake('local');
-        [$leader, , $senior, $pending] = $this->setUpSenior();
+        [$president, , $senior, $pending] = $this->setUpSenior();
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->post("/api/seniors/{$senior->osca_id_number}/deceased", [
                 'date_of_death' => '2026-10-01',
                 'death_certificate' => UploadedFile::fake()->create('certificate.pdf', 100, 'application/pdf'),
@@ -52,23 +52,23 @@ class SeniorDeceasedTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'inactive')
             ->assertJsonPath('inactive_reason', 'deceased')
-            ->assertJsonPath('inactivator.name', $leader->name);
+            ->assertJsonPath('inactivator.name', $president->name);
 
         $senior->refresh();
         $this->assertSame('2026-10-01', $senior->date_of_death->toDateString());
         Storage::disk('local')->assertExists($senior->death_certificate_path);
         $this->assertSame('failed', $pending->fresh()->status);
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->get("/api/seniors/{$senior->osca_id_number}/files/death_certificate")
             ->assertOk();
     }
 
-    public function test_a_death_needs_a_certificate_and_the_leaders_own_barangay(): void
+    public function test_a_death_needs_a_certificate_and_the_presidents_own_barangay(): void
     {
-        [$leader, $outsider, $senior] = $this->setUpSenior();
+        [$president, $outsider, $senior] = $this->setUpSenior();
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->postJson("/api/seniors/{$senior->osca_id_number}/deceased", ['date_of_death' => '2026-10-01'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('death_certificate');

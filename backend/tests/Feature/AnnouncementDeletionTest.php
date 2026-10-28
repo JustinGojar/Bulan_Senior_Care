@@ -43,12 +43,12 @@ class AnnouncementDeletionTest extends TestCase
     {
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active']);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active']);
         $announcement = Announcement::create(['created_by' => $head->id, 'title' => 'T', 'message' => 'M', 'published_at' => now()]);
-        AnnouncementComment::create(['announcement_id' => $announcement->id, 'user_id' => $leader->id, 'message' => 'Hi']);
+        AnnouncementComment::create(['announcement_id' => $announcement->id, 'user_id' => $president->id, 'message' => 'Hi']);
 
-        $this->actingAs($leader, 'sanctum')->deleteJson("/api/announcements/{$announcement->id}")->assertForbidden();
+        $this->actingAs($president, 'sanctum')->deleteJson("/api/announcements/{$announcement->id}")->assertForbidden();
         $this->actingAs($head, 'sanctum')->deleteJson("/api/announcements/{$announcement->id}")->assertNoContent();
 
         $this->assertSoftDeleted('announcements', ['id' => $announcement->id]);

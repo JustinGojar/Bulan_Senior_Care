@@ -85,10 +85,10 @@ function ProfilePage() {
         setContact(freshUser.contact_number ?? "");
         setAddress(freshUser.address ?? "");
         setStoredUser(freshUser);
-        const isLeader =
+        const isPresident =
           freshUser.role?.toLowerCase() === "president" ||
           freshUser.roles?.some((role) => role.name.toLowerCase() === "president");
-        if (isLeader && freshUser.barangay_id) {
+        if (isPresident && freshUser.barangay_id) {
           getBarangays()
             .then((barangays) =>
               setAssignedBarangay(

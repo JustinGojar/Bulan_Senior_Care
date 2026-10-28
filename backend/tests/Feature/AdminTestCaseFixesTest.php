@@ -15,7 +15,7 @@ class AdminTestCaseFixesTest extends TestCase
 
     private User $admin;
     private User $head;
-    private User $leader;
+    private User $president;
 
     protected function setUp(): void
     {
@@ -68,7 +68,7 @@ class AdminTestCaseFixesTest extends TestCase
             ->assertForbidden()->assertJsonPath('message', fn (string $message) => str_contains($message, 'permission'));
     }
 
-    public function test_only_admin_manages_permissions_and_only_for_head_and_leader(): void
+    public function test_only_admin_manages_permissions_and_only_for_head_and_president(): void
     {
         $this->actingAs($this->head, 'sanctum')->getJson('/api/admin/role-permissions')->assertForbidden();
         $this->actingAs($this->admin, 'sanctum')->putJson('/api/admin/role-permissions/admin', ['permissions' => []])->assertNotFound();

@@ -17,7 +17,7 @@ class SeniorPrivacyConsentTest extends TestCase
 
     private User $admin;
 
-    private User $leader;
+    private User $president;
 
     protected function setUp(): void
     {

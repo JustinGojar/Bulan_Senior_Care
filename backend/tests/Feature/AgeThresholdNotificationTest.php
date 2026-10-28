@@ -17,24 +17,24 @@ class AgeThresholdNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_age_threshold_alerts_only_notify_active_leaders_in_the_senior_barangay_once(): void
+    public function test_age_threshold_alerts_only_notify_active_presidents_in_the_senior_barangay_once(): void
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
-        /** @var User $localLeader */
-        $localLeader = User::factory()->create([
+        /** @var User $localPresident */
+        $localPresident = User::factory()->create([
             'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
         ]);
-        /** @var User $otherLeader */
-        $otherLeader = User::factory()->create([
+        /** @var User $otherPresident */
+        $otherPresident = User::factory()->create([
             'role' => 'president',
             'status' => 'active',
             'barangay_id' => $otherBarangay->id,
         ]);
-        /** @var User $inactiveLeader */
-        $inactiveLeader = User::factory()->create([
+        /** @var User $inactivePresident */
+        $inactivePresident = User::factory()->create([
             'role' => 'president',
             'status' => 'inactive',
             'barangay_id' => $barangay->id,
@@ -43,7 +43,7 @@ class AgeThresholdNotificationTest extends TestCase
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'OSCA-AGE-001',
             'barangay_id' => $barangay->id,
-            'encoded_by' => $localLeader->id,
+            'encoded_by' => $localPresident->id,
             'first_name' => 'Maria',
             'last_name' => 'Santos',
             'birthdate' => now()->subYears(80)->toDateString(),
@@ -66,49 +66,49 @@ class AgeThresholdNotificationTest extends TestCase
         Artisan::call('osca:detect-age-thresholds');
 
         $this->assertDatabaseHas('notifications', [
-            'recipient_account_id' => $localLeader->id,
+            'recipient_account_id' => $localPresident->id,
             'message' => 'Maria Santos has turned 80. You can now claim these benefits: Social Pension and Octogenarian Grant.',
             'source_type' => 'age_threshold',
             'source_id' => $senior->id,
             'channel' => 'in_app',
             'status' => 'unread',
         ]);
-        $this->assertDatabaseMissing('notifications', ['recipient_account_id' => $otherLeader->id]);
-        $this->assertDatabaseMissing('notifications', ['recipient_account_id' => $inactiveLeader->id]);
+        $this->assertDatabaseMissing('notifications', ['recipient_account_id' => $otherPresident->id]);
+        $this->assertDatabaseMissing('notifications', ['recipient_account_id' => $inactivePresident->id]);
         $this->assertDatabaseCount('notifications', 1);
     }
 
-    public function test_leader_is_notified_as_soon_as_a_senior_in_a_benefit_age_becomes_active(): void
+    public function test_president_is_notified_as_soon_as_a_senior_in_a_benefit_age_becomes_active(): void
     {
-        [$barangay, $leader] = $this->leaderWithCentenarianProgram();
-        $senior = $this->pendingSenior($barangay, $leader, 100);
+        [$barangay, $president] = $this->presidentWithCentenarianProgram();
+        $senior = $this->pendingSenior($barangay, $president, 100);
 
         $this->assertDatabaseCount('notifications', 0);
 
         $senior->update(['status' => 'active']);
 
         $this->assertDatabaseHas('notifications', [
-            'recipient_account_id' => $leader->id,
+            'recipient_account_id' => $president->id,
             'message' => 'Lola Reyes has turned 100. You can now claim these benefits: Social Pension and Centenarian Award.',
             'source_type' => 'age_threshold',
         ]);
     }
 
-    public function test_opening_notifications_checks_the_leaders_barangay_without_the_scheduler(): void
+    public function test_opening_notifications_checks_the_presidents_barangay_without_the_scheduler(): void
     {
-        [$barangay, $leader] = $this->leaderWithCentenarianProgram();
+        [$barangay, $president] = $this->presidentWithCentenarianProgram();
         // Saved quietly, as if the senior turned 100 since the last check.
-        SeniorCitizen::withoutEvents(fn () => $this->pendingSenior($barangay, $leader, 100)
+        SeniorCitizen::withoutEvents(fn () => $this->pendingSenior($barangay, $president, 100)
             ->forceFill(['status' => 'active'])->save());
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->getJson('/api/notifications')
             ->assertOk()
             ->assertJsonFragment(['message' => 'Lola Reyes has turned 100. You can now claim these benefits: Social Pension and Centenarian Award.']);
     }
 
     /** @return array{0: Barangay, 1: User} */
-    public function test_leader_is_emailed_once_when_a_senior_reaches_a_milestone_age(): void
+    public function test_president_is_emailed_once_when_a_senior_reaches_a_milestone_age(): void
     {
         Bus::fake();
         DB::table('app_settings')->insert([
@@ -117,10 +117,10 @@ class AgeThresholdNotificationTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        [$barangay, $leader] = $this->leaderWithCentenarianProgram();
-        $leader->update(['email' => 'president@example.test']);
+        [$barangay, $president] = $this->presidentWithCentenarianProgram();
+        $president->update(['email' => 'president@example.test']);
         User::factory()->create(['role' => 'admin', 'status' => 'active', 'email' => 'admin@example.test']);
-        $this->pendingSenior($barangay, $leader, 100)->update(['status' => 'active']);
+        $this->pendingSenior($barangay, $president, 100)->update(['status' => 'active']);
 
         Artisan::call('osca:detect-age-thresholds');
         Artisan::call('osca:detect-age-thresholds');
@@ -135,18 +135,18 @@ class AgeThresholdNotificationTest extends TestCase
     public function test_milestone_email_is_skipped_when_email_advisories_are_off(): void
     {
         Bus::fake();
-        [$barangay, $leader] = $this->leaderWithCentenarianProgram();
-        $this->pendingSenior($barangay, $leader, 100)->update(['status' => 'active']);
+        [$barangay, $president] = $this->presidentWithCentenarianProgram();
+        $this->pendingSenior($barangay, $president, 100)->update(['status' => 'active']);
 
         Bus::assertNotDispatchedAfterResponse(DeliverAdvisory::class);
-        $this->assertDatabaseHas('notifications', ['recipient_account_id' => $leader->id]);
+        $this->assertDatabaseHas('notifications', ['recipient_account_id' => $president->id]);
     }
 
-    private function leaderWithCentenarianProgram(): array
+    private function presidentWithCentenarianProgram(): array
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
-        /** @var User $leader */
-        $leader = User::factory()->create([
+        /** @var User $president */
+        $president = User::factory()->create([
             'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
@@ -162,15 +162,15 @@ class AgeThresholdNotificationTest extends TestCase
             'status' => 'active',
         ]);
 
-        return [$barangay, $leader];
+        return [$barangay, $president];
     }
 
-    private function pendingSenior(Barangay $barangay, User $leader, int $age): SeniorCitizen
+    private function pendingSenior(Barangay $barangay, User $president, int $age): SeniorCitizen
     {
         return SeniorCitizen::create([
             'osca_id_number' => 'OSCA-AGE-'.$age,
             'barangay_id' => $barangay->id,
-            'encoded_by' => $leader->id,
+            'encoded_by' => $president->id,
             'first_name' => 'Lola',
             'last_name' => 'Reyes',
             'birthdate' => now()->subYears($age)->toDateString(),

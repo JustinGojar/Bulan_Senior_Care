@@ -228,16 +228,16 @@ export function SeniorFormDialog({
   open,
   onOpenChange,
   senior,
-  isLeader,
-  leaderBarangay,
+  isPresident,
+  presidentBarangay,
   registrarAddress,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   senior?: Senior | null;
-  isLeader?: boolean;
-  leaderBarangay?: string | undefined;
+  isPresident?: boolean;
+  presidentBarangay?: string | undefined;
   /** Address on the registering president/BSCA account; becomes the association address. */
   registrarAddress?: string | undefined;
   /** Saves the record; a rejection (e.g. a possible duplicate) keeps the form open. */
@@ -293,11 +293,11 @@ export function SeniorFormDialog({
             dateOfDeath: senior.deceased?.dateOfDeath ?? "",
             deathCertificate: null,
           }
-        : leaderBarangay
-          ? { ...EMPTY, barangay: leaderBarangay }
+        : presidentBarangay
+          ? { ...EMPTY, barangay: presidentBarangay }
           : EMPTY,
     );
-  }, [open, senior, leaderBarangay]);
+  }, [open, senior, presidentBarangay]);
 
   useEffect(() => {
     if (!validId) {
@@ -344,7 +344,7 @@ export function SeniorFormDialog({
   // Existing records keep the address set when they were registered; new ones use the
   // registering account's address.
   // Presidents get a locked address; Admin and Head pick one from the barangay list.
-  const associationAddress = isLeader
+  const associationAddress = isPresident
     ? senior?.associationAddress?.trim() ||
       registrarAddress?.trim() ||
       associationAddressFor(draft.barangay)
@@ -618,7 +618,7 @@ export function SeniorFormDialog({
                   label="Barangay"
                   value={draft.barangay}
                   onChange={(v) => set("barangay", v)}
-                  disabled={!!leaderBarangay}
+                  disabled={!!presidentBarangay}
                   placeholder="Select a barangay"
                   className="mt-1.5 h-9 px-3"
                   options={BARANGAYS.map((barangay) => ({ value: barangay, label: barangay }))}
@@ -753,7 +753,7 @@ export function SeniorFormDialog({
             </div>
           </section>
 
-          {senior && !isLeader && (
+          {senior && !isPresident && (
             <div className="sm:col-span-2">
               <Label>Eligibility status</Label>
               <Select
@@ -885,7 +885,7 @@ export function SeniorFormDialog({
               </div>
               <div>
                 <Label htmlFor="senior-association-address">Address of association *</Label>
-                {isLeader ? (
+                {isPresident ? (
                   <>
                     <p
                       id="senior-association-address"

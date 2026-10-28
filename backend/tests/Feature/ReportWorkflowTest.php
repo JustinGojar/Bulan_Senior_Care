@@ -24,9 +24,9 @@ class ReportWorkflowTest extends TestCase
 
     private User $head;
 
-    private User $leader;
+    private User $president;
 
-    private User $otherLeader;
+    private User $otherPresident;
 
     protected function setUp(): void
     {
@@ -36,7 +36,7 @@ class ReportWorkflowTest extends TestCase
         $this->admin = User::factory()->create(['role' => 'admin']);
         $this->head = User::factory()->create(['role' => 'head']);
         $this->president = User::factory()->create(['role' => 'president', 'barangay_id' => $this->zone1->id]);
-        $this->otherLeader = User::factory()->create(['role' => 'president', 'barangay_id' => $this->zone2->id]);
+        $this->otherPresident = User::factory()->create(['role' => 'president', 'barangay_id' => $this->zone2->id]);
 
         // More than one page of seniors, so the report must not stop at the first 50.
         foreach (range(1, 55) as $number) {
@@ -94,7 +94,7 @@ class ReportWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('status', 'published')
             ->assertJsonPath('publisher.id', $this->head->id);
-        foreach ([$this->admin, $this->president, $this->otherLeader] as $recipient) {
+        foreach ([$this->admin, $this->president, $this->otherPresident] as $recipient) {
             $this->assertDatabaseHas('notifications', ['recipient_account_id' => $recipient->id, 'source_id' => $id]);
         }
 
@@ -129,7 +129,7 @@ class ReportWorkflowTest extends TestCase
             ->assertJsonPath('snapshot.distribution.2.status', 'not_released');
     }
 
-    public function test_leaders_only_see_published_reports_meant_for_them(): void
+    public function test_presidents_only_see_published_reports_meant_for_them(): void
     {
         $draft = $this->report('Municipal Summary', null, 'draft');
         $municipal = $this->report('Municipal Summary', null, 'published');

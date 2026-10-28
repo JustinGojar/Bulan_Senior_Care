@@ -851,7 +851,7 @@ export function bulkCreateSeniors(records: Array<Record<string, string>>) {
   });
 }
 
-export async function createBarangayLeader(data: {
+export async function createBarangayPresident(data: {
   firstName: string;
   middleName: string;
   lastName: string;

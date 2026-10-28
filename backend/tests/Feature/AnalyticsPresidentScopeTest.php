@@ -10,21 +10,21 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class AnalyticsLeaderScopeTest extends TestCase
+class AnalyticsPresidentScopeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_leader_analytics_only_includes_the_assigned_barangay(): void
+    public function test_president_analytics_only_includes_the_assigned_barangay(): void
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
-        /** @var User $leader */
-        $leader = User::factory()->create([
+        /** @var User $president */
+        $president = User::factory()->create([
             'role' => 'president',
             'barangay_id' => $barangay->id,
         ]);
-        $localSenior = $this->createSenior($leader, $barangay, 'OSCA-LOCAL-001', 70);
-        $this->createSenior($leader, $otherBarangay, 'OSCA-OTHER-001', 100);
+        $localSenior = $this->createSenior($president, $barangay, 'OSCA-LOCAL-001', 70);
+        $this->createSenior($president, $otherBarangay, 'OSCA-OTHER-001', 100);
         $benefit = Benefit::create([
             'benefit_name' => 'Social Pension',
             'benefit_type' => 'social_pension',
@@ -38,26 +38,26 @@ class AnalyticsLeaderScopeTest extends TestCase
         BenefitTransaction::create([
             'senior_citizen_id' => $localSenior->id,
             'benefit_id' => $benefit->id,
-            'distributed_by' => $leader->id,
+            'distributed_by' => $president->id,
             'amount' => 3000,
             'status' => 'released',
         ]);
         BenefitTransaction::create([
             'senior_citizen_id' => $localSenior->id,
             'benefit_id' => $benefit->id,
-            'distributed_by' => $leader->id,
+            'distributed_by' => $president->id,
             'amount' => 3000,
             'status' => 'released',
         ]);
         BenefitTransaction::create([
             'senior_citizen_id' => $localSenior->id,
             'benefit_id' => $benefit->id,
-            'distributed_by' => $leader->id,
+            'distributed_by' => $president->id,
             'amount' => 3000,
             'status' => 'pending',
         ]);
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->getJson('/api/analytics?barangay_id='.$otherBarangay->id)
             ->assertOk()
             ->assertJsonPath('municipal.total_registered', 1)

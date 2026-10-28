@@ -544,27 +544,27 @@ function SeniorRecords() {
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
-  const isLeader = currentUser?.role === "president";
+  const isPresident = currentUser?.role === "president";
   const isAdmin = currentUser?.role === "admin";
   const [filter, setFilter] = useState<string>(() =>
     status ? `${status.charAt(0).toUpperCase()}${status.slice(1)}` : "All",
   );
   const [barangayFilter, setBarangayFilter] = useState("All");
   // Resolve the president's barangay by its database id, not by its position in BARANGAYS.
-  const [leaderBarangay, setLeaderBarangay] = useState<string | undefined>(undefined);
+  const [presidentBarangay, setPresidentBarangay] = useState<string | undefined>(undefined);
   useEffect(() => {
-    if (!isLeader || !currentUser?.barangay_id) return;
+    if (!isPresident || !currentUser?.barangay_id) return;
     getBarangays()
       .then((barangays) => {
         const name = barangays.find(
           (barangay) => barangay.id === currentUser.barangay_id,
         )?.barangay_name;
-        setLeaderBarangay(name);
+        setPresidentBarangay(name);
         // Presidents only see their own barangay, so show it in the (locked) filter.
         if (name) setBarangayFilter(name);
       })
-      .catch(() => setLeaderBarangay(undefined));
-  }, [isLeader, currentUser?.barangay_id]);
+      .catch(() => setPresidentBarangay(undefined));
+  }, [isPresident, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
   const [ageRange, setAgeRange] = useState("All");
@@ -816,7 +816,7 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-2 sm:gap-3">
-          {isLeader && hasPermission("register seniors") && (
+          {isPresident && hasPermission("register seniors") && (
             <>
               <IconActionButton
                 label="Register Senior"
@@ -886,14 +886,14 @@ function SeniorRecords() {
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}
           // A president's own barangay is their default, so it isn't marked as an active filter.
-          defaultValue={isLeader ? (leaderBarangay ?? "All") : "All"}
-          disabled={isLeader}
+          defaultValue={isPresident ? (presidentBarangay ?? "All") : "All"}
+          disabled={isPresident}
           options={[
             { value: "All", label: "All Barangays" },
             ...BARANGAYS.map((barangay) => ({ value: barangay, label: barangay })),
             // A president's barangay name from the database may not be in the static list.
-            ...(leaderBarangay && !BARANGAYS.includes(leaderBarangay)
-              ? [{ value: leaderBarangay, label: leaderBarangay }]
+            ...(presidentBarangay && !BARANGAYS.includes(presidentBarangay)
+              ? [{ value: presidentBarangay, label: presidentBarangay }]
               : []),
           ]}
           onChange={(value) => {
@@ -989,7 +989,7 @@ function SeniorRecords() {
           onClick={() => {
             setQuery("");
             setPage(1);
-            setBarangayFilter(isLeader ? (leaderBarangay ?? "All") : "All");
+            setBarangayFilter(isPresident ? (presidentBarangay ?? "All") : "All");
             setFilter("All");
             setBenefitFilter("All");
             setSortBy("name");
@@ -1392,15 +1392,15 @@ function SeniorRecords() {
           open={formOpen}
           onOpenChange={setFormOpen}
           senior={editing}
-          isLeader={isLeader}
-          leaderBarangay={isLeader ? leaderBarangay : undefined}
-          registrarAddress={isLeader ? (currentUser?.address ?? undefined) : undefined}
+          isPresident={isPresident}
+          presidentBarangay={isPresident ? presidentBarangay : undefined}
+          registrarAddress={isPresident ? (currentUser?.address ?? undefined) : undefined}
           onSubmit={async (draft) => {
             try {
               if (editing) {
                 await updateSenior(editing.id, draft);
                 toast.success(
-                  isLeader
+                  isPresident
                     ? "Update request sent to the Head for approval."
                     : `${draft.name}'s record was updated.`,
                 );
@@ -1481,7 +1481,7 @@ function SeniorRecords() {
             <DocumentReviewNotice
               key={viewing.id}
               senior={viewing}
-              canResubmit={isLeader}
+              canResubmit={isPresident}
               onResubmitted={(updated) => {
                 setViewing(updated);
                 reload();
@@ -1875,7 +1875,7 @@ function SeniorRecords() {
           )}
           {viewing &&
             !viewingArchive &&
-            isLeader &&
+            isPresident &&
             hasPermission("request benefits") &&
             viewing.status === "Active" && (
               <button

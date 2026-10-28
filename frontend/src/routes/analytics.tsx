@@ -284,7 +284,7 @@ function ReleaseProgress({ records }: { records: ReleaseStatusRecord[] }) {
 function Analytics() {
   const navigate = useNavigate();
   const { tab, report } = Route.useSearch();
-  const isLeader = getStoredUser()?.role === "president";
+  const isPresident = getStoredUser()?.role === "president";
 
   return (
     <AppShell
@@ -292,7 +292,7 @@ function Analytics() {
       subtitle={
         tab === "reports"
           ? "OSCA reports: generate, review, approve, and publish"
-          : isLeader
+          : isPresident
             ? "Barangay-level analytics for your assigned seniors"
             : "Descriptive analytics across barangays, age groups, and benefits"
       }
@@ -334,13 +334,13 @@ function Analytics() {
           }
         />
       ) : (
-        <AnalyticsOverview isLeader={isLeader} />
+        <AnalyticsOverview isPresident={isPresident} />
       )}
     </AppShell>
   );
 }
 
-function AnalyticsOverview({ isLeader }: { isLeader: boolean }) {
+function AnalyticsOverview({ isPresident }: { isPresident: boolean }) {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -386,7 +386,7 @@ function AnalyticsOverview({ isLeader }: { isLeader: boolean }) {
           />
         ))}
       </div>
-      {!isLeader && (
+      {!isPresident && (
         <section className={`${panelClass} p-5 sm:p-7`}>
           <SectionHeader
             icon={MapPin}
@@ -536,17 +536,17 @@ function AnalyticsOverview({ isLeader }: { isLeader: boolean }) {
         <SectionHeader
           icon={TrendingUp}
           title={
-            isLeader
+            isPresident
               ? "Benefits Released by Program"
               : "Trend and Analytics by Barangay and Municipality"
           }
           subtitle={
-            isLeader
+            isPresident
               ? "Released benefit counts in your assigned barangay."
               : "Registered seniors, released benefits, and cumulative municipal registrations."
           }
         />
-        {isLeader ? (
+        {isPresident ? (
           loading ? (
             <Skeleton className="mt-6 h-56 w-full rounded-lg" />
           ) : releaseStatusRecords.some(
@@ -596,7 +596,7 @@ function AnalyticsOverview({ isLeader }: { isLeader: boolean }) {
             </ResponsiveContainer>
           </div>
         )}
-        {!isLeader && (
+        {!isPresident && (
           <p className="mt-3 text-xs text-muted-foreground">
             Municipal registered total: {municipalTotal.toLocaleString()}
           </p>
@@ -606,7 +606,7 @@ function AnalyticsOverview({ isLeader }: { isLeader: boolean }) {
       <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
         <SectionHeader
           icon={MapPin}
-          title={isLeader ? "Your Barangay Summary" : "Barangay-Level Summary"}
+          title={isPresident ? "Your Barangay Summary" : "Barangay-Level Summary"}
           subtitle="Share of registered seniors who have received a benefit."
         />
         <div className="mt-6 @container overflow-x-auto rounded-lg border border-border/60">

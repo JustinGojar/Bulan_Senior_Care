@@ -17,19 +17,19 @@ class OverviewController extends Controller
         return response()->json(Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request) {
             $now = now();
             $currentMonthStart = $now->copy()->startOfMonth();
-            $isLeader = $request->user()->role === 'president';
-            $leaderId = $request->user()->id;
+            $isPresident = $request->user()->role === 'president';
+            $presidentId = $request->user()->id;
             $barangayId = $request->user()->barangay_id;
-            $seniorScope = static function ($query) use ($isLeader, $leaderId, $barangayId): void {
-                if ($isLeader) {
+            $seniorScope = static function ($query) use ($isPresident, $presidentId, $barangayId): void {
+                if ($isPresident) {
                     $query->where('senior_citizens.barangay_id', $barangayId)
-                        ->where('senior_citizens.encoded_by', $leaderId);
+                        ->where('senior_citizens.encoded_by', $presidentId);
                 }
             };
 
             $registeredQuery = SeniorCitizen::query();
-            if ($isLeader) {
-                $registeredQuery->where('barangay_id', $barangayId)->where('encoded_by', $leaderId);
+            if ($isPresident) {
+                $registeredQuery->where('barangay_id', $barangayId)->where('encoded_by', $presidentId);
             }
             $seniorStats = $registeredQuery
                 ->selectRaw(
@@ -63,13 +63,13 @@ class OverviewController extends Controller
 
             // Compare each running total with what it was at the end of last month,
             // so the badge reflects real growth instead of swings between monthly batches.
-            $countSeniorsBefore = static function ($cutoff, ?string $status = null) use ($isLeader, $leaderId, $barangayId): int {
+            $countSeniorsBefore = static function ($cutoff, ?string $status = null) use ($isPresident, $presidentId, $barangayId): int {
                 $query = SeniorCitizen::query()->where('created_at', '<', $cutoff);
                 if ($status !== null) {
                     $query->where('status', $status);
                 }
-                if ($isLeader) {
-                    $query->where('barangay_id', $barangayId)->where('encoded_by', $leaderId);
+                if ($isPresident) {
+                    $query->where('barangay_id', $barangayId)->where('encoded_by', $presidentId);
                 }
 
                 return $query->count();

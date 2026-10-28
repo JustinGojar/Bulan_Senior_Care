@@ -108,7 +108,7 @@ class ReportController extends Controller
 
         $message = "Report \"{$this->title($report)}\" has been published.";
         $this->notify($user, User::where('role', 'admin')->where('status', 'active')->get()->push($report->generator), $report, $message);
-        $this->notify($user, $this->leaderRecipients($report), $report, $message);
+        $this->notify($user, $this->presidentRecipients($report), $report, $message);
     }
 
     /** Regenerates a returned report from the latest records and sends it back for review. */
@@ -146,14 +146,14 @@ class ReportController extends Controller
                 ->orWhere(fn (Builder $query) => $query->whereNull('barangay_id')->where('report_type', ReportBuilder::MUNICIPAL_SUMMARY)));
     }
 
-    private function leaderRecipients(AnalyticsReport $report): Collection
+    private function presidentRecipients(AnalyticsReport $report): Collection
     {
-        $leaders = User::where('role', 'president')->where('status', 'active');
+        $presidents = User::where('role', 'president')->where('status', 'active');
         if ($report->barangay_id) {
-            return $leaders->where('barangay_id', $report->barangay_id)->get();
+            return $presidents->where('barangay_id', $report->barangay_id)->get();
         }
 
-        return $report->report_type === ReportBuilder::MUNICIPAL_SUMMARY ? $leaders->get() : collect();
+        return $report->report_type === ReportBuilder::MUNICIPAL_SUMMARY ? $presidents->get() : collect();
     }
 
     private function notifyHeads(User $sender, AnalyticsReport $report, string $message): void

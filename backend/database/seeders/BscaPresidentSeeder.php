@@ -13,7 +13,7 @@ use Spatie\Permission\Models\Role;
  * president account is skipped, and existing BSCA accounts are left untouched so a re-run never
  * resets a password a president has since changed.
  */
-class BscaLeaderSeeder extends Seeder
+class BscaPresidentSeeder extends Seeder
 {
     /** Temporary password; presidents should change it after their first sign-in. */
     private const TEMPORARY_PASSWORD = 'password';
@@ -27,15 +27,15 @@ class BscaLeaderSeeder extends Seeder
             $barangay = Barangay::firstOrCreate(['barangay_name' => $name]);
             $email = 'bsca.'.Str::slug($name).'@osca-bulan.gov.ph';
 
-            $hasOtherLeader = User::where('role', 'president')
+            $hasOtherPresident = User::where('role', 'president')
                 ->where('barangay_id', $barangay->id)
                 ->where('email', '!=', $email)
                 ->exists();
-            if ($hasOtherLeader || User::withTrashed()->where('email', $email)->exists()) {
+            if ($hasOtherPresident || User::withTrashed()->where('email', $email)->exists()) {
                 continue;
             }
 
-            $leader = User::create([
+            $president = User::create([
                 'name' => "BSCA - {$name}",
                 'first_name' => 'BSCA',
                 'last_name' => $name,
@@ -47,8 +47,8 @@ class BscaLeaderSeeder extends Seeder
                 'status' => 'active',
             ]);
             // The office provisions these accounts, so they skip email verification.
-            $leader->forceFill(['email_verified_at' => now()])->save();
-            $leader->syncRoles(['president']);
+            $president->forceFill(['email_verified_at' => now()])->save();
+            $president->syncRoles(['president']);
             $created++;
         }
 

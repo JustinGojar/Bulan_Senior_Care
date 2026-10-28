@@ -150,8 +150,8 @@ class StoredPhotoTest extends TestCase
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $barangay = Barangay::create(['barangay_name' => 'Bulusan']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         Benefit::create([
             'benefit_name' => 'Social Pension',
             'benefit_type' => 'social_pension',
@@ -162,7 +162,7 @@ class StoredPhotoTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->actingAs($leader, 'sanctum')->post('/api/seniors', [
+        $this->actingAs($president, 'sanctum')->post('/api/seniors', [
             'privacy_consent' => true,
             'privacy_consent_version' => '2026-10-07',
             'first_name' => 'Juan',

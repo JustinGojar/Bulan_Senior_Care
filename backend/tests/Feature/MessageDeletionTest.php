@@ -15,19 +15,19 @@ class MessageDeletionTest extends TestCase
     {
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active']);
-        Message::create(['sender_id' => $leader->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Unread note']);
-        Message::create(['sender_id' => $head->id, 'recipient_id' => $leader->id, 'subject' => 'Payout', 'message' => 'Reply']);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active']);
+        Message::create(['sender_id' => $president->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Unread note']);
+        Message::create(['sender_id' => $head->id, 'recipient_id' => $president->id, 'subject' => 'Payout', 'message' => 'Reply']);
 
-        $this->actingAs($head, 'sanctum')->deleteJson("/api/messages/conversations/{$leader->id}")->assertNoContent();
+        $this->actingAs($head, 'sanctum')->deleteJson("/api/messages/conversations/{$president->id}")->assertNoContent();
 
         $this->actingAs($head, 'sanctum')->getJson('/api/messages')->assertJsonCount(0, 'data');
         $this->actingAs($head, 'sanctum')->getJson('/api/messages/unread-summary')->assertJsonPath('count', 0);
-        $this->actingAs($leader, 'sanctum')->getJson('/api/messages')->assertJsonCount(2, 'data');
+        $this->actingAs($president, 'sanctum')->getJson('/api/messages')->assertJsonCount(2, 'data');
 
         // A new message after deleting starts the conversation again for the one who deleted.
-        $this->actingAs($leader, 'sanctum')->postJson('/api/messages', [
+        $this->actingAs($president, 'sanctum')->postJson('/api/messages', [
             'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Are you there?',
         ])->assertCreated();
         $this->actingAs($head, 'sanctum')->getJson('/api/messages')

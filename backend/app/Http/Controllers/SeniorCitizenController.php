@@ -208,7 +208,7 @@ class SeniorCitizenController extends Controller
         ]);
 
         $name = "{$senior->first_name} {$senior->last_name}";
-        $this->notifyLeaders(
+        $this->notifyPresidents(
             $request,
             $senior,
             "{$name} is not eligible",
@@ -281,7 +281,7 @@ class SeniorCitizenController extends Controller
         AuditLog::record($request->user(), 'updated', $senior, afterValue: ['review_note' => $data['note']]);
 
         $name = "{$senior->first_name} {$senior->last_name}";
-        $this->notifyLeaders(
+        $this->notifyPresidents(
             $request,
             $senior,
             "Documents for {$name} need to be fixed",
@@ -292,25 +292,25 @@ class SeniorCitizenController extends Controller
     }
 
     /** Tells the barangay president a pending registration was approved or marked not eligible. */
-    private function notifyLeadersOfDecision(Request $request, SeniorCitizen $senior): void
+    private function notifyPresidentsOfDecision(Request $request, SeniorCitizen $senior): void
     {
         $name = "{$senior->first_name} {$senior->last_name}";
         [$subject, $message] = $senior->status === 'active'
             ? ["{$name} is eligible", "The registration of {$name} ({$senior->osca_id_number}) was approved as eligible. The record is now active."]
             : ["{$name} is not eligible", "The registration of {$name} ({$senior->osca_id_number}) was marked not eligible."];
-        $this->notifyLeaders($request, $senior, $subject, $message, 'registration_review');
+        $this->notifyPresidents($request, $senior, $subject, $message, 'registration_review');
     }
 
     /** An in-app notification and an email advisory to the senior's barangay president. */
-    private function notifyLeaders(Request $request, SeniorCitizen $senior, string $subject, string $message, string $sourceType = 'document_review'): void
+    private function notifyPresidents(Request $request, SeniorCitizen $senior, string $subject, string $message, string $sourceType = 'document_review'): void
     {
         User::query()
             ->where('role', 'president')
             ->where('status', 'active')
             ->where('barangay_id', $senior->barangay_id)
-            ->each(function (User $leader) use ($request, $senior, $subject, $message, $sourceType): void {
+            ->each(function (User $president) use ($request, $senior, $subject, $message, $sourceType): void {
                 Notification::create([
-                    'recipient_account_id' => $leader->id,
+                    'recipient_account_id' => $president->id,
                     'sender_account_id' => $request->user()->id,
                     'message' => $message,
                     'channel' => 'in_app',
@@ -319,7 +319,7 @@ class SeniorCitizenController extends Controller
                     'source_type' => $sourceType,
                     'source_id' => $senior->id,
                 ]);
-                AdvisoryDispatcher::emailLeader($leader, $subject, $message);
+                AdvisoryDispatcher::emailPresident($president, $subject, $message);
             });
     }
 
@@ -657,7 +657,7 @@ class SeniorCitizenController extends Controller
         $wasPending = $senior->status === 'pending';
         $senior->update($data);
         if ($wasPending && $senior->status !== 'pending') {
-            $this->notifyLeadersOfDecision($request, $senior);
+            $this->notifyPresidentsOfDecision($request, $senior);
         }
         if ($newlyDeceased) {
             $this->closePendingBenefits($request, $senior);

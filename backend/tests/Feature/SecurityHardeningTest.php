@@ -63,7 +63,7 @@ class SecurityHardeningTest extends TestCase
             ->assertJsonValidationErrors('profile_photo');
     }
 
-    public function test_leader_registration_cannot_create_a_new_barangay(): void
+    public function test_president_registration_cannot_create_a_new_barangay(): void
     {
         $barangay = Barangay::create([
             'barangay_name' => 'Bulusan',

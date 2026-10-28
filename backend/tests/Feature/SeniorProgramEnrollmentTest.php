@@ -17,8 +17,8 @@ class SeniorProgramEnrollmentTest extends TestCase
     public function test_registration_enrols_the_senior_without_a_payment_record(): void
     {
         $barangay = Barangay::create(['barangay_name' => 'Calpi']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $pension = Benefit::create([
@@ -30,7 +30,7 @@ class SeniorProgramEnrollmentTest extends TestCase
             'amount' => 1000, 'funding_source' => 'provincial', 'schedule' => 'quarterly', 'status' => 'active',
         ]);
 
-        $this->actingAs($leader, 'sanctum')->postJson('/api/seniors', [
+        $this->actingAs($president, 'sanctum')->postJson('/api/seniors', [
             'privacy_consent' => true,
             'privacy_consent_version' => '2026-10-07',
             'first_name' => 'Juan',
