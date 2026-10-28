@@ -64,7 +64,7 @@ function MessagesPage() {
   const [confirm, confirmDialog] = useConfirmDialog();
   const currentUser = getStoredUser();
   const currentUserId = currentUser?.id;
-  const isLeader = currentUser?.role === "president";
+  const isPresident = currentUser?.role === "president";
   const canMessage = ["admin", "president", "head"].includes(currentUser?.role ?? "");
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentPage, setCurrentPage] = useState(1);

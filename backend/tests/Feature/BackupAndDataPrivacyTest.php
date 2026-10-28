@@ -32,10 +32,10 @@ class BackupAndDataPrivacyTest extends TestCase
 
     public function test_only_admin_can_create_a_backup(): void
     {
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president']);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president']);
 
-        $this->actingAs($leader, 'sanctum')->postJson('/api/admin/backups')->assertForbidden();
+        $this->actingAs($president, 'sanctum')->postJson('/api/admin/backups')->assertForbidden();
     }
 
     public function test_user_list_never_exposes_passwords_or_tokens(): void

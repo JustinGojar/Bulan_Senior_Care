@@ -15,7 +15,7 @@ class DatabaseSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_seeds_a_leader_account_and_twenty_to_thirty_seniors_per_barangay(): void
+    public function test_it_seeds_a_president_account_and_twenty_to_thirty_seniors_per_barangay(): void
     {
         $this->seed(DatabaseSeeder::class);
 
@@ -27,15 +27,15 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($expectedTotal, SeniorCitizen::withTrashed()->count());
 
         foreach ($barangays as $barangay) {
-            $leader = User::where('barangay_id', $barangay->id)->where('role', 'president')->first();
+            $president = User::where('barangay_id', $barangay->id)->where('role', 'president')->first();
 
-            $this->assertNotNull($leader);
-            $this->assertSame('bsca.'.Str::slug($barangay->barangay_name).'@osca-bulan.gov.ph', $leader->email);
+            $this->assertNotNull($president);
+            $this->assertSame('bsca.'.Str::slug($barangay->barangay_name).'@osca-bulan.gov.ph', $president->email);
 
             $seniors = SeniorCitizen::withTrashed()->where('barangay_id', $barangay->id)->get();
             $this->assertGreaterThanOrEqual(20, $seniors->count());
             $this->assertLessThanOrEqual(30, $seniors->count());
-            $this->assertTrue($seniors->every(fn ($senior) => $senior->encoded_by === $leader->id));
+            $this->assertTrue($seniors->every(fn ($senior) => $senior->encoded_by === $president->id));
             foreach (['active', 'pending', 'inactive'] as $status) {
                 $this->assertTrue($seniors->contains('status', $status), "{$barangay->barangay_name} has no {$status} senior.");
             }
@@ -43,13 +43,13 @@ class DatabaseSeederTest extends TestCase
         }
 
         // A changed president password survives a re-run, and the sample set is not duplicated.
-        $leader = User::where('role', 'president')->firstOrFail();
-        $leader->update(['password' => 'changed-password']);
+        $president = User::where('role', 'president')->firstOrFail();
+        $president->update(['password' => 'changed-password']);
 
         $this->seed(DatabaseSeeder::class);
 
         $this->assertSame(66, User::count());
         $this->assertSame($expectedTotal, SeniorCitizen::withTrashed()->count());
-        $this->assertTrue(password_verify('changed-password', $leader->fresh()->password));
+        $this->assertTrue(password_verify('changed-password', $president->fresh()->password));
     }
 }

@@ -69,7 +69,7 @@ class AdvisoryDeliveryTest extends TestCase
         ]);
 
         $barangay = Barangay::create(['barangay_name' => 'Poblacion']);
-        $leader = User::factory()->create([
+        $president = User::factory()->create([
             'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
@@ -79,7 +79,7 @@ class AdvisoryDeliveryTest extends TestCase
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'OSCA-ADV-001',
             'barangay_id' => $barangay->id,
-            'encoded_by' => $leader->id,
+            'encoded_by' => $president->id,
             'first_name' => 'Maria',
             'last_name' => 'Santos',
             'birthdate' => now()->subYears(72)->toDateString(),
@@ -91,7 +91,7 @@ class AdvisoryDeliveryTest extends TestCase
         SeniorCitizen::create([
             'osca_id_number' => 'OSCA-ADV-002',
             'barangay_id' => $barangay->id,
-            'encoded_by' => $leader->id,
+            'encoded_by' => $president->id,
             'first_name' => 'Jose',
             'last_name' => 'Reyes',
             'birthdate' => now()->subYears(75)->toDateString(),

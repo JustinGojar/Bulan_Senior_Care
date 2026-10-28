@@ -42,7 +42,7 @@ class AuthController extends Controller
         return response()->json(Cache::remember(Barangay::LIST_CACHE_KEY, now()->addHour(), fn () => Barangay::query()->orderBy('barangay_name')->get(['id', 'barangay_name'])->toArray()));
     }
 
-    public function createBarangayLeader(Request $request): JsonResponse
+    public function createBarangayPresident(Request $request): JsonResponse
     {
         abort_unless($request->user()->role === 'admin', 403, 'Only Admin can create Barangay President accounts.');
         Role::findOrCreate('president', 'web');

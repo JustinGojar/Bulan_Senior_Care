@@ -111,10 +111,10 @@ class BenefitReleaseController extends Controller
         ]);
 
         $benefitName = $release->load('benefit:id,benefit_name')->benefit->benefit_name;
-        User::query()->where('role', 'president')->where('status', 'active')->whereIn('barangay_id', $barangayIds)->each(function (User $leader) use ($release, $benefitName, $request) {
+        User::query()->where('role', 'president')->where('status', 'active')->whereIn('barangay_id', $barangayIds)->each(function (User $president) use ($release, $benefitName, $request) {
             Notification::create([
                 'sender_account_id' => $request->user()->id,
-                'recipient_account_id' => $leader->id,
+                'recipient_account_id' => $president->id,
                 'message' => "{$benefitName} release is scheduled for {$release->release_date->format('F j, Y')} ({$release->period_label}).",
                 'source_type' => 'benefit_release',
                 'source_id' => $release->id,

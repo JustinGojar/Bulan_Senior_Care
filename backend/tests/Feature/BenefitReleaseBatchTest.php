@@ -134,30 +134,30 @@ class BenefitReleaseBatchTest extends TestCase
         $this->assertSame(['January 2027', 'January 2027'], array_column($roster, 'period_label'));
 
         // A president sees only their own barangay's seniors in the batch.
-        /** @var User $calpiLeader */
-        $calpiLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
-        $this->actingAs($calpiLeader, 'sanctum')->getJson("/api/benefit-releases/{$releaseId}")
+        /** @var User $calpiPresident */
+        $calpiPresident = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
+        $this->actingAs($calpiPresident, 'sanctum')->getJson("/api/benefit-releases/{$releaseId}")
             ->assertOk()
             ->assertJsonCount(1, 'transactions')
             ->assertJsonPath('transactions.0.senior.osca_id_number', 'CALPI-1');
-        /** @var User $sigadLeader */
-        $sigadLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
-        $this->actingAs($sigadLeader, 'sanctum')->getJson("/api/benefit-releases/{$releaseId}")->assertForbidden();
+        /** @var User $sigadPresident */
+        $sigadPresident = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
+        $this->actingAs($sigadPresident, 'sanctum')->getJson("/api/benefit-releases/{$releaseId}")->assertForbidden();
     }
 
-    public function test_only_leaders_of_the_batch_are_notified_and_see_it(): void
+    public function test_only_presidents_of_the_batch_are_notified_and_see_it(): void
     {
-        /** @var User $calpiLeader */
-        $calpiLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
-        /** @var User $sigadLeader */
-        $sigadLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
+        /** @var User $calpiPresident */
+        $calpiPresident = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
+        /** @var User $sigadPresident */
+        $sigadPresident = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
 
         $this->schedule([$this->calpi->id])->assertCreated();
 
-        $this->assertSame(1, Notification::where('recipient_account_id', $calpiLeader->id)->count());
-        $this->assertSame(0, Notification::where('recipient_account_id', $sigadLeader->id)->count());
-        $this->actingAs($calpiLeader, 'sanctum')->getJson('/api/benefit-releases')->assertJsonCount(1, 'data');
-        $this->actingAs($sigadLeader, 'sanctum')->getJson('/api/benefit-releases')->assertJsonCount(0, 'data');
+        $this->assertSame(1, Notification::where('recipient_account_id', $calpiPresident->id)->count());
+        $this->assertSame(0, Notification::where('recipient_account_id', $sigadPresident->id)->count());
+        $this->actingAs($calpiPresident, 'sanctum')->getJson('/api/benefit-releases')->assertJsonCount(1, 'data');
+        $this->actingAs($sigadPresident, 'sanctum')->getJson('/api/benefit-releases')->assertJsonCount(0, 'data');
     }
 
     public function test_age_based_batches_list_seniors_by_age_on_the_release_date(): void
@@ -288,12 +288,12 @@ class BenefitReleaseBatchTest extends TestCase
     {
         Storage::fake('local');
         $releaseId = $this->schedule([$this->calpi->id])->json('id');
-        /** @var User $calpiLeader */
-        $calpiLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
-        /** @var User $sigadLeader */
-        $sigadLeader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
+        /** @var User $calpiPresident */
+        $calpiPresident = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id]);
+        /** @var User $sigadPresident */
+        $sigadPresident = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->sigad->id]);
 
-        $documentId = $this->actingAs($calpiLeader, 'sanctum')->post("/api/benefit-releases/{$releaseId}/documents", [
+        $documentId = $this->actingAs($calpiPresident, 'sanctum')->post("/api/benefit-releases/{$releaseId}/documents", [
             'documents' => [UploadedFile::fake()->create('signed-list.pdf', 50, 'application/pdf')],
         ], ['Accept' => 'application/json'])
             ->assertCreated()
@@ -301,10 +301,10 @@ class BenefitReleaseBatchTest extends TestCase
             ->json('documents.0.id');
 
         $this->actingAs($this->admin, 'sanctum')->get("/api/benefit-releases/{$releaseId}/documents/{$documentId}")->assertOk();
-        $this->actingAs($sigadLeader, 'sanctum')->get("/api/benefit-releases/{$releaseId}/documents/{$documentId}")->assertForbidden();
-        $this->actingAs($sigadLeader, 'sanctum')->deleteJson("/api/benefit-releases/{$releaseId}/documents/{$documentId}")->assertForbidden();
+        $this->actingAs($sigadPresident, 'sanctum')->get("/api/benefit-releases/{$releaseId}/documents/{$documentId}")->assertForbidden();
+        $this->actingAs($sigadPresident, 'sanctum')->deleteJson("/api/benefit-releases/{$releaseId}/documents/{$documentId}")->assertForbidden();
 
-        $this->actingAs($calpiLeader, 'sanctum')->deleteJson("/api/benefit-releases/{$releaseId}/documents/{$documentId}")
+        $this->actingAs($calpiPresident, 'sanctum')->deleteJson("/api/benefit-releases/{$releaseId}/documents/{$documentId}")
             ->assertOk()
             ->assertJsonCount(0, 'documents');
     }

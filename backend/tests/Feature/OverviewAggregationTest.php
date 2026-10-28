@@ -63,12 +63,12 @@ class OverviewAggregationTest extends TestCase
             ->assertJsonPath('received_by_benefit.0.received_count', 1);
     }
 
-    public function test_leader_overview_only_aggregates_seniors_they_encoded_in_their_barangay(): void
+    public function test_president_overview_only_aggregates_seniors_they_encoded_in_their_barangay(): void
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
-        /** @var User $leader */
-        $leader = User::factory()->create([
+        /** @var User $president */
+        $president = User::factory()->create([
             'role' => 'president',
             'barangay_id' => $barangay->id,
         ]);
@@ -82,21 +82,21 @@ class OverviewAggregationTest extends TestCase
             'schedule' => 'quarterly',
             'status' => 'active',
         ]);
-        $localSenior = $this->createSenior($leader, $barangay, 'OSCA-LOCAL', 'active');
-        $otherSenior = $this->createSenior($leader, $otherBarangay, 'OSCA-OTHER', 'active');
+        $localSenior = $this->createSenior($president, $barangay, 'OSCA-LOCAL', 'active');
+        $otherSenior = $this->createSenior($president, $otherBarangay, 'OSCA-OTHER', 'active');
 
         foreach ([$localSenior, $otherSenior] as $senior) {
             BenefitTransaction::create([
                 'senior_citizen_id' => $senior->id,
                 'benefit_id' => $benefit->id,
-                'distributed_by' => $leader->id,
+                'distributed_by' => $president->id,
                 'amount' => 3000,
                 'period_label' => '2026-Q1',
                 'status' => 'released',
             ]);
         }
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->getJson('/api/overview')
             ->assertOk()
             ->assertJsonPath('total_registered', 1)

@@ -39,7 +39,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/barangays', [AuthController::class, 'barangays']);
-    Route::post('/admin/barangay-presidents', [AuthController::class, 'createBarangayLeader']);
+    Route::post('/admin/barangay-presidents', [AuthController::class, 'createBarangayPresident']);
     Route::get('/seniors/archive', [SeniorCitizenController::class, 'archive']);
     Route::post('/seniors/archive/{oscaId}/restore', [SeniorCitizenController::class, 'restore']);
     Route::post('/seniors/{senior}/archive', [SeniorCitizenController::class, 'archiveRecord']);

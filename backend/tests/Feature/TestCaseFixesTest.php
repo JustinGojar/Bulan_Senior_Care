@@ -19,7 +19,7 @@ class TestCaseFixesTest extends TestCase
 
     private User $admin;
     private User $head;
-    private User $leader;
+    private User $president;
     private Benefit $grant;
 
     protected function setUp(): void
@@ -44,7 +44,7 @@ class TestCaseFixesTest extends TestCase
         return SeniorCitizen::findOrFail($response->json('id'));
     }
 
-    public function test_head_approval_applies_a_leader_edit_request(): void
+    public function test_head_approval_applies_a_president_edit_request(): void
     {
         $senior = $this->senior();
         $request = $this->actingAs($this->president, 'sanctum')->postJson('/api/senior-edit-requests', [

@@ -21,11 +21,11 @@ class ArchivedSeniorTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Calpi']);
         $pension = Benefit::create(['benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension', 'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national', 'schedule' => 'quarterly', 'status' => 'active']);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         $certificate = UploadedFile::fake()->create('certificate.pdf', 100, 'application/pdf')->store('senior-documents', 'local');
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'BSC-2026-9001', 'barangay_id' => $barangay->id, 'benefit_id' => $pension->id,
-            'encoded_by' => $leader->id, 'first_name' => 'Lola', 'last_name' => 'Reyes', 'birthdate' => '1940-01-01',
+            'encoded_by' => $president->id, 'first_name' => 'Lola', 'last_name' => 'Reyes', 'birthdate' => '1940-01-01',
             'sex' => 'female', 'registration_date' => '2026-01-01', 'status' => 'inactive',
             'inactive_reason' => 'deceased', 'date_of_death' => '2026-10-01', 'death_certificate_path' => $certificate,
         ]);
@@ -42,7 +42,7 @@ class ArchivedSeniorTest extends TestCase
             ->assertJsonPath('data.0.archived_by', $admin->name);
         $this->get('/api/seniors/BSC-2026-9001/files/death_certificate')->assertOk();
 
-        $this->actingAs($leader, 'sanctum')
+        $this->actingAs($president, 'sanctum')
             ->getJson('/api/seniors/BSC-2026-9001/files/death_certificate')
             ->assertNotFound();
     }

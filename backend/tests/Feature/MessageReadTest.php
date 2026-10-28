@@ -15,15 +15,15 @@ class MessageReadTest extends TestCase
     {
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'status' => 'active']);
-        Message::create(['sender_id' => $leader->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'First']);
-        Message::create(['sender_id' => $leader->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Second']);
-        $sent = Message::create(['sender_id' => $head->id, 'recipient_id' => $leader->id, 'subject' => 'Payout', 'message' => 'Reply']);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active']);
+        Message::create(['sender_id' => $president->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'First']);
+        Message::create(['sender_id' => $president->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Second']);
+        $sent = Message::create(['sender_id' => $head->id, 'recipient_id' => $president->id, 'subject' => 'Payout', 'message' => 'Reply']);
 
         $this->actingAs($head, 'sanctum')->getJson('/api/messages/unread-summary')->assertJsonPath('count', 1);
 
-        $this->actingAs($head, 'sanctum')->postJson("/api/messages/conversations/{$leader->id}/read")
+        $this->actingAs($head, 'sanctum')->postJson("/api/messages/conversations/{$president->id}/read")
             ->assertOk()
             ->assertJsonPath('updated', 2);
 

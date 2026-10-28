@@ -15,13 +15,13 @@ class SystemDataToolsTest extends TestCase
     {
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president']);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president']);
         AuditLog::create([
             'actor_id' => $admin->id,
             'action' => 'created',
             'target_type' => User::class,
-            'target_id' => $leader->id,
+            'target_id' => $president->id,
             'after_value' => ['status' => 'active'],
         ]);
 
@@ -31,7 +31,7 @@ class SystemDataToolsTest extends TestCase
             ->assertJsonPath('data.0.action', 'created')
             ->assertJsonPath('data.0.actor.id', $admin->id);
 
-        $this->actingAs($leader, 'sanctum')->getJson('/api/audit-logs')->assertForbidden();
+        $this->actingAs($president, 'sanctum')->getJson('/api/audit-logs')->assertForbidden();
     }
 
 }

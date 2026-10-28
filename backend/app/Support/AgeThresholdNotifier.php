@@ -95,7 +95,7 @@ class AgeThresholdNotifier
                 ]);
                 // Email the president once, alongside the first in-app notice for this milestone.
                 if ($notification->wasRecentlyCreated && $recipient->role === 'president') {
-                    AdvisoryDispatcher::emailLeader($recipient, $subject, $message);
+                    AdvisoryDispatcher::emailPresident($recipient, $subject, $message);
                 }
             }
             $flags++;
@@ -130,7 +130,7 @@ class AgeThresholdNotifier
             ->where('status', 'active')
             ->where(function ($query) use ($senior) {
                 $query->whereIn('role', ['admin', 'head'])
-                    ->orWhere(fn ($leaderQuery) => $leaderQuery
+                    ->orWhere(fn ($presidentQuery) => $presidentQuery
                         ->where('role', 'president')
                         ->where('barangay_id', $senior->barangay_id));
             })

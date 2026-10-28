@@ -18,7 +18,7 @@ class FailedTestCaseFixesTest extends TestCase
     use RefreshDatabase;
 
     private User $head;
-    private User $leader;
+    private User $president;
     private Benefit $pension;
 
     protected function setUp(): void
@@ -66,7 +66,7 @@ class FailedTestCaseFixesTest extends TestCase
     }
 
     /** HD-005 */
-    public function test_head_rejects_a_registration_with_a_reason_the_leader_can_see(): void
+    public function test_head_rejects_a_registration_with_a_reason_the_president_can_see(): void
     {
         $senior = SeniorCitizen::findOrFail($this->register()->json('id'));
 
@@ -90,7 +90,7 @@ class FailedTestCaseFixesTest extends TestCase
         $this->assertSame('pending', $senior->fresh()->status);
     }
 
-    public function test_leader_cannot_reject_a_registration(): void
+    public function test_president_cannot_reject_a_registration(): void
     {
         $senior = SeniorCitizen::findOrFail($this->register()->json('id'));
 

@@ -13,7 +13,7 @@ class SeniorBulkUploadTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_leader_can_create_pending_senior_without_document_files(): void
+    public function test_president_can_create_pending_senior_without_document_files(): void
     {
         $barangay = Barangay::create([
             'barangay_name' => 'Bulusan',
@@ -66,7 +66,7 @@ class SeniorBulkUploadTest extends TestCase
         ]);
     }
 
-    public function test_leader_can_bulk_import_into_their_barangay(): void
+    public function test_president_can_bulk_import_into_their_barangay(): void
     {
         // Migrations already seed the barangays, so the president is assigned to the existing one.
         $barangay = Barangay::firstOrCreate(['barangay_name' => 'Zone 8 (Loyo)']);
@@ -171,7 +171,7 @@ class SeniorBulkUploadTest extends TestCase
         $this->assertSame(0, SeniorCitizen::count());
     }
 
-    public function test_admin_can_create_non_leader_accounts_without_barangay_assignment(): void
+    public function test_admin_can_create_non_president_accounts_without_barangay_assignment(): void
     {
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);

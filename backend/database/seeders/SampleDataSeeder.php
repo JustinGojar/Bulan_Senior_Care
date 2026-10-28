@@ -52,7 +52,7 @@ class SampleDataSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call(BscaLeaderSeeder::class);
+        $this->call(BscaPresidentSeeder::class);
 
         // Samples from the earlier five-per-barangay seeder used "DEMO-" IDs; replace them.
         SeniorCitizen::withTrashed()->where('osca_id_number', 'like', 'DEMO-%')->forceDelete();
@@ -63,14 +63,14 @@ class SampleDataSeeder extends Seeder
         // Age-threshold alerts are left to the daily check rather than raised for every sample.
         SeniorCitizen::withoutEvents(function () use ($benefits, $period) {
             foreach (Barangay::orderBy('id')->get() as $barangayIndex => $barangay) {
-                $leader = User::where('role', 'president')->where('barangay_id', $barangay->id)->orderBy('id')->first();
-                if (! $leader) {
+                $president = User::where('role', 'president')->where('barangay_id', $barangay->id)->orderBy('id')->first();
+                if (! $president) {
                     continue;
                 }
 
                 $count = self::countFor($barangay->barangay_name);
                 for ($n = 1; $n <= $count; $n++) {
-                    $this->seedSenior($barangay, $barangayIndex, $n, $leader, $benefits, $period);
+                    $this->seedSenior($barangay, $barangayIndex, $n, $president, $benefits, $period);
                 }
 
                 // A shorter list on a re-run removes the samples beyond it.
@@ -113,7 +113,7 @@ class SampleDataSeeder extends Seeder
         return sprintf('SAMPLE-%02d-', $barangayIndex + 1);
     }
 
-    private function seedSenior(Barangay $barangay, int $barangayIndex, int $n, User $leader, $benefits, string $period): void
+    private function seedSenior(Barangay $barangay, int $barangayIndex, int $n, User $president, $benefits, string $period): void
     {
         $seed = $barangayIndex * 31 + $n * 7;
         $isMale = ($n + $barangayIndex) % 2 === 0;
@@ -136,7 +136,7 @@ class SampleDataSeeder extends Seeder
             [
                 'barangay_id' => $barangay->id,
                 'benefit_id' => $status === 'pending' ? null : $benefit?->id,
-                'encoded_by' => $leader->id,
+                'encoded_by' => $president->id,
                 'last_name' => self::LAST_NAMES[$seed % count(self::LAST_NAMES)],
                 'first_name' => $firstNames[($seed + $n) % count($firstNames)],
                 'middle_name' => self::MIDDLE_NAMES[($seed + 3) % count(self::MIDDLE_NAMES)],
@@ -180,9 +180,9 @@ class SampleDataSeeder extends Seeder
         BenefitTransaction::updateOrCreate(
             ['senior_citizen_id' => $senior->id, 'benefit_id' => $benefit->id, 'period_label' => $period],
             [
-                'distributed_by' => $leader->id,
-                'created_by' => $leader->id,
-                'updated_by' => $leader->id,
+                'distributed_by' => $president->id,
+                'created_by' => $president->id,
+                'updated_by' => $president->id,
                 'date_distributed' => $transactionStatus === 'released' ? today()->subDays($n)->toDateString() : null,
                 'amount' => $benefit->amount ?? 0,
                 'status' => $transactionStatus,

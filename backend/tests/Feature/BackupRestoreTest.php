@@ -32,12 +32,12 @@ class BackupRestoreTest extends TestCase
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $barangay = Barangay::query()->create(['barangay_name' => 'Zone 1']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
         $backup = $this->backupOf($admin);
 
         // The data is lost or changed after the backup was made.
-        $leader->forceDelete();
+        $president->forceDelete();
         $barangay->delete();
         User::factory()->create(['email' => 'created-later@example.com']);
         $admin->createToken('portal');
@@ -47,12 +47,12 @@ class BackupRestoreTest extends TestCase
             ->assertJsonPath('tables.users', 2)
             ->assertCookieExpired('bulan_api_token');
 
-        $this->assertDatabaseHas('users', ['id' => $leader->id, 'email' => $leader->email, 'barangay_id' => $barangay->id]);
+        $this->assertDatabaseHas('users', ['id' => $president->id, 'email' => $president->email, 'barangay_id' => $barangay->id]);
         $this->assertDatabaseHas('barangays', ['id' => $barangay->id, 'barangay_name' => 'Zone 1']);
         $this->assertDatabaseMissing('users', ['email' => 'created-later@example.com']);
         $this->assertSame(0, DB::table('personal_access_tokens')->count());
         // Restored passwords still work.
-        $this->assertTrue(password_verify('password', User::query()->findOrFail($leader->id)->password));
+        $this->assertTrue(password_verify('password', User::query()->findOrFail($president->id)->password));
         $this->assertTrue(AuditLog::query()->where('action', 'backup_restored')->where('actor_id', $admin->id)->exists());
     }
 
@@ -86,11 +86,11 @@ class BackupRestoreTest extends TestCase
     {
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
-        /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'president']);
+        /** @var User $president */
+        $president = User::factory()->create(['role' => 'president']);
         $backup = $this->backupOf($admin);
 
-        $this->restore($leader, $backup)->assertForbidden();
+        $this->restore($president, $backup)->assertForbidden();
     }
 
     public function test_restore_must_be_confirmed(): void
