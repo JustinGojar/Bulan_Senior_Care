@@ -52,6 +52,7 @@ class SeniorCitizenController extends Controller
             'not_eligible' => $query->where('status', 'inactive')->where('inactive_reason', 'not_eligible'),
             default => null,
         };
+        $request->validate(['search' => ['nullable', 'string', 'max:100']]);
         if ($request->filled('search')) {
             $search = $request->string('search')->trim()->toString();
             $matchesAnyField = fn ($q, string $term) => $q->where('osca_id_number', 'like', "%{$term}%")

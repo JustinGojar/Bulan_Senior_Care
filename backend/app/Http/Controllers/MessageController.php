@@ -91,6 +91,7 @@ class MessageController extends Controller
 
     public function recipients(Request $request): JsonResponse
     {
+        $request->validate(['search' => ['nullable', 'string', 'max:100']]);
         $search = trim((string) $request->query('search', ''));
 
         return response()->json(

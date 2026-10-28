@@ -84,6 +84,34 @@ class SeniorRecordFiltersTest extends TestCase
             ->assertJsonPath('data.0.osca_id_number', 'OSCA-1');
     }
 
+    public function test_senior_search_treats_sql_injection_payloads_as_plain_text(): void
+    {
+        /** @var User $admin */
+        $admin = User::factory()->create(['role' => 'admin']);
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $this->createSenior($admin, $zone, 'OSCA-1', 'Juan', 'Dela Cruz');
+        $this->createSenior($admin, $zone, 'OSCA-2', 'Maria', "O'Brien");
+
+        foreach (["' OR '1'='1", "' OR 1=1 --", "'; DROP TABLE senior_citizens; --", '" OR ""="'] as $payload) {
+            $this->actingAs($admin, 'sanctum')
+                ->getJson('/api/seniors?per_page=100&search='.urlencode($payload))
+                ->assertOk()
+                ->assertJsonCount(0, 'data');
+        }
+        $this->assertSame(2, SeniorCitizen::count());
+
+        // A real name with a quote still matches.
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/seniors?per_page=100&search='.urlencode("O'Brien"))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.osca_id_number', 'OSCA-2');
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/seniors?search='.str_repeat('a', 101))
+            ->assertUnprocessable();
+    }
+
     public function test_seniors_sort_by_name_or_by_date_added(): void
     {
         /** @var User $admin */
