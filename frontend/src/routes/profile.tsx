@@ -9,11 +9,13 @@ import {
   HandCoins,
   KeyRound,
   LogOut,
+  Pencil,
   Save,
   ShieldCheck,
   UserCircle,
   Users,
   History,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -70,6 +72,7 @@ function ProfilePage() {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [recentActivity, setRecentActivity] = useState<AuditLog[] | null>(null);
   const isAdmin = user?.role?.toLowerCase() === "admin";
 
@@ -144,8 +147,23 @@ function ProfilePage() {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const profileFieldClass = `${fieldClass} mt-2 h-11 font-normal${
+    editing ? "" : " cursor-default bg-muted/40"
+  }`;
+
+  function cancelEditing() {
+    setName(user?.name ?? "");
+    setEmail(user?.email ?? "");
+    setContact(user?.contact_number ?? "");
+    setAddress(user?.address ?? "");
+    setPhoto(null);
+    setOriginalPhoto(null);
+    setEditing(false);
+  }
+
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault();
+    if (!editing) return;
     setBusy(true);
     try {
       const form = new FormData();
@@ -174,6 +192,7 @@ function ProfilePage() {
       setStoredUser(updated);
       setPhoto(null);
       setOriginalPhoto(null);
+      setEditing(false);
       toast.success("Profile updated successfully.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update profile.");
@@ -280,6 +299,8 @@ function ProfilePage() {
                 }
                 setOriginalPhoto(picked);
                 setEditingPhoto(picked);
+                // A new photo is saved with the profile form, so open it for editing.
+                setEditing(true);
               }}
             />
           </div>
@@ -305,7 +326,8 @@ function ProfilePage() {
                 <input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
-                  className={`${fieldClass} mt-2 h-11 font-normal`}
+                  readOnly={!editing}
+                  className={profileFieldClass}
                   required
                 />
               </label>
@@ -315,7 +337,8 @@ function ProfilePage() {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className={`${fieldClass} mt-2 h-11 font-normal`}
+                  readOnly={!editing}
+                  className={profileFieldClass}
                   required
                 />
               </label>
@@ -325,7 +348,8 @@ function ProfilePage() {
                   value={contact}
                   onChange={(event) => setContact(event.target.value)}
                   placeholder="0917-123-4567"
-                  className={`${fieldClass} mt-2 h-11 font-normal`}
+                  readOnly={!editing}
+                  className={profileFieldClass}
                 />
               </label>
               <label className="block text-sm font-semibold text-foreground">
@@ -334,7 +358,8 @@ function ProfilePage() {
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
                   placeholder="Enter your address"
-                  className={`${fieldClass} mt-2 h-11 font-normal`}
+                  readOnly={!editing}
+                  className={profileFieldClass}
                 />
               </label>
               <label className="block text-sm font-semibold text-foreground">
@@ -369,9 +394,25 @@ function ProfilePage() {
                   </button>
                 </p>
               )}
-              <button type="submit" disabled={busy} className={authSubmitClass}>
-                <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
-              </button>
+              {editing ? (
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={cancelEditing}
+                    disabled={busy}
+                    className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                  >
+                    <X className="h-4 w-4" /> Cancel
+                  </button>
+                  <button type="submit" disabled={busy} className={`${authSubmitClass} flex-1`}>
+                    <Save className="h-4 w-4" /> {busy ? "Saving..." : "Save profile"}
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setEditing(true)} className={authSubmitClass}>
+                  <Pencil className="h-4 w-4" /> Edit profile
+                </button>
+              )}
             </form>
             <button
               type="button"
