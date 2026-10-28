@@ -9,12 +9,12 @@ import {
   type RolePermissionsState,
 } from "@/lib/api";
 
-const ROLE_LABEL = { head: "OSCA Head", leader: "BSCA President (Barangay Leader)" } as const;
+const ROLE_LABEL = { head: "OSCA Head", president: "BSCA President" } as const;
 
 const ROW_CLASS =
   "flex min-h-[68px] items-center gap-4 rounded-[8px] border border-border/50 bg-card/80 px-4 py-3 sm:px-5";
 
-/** Admin Settings: turn each permission on or off for the Head and the barangay leaders. */
+/** Admin Settings: turn each permission on or off for the Head and the barangay presidents. */
 export function RolePermissionsSettings() {
   const [state, setState] = useState<RolePermissionsState | null>(null);
   const [error, setError] = useState("");
@@ -28,7 +28,7 @@ export function RolePermissionsSettings() {
       );
   }, []);
 
-  async function toggle(role: "head" | "leader", permission: Permission) {
+  async function toggle(role: "head" | "president", permission: Permission) {
     if (!state) return;
     const granted = state.roles[role];
     const next = granted.includes(permission)
@@ -58,7 +58,7 @@ export function RolePermissionsSettings() {
 
   return (
     <div className="space-y-5">
-      {(["head", "leader"] as const).map((role) => (
+      {(["head", "president"] as const).map((role) => (
         <div key={role}>
           <p className="mb-1.5 px-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             {ROLE_LABEL[role]}

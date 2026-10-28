@@ -33,7 +33,7 @@ class SeniorCitizenController extends Controller
             'encoder:id,name,role',
             'inactivator:id,name,role',
         ]);
-        if ($request->user()->role === 'leader') {
+        if ($request->user()->role === 'president') {
             $query->where('barangay_id', $request->user()->barangay_id);
         }
         if ($request->filled('status')) {
@@ -178,7 +178,7 @@ class SeniorCitizenController extends Controller
 
     /**
      * The Head marks a pending registration not eligible. The reason is required and is kept
-     * on the record, where the barangay leader who registered the senior can read it.
+     * on the record, where the barangay president who registered the senior can read it.
      */
     public function reject(Request $request, SeniorCitizen $senior): JsonResponse
     {
@@ -225,7 +225,7 @@ class SeniorCitizenController extends Controller
      */
     public function markDeceased(Request $request, SeniorCitizen $senior): JsonResponse
     {
-        abort_unless(in_array($request->user()->role, ['leader', 'admin'], true), 403, 'Only the barangay leader or Admin can record a death.');
+        abort_unless(in_array($request->user()->role, ['president', 'admin'], true), 403, 'Only the barangay president or Admin can record a death.');
         $this->authorizeScope($request, $senior);
         abort_if($senior->inactive_reason === 'deceased', 422, 'This senior is already recorded as deceased.');
         $data = $request->validate([
@@ -260,7 +260,7 @@ class SeniorCitizenController extends Controller
 
     /**
      * Puts a pending registration "In review": its documents have a problem, described in the
-     * note. The barangay leader is told what to fix and can then upload new documents.
+     * note. The barangay president is told what to fix and can then upload new documents.
      */
     public function flagForReview(Request $request, SeniorCitizen $senior): JsonResponse
     {
@@ -291,7 +291,7 @@ class SeniorCitizenController extends Controller
         return response()->json($senior->fresh()->load(['barangay', 'benefit']));
     }
 
-    /** Tells the barangay leader a pending registration was approved or marked not eligible. */
+    /** Tells the barangay president a pending registration was approved or marked not eligible. */
     private function notifyLeadersOfDecision(Request $request, SeniorCitizen $senior): void
     {
         $name = "{$senior->first_name} {$senior->last_name}";
@@ -301,11 +301,11 @@ class SeniorCitizenController extends Controller
         $this->notifyLeaders($request, $senior, $subject, $message, 'registration_review');
     }
 
-    /** An in-app notification and an email advisory to the senior's barangay leader. */
+    /** An in-app notification and an email advisory to the senior's barangay president. */
     private function notifyLeaders(Request $request, SeniorCitizen $senior, string $subject, string $message, string $sourceType = 'document_review'): void
     {
         User::query()
-            ->where('role', 'leader')
+            ->where('role', 'president')
             ->where('status', 'active')
             ->where('barangay_id', $senior->barangay_id)
             ->each(function (User $leader) use ($request, $senior, $subject, $message, $sourceType): void {
@@ -324,12 +324,12 @@ class SeniorCitizenController extends Controller
     }
 
     /**
-     * The barangay leader replaces the documents of a registration in review. This ends the
+     * The barangay president replaces the documents of a registration in review. This ends the
      * review, and Admin and Head are told the registration is ready to check again.
      */
     public function resubmitDocuments(Request $request, SeniorCitizen $senior): JsonResponse
     {
-        abort_unless($request->user()->role === 'leader', 403, 'Only the barangay leader can resubmit documents.');
+        abort_unless($request->user()->role === 'president', 403, 'Only the barangay president can resubmit documents.');
         $this->authorizeScope($request, $senior);
         abort_if($senior->status !== 'pending' || $senior->review_note === null, 422, 'This registration is not waiting for new documents.');
         $request->validate([
@@ -375,7 +375,7 @@ class SeniorCitizenController extends Controller
     public function store(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
-        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay leaders.');
+        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay presidents.');
         RolePermissions::authorize($request->user(), 'register seniors');
         $this->normalizeContact($request);
         $data = $request->validate($this->rules());
@@ -399,12 +399,12 @@ class SeniorCitizenController extends Controller
         if ($request->hasFile('profile_photo')) {
             $data['photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'senior-photos');
         }
-        if ($request->user()->role === 'leader') {
-            // Leaders are always scoped to their own barangay; never let their input
+        if ($request->user()->role === 'president') {
+            // Presidents are always scoped to their own barangay; never let their input
             // create or select a different one.
             abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
             $data['barangay_id'] = $request->user()->barangay_id;
-            // The association address is the leader/BSCA account's own address.
+            // The association address is the president/BSCA account's own address.
             if (filled($request->user()->address)) {
                 $data['association_address'] = $request->user()->address;
             }
@@ -452,7 +452,7 @@ class SeniorCitizenController extends Controller
     public function bulkStore(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
-        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay leaders.');
+        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay presidents.');
         RolePermissions::authorize($request->user(), 'register seniors');
         $rows = $request->input('records');
         abort_if(! is_array($rows) || count($rows) === 0, 422, 'At least one senior record is required.');
@@ -495,7 +495,7 @@ class SeniorCitizenController extends Controller
                         ->first();
                     $barangay ??= Barangay::create(['barangay_name' => $data['barangay']]);
                     $barangayId = $barangay->id;
-                    if ($request->user()->role === 'leader') {
+                    if ($request->user()->role === 'president') {
                         abort_if(! $request->user()->barangay_id, 422, 'Your account has no barangay assignment.');
                         abort_if((int) $barangayId !== (int) $request->user()->barangay_id, 403, 'You can only import records for your assigned barangay.');
                         $barangayId = $request->user()->barangay_id;
@@ -587,7 +587,7 @@ class SeniorCitizenController extends Controller
 
     public function update(Request $request, SeniorCitizen $senior): JsonResponse
     {
-        abort_if($request->user()->role === 'leader', 403, 'Leader edits require Head approval.');
+        abort_if($request->user()->role === 'president', 403, 'President edits require Head approval.');
         $this->authorizeScope($request, $senior);
         if ($request->input('contact_number') === $senior->contact_number) {
             // Unchanged. Older records (e.g. bulk imports) may hold a number in another format,
@@ -780,7 +780,7 @@ class SeniorCitizenController extends Controller
 
     private function authorizeScope(Request $request, SeniorCitizen $senior): void
     {
-        abort_if($request->user()->role === 'leader' && $request->user()->barangay_id !== $senior->barangay_id, 403, 'This record is outside your barangay.');
+        abort_if($request->user()->role === 'president' && $request->user()->barangay_id !== $senior->barangay_id, 403, 'This record is outside your barangay.');
     }
 
     private function nextOscaId(): string

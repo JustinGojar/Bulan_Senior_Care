@@ -44,7 +44,7 @@ class UserController extends Controller
             'birthdate' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
             // Admin accounts cannot be created from the portal.
-            'role' => ['required', Rule::in(['head', 'leader'])],
+            'role' => ['required', Rule::in(['head', 'president'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'password' => ['required', 'confirmed', Password::defaults()],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -53,11 +53,11 @@ class UserController extends Controller
             'role.in' => 'Admin accounts cannot be created.',
         ]);
 
-        if ($data['role'] === 'leader' && empty($data['barangay_id'])) {
-            abort(422, 'A barangay is required for a Barangay Leader.');
+        if ($data['role'] === 'president' && empty($data['barangay_id'])) {
+            abort(422, 'A barangay is required for a Barangay President.');
         }
 
-        if ($data['role'] !== 'leader') {
+        if ($data['role'] !== 'president') {
             $data['barangay_id'] = null;
         }
 
@@ -95,7 +95,7 @@ class UserController extends Controller
             'birthdate' => ['nullable', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
             // An existing Admin keeps the role, but no other account can be promoted to Admin.
-            'role' => ['required', Rule::in($user->role === 'admin' ? ['admin', 'head', 'leader'] : ['head', 'leader'])],
+            'role' => ['required', Rule::in($user->role === 'admin' ? ['admin', 'head', 'president'] : ['head', 'president'])],
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'password' => ['nullable', 'confirmed', Password::defaults()],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
@@ -109,10 +109,10 @@ class UserController extends Controller
             abort(422, 'You cannot remove access from your own administrator account.');
         }
 
-        if ($data['role'] === 'leader' && empty($data['barangay_id'])) {
-            abort(422, 'A barangay is required for a Barangay Leader.');
+        if ($data['role'] === 'president' && empty($data['barangay_id'])) {
+            abort(422, 'A barangay is required for a Barangay President.');
         }
-        if ($data['role'] !== 'leader') {
+        if ($data['role'] !== 'president') {
             $data['barangay_id'] = null;
         }
         if (! empty($data['password'])) {

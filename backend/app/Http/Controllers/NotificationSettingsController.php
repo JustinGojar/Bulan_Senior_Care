@@ -16,7 +16,6 @@ class NotificationSettingsController extends Controller
             'settings' => AdvisorySettings::all(),
             'configured' => [
                 'email_advisories' => $this->emailIsConfigured(),
-                'sms_advisories' => filled(config('services.semaphore.key')),
             ],
         ]);
     }
@@ -26,15 +25,11 @@ class NotificationSettingsController extends Controller
         $this->authorizeAdmin($request);
         $data = $request->validate([
             'email_advisories' => ['sometimes', 'boolean'],
-            'sms_advisories' => ['sometimes', 'boolean'],
         ]);
 
         abort_if($data === [], 422, 'Select at least one notification channel to update.');
         if (($data['email_advisories'] ?? false) && ! $this->emailIsConfigured()) {
             abort(422, 'Configure a working mail transport and sender address before enabling email advisories.');
-        }
-        if (($data['sms_advisories'] ?? false) && ! filled(config('services.semaphore.key'))) {
-            abort(422, 'Set SEMAPHORE_API_KEY in the backend environment before enabling SMS advisories.');
         }
 
         return response()->json([

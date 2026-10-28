@@ -86,7 +86,7 @@ export function ReleaseRosterDialog({
 }) {
   const user = getStoredUser();
   const canComplete = user?.role === "admin" || user?.role === "head";
-  const canUpload = user?.role === "admin" || user?.role === "leader";
+  const canUpload = user?.role === "admin" || user?.role === "president";
   const [confirm, confirmDialog] = useConfirmDialog();
   const [roster, setRoster] = useState<ReleaseRoster | null>(null);
   const [error, setError] = useState<string | null>(null);

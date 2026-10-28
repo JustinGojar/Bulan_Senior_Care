@@ -21,9 +21,9 @@ class SeniorDeceasedTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Calpi']);
         $other = Barangay::create(['barangay_name' => 'Gate']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         /** @var User $outsider */
-        $outsider = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $other->id]);
+        $outsider = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $other->id]);
         $pension = Benefit::create(['benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension', 'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national', 'schedule' => 'quarterly', 'status' => 'active']);
         $senior = SeniorCitizen::create([
             'osca_id_number' => 'BSC-2026-9001', 'barangay_id' => $barangay->id, 'benefit_id' => $pension->id,

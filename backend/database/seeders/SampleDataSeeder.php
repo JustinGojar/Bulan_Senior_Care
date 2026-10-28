@@ -63,7 +63,7 @@ class SampleDataSeeder extends Seeder
         // Age-threshold alerts are left to the daily check rather than raised for every sample.
         SeniorCitizen::withoutEvents(function () use ($benefits, $period) {
             foreach (Barangay::orderBy('id')->get() as $barangayIndex => $barangay) {
-                $leader = User::where('role', 'leader')->where('barangay_id', $barangay->id)->orderBy('id')->first();
+                $leader = User::where('role', 'president')->where('barangay_id', $barangay->id)->orderBy('id')->first();
                 if (! $leader) {
                     continue;
                 }

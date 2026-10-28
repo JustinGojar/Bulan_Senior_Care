@@ -23,19 +23,19 @@ class AgeThresholdNotificationTest extends TestCase
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
         /** @var User $localLeader */
         $localLeader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
         ]);
         /** @var User $otherLeader */
         $otherLeader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
             'barangay_id' => $otherBarangay->id,
         ]);
         /** @var User $inactiveLeader */
         $inactiveLeader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'inactive',
             'barangay_id' => $barangay->id,
         ]);
@@ -113,12 +113,12 @@ class AgeThresholdNotificationTest extends TestCase
         Bus::fake();
         DB::table('app_settings')->insert([
             'key' => 'notification_channels',
-            'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
+            'value' => json_encode(['email_advisories' => true]),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
         [$barangay, $leader] = $this->leaderWithCentenarianProgram();
-        $leader->update(['email' => 'leader@example.test']);
+        $leader->update(['email' => 'president@example.test']);
         User::factory()->create(['role' => 'admin', 'status' => 'active', 'email' => 'admin@example.test']);
         $this->pendingSenior($barangay, $leader, 100)->update(['status' => 'active']);
 
@@ -127,7 +127,7 @@ class AgeThresholdNotificationTest extends TestCase
 
         Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, 1);
         Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->channel === 'email'
-            && $job->recipient === 'leader@example.test'
+            && $job->recipient === 'president@example.test'
             && $job->subject === 'Lola Reyes can now claim the Centenarian Award'
             && $job->message === 'Lola Reyes has turned 100. You can now claim these benefits: Social Pension and Centenarian Award.');
     }
@@ -147,7 +147,7 @@ class AgeThresholdNotificationTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
         /** @var User $leader */
         $leader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
         ]);

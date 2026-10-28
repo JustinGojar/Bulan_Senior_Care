@@ -18,8 +18,8 @@ class AnalyticsController extends Controller
 
     public function __invoke(Request $request): JsonResponse
     {
-        $isLeader = $request->user()->role === 'leader';
-        abort_if($isLeader && ! $request->user()->barangay_id, 403, 'Leader account does not have an assigned barangay.');
+        $isLeader = $request->user()->role === 'president';
+        abort_if($isLeader && ! $request->user()->barangay_id, 403, 'President account does not have an assigned barangay.');
 
         $data = $request->validate([
             'barangay_id' => ['nullable', 'integer', 'exists:barangays,id'],
@@ -37,7 +37,7 @@ class AnalyticsController extends Controller
 
     private function summarize(Request $request, array $data): array
     {
-        $isLeader = $request->user()->role === 'leader';
+        $isLeader = $request->user()->role === 'president';
 
         // All counting happens in the database so the response time stays flat as records grow.
         $seniors = SeniorCitizen::query()->where('senior_citizens.status', '!=', 'pending');

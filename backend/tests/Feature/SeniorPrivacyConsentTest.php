@@ -25,7 +25,7 @@ class SeniorPrivacyConsentTest extends TestCase
 
         $this->admin = User::factory()->create(['role' => 'admin']);
         $barangay = Barangay::create(['barangay_name' => 'Bulusan']);
-        $this->leader = User::factory()->create(['role' => 'leader', 'barangay_id' => $barangay->id]);
+        $this->president = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
         Benefit::create([
             'benefit_name' => 'Social Pension',
             'benefit_type' => 'social_pension',
@@ -41,7 +41,7 @@ class SeniorPrivacyConsentTest extends TestCase
 
     private function register(array $overrides = [])
     {
-        return $this->actingAs($this->leader, 'sanctum')->postJson('/api/seniors', array_merge([
+        return $this->actingAs($this->president, 'sanctum')->postJson('/api/seniors', array_merge([
             'privacy_consent' => true,
             'privacy_consent_version' => '2026-10-07',
             'first_name' => 'Juan',
@@ -94,7 +94,7 @@ class SeniorPrivacyConsentTest extends TestCase
         $senior = SeniorCitizen::sole();
         $this->assertSame('2026-10-07', $senior->privacy_consent_version);
         $this->assertTrue($senior->privacy_consent_at->equalTo(Carbon::parse('2026-10-07 10:15:00')));
-        $this->assertSame($this->leader->id, $senior->encoded_by);
+        $this->assertSame($this->president->id, $senior->encoded_by);
 
         $log = AuditLog::where('action', 'created')->sole();
         $this->assertSame('2026-10-07', $log->after_value['privacy_consent_version']);

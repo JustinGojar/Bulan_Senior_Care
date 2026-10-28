@@ -49,5 +49,5 @@ RUN printf '%s\n' \
 ENV PHP_CLI_SERVER_WORKERS=4
 
 # public/router.php adds compression and cache headers that the built-in server lacks.
-# A queue worker runs in the background (restarted if it stops) to send email and SMS advisories.
+# A queue worker runs in the background (restarted if it stops) to send email advisories.
 CMD ["sh", "-c", "php artisan storage:link --force && php artisan config:cache && php artisan route:cache && php artisan event:cache && (while true; do php artisan queue:work --sleep=3 --tries=3 --max-time=3600; sleep 5; done &) && exec php -S 0.0.0.0:${PORT:-8080} -t public public/router.php"]

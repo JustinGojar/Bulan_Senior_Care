@@ -32,7 +32,7 @@ const SECTIONS: AgreementSection[] = [
       <>
         <p>
           <strong>About senior citizens</strong>, when OSCA staff or a barangay senior citizen
-          leader registers them:
+          president registers them:
         </p>
         <ul>
           <li>Name, birthdate, place of birth, sex, civil status, address, and contact number.</li>
@@ -42,7 +42,7 @@ const SECTIONS: AgreementSection[] = [
           <li>Eligibility decisions, benefit requests, and records of benefits released.</li>
         </ul>
         <p>
-          <strong>About portal users</strong> (OSCA staff and barangay leaders):
+          <strong>About portal users</strong> (OSCA staff and barangay presidents):
         </p>
         <ul>
           <li>Name, email address, role, barangay, and profile photo.</li>
@@ -67,7 +67,7 @@ const SECTIONS: AgreementSection[] = [
         <li>To register senior citizens of Bulan and issue OSCA ID numbers.</li>
         <li>To check eligibility for benefits, such as the social pension and grants.</li>
         <li>To release benefits and keep a record of what each senior received.</li>
-        <li>To contact seniors and leaders about benefits and OSCA announcements.</li>
+        <li>To contact seniors and presidents about benefits and OSCA announcements.</li>
         <li>
           To prepare reports and statistics for the municipality, which do not name individuals.
         </li>
@@ -92,7 +92,7 @@ const SECTIONS: AgreementSection[] = [
       <>
         <p>
           Only signed-in, authorized users can open records, and each role sees only what it needs:
-          barangay leaders see the seniors of their own barangay, and the OSCA Head and
+          barangay presidents see the seniors of their own barangay, and the OSCA Head and
           administrators see municipal records.
         </p>
         <p>

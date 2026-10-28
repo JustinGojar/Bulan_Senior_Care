@@ -16,7 +16,7 @@ class MessageDeletionTest extends TestCase
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active']);
         Message::create(['sender_id' => $leader->id, 'recipient_id' => $head->id, 'subject' => 'Payout', 'message' => 'Unread note']);
         Message::create(['sender_id' => $head->id, 'recipient_id' => $leader->id, 'subject' => 'Payout', 'message' => 'Reply']);
 

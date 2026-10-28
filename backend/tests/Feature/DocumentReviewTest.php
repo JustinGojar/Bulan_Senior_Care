@@ -23,12 +23,12 @@ class DocumentReviewTest extends TestCase
         Bus::fake();
         DB::table('app_settings')->insert([
             'key' => 'notification_channels',
-            'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
+            'value' => json_encode(['email_advisories' => true]),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
         [$senior, $leader] = $this->pendingRegistration();
-        $leader->update(['email' => 'leader@example.test']);
+        $leader->update(['email' => 'president@example.test']);
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         Sanctum::actingAs($admin);
 
@@ -45,7 +45,7 @@ class DocumentReviewTest extends TestCase
             'source_id' => $senior->id,
         ]);
         Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->channel === 'email'
-            && $job->recipient === 'leader@example.test'
+            && $job->recipient === 'president@example.test'
             && $job->message === $message);
     }
 
@@ -105,7 +105,7 @@ class DocumentReviewTest extends TestCase
 
         $senior->update(['review_note' => 'Wrong file.']);
         $otherLeader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
             'barangay_id' => Barangay::create(['barangay_name' => 'Zone 2'])->id,
         ]);
@@ -120,12 +120,12 @@ class DocumentReviewTest extends TestCase
         Bus::fake();
         DB::table('app_settings')->insert([
             'key' => 'notification_channels',
-            'value' => json_encode(['email_advisories' => true, 'sms_advisories' => false]),
+            'value' => json_encode(['email_advisories' => true]),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
         [$senior, $leader] = $this->pendingRegistration();
-        $leader->update(['email' => 'leader@example.test']);
+        $leader->update(['email' => 'president@example.test']);
         Sanctum::actingAs(User::factory()->create(['role' => 'admin', 'status' => 'active']));
 
         $this->putJson("/api/seniors/{$senior->osca_id_number}", [
@@ -138,7 +138,7 @@ class DocumentReviewTest extends TestCase
             'message' => 'The registration of Lola Reyes (OSCA-REV-001) was marked not eligible.',
             'source_type' => 'registration_review',
         ]);
-        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->recipient === 'leader@example.test'
+        Bus::assertDispatchedAfterResponse(DeliverAdvisory::class, fn (DeliverAdvisory $job) => $job->recipient === 'president@example.test'
             && $job->subject === 'Lola Reyes is not eligible');
 
         // Later edits to a decided record do not notify again.
@@ -183,7 +183,7 @@ class DocumentReviewTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         /** @var User $leader */
         $leader = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
         ]);

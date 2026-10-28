@@ -151,11 +151,11 @@ function BenefitTracking() {
   const [error, setError] = useState<string | null>(null);
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
-  const isLeader = currentUser?.role === "leader";
+  const isLeader = currentUser?.role === "president";
   // The OSCA Head schedules releases.
   const canManageReleases =
     currentUser?.role === "head" && hasPermission("schedule benefit releases");
-  const canUpdateTransactions = currentUser?.role === "leader";
+  const canUpdateTransactions = currentUser?.role === "president";
 
   function formatDate(date: string) {
     const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00`) : new Date(date);
@@ -1048,7 +1048,7 @@ function BenefitTracking() {
                       {transaction.senior.barangay?.barangay_name ?? "Unassigned"}
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground">
-                      {transaction.senior.encoder?.role === "leader" && (
+                      {transaction.senior.encoder?.role === "president" && (
                         <p className="text-[0.6875rem] font-semibold tracking-wider uppercase">
                           BSCA
                         </p>

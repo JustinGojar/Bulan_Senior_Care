@@ -7,7 +7,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 /**
- * What the Head and the barangay leaders may do, which the Admin turns on or off per role in
+ * What the Head and the barangay presidents may do, which the Admin turns on or off per role in
  * Settings. Admin always has every permission. Each permission is checked by the API.
  */
 class RolePermissions
@@ -19,7 +19,7 @@ class RolePermissions
         'export reports' => [
             'label' => 'Export reports',
             'description' => 'Print and download reports as PDF or Excel.',
-            'roles' => ['head', 'leader'],
+            'roles' => ['head', 'president'],
         ],
         'approve registrations' => [
             'label' => 'Approve or reject registrations',
@@ -28,7 +28,7 @@ class RolePermissions
         ],
         'manage benefit requests' => [
             'label' => 'Verify and release benefit requests',
-            'description' => 'Approve, reject and record the release of leaders\' benefit requests.',
+            'description' => 'Approve, reject and record the release of presidents\' benefit requests.',
             'roles' => ['head'],
         ],
         'schedule benefit releases' => [
@@ -44,17 +44,17 @@ class RolePermissions
         'register seniors' => [
             'label' => 'Register seniors',
             'description' => 'Add new senior citizens, one at a time or by bulk upload.',
-            'roles' => ['leader'],
+            'roles' => ['president'],
         ],
         'request benefits' => [
             'label' => 'Request benefits',
             'description' => 'Submit benefit requests for approved seniors.',
-            'roles' => ['leader'],
+            'roles' => ['president'],
         ],
     ];
 
     /** The roles whose permissions the Admin manages. */
-    public const MANAGED_ROLES = ['head', 'leader'];
+    public const MANAGED_ROLES = ['head', 'president'];
 
     public static function allows(User $user, string $permission): bool
     {

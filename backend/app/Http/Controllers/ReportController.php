@@ -137,7 +137,7 @@ class ReportController extends Controller
         if (in_array($user->role, ['admin', 'head'], true)) {
             return AnalyticsReport::query();
         }
-        abort_unless($user->role === 'leader' && $user->barangay_id, 403, 'You cannot view reports.');
+        abort_unless($user->role === 'president' && $user->barangay_id, 403, 'You cannot view reports.');
 
         return AnalyticsReport::query()
             ->where('status', 'published')
@@ -148,7 +148,7 @@ class ReportController extends Controller
 
     private function leaderRecipients(AnalyticsReport $report): Collection
     {
-        $leaders = User::where('role', 'leader')->where('status', 'active');
+        $leaders = User::where('role', 'president')->where('status', 'active');
         if ($report->barangay_id) {
             return $leaders->where('barangay_id', $report->barangay_id)->get();
         }

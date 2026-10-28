@@ -15,9 +15,9 @@ class AnnouncementNotificationTest extends TestCase
         /** @var User $head */
         $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
         /** @var User $activeLeader */
-        $activeLeader = User::factory()->create(['role' => 'leader', 'status' => 'active']);
+        $activeLeader = User::factory()->create(['role' => 'president', 'status' => 'active']);
         /** @var User $inactiveLeader */
-        $inactiveLeader = User::factory()->create(['role' => 'leader', 'status' => 'inactive']);
+        $inactiveLeader = User::factory()->create(['role' => 'president', 'status' => 'inactive']);
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
 

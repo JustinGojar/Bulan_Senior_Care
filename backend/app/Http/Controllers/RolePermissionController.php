@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
-/** Admin Settings > Roles & Permissions: what the Head and the barangay leaders may do. */
+/** Admin Settings > Roles & Permissions: what the Head and the barangay presidents may do. */
 class RolePermissionController extends Controller
 {
     public function index(Request $request): JsonResponse

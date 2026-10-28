@@ -44,8 +44,8 @@ class AuthController extends Controller
 
     public function createBarangayLeader(Request $request): JsonResponse
     {
-        abort_unless($request->user()->role === 'admin', 403, 'Only Admin can create Barangay Leader accounts.');
-        Role::findOrCreate('leader', 'web');
+        abort_unless($request->user()->role === 'admin', 403, 'Only Admin can create Barangay President accounts.');
+        Role::findOrCreate('president', 'web');
 
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:80'],
@@ -74,10 +74,10 @@ class AuthController extends Controller
             'birthdate' => $data['birthdate'],
             'barangay_id' => $data['barangay_id'],
             'password' => $data['password'],
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
         ]);
-        $user->syncRoles(['leader']);
+        $user->syncRoles(['president']);
         $verificationSent = $user->trySendEmailVerification();
 
         return response()->json(['user' => $user->load('roles'), 'verification_email_sent' => $verificationSent], 201);

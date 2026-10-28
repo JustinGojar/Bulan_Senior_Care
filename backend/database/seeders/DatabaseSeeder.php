@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Maribel Dela Cruz', 'email' => 'head@osca-bulan.gov.ph', 'role' => 'head', 'barangay_id' => null],
         ];
 
-        foreach (['admin', 'head', 'leader'] as $role) {
+        foreach (['admin', 'head', 'president'] as $role) {
             Role::findOrCreate($role, 'web');
         }
 

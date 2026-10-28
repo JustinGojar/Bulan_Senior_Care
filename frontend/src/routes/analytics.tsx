@@ -284,7 +284,7 @@ function ReleaseProgress({ records }: { records: ReleaseStatusRecord[] }) {
 function Analytics() {
   const navigate = useNavigate();
   const { tab, report } = Route.useSearch();
-  const isLeader = getStoredUser()?.role === "leader";
+  const isLeader = getStoredUser()?.role === "president";
 
   return (
     <AppShell

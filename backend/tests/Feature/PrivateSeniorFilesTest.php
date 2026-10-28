@@ -49,7 +49,7 @@ class PrivateSeniorFilesTest extends TestCase
 
     public function test_registration_documents_are_stored_on_the_private_disk(): void
     {
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
         $this->actingAs($leader, 'sanctum')->post('/api/seniors', [
             'privacy_consent' => true,
             'privacy_consent_version' => '2026-10-07',
@@ -94,7 +94,7 @@ class PrivateSeniorFilesTest extends TestCase
     {
         $senior = $this->seniorWithDocument($this->zoneTwo);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
 
         $this->actingAs($leader, 'sanctum')
             ->getJson("/api/seniors/{$senior->osca_id_number}/files/valid_id")
@@ -127,7 +127,7 @@ class PrivateSeniorFilesTest extends TestCase
             'attachment_path' => 'benefit-proofs/proof.pdf',
         ]);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
+        $leader = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
 
         $this->actingAs($leader, 'sanctum')
             ->getJson("/api/benefit-transactions/{$transaction->id}/attachment")

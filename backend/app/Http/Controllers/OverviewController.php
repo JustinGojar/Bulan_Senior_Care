@@ -17,7 +17,7 @@ class OverviewController extends Controller
         return response()->json(Cache::remember($cacheKey, now()->addSeconds(3), function () use ($request) {
             $now = now();
             $currentMonthStart = $now->copy()->startOfMonth();
-            $isLeader = $request->user()->role === 'leader';
+            $isLeader = $request->user()->role === 'president';
             $leaderId = $request->user()->id;
             $barangayId = $request->user()->barangay_id;
             $seniorScope = static function ($query) use ($isLeader, $leaderId, $barangayId): void {

@@ -153,7 +153,7 @@ function AgeThresholdPage() {
     if (linkedSeniorId) void navigate({ to: "/age-threshold", search: {}, replace: true });
   }
   useEffect(() => {
-    if (currentUser?.role === "leader") navigate({ to: "/dashboard", replace: true });
+    if (currentUser?.role === "president") navigate({ to: "/dashboard", replace: true });
   }, [currentUser?.role, navigate]);
   useEffect(() => {
     let active = true;
@@ -171,7 +171,7 @@ function AgeThresholdPage() {
       active = false;
     };
   }, [loadAllSeniors]);
-  if (currentUser?.role === "leader") return null;
+  if (currentUser?.role === "president") return null;
   const barangayOptions = [
     ...new Set(seniors.map((senior) => senior.barangay).filter(Boolean)),
   ].sort((first, second) => first.localeCompare(second));

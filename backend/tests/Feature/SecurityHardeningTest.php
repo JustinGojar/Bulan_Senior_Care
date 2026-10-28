@@ -73,7 +73,7 @@ class SecurityHardeningTest extends TestCase
 
         /** @var User $user */
         $user = User::factory()->create([
-            'role' => 'leader',
+            'role' => 'president',
             'status' => 'active',
             'barangay_id' => $barangay->id,
         ]);
@@ -104,7 +104,7 @@ class SecurityHardeningTest extends TestCase
 
         $response->assertStatus(201);
 
-        // The leader's input barangay is ignored; the record is scoped to their own.
+        // The president's input barangay is ignored; the record is scoped to their own.
         $this->assertDatabaseMissing('barangays', ['barangay_name' => 'Fabricated Barangay']);
         $this->assertSame($barangay->id, SeniorCitizen::firstOrFail()->barangay_id);
     }

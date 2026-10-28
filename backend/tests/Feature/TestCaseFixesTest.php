@@ -28,7 +28,7 @@ class TestCaseFixesTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Zone 1', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
         $this->admin = User::factory()->create(['role' => 'admin']);
         $this->head = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        $this->leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $this->president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
         Benefit::create(['benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension', 'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national', 'schedule' => 'quarterly', 'description' => 'Pension', 'status' => 'active']);
         $this->grant = Benefit::create(['benefit_name' => 'Octogenarian Grant', 'benefit_type' => 'octogenarian', 'min_age' => 80, 'max_age' => 85, 'amount' => 10000, 'funding_source' => 'national', 'schedule' => 'one_time', 'description' => 'Grant', 'status' => 'active']);
     }
@@ -36,7 +36,7 @@ class TestCaseFixesTest extends TestCase
     private function senior(): SeniorCitizen
     {
         // Seniors are registered by their barangay's BSCA President.
-        $response = $this->actingAs($this->leader, 'sanctum')->postJson('/api/seniors', [
+        $response = $this->actingAs($this->president, 'sanctum')->postJson('/api/seniors', [
             'privacy_consent' => true, 'privacy_consent_version' => '2026-10-07', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
             'birthdate' => '1945-01-01', 'sex' => 'male', 'contact_number' => '09171234567', 'barangay' => 'Zone 1', 'benefit' => 'Social Pension',
         ])->assertCreated();
@@ -47,7 +47,7 @@ class TestCaseFixesTest extends TestCase
     public function test_head_approval_applies_a_leader_edit_request(): void
     {
         $senior = $this->senior();
-        $request = $this->actingAs($this->leader, 'sanctum')->postJson('/api/senior-edit-requests', [
+        $request = $this->actingAs($this->president, 'sanctum')->postJson('/api/senior-edit-requests', [
             'senior_id' => $senior->osca_id_number,
             'changes' => ['first_name' => 'Pedro', 'last_name' => 'Dela Cruz', 'birthdate' => '1945-01-01', 'barangay' => 'Zone 1', 'benefit' => 'Social Pension'],
         ])->assertCreated()->assertJsonPath('senior.id', $senior->id);
@@ -75,7 +75,7 @@ class TestCaseFixesTest extends TestCase
     public function test_report_moves_from_draft_to_approved_to_published(): void
     {
         $this->senior();
-        $this->actingAs($this->leader, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
+        $this->actingAs($this->president, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
         $this->actingAs($this->head, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])->assertForbidden();
         $report = $this->actingAs($this->admin, 'sanctum')->postJson('/api/reports', ['report_type' => 'Municipal Summary'])
             ->assertCreated()->assertJsonPath('status', 'draft')->assertJsonPath('total_registered', 1);
@@ -83,7 +83,7 @@ class TestCaseFixesTest extends TestCase
 
         $this->patchJson("/api/reports/{$id}", ['status' => 'approved'])->assertForbidden();
         $this->patchJson("/api/reports/{$id}", ['status' => 'published'])->assertForbidden();
-        $this->actingAs($this->leader, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(0);
+        $this->actingAs($this->president, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(0);
         $this->actingAs($this->head, 'sanctum')->patchJson("/api/reports/{$id}", ['status' => 'published'])->assertStatus(422);
         $this->patchJson("/api/reports/{$id}", ['status' => 'approved'])
             ->assertOk()->assertJsonPath('status', 'approved')->assertJsonPath('approver.id', $this->head->id);
@@ -91,7 +91,7 @@ class TestCaseFixesTest extends TestCase
             ->assertOk()->assertJsonPath('status', 'published');
 
         $this->assertNotNull(AnalyticsReport::findOrFail($id)->published_at);
-        $this->actingAs($this->leader, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(1);
+        $this->actingAs($this->president, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(1);
         $this->actingAs($this->head, 'sanctum')->getJson('/api/reports')->assertOk()->assertJsonCount(1);
     }
 
@@ -99,7 +99,7 @@ class TestCaseFixesTest extends TestCase
     {
         Storage::fake('local');
         Storage::fake('public');
-        $sent = $this->actingAs($this->leader, 'sanctum')->post('/api/messages', [
+        $sent = $this->actingAs($this->president, 'sanctum')->post('/api/messages', [
             'recipient_id' => $this->head->id, 'subject' => 'Payout', 'attachment' => UploadedFile::fake()->image('list.jpg'),
         ], ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('attachment_name', 'list.jpg');
 
@@ -110,7 +110,7 @@ class TestCaseFixesTest extends TestCase
         $this->postJson('/api/messages', ['recipient_id' => $this->head->id, 'subject' => 'Bad', 'attachment' => UploadedFile::fake()->create('run.exe', 10)])
             ->assertStatus(422)->assertJsonValidationErrors('attachment');
 
-        // Deleting hides the conversation for the leader only; the head still has it.
+        // Deleting hides the conversation for the president only; the head still has it.
         $this->deleteJson("/api/messages/conversations/{$this->head->id}")->assertNoContent();
         $this->getJson('/api/messages')->assertJsonCount(0, 'data');
         Storage::disk('local')->assertExists($sent->json('attachment_path'));
@@ -119,7 +119,7 @@ class TestCaseFixesTest extends TestCase
             ->assertJsonPath('data.0.attachment_name', 'list.jpg');
 
         // Once both have deleted it, the message and its attachment are gone.
-        $this->deleteJson("/api/messages/conversations/{$this->leader->id}")->assertNoContent();
+        $this->deleteJson("/api/messages/conversations/{$this->president->id}")->assertNoContent();
         Storage::disk('local')->assertMissing($sent->json('attachment_path'));
         $this->assertSame(0, Message::count());
     }
@@ -128,7 +128,7 @@ class TestCaseFixesTest extends TestCase
     {
         Storage::fake('local');
         $outsider = User::factory()->create(['role' => 'head', 'status' => 'active']);
-        $sent = $this->actingAs($this->leader, 'sanctum')->post('/api/messages', [
+        $sent = $this->actingAs($this->president, 'sanctum')->post('/api/messages', [
             'recipient_id' => $this->head->id, 'subject' => 'Payout', 'attachment' => UploadedFile::fake()->create('list.pdf', 10, 'application/pdf'),
         ], ['Accept' => 'application/json'])->assertCreated();
         $url = "/api/messages/{$sent->json('id')}/attachment";
@@ -137,8 +137,8 @@ class TestCaseFixesTest extends TestCase
         $this->actingAs($this->head, 'sanctum')->getJson($url)->assertOk();
         $this->actingAs($outsider, 'sanctum')->getJson($url)->assertNotFound();
 
-        // Once the leader deletes the conversation, only the head can still open it.
-        $this->actingAs($this->leader, 'sanctum')->deleteJson("/api/messages/conversations/{$this->head->id}")->assertNoContent();
+        // Once the president deletes the conversation, only the head can still open it.
+        $this->actingAs($this->president, 'sanctum')->deleteJson("/api/messages/conversations/{$this->head->id}")->assertNoContent();
         $this->getJson($url)->assertNotFound();
         $this->actingAs($this->head, 'sanctum')->getJson($url)->assertOk();
     }
@@ -146,7 +146,7 @@ class TestCaseFixesTest extends TestCase
     public function test_message_attachment_requires_sign_in(): void
     {
         $message = Message::create([
-            'sender_id' => $this->leader->id, 'recipient_id' => $this->head->id, 'subject' => 'Payout', 'message' => '',
+            'sender_id' => $this->president->id, 'recipient_id' => $this->head->id, 'subject' => 'Payout', 'message' => '',
             'attachment_path' => 'message-attachments/list.pdf', 'attachment_name' => 'list.pdf',
         ]);
 
@@ -159,7 +159,7 @@ class TestCaseFixesTest extends TestCase
         Storage::fake('public');
         Storage::disk('public')->put('message-attachments/list.pdf', 'payout-list');
         Message::create([
-            'sender_id' => $this->leader->id, 'recipient_id' => $this->head->id, 'subject' => 'Payout', 'message' => '',
+            'sender_id' => $this->president->id, 'recipient_id' => $this->head->id, 'subject' => 'Payout', 'message' => '',
             'attachment_path' => 'message-attachments/list.pdf', 'attachment_name' => 'list.pdf',
         ]);
 
@@ -173,7 +173,7 @@ class TestCaseFixesTest extends TestCase
     public function test_head_approval_applies_every_requested_field_and_keeps_omitted_ones(): void
     {
         $senior = $this->senior();
-        $request = $this->actingAs($this->leader, 'sanctum')->postJson('/api/senior-edit-requests', [
+        $request = $this->actingAs($this->president, 'sanctum')->postJson('/api/senior-edit-requests', [
             'senior_id' => $senior->osca_id_number,
             'changes' => [
                 'first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'birthdate' => '1945-01-01', 'barangay' => 'Zone 1',
@@ -199,7 +199,7 @@ class TestCaseFixesTest extends TestCase
     public function test_edit_request_with_an_unknown_benefit_is_refused(): void
     {
         $senior = $this->senior();
-        $this->actingAs($this->leader, 'sanctum')->postJson('/api/senior-edit-requests', [
+        $this->actingAs($this->president, 'sanctum')->postJson('/api/senior-edit-requests', [
             'senior_id' => $senior->osca_id_number,
             'changes' => ['first_name' => 'Juan', 'last_name' => 'Dela Cruz', 'birthdate' => '1945-01-01', 'barangay' => 'Zone 1', 'benefit' => 'Nonexistent'],
         ])->assertStatus(422)->assertJsonValidationErrors('changes.benefit');
@@ -216,8 +216,8 @@ class TestCaseFixesTest extends TestCase
             'name' => 'Maria Santos', 'email' => 'maria@example.com', 'role' => 'head', 'status' => 'active',
         ])->assertOk();
         $this->putJson("/api/admin/users/{$user['id']}", [
-            'name' => 'Maria Santos', 'email' => 'maria@example.com', 'role' => 'leader', 'status' => 'active',
-        ])->assertStatus(422)->assertJsonPath('message', 'A barangay is required for a Barangay Leader.');
+            'name' => 'Maria Santos', 'email' => 'maria@example.com', 'role' => 'president', 'status' => 'active',
+        ])->assertStatus(422)->assertJsonPath('message', 'A barangay is required for a Barangay President.');
     }
 
     public function test_senior_update_refuses_an_unknown_barangay(): void

@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class SeniorEditRequestController extends Controller
 {
-    /** Senior record columns a leader's edit request can change once Head approves it. */
+    /** Senior record columns a president's edit request can change once Head approves it. */
     private const EDITABLE_FIELDS = [
         'first_name', 'middle_name', 'last_name', 'birthdate', 'place_of_birth', 'sex', 'civil_status',
         'educational_attainment', 'other_skills', 'family_composition', 'association_name',
@@ -34,7 +34,7 @@ class SeniorEditRequestController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_unless($request->user()->role === 'leader', 403, 'Only Barangay Leaders can submit edit requests.');
+        abort_unless($request->user()->role === 'president', 403, 'Only Barangay Presidents can submit edit requests.');
         $data = $request->validate([
             'senior_id' => ['required', 'exists:senior_citizens,osca_id_number'],
             'changes' => ['required', 'array'],
@@ -59,7 +59,7 @@ class SeniorEditRequestController extends Controller
         ], [
             'changes.benefit.exists' => 'A valid benefit is required.',
         ]);
-        // Keep only the fields a leader may change, so nothing else can ride along to approval.
+        // Keep only the fields a president may change, so nothing else can ride along to approval.
         $data['changes'] = array_intersect_key($data['changes'], array_flip([...self::EDITABLE_FIELDS, 'barangay', 'benefit']));
         $senior = \App\Models\SeniorCitizen::where('osca_id_number', $data['senior_id'])->firstOrFail();
         abort_if($senior->barangay_id !== $request->user()->barangay_id, 403, 'This record is outside your barangay.');

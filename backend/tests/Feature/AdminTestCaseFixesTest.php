@@ -23,7 +23,7 @@ class AdminTestCaseFixesTest extends TestCase
         $barangay = Barangay::create(['barangay_name' => 'Zone 1', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
         $this->admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $this->head = User::factory()->create(['role' => 'head', 'status' => 'active', 'email' => 'head@example.com', 'password' => 'StrongPassword123!']);
-        $this->leader = User::factory()->create(['role' => 'leader', 'status' => 'active', 'barangay_id' => $barangay->id]);
+        $this->president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id]);
     }
 
     /** ADM-008 */
@@ -48,7 +48,7 @@ class AdminTestCaseFixesTest extends TestCase
     public function test_admin_cannot_deactivate_their_own_account_and_others_cannot_deactivate(): void
     {
         $this->actingAs($this->admin, 'sanctum')->postJson("/api/admin/users/{$this->admin->id}/status", ['status' => 'inactive'])->assertStatus(422);
-        $this->actingAs($this->head, 'sanctum')->postJson("/api/admin/users/{$this->leader->id}/status", ['status' => 'inactive'])->assertForbidden();
+        $this->actingAs($this->head, 'sanctum')->postJson("/api/admin/users/{$this->president->id}/status", ['status' => 'inactive'])->assertForbidden();
     }
 
     /** ADM-010 */
@@ -73,22 +73,22 @@ class AdminTestCaseFixesTest extends TestCase
         $this->actingAs($this->head, 'sanctum')->getJson('/api/admin/role-permissions')->assertForbidden();
         $this->actingAs($this->admin, 'sanctum')->putJson('/api/admin/role-permissions/admin', ['permissions' => []])->assertNotFound();
         // A permission that does not apply to the role is ignored.
-        $this->putJson('/api/admin/role-permissions/leader', ['permissions' => ['request benefits', 'manage announcements']])
-            ->assertOk()->assertJsonPath('roles.leader', ['request benefits']);
+        $this->putJson('/api/admin/role-permissions/president', ['permissions' => ['request benefits', 'manage announcements']])
+            ->assertOk()->assertJsonPath('roles.president', ['request benefits']);
     }
 
     /** ADM-014 */
     public function test_audit_logs_filter_by_user_and_date(): void
     {
-        AuditLog::record($this->head, 'created', $this->leader);
+        AuditLog::record($this->head, 'created', $this->president);
         $this->travel(-10)->days();
-        AuditLog::record($this->leader, 'updated', $this->leader);
+        AuditLog::record($this->president, 'updated', $this->president);
         $this->travelBack();
 
         $this->actingAs($this->admin, 'sanctum')->getJson("/api/audit-logs?user_id={$this->head->id}")
             ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.actor.id', $this->head->id);
         $this->getJson('/api/audit-logs?date_from='.now()->subDays(11)->toDateString().'&date_to='.now()->subDays(9)->toDateString())
-            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.actor.id', $this->leader->id);
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.actor.id', $this->president->id);
         $this->getJson('/api/audit-logs?date_from=2026-10-10&date_to=2026-10-01')->assertStatus(422);
     }
 }

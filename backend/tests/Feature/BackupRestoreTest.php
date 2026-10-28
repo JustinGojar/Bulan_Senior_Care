@@ -33,7 +33,7 @@ class BackupRestoreTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $barangay = Barangay::query()->create(['barangay_name' => 'Zone 1']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader', 'barangay_id' => $barangay->id]);
+        $leader = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
         $backup = $this->backupOf($admin);
 
         // The data is lost or changed after the backup was made.
@@ -87,7 +87,7 @@ class BackupRestoreTest extends TestCase
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         /** @var User $leader */
-        $leader = User::factory()->create(['role' => 'leader']);
+        $leader = User::factory()->create(['role' => 'president']);
         $backup = $this->backupOf($admin);
 
         $this->restore($leader, $backup)->assertForbidden();
@@ -134,7 +134,7 @@ class BackupRestoreTest extends TestCase
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         $backup = $this->backupOf($admin);
-        $withoutAdmin = str_replace('"role":"admin"', '"role":"leader"', $backup);
+        $withoutAdmin = str_replace('"role":"admin"', '"role":"president"', $backup);
 
         $this->restore($admin, $withoutAdmin)
             ->assertUnprocessable()

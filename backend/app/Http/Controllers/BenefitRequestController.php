@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * A leader requests a benefit for an approved senior ("For Verification"). The Head verifies
+ * A president requests a benefit for an approved senior ("For Verification"). The Head verifies
  * it ("Approved for Release") or rejects it with a reason, then records the release, which
  * files the senior's benefit transaction with the release date and the Head's name.
  */
@@ -34,7 +34,7 @@ class BenefitRequestController extends Controller
         $requests = BenefitRequest::query()
             ->whereHas('senior')
             ->with($this->relations())
-            ->when($user->role === 'leader', fn ($query) => $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $user->barangay_id)))
+            ->when($user->role === 'president', fn ($query) => $query->whereHas('senior', fn ($senior) => $senior->where('barangay_id', $user->barangay_id)))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->when($filters['senior'] ?? null, fn ($query, $oscaId) => $query->whereHas('senior', fn ($senior) => $senior->where('osca_id_number', $oscaId)))
             ->latest()
@@ -47,7 +47,7 @@ class BenefitRequestController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->role === 'leader', 403, 'Benefit requests are submitted by barangay leaders.');
+        abort_unless($user->role === 'president', 403, 'Benefit requests are submitted by barangay presidents.');
         RolePermissions::authorize($user, 'request benefits');
         $data = $request->validate([
             // The senior's OSCA ID, as the senior pages identify records.

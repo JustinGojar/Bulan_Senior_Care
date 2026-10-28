@@ -18,9 +18,9 @@ const SECTIONS: AgreementSection[] = [
     title: "The portal is free",
     body: (
       <p>
-        Bulan SeniorCare does not charge senior citizens, their families, barangay leaders, or OSCA
-        staff anything to use it. The portal does not accept payments, so there is nothing to refund
-        through it.
+        Bulan SeniorCare does not charge senior citizens, their families, barangay presidents, or
+        OSCA staff anything to use it. The portal does not accept payments, so there is nothing to
+        refund through it.
       </p>
     ),
   },

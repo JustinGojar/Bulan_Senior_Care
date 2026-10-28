@@ -54,7 +54,7 @@ const FEATURES = [
   {
     icon: BadgeCheck,
     title: "Eligibility and Document Review",
-    body: "The OSCA Head approves or rejects each registration with a reason. Flagged documents go back to the barangay leader to correct and resubmit.",
+    body: "The OSCA Head approves or rejects each registration with a reason. Flagged documents go back to the barangay president to correct and resubmit.",
   },
   {
     icon: Cake,
@@ -64,7 +64,7 @@ const FEATURES = [
   {
     icon: ClipboardList,
     title: "Benefit Requests",
-    body: "Barangay leaders request benefits for approved seniors. Each request moves from For Verification to Approved for Release to Released, with the date recorded.",
+    body: "Barangay presidents request benefits for approved seniors. Each request moves from For Verification to Approved for Release to Released, with the date recorded.",
   },
   {
     icon: HandCoins,
@@ -84,12 +84,12 @@ const FEATURES = [
   {
     icon: MessagesSquare,
     title: "Messaging and Announcements",
-    body: "Barangay leaders and the OSCA Head chat and share files privately, while OSCA news, images, and Facebook Page posts reach every barangay.",
+    body: "Barangay presidents and the OSCA Head chat and share files privately, while OSCA news, images, and Facebook Page posts reach every barangay.",
   },
   {
     icon: Bell,
     title: "Notifications and Advisories",
-    body: "In-app alerts for reviews, releases, and age milestones, plus optional email and SMS advisories that the admin can switch on or off.",
+    body: "In-app alerts for reviews, releases, and age milestones, plus optional email advisories that the admin can switch on or off.",
   },
 ];
 
@@ -97,7 +97,7 @@ const WORKFLOW = [
   {
     icon: ClipboardList,
     title: "Register",
-    body: "Barangay leaders encode seniors in their own barangay, one at a time or by bulk import.",
+    body: "Barangay presidents encode seniors in their own barangay, one at a time or by bulk import.",
   },
   {
     icon: BadgeCheck,
@@ -107,7 +107,7 @@ const WORKFLOW = [
   {
     icon: HandCoins,
     title: "Request and release",
-    body: "Leaders request benefits for approved seniors; the Head verifies them and records each release in dated batches.",
+    body: "Presidents request benefits for approved seniors; the Head verifies them and records each release in dated batches.",
   },
   {
     icon: FileCheck2,
@@ -160,7 +160,7 @@ const BENEFICIARIES = [
     "Verify registrations and benefit requests, release benefits, and publish approved reports.",
   ],
   [
-    "Barangay Leaders",
+    "Barangay Presidents",
     "Register seniors in their barangay, fix flagged documents, and request benefits.",
   ],
   ["Senior Citizens", "Receive the right benefits on time, including age milestone grants."],
@@ -174,7 +174,7 @@ const FAQ = [
   ],
   [
     "How is access controlled?",
-    "Three role levels — Admins manage accounts and set what each role may do, the OSCA Head verifies registrations, benefit requests, and reports, and Barangay Leaders work only with seniors in their own barangay.",
+    "Three role levels — Admins manage accounts and set what each role may do, the OSCA Head verifies registrations, benefit requests, and reports, and Barangay Presidents work only with seniors in their own barangay.",
   ],
   [
     "Can reports be printed or downloaded?",
@@ -346,7 +346,7 @@ function Landing() {
           <p className="mt-5 max-w-2xl text-sm leading-relaxed text-foreground/80 sm:text-base dark:text-white">
             The Bulan SeniorCare Portal replaces paper-based OSCA records with a single, secure
             system for registration, eligibility, benefits, and reporting — built for the Office of
-            Senior Citizen Affairs and every barangay leader in the municipality.
+            Senior Citizen Affairs and every barangay president in the municipality.
           </p>
           <ul className="mt-6 flex flex-wrap gap-2">
             {HIGHLIGHTS.map((item) => (

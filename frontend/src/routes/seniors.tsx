@@ -539,18 +539,18 @@ const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
 
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
-  // An approved senior a leader is requesting a benefit for.
+  // An approved senior a president is requesting a benefit for.
   const [requestingBenefit, setRequestingBenefit] = useState<Senior | null>(null);
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
-  const isLeader = currentUser?.role === "leader";
+  const isLeader = currentUser?.role === "president";
   const isAdmin = currentUser?.role === "admin";
   const [filter, setFilter] = useState<string>(() =>
     status ? `${status.charAt(0).toUpperCase()}${status.slice(1)}` : "All",
   );
   const [barangayFilter, setBarangayFilter] = useState("All");
-  // Resolve the leader's barangay by its database id, not by its position in BARANGAYS.
+  // Resolve the president's barangay by its database id, not by its position in BARANGAYS.
   const [leaderBarangay, setLeaderBarangay] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (!isLeader || !currentUser?.barangay_id) return;
@@ -560,7 +560,7 @@ function SeniorRecords() {
           (barangay) => barangay.id === currentUser.barangay_id,
         )?.barangay_name;
         setLeaderBarangay(name);
-        // Leaders only see their own barangay, so show it in the (locked) filter.
+        // Presidents only see their own barangay, so show it in the (locked) filter.
         if (name) setBarangayFilter(name);
       })
       .catch(() => setLeaderBarangay(undefined));
@@ -885,13 +885,13 @@ function SeniorRecords() {
           className="disabled:!opacity-100 sm:flex-1 xl:w-40 xl:flex-none"
           icon={<MapPin className="h-4 w-4" />}
           value={barangayFilter}
-          // A leader's own barangay is their default, so it isn't marked as an active filter.
+          // A president's own barangay is their default, so it isn't marked as an active filter.
           defaultValue={isLeader ? (leaderBarangay ?? "All") : "All"}
           disabled={isLeader}
           options={[
             { value: "All", label: "All Barangays" },
             ...BARANGAYS.map((barangay) => ({ value: barangay, label: barangay })),
-            // A leader's barangay name from the database may not be in the static list.
+            // A president's barangay name from the database may not be in the static list.
             ...(leaderBarangay && !BARANGAYS.includes(leaderBarangay)
               ? [{ value: leaderBarangay, label: leaderBarangay }]
               : []),
