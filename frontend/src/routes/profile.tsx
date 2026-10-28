@@ -75,6 +75,10 @@ function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [recentActivity, setRecentActivity] = useState<AuditLog[] | null>(null);
   const isAdmin = user?.role?.toLowerCase() === "admin";
+  const isPresident = user?.role?.toLowerCase() === "president";
+  // A president's address always comes from their assigned barangay and can't be edited.
+  const displayedAddress =
+    isPresident && assignedBarangay ? `${assignedBarangay}, Bulan, Sorsogon` : address;
 
   useEffect(() => {
     apiFetch<ApiUser>("/user")
@@ -133,14 +137,13 @@ function ProfilePage() {
     (user?.profile_photo_path
       ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
       : defaultProfileImage);
-  const roleLabel =
-    user?.role?.toLowerCase() === "president"
-      ? `BSCA President${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
-      : user?.role?.toLowerCase() === "head"
-        ? "OSCA Head"
-        : user?.role?.toLowerCase() === "admin"
-          ? "OSCA Admin"
-          : (user?.role ?? "user");
+  const roleLabel = isPresident
+    ? `BSCA President${assignedBarangay ? ` - ${assignedBarangay}` : ""}`
+    : user?.role?.toLowerCase() === "head"
+      ? "OSCA Head"
+      : user?.role?.toLowerCase() === "admin"
+        ? "OSCA Admin"
+        : (user?.role ?? "user");
   const initials = (name || "User")
     .split(" ")
     .map((part) => part[0])
@@ -170,7 +173,7 @@ function ProfilePage() {
       form.append("name", name);
       form.append("email", email);
       form.append("contact_number", contact);
-      form.append("address", address);
+      if (!isPresident) form.append("address", address);
       if (photo) form.append("profile_photo", photo);
       const result = await apiFetch<
         | ApiUser
@@ -354,13 +357,27 @@ function ProfilePage() {
               </label>
               <label className="block text-sm font-semibold text-foreground">
                 Address
-                <input
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  placeholder="Enter your address"
-                  readOnly={!editing}
-                  className={profileFieldClass}
-                />
+                {isPresident ? (
+                  <input
+                    value={displayedAddress}
+                    readOnly
+                    title="Set from your assigned barangay"
+                    className={`${fieldClass} mt-2 h-11 cursor-not-allowed bg-muted/60 font-normal text-muted-foreground`}
+                  />
+                ) : (
+                  <input
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder="Enter your address"
+                    readOnly={!editing}
+                    className={profileFieldClass}
+                  />
+                )}
+                {isPresident && (
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    Based on your assigned barangay.
+                  </span>
+                )}
               </label>
               <label className="block text-sm font-semibold text-foreground">
                 Role / Position
