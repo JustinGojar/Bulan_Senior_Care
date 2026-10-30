@@ -301,6 +301,24 @@ class SeniorCitizenController extends Controller
         $this->notifyPresidents($request, $senior, $subject, $message, 'registration_review');
     }
 
+    /** Tells the Admin and Head that a new registration is pending on Eligibility Review. */
+    private function notifyReviewersOfRegistration(Request $request, string $message, ?int $seniorId = null): void
+    {
+        User::query()
+            ->whereIn('role', ['admin', 'head'])
+            ->where('status', 'active')
+            ->each(fn (User $reviewer) => Notification::create([
+                'recipient_account_id' => $reviewer->id,
+                'sender_account_id' => $request->user()->id,
+                'message' => $message,
+                'channel' => 'in_app',
+                'date_sent' => now(),
+                'status' => 'unread',
+                'source_type' => 'registration_pending',
+                'source_id' => $seniorId,
+            ]));
+    }
+
     /** An in-app notification and an email advisory to the senior's barangay president. */
     private function notifyPresidents(Request $request, SeniorCitizen $senior, string $subject, string $message, string $sourceType = 'document_review'): void
     {
@@ -445,6 +463,11 @@ class SeniorCitizenController extends Controller
             'privacy_consent_version' => $senior->privacy_consent_version,
         ]);
         AdvisoryDispatcher::forPendingSenior($senior);
+        $this->notifyReviewersOfRegistration(
+            $request,
+            "{$request->user()->name} registered {$senior->first_name} {$senior->last_name} ({$senior->osca_id_number}). The registration is waiting for eligibility review.",
+            $senior->id,
+        );
 
         return response()->json($senior->load(['barangay', 'benefit']), 201);
     }
@@ -550,6 +573,15 @@ class SeniorCitizenController extends Controller
             }
             $created[] = ['row' => $index + 2, 'osca_id_number' => $senior->osca_id_number];
             AdvisoryDispatcher::forPendingSenior($senior);
+        }
+        // One notice for the whole upload, so a 500-row file does not flood the reviewers' inbox.
+        if (count($created) > 0) {
+            $this->notifyReviewersOfRegistration(
+                $request,
+                count($created) === 1
+                    ? "{$request->user()->name} registered 1 senior ({$created[0]['osca_id_number']}) by bulk upload. The registration is waiting for eligibility review."
+                    : "{$request->user()->name} registered ".count($created).' seniors by bulk upload. The registrations are waiting for eligibility review.',
+            );
         }
 
         return response()->json([
