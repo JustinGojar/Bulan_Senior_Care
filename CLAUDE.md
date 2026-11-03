@@ -1,14 +1,12 @@
 # Instructions for Claude Code
 
-## Git workflow: always ask first
+## Git workflow: always use `justin`
 
-Before running any of the following, ask the user which branch to use and wait for their answer:
+After every change, follow this workflow without asking which branch to use:
 
-- **Commit / push**: which branch should the changes go to?
-- **Pull request**: which branch is the source, and which branch is the target?
-- **Merge**: which branch is merged into which?
+1. **Commit / push**: commit on the `justin` branch and push to `origin/justin`.
+2. **Pull request**: open a pull request from `justin` into `main`, or update the existing open one.
+3. **Merge**: merge that pull request into `main` with a merge commit.
 
-This applies to every change, edit, command, or prompt that ends in a commit, push, PR, or merge.
-Never assume the session's default branch or `main`. Never push, open a PR, or merge without explicit confirmation of the branch.
-
-The user's personal working branch is `justin`.
+Never commit or push directly to `main` or to any other branch, including the session's default branch.
+Before starting work, bring `justin` up to date with `origin/main`.
