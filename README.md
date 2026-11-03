@@ -15,7 +15,6 @@ Bulan SeniorCare is a web-based portal that OSCA staff and barangay senior citiz
 - [Getting started](#getting-started)
 - [Testing and validation](#testing-and-validation)
 - [Deployment](#deployment)
-- [Configuration reference](#configuration-reference)
 - [Security and privacy](#security-and-privacy)
 
 ---
@@ -160,7 +159,7 @@ Two deployment setups are supported:
 
 1. Connect this repository to a Railway service. Set **Root Directory** to `/` and keep the builder on **Dockerfile** (selected by `railway.json`). Leave **Build Command** unset.
 2. Add a **MySQL** database to the project.
-3. Set the application variables listed in the [configuration reference](#configuration-reference).
+3. Set the application variables on the Railway service (see [`backend/.env.example`](backend/.env.example)). Enter values directly in Railway and never commit `.env` files.
 4. Add a volume mounted at **`/app/backend/storage/app`** so uploaded photos, documents, and attachments survive redeploys.
 
 > [!IMPORTANT]
@@ -182,32 +181,6 @@ To run the scheduled tasks, add a Railway Cron service that uses the same image 
 | --- | --- |
 | `osca:detect-age-thresholds` | Daily at 00:05 |
 | `announcements:sync-facebook` | Every 15 minutes |
-
----
-
-## Configuration reference
-
-Set these on the Railway application service. Enter values directly in Railway, and **never commit `.env` files**.
-
-| Variable | Value |
-| --- | --- |
-| `APP_ENV` | `production` |
-| `APP_DEBUG` | `false` |
-| `APP_KEY` | Output of `php artisan key:generate --show` |
-| `APP_URL` | `https://<your-domain>` |
-| `FRONTEND_URL` | Same origin as `APP_URL` (used in password-reset links) |
-| `DB_CONNECTION` | `mysql` |
-| `DB_URL` | `${{MySQL.MYSQL_URL}}` (use your Railway database service name) |
-| `LOG_CHANNEL` | `stderr` |
-| `FILESYSTEM_DISK` | `public` |
-
-**Optional integrations**
-
-| Variable | Purpose |
-| --- | --- |
-| `MAIL_*` | Email for password resets and notifications. See `backend/.env.example` for the supported mailers. |
-| `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN` | Facebook Page announcement imports. Server-side only. Never expose the token to the frontend. |
-| `SANCTUM_IDLE_TIMEOUT`, `SANCTUM_EXPIRATION` | Session inactivity timeout and maximum session length, in minutes. |
 
 ---
 
