@@ -14,7 +14,6 @@ Bulan SeniorCare is a web-based portal that OSCA staff and barangay senior citiz
 - [Repository structure](#repository-structure)
 - [Getting started](#getting-started)
 - [Testing and validation](#testing-and-validation)
-- [Deployment](#deployment)
 - [Security and privacy](#security-and-privacy)
 
 ---
@@ -145,42 +144,6 @@ cd ../backend
 php artisan route:list --path=api
 php artisan test
 ```
-
----
-
-## Deployment
-
-Two deployment setups are supported:
-
-1. **Railway only (recommended):** one service built from the root `Dockerfile`. Steps follow below.
-2. **Vercel (frontend) + Railway (backend):** see the full guide in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
-
-### Railway
-
-1. Connect this repository to a Railway service. Set **Root Directory** to `/` and keep the builder on **Dockerfile** (selected by `railway.json`). Leave **Build Command** unset.
-2. Add a **MySQL** database to the project.
-3. Set the application variables on the Railway service (see [`backend/.env.example`](backend/.env.example)). Enter values directly in Railway and never commit `.env` files.
-4. Add a volume mounted at **`/app/backend/storage/app`** so uploaded photos, documents, and attachments survive redeploys.
-
-> [!IMPORTANT]
-> Private files (senior documents, benefit proofs, release documents, and message attachments) are stored outside `storage/app/public`. A volume on the public folder alone does not keep them.
-
-`railway.json` configures the rest:
-
-| Step | Command |
-| --- | --- |
-| Pre-deploy | `php artisan migrate --force` |
-| Start | Creates the storage link, caches configuration, starts a queue worker, and serves the app on `$PORT` |
-| Health check | `GET /up` |
-
-### Scheduled tasks
-
-To run the scheduled tasks, add a Railway Cron service that uses the same image and runs `php artisan schedule:run` every minute:
-
-| Task | Schedule |
-| --- | --- |
-| `osca:detect-age-thresholds` | Daily at 00:05 |
-| `announcements:sync-facebook` | Every 15 minutes |
 
 ---
 
