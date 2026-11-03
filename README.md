@@ -13,7 +13,6 @@ Bulan SeniorCare is a web-based portal that OSCA staff and barangay senior citiz
 - [Architecture](#architecture)
 - [Repository structure](#repository-structure)
 - [Getting started](#getting-started)
-- [Testing and validation](#testing-and-validation)
 - [Security and privacy](#security-and-privacy)
 
 ---
@@ -128,24 +127,6 @@ The development seeder creates sample accounts for each role. Their sign-in deta
 
 ---
 
-## Testing and validation
-
-Run these before opening a pull request:
-
-```bash
-# Frontend: type check, lint, and production build
-cd frontend
-npx tsc --noEmit
-npm run lint
-npm run build:railway
-
-# Backend: route check and test suite
-cd ../backend
-php artisan route:list --path=api
-php artisan test
-```
-
----
 
 ## Security and privacy
 
