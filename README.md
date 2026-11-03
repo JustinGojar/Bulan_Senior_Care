@@ -4,6 +4,8 @@
 
 Bulan SeniorCare is a web-based portal that OSCA staff and barangay senior citizen presidents use to register senior citizens, review eligibility, and track the release of benefits. It also produces reports and descriptive analytics for the municipality. It can be installed on Android devices as a progressive web app (PWA).
 
+![Bulan SeniorCare landing page](docs/images/landing-page.webp)
+
 ---
 
 ## Table of contents
