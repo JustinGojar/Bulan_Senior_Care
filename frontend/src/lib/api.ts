@@ -63,6 +63,30 @@ export function seniorFileUrl(oscaId: string, kind: SeniorFileKind, storedPath: 
   return `/seniors/${encodeURIComponent(oscaId)}/files/${kind}?v=${encodeURIComponent(storedPath)}`;
 }
 
+export type DuplicateCheckResponse = {
+  duplicate: boolean;
+  osca_id_number?: string | null;
+  message?: string;
+};
+
+/**
+ * Real-time duplicate check for the senior registration form.
+ * Calls GET /seniors/duplicate-check with the current first/last name and birthdate.
+ */
+export function duplicateCheckSenior(params: {
+  first_name: string;
+  last_name: string;
+  birthdate?: string | null;
+}): Promise<DuplicateCheckResponse> {
+  const query = new URLSearchParams();
+  if (params.first_name) query.set("first_name", params.first_name);
+  if (params.last_name) query.set("last_name", params.last_name);
+  if (params.birthdate) query.set("birthdate", params.birthdate);
+  return apiFetch<DuplicateCheckResponse>(`/seniors/duplicate-check?${query.toString()}`, {
+    method: "GET",
+  });
+}
+
 export function benefitProofUrl(transactionId: number, storedPath: string) {
   return `/benefit-transactions/${transactionId}/attachment?v=${encodeURIComponent(storedPath)}`;
 }
@@ -426,6 +450,28 @@ export type ServerNotification = {
   archived_at?: string | null;
   sender?: { name: string; role: string };
 };
+
+/** Real-time duplicate check against name + birthdate (incl. archived records). */
+export type DuplicateCheckResult = {
+  duplicate: boolean;
+  osca_id_number: string | null;
+  message: string;
+};
+
+export function duplicateCheckSenior(data: {
+  first_name?: string | null;
+  last_name?: string | null;
+  birthdate?: string | null;
+}): Promise<DuplicateCheckResult> {
+  return apiFetch<DuplicateCheckResult>("/seniors/duplicate-check", {
+    method: "POST",
+    body: JSON.stringify({
+      first_name: data.first_name ?? "",
+      last_name: data.last_name ?? "",
+      birthdate: data.birthdate ?? "",
+    }),
+  });
+}
 
 /** The current sign-in's id, or null when signed out. */
 export function getSessionId() {
@@ -1243,11 +1289,7 @@ export function clearServerNotifications() {
   return apiFetch<void>("/notifications", { method: "DELETE" });
 }
 
-export type NotificationChannelSettings = {
-  email_advisories: boolean;
-};
-
-export type NotificationChannelReadiness = NotificationChannelSettings;
+/** The current sign-in's id, or null when signed out. */
 
 export async function getNotificationChannelSettings() {
   return apiFetch<{

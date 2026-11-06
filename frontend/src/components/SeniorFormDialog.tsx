@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import { primaryButtonClass, secondaryButtonClass } from "@/components/design-ki
 import { PrivacyConsentDialog } from "@/components/PrivacyConsentDialog";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { PrivateFileLink } from "@/components/PrivateFile";
-import { seniorFileUrl } from "@/lib/api";
+import { seniorFileUrl, duplicateCheckSenior } from "@/lib/api";
 import {
   BARANGAYS,
   INACTIVE_REASONS,
@@ -255,10 +256,13 @@ export function SeniorFormDialog({
   const [saving, setSaving] = useState(false);
   // Why the server refused to save, e.g. a possible duplicate; shown above the buttons.
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Real-time duplicate notice while inputting data; cleared as the user edits or clears fields.
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSubmitError(null);
+    setDuplicateWarning(null);
     setFamilyRows(parseFamilyRows(senior?.familyComposition ?? ""));
     setValidId(null);
     setBirthCertificate(null);
@@ -298,6 +302,38 @@ export function SeniorFormDialog({
           : EMPTY,
     );
   }, [open, senior, presidentBarangay]);
+
+  // Real-time duplicate check: as the user types first/last name or picks a birthdate,
+  // call /seniors/duplicate-check and show a non-blocking alert with the OSCA ID.
+  useEffect(() => {
+    if (!open) return;
+    const lastName = draft.lastName.trim();
+    const firstName = draft.firstName.trim();
+    if (!lastName && !firstName && !draft.birthdate) {
+      setDuplicateWarning(null);
+      return;
+    }
+    let cancelled = false;
+    duplicateCheckSenior({ first_name: firstName, last_name: lastName, birthdate: draft.birthdate ?? "" })
+      .then((res) => {
+        if (cancelled || !res.duplicate) {
+          setDuplicateWarning(null);
+          return;
+        }
+        setDuplicateWarning(
+          `Possible duplicate — a record is already registered (OSCA ID ${res.osca_id_number}). ${res.message ?? ""}`,
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.firstName, draft.lastName, draft.birthdate, open]);
+
+  // Clear the real-time warning when the form closes, so it doesn't stack on the next open.
+  useEffect(() => {
+    if (!open) setDuplicateWarning(null);
+  }, [open]);
 
   useEffect(() => {
     if (!validId) {
@@ -352,6 +388,34 @@ export function SeniorFormDialog({
   const associationAddressOptions = BARANGAYS.map(associationAddressFor);
   if (associationAddress && !associationAddressOptions.includes(associationAddress))
     associationAddressOptions.push(associationAddress);
+
+  // Real-time duplicate check: fires once all three matching fields have been entered,
+  // then asks the backend whether a senior with the same name and birthdate already exists.
+  // It only warns — it never blocks the rest of the form and matches the server's checks on submit.
+  useEffect(() => {
+    const firstName = draft.firstName.trim();
+    const lastName = draft.lastName.trim();
+    const birthdate = draft.birthdate;
+    if (!firstName || !lastName || !birthdate || !open) return;
+    let cancelled = false;
+    duplicateCheckSenior({ first_name: firstName, last_name: lastName, birthdate })
+      .then((res) => {
+        if (cancelled || !res.duplicate) return;
+        toast.warning(
+          `Possible duplicate — a senior with the same name and birthdate already exists (OSCA ${res.osca_id_number ?? ""}).`,
+        );
+      })
+      .catch(() => {
+        // The backend also enforces duplicates at submission time; nothing else to surface here.
+      });
+    const timer = window.setTimeout(() => {
+      cancelled = true;
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [draft.firstName, draft.lastName, draft.birthdate, open]);
 
   async function submit() {
     if (saving) return;
@@ -1112,6 +1176,14 @@ export function SeniorFormDialog({
           }}
         />
 
+        {duplicateWarning && (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-700"
+          >
+            {duplicateWarning}
+          </p>
+        )}
         {submitError && (
           <p
             role="alert"

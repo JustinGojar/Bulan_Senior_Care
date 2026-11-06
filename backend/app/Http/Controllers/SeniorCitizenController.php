@@ -472,6 +472,42 @@ class SeniorCitizenController extends Controller
         return response()->json($senior->load(['barangay', 'benefit']), 201);
     }
 
+    /**
+     * Real-time duplicate check used by the registration form while inputting data.
+     * Returns whether a senior with the same normalized name and birthdate exists
+     * (including archived records), so the frontend can warn before submit.
+     */
+    public function checkDuplicate(Request $request): JsonResponse
+    {
+        abort_if(in_array($request->user()->role, ['admin', 'head'], true), 403, 'Only Admins can run duplicate checks.');
+        $data = $request->validate([
+            'first_name' => ['nullable', 'string', 'max:100'],
+            'last_name' => ['nullable', 'string', 'max:100'],
+            'birthdate' => ['nullable', 'date'],
+        ]);
+        abort_if(! $data['last_name'] && ! $data['first_name'] && ! $data['birthdate'], 422, 'All three fields are required.');
+        $existing = $this->normalizeAndFind($data);
+        return response()->json([
+            'duplicate' => (bool) $existing,
+            'osca_id_number' => $existing?->osca_id_number ?? null,
+            'message' => $existing
+                ? "A senior with the same name and birthdate is already registered (OSCA ID {$existing->osca_id_number})."
+                : '',
+        ]);
+    }
+
+    private function normalizeAndFind(?array $data): ?SeniorCitizen
+    {
+        $normalize = static fn (?string $value): string => Str::lower(preg_replace('/\s+/', ' ', trim((string) $value)));
+        $matches = null;
+        $query = SeniorCitizen::withTrashed()
+            ->whereDate('birthdate', $data['birthdate'] ?? null);
+        $query->whereRaw('LOWER(TRIM(last_name)) = ?', [$normalize($data['last_name'] ?? '')])
+            ->whereRaw('LOWER(TRIM(first_name)) = ?', [$normalize($data['first_name'] ?? '')]);
+        $matches = $query->get(['id', 'osca_id_number']);
+        return $matches->isNotEmpty() ? $matches->first() : null;
+    }
+
     public function bulkStore(Request $request): JsonResponse
     {
         abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
