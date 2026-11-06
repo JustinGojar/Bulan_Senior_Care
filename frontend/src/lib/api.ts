@@ -451,28 +451,6 @@ export type ServerNotification = {
   sender?: { name: string; role: string };
 };
 
-/** Real-time duplicate check against name + birthdate (incl. archived records). */
-export type DuplicateCheckResult = {
-  duplicate: boolean;
-  osca_id_number: string | null;
-  message: string;
-};
-
-export function duplicateCheckSenior(data: {
-  first_name?: string | null;
-  last_name?: string | null;
-  birthdate?: string | null;
-}): Promise<DuplicateCheckResult> {
-  return apiFetch<DuplicateCheckResult>("/seniors/duplicate-check", {
-    method: "POST",
-    body: JSON.stringify({
-      first_name: data.first_name ?? "",
-      last_name: data.last_name ?? "",
-      birthdate: data.birthdate ?? "",
-    }),
-  });
-}
-
 /** The current sign-in's id, or null when signed out. */
 export function getSessionId() {
   try {

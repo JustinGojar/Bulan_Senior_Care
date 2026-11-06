@@ -56,6 +56,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::post('/admin/users/{user}/status', [UserController::class, 'updateStatus']);
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
     Route::get('/seniors/duplicate-check', [SeniorCitizenController::class, 'checkDuplicate']);
+    Route::apiResource('seniors', SeniorCitizenController::class);
     Route::get('/reports', [ReportController::class, 'index']);
     Route::post('/reports', [ReportController::class, 'store']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->whereNumber('report');
