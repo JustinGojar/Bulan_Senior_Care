@@ -57,6 +57,16 @@ class UserController extends Controller
             abort(422, 'A barangay is required for a Barangay President.');
         }
 
+        // A barangay may have only one president account.
+        // Email is already globally unique, so the only way this fires is a second
+        // president with a different email on the same barangay.
+        $existing = User::where('barangay_id', $data['barangay_id'])
+            ->where('role', 'president')
+            ->exists();
+        if ($existing) {
+            abort(422, 'A Barangay President has already been created for this barangay.');
+        }
+
         if ($data['role'] !== 'president') {
             $data['barangay_id'] = null;
         }

@@ -110,6 +110,28 @@ class UserAccountRulesTest extends TestCase
         Storage::disk('public')->assertMissing($second);
     }
 
+    /** BSCA-001: one president account per barangay via the admin user route. */
+    public function test_cannot_create_a_second_president_for_the_same_barangay(): void
+    {
+        $barangay = \App\Models\Barangay::create(['barangay_name' => 'Zone 1', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/admin/users', $this->account(['role' => 'president', 'barangay_id' => $barangay->id, 'email' => 'zone1@example.com']))
+            ->assertCreated();
+
+        // A second president with a different email for the same barangay is blocked.
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/admin/users', $this->account(['role' => 'president', 'barangay_id' => $barangay->id, 'email' => 'other@example.com']))
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $message) => str_starts_with($message, 'A Barangay President'));
+        $this->assertSame(1, \App\Models\User::where('barangay_id', $barangay->id)->where('role', 'president')->count());
+        // The first president still exists; email is still globally unique too.
+        $this->assertDatabaseHas('users', [
+            'email' => 'zone1@example.com',
+            'barangay_id' => $barangay->id,
+            'role' => 'president',
+        ]);
+    }
+
     public function test_mobile_number_must_be_eleven_digits_starting_with_09(): void
     {
         foreach (['0917123456', '091712345678', '+639171234567', '0817 123 4567', 'abc'] as $number) {
@@ -139,5 +161,39 @@ class UserAccountRulesTest extends TestCase
             'password_confirmation' => 'Secret#123',
             ...$overrides,
         ];
+    }
+
+    /** BSCA-002: the barangay-president creation route also gates on the same rule. */
+    public function test_creating_a_second_president_for_the_same_barangay_via_route_is_blocked(): void
+    {
+        $barangay = Barangay::create(['barangay_name' => 'Zone 4', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
+        $barangayId = $barangay->id;
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/admin/barangay-presidents', [
+                'first_name' => 'Jeanette',
+                'last_name' => 'Santos',
+                'email' => 'jeanette@example.com',
+                'contact_number' => '09187654321',
+                'birthdate' => '1960-01-01',
+                'barangay_id' => $barangayId,
+                'password' => 'Secret#123',
+                'password_confirmation' => 'Secret#123',
+            ])->assertCreated();
+
+        // A second president for the SAME barangay is blocked with a friendly message.
+        $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/admin/barangay-presidents', [
+                'first_name' => 'Maria',
+                'last_name' => 'Cruz',
+                'email' => 'maria@example.com',
+                'contact_number' => '09198765432',
+                'birthdate' => '1955-05-05',
+                'barangay_id' => $barangayId,
+                'password' => 'Secret#123',
+                'password_confirmation' => 'Secret#123',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $message) => str_starts_with($message, 'A Barangay President'));
+        $this->assertSame(1, \App\Models\User::where('barangay_id', $barangayId)->where('role', 'president')->count());
     }
 }

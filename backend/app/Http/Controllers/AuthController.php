@@ -77,6 +77,8 @@ class AuthController extends Controller
             'role' => 'president',
             'status' => 'active',
         ]);
+        // A barangay may have only one president account.
+        abort(422, 'A Barangay President has already been created for this barangay.');
         $user->syncRoles(['president']);
         $verificationSent = $user->trySendEmailVerification();
 
