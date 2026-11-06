@@ -64,6 +64,13 @@ class AuthController extends Controller
             'contact_number.regex' => 'Enter an 11-digit mobile number starting with 09.',
         ]);
 
+        // A barangay may have only one president account.
+        abort_if(
+            User::where('barangay_id', $data['barangay_id'])->where('role', 'president')->exists(),
+            422,
+            'A Barangay President has already been created for this barangay.'
+        );
+
         $user = User::create([
             'name' => trim(implode(' ', array_filter([$data['first_name'], $data['middle_name'] ?? null, $data['last_name']]))),
             'first_name' => $data['first_name'],
@@ -77,8 +84,6 @@ class AuthController extends Controller
             'role' => 'president',
             'status' => 'active',
         ]);
-        // A barangay may have only one president account.
-        abort(422, 'A Barangay President has already been created for this barangay.');
         $user->syncRoles(['president']);
         $verificationSent = $user->trySendEmailVerification();
 
