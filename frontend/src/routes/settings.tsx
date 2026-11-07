@@ -29,6 +29,7 @@ import {
   getStoredUser,
   restoreBackup,
   updateNotificationChannelSettings,
+  type NotificationChannelReadiness,
   type NotificationChannelSettings,
 } from "@/lib/api";
 import { BENEFIT_PROGRAMS } from "@/lib/osca-data";
@@ -149,7 +150,7 @@ function SettingsPage() {
       NOTIFS.map(([label, , enabled]) => [label, label === "Email advisories" ? false : enabled]),
     ),
   );
-  const [channelReadiness, setChannelReadiness] = useState<NotificationChannelSettings | null>(
+  const [channelReadiness, setChannelReadiness] = useState<NotificationChannelReadiness | null>(
     null,
   );
   const [savingNotification, setSavingNotification] = useState<string | null>(null);
