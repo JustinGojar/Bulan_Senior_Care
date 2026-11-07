@@ -21,6 +21,7 @@ class AgeThresholdNotificationTest extends TestCase
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         $otherBarangay = Barangay::create(['barangay_name' => 'Zone 2']);
+        $inactiveBarangay = Barangay::create(['barangay_name' => 'Zone 3']);
         /** @var User $localPresident */
         $localPresident = User::factory()->create([
             'role' => 'president',
@@ -37,7 +38,7 @@ class AgeThresholdNotificationTest extends TestCase
         $inactivePresident = User::factory()->create([
             'role' => 'president',
             'status' => 'inactive',
-            'barangay_id' => $barangay->id,
+            'barangay_id' => $inactiveBarangay->id,
         ]);
 
         $senior = SeniorCitizen::create([

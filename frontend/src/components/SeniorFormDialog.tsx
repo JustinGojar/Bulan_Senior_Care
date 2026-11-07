@@ -306,8 +306,8 @@ export function SeniorFormDialog({
   // Check only when all matching fields are present, and debounce typing to avoid excess requests.
   useEffect(() => {
     if (!open) return;
-    const lastName = draft.lastName.trim();
-    const firstName = draft.firstName.trim();
+    const lastName = draft.lastName?.trim() ?? "";
+    const firstName = draft.firstName?.trim() ?? "";
     const birthdate = draft.birthdate ?? "";
     if (!lastName || !firstName || !birthdate) {
       setDuplicateWarning(null);

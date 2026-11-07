@@ -69,6 +69,14 @@ export type DuplicateCheckResponse = {
   message?: string;
 };
 
+export type NotificationChannelSettings = {
+  email_advisories: boolean;
+};
+
+export type NotificationChannelReadiness = {
+  email_advisories: boolean;
+};
+
 /**
  * Real-time duplicate check for the senior registration form.
  * Calls GET /seniors/duplicate-check with the current first/last name and birthdate.
