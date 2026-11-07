@@ -57,14 +57,8 @@ class UserController extends Controller
             abort(422, 'A barangay is required for a Barangay President.');
         }
 
-        // A barangay may have only one president account.
-        // Email is already globally unique, so the only way this fires is a second
-        // president with a different email on the same barangay.
-        $existing = User::where('barangay_id', $data['barangay_id'])
-            ->where('role', 'president')
-            ->exists();
-        if ($existing) {
-            abort(422, 'A Barangay President has already been created for this barangay.');
+        if ($data['role'] === 'president') {
+            $this->ensurePresidentBarangayAvailable((int) $data['barangay_id']);
         }
 
         if ($data['role'] !== 'president') {
@@ -122,6 +116,9 @@ class UserController extends Controller
         if ($data['role'] === 'president' && empty($data['barangay_id'])) {
             abort(422, 'A barangay is required for a Barangay President.');
         }
+        if ($data['role'] === 'president') {
+            $this->ensurePresidentBarangayAvailable((int) $data['barangay_id'], $user);
+        }
         if ($data['role'] !== 'president') {
             $data['barangay_id'] = null;
         }
@@ -156,6 +153,16 @@ class UserController extends Controller
         }
 
         return response()->json($user->fresh()->setVisible(self::VISIBLE_FIELDS));
+    }
+
+    private function ensurePresidentBarangayAvailable(int $barangayId, ?User $except = null): void
+    {
+        $exists = User::where('barangay_id', $barangayId)
+            ->where('role', 'president')
+            ->when($except, fn ($query) => $query->where('id', '!=', $except->id))
+            ->exists();
+
+        abort_if($exists, 422, 'A Barangay President has already been created for this barangay.');
     }
 
     /** Deactivates or reactivates an account. A deactivated user is signed out and cannot log in. */

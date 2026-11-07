@@ -481,12 +481,11 @@ class SeniorCitizenController extends Controller
     {
         abort_if(in_array($request->user()->role, ['admin', 'head'], true), 403, 'Only Admins can run duplicate checks.');
         $data = $request->validate([
-            'first_name' => ['nullable', 'string', 'max:100'],
-            'last_name' => ['nullable', 'string', 'max:100'],
-            'birthdate' => ['nullable', 'date'],
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'birthdate' => ['required', 'date'],
         ]);
-        abort_if(! $data['last_name'] && ! $data['first_name'] && ! $data['birthdate'], 422, 'All three fields are required.');
-        $existing = $this->normalizeAndFind($data);
+        $existing = $this->findDuplicate($data);
         return response()->json([
             'duplicate' => (bool) $existing,
             'osca_id_number' => $existing?->osca_id_number ?? null,
@@ -496,16 +495,17 @@ class SeniorCitizenController extends Controller
         ]);
     }
 
-    private function normalizeAndFind(?array $data): ?SeniorCitizen
+    private function findDuplicate(array $data): ?SeniorCitizen
     {
         $normalize = static fn (?string $value): string => Str::lower(preg_replace('/\s+/', ' ', trim((string) $value)));
-        $matches = null;
-        $query = SeniorCitizen::withTrashed()
-            ->whereDate('birthdate', $data['birthdate'] ?? null);
-        $query->whereRaw('LOWER(TRIM(last_name)) = ?', [$normalize($data['last_name'] ?? '')])
-            ->whereRaw('LOWER(TRIM(first_name)) = ?', [$normalize($data['first_name'] ?? '')]);
-        $matches = $query->get(['id', 'osca_id_number']);
-        return $matches->isNotEmpty() ? $matches->first() : null;
+        $firstName = $normalize($data['first_name']);
+        $lastName = $normalize($data['last_name']);
+
+        return SeniorCitizen::withTrashed()
+            ->whereDate('birthdate', $data['birthdate'])
+            ->get(['id', 'osca_id_number', 'first_name', 'last_name', 'deleted_at'])
+            ->first(fn (SeniorCitizen $senior) => $normalize($senior->first_name) === $firstName
+                && $normalize($senior->last_name) === $lastName);
     }
 
     public function bulkStore(Request $request): JsonResponse
@@ -794,12 +794,7 @@ class SeniorCitizenController extends Controller
      */
     private function abortIfDuplicate(array $data): void
     {
-        $normalize = static fn (?string $value): string => Str::lower(preg_replace('/\s+/', ' ', trim((string) $value)));
-        $existing = SeniorCitizen::withTrashed()
-            ->whereDate('birthdate', $data['birthdate'])
-            ->whereRaw('LOWER(TRIM(last_name)) = ?', [$normalize($data['last_name'] ?? '')])
-            ->get(['id', 'osca_id_number', 'first_name', 'last_name', 'barangay_id', 'deleted_at'])
-            ->first(fn (SeniorCitizen $senior) => $normalize($senior->first_name) === $normalize($data['first_name'] ?? ''));
+        $existing = $this->findDuplicate($data);
         if (! $existing) {
             return;
         }

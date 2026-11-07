@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Barangay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -130,6 +131,32 @@ class UserAccountRulesTest extends TestCase
             'barangay_id' => $barangay->id,
             'role' => 'president',
         ]);
+    }
+
+    public function test_cannot_assign_a_second_president_to_a_barangay_when_editing_an_account(): void
+    {
+        $barangay = \App\Models\Barangay::create(['barangay_name' => 'Zone 2', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
+        $president = User::factory()->create([
+            'role' => 'president',
+            'status' => 'active',
+            'barangay_id' => $barangay->id,
+        ]);
+        $head = User::factory()->create(['role' => 'head', 'status' => 'active']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/admin/users/{$head->id}", [
+                'name' => $head->name,
+                'email' => $head->email,
+                'role' => 'president',
+                'status' => 'active',
+                'barangay_id' => $barangay->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', fn (string $message) => str_starts_with($message, 'A Barangay President'));
+
+        $this->assertSame('head', $head->fresh()->role);
+        $this->assertSame(1, User::where('barangay_id', $barangay->id)->where('role', 'president')->count());
+        $this->assertDatabaseHas('users', ['id' => $president->id, 'role' => 'president', 'barangay_id' => $barangay->id]);
     }
 
     public function test_mobile_number_must_be_eleven_digits_starting_with_09(): void
