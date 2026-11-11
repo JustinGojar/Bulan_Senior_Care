@@ -2,21 +2,17 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Bell,
-  Building2,
   CalendarDays,
   DatabaseBackup,
   Check,
   ChevronRight,
   ClipboardList,
-  FileText,
-  Gift,
   Hourglass,
   History,
   KeyRound,
   Loader2,
   Mail,
   ShieldCheck,
-  SlidersHorizontal,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -32,7 +28,6 @@ import {
   type NotificationChannelReadiness,
   type NotificationChannelSettings,
 } from "@/lib/api";
-import { BENEFIT_PROGRAMS } from "@/lib/osca-data";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -40,13 +35,12 @@ export const Route = createFileRoute("/settings")({
       { title: "Settings — Bulan SeniorCare" },
       {
         name: "description",
-        content:
-          "Configure roles and access levels, notification channels, and age threshold rules for the OSCA Bulan portal.",
+        content: "Manage notifications, backups, and account security for the OSCA Bulan portal.",
       },
       { property: "og:title", content: "Settings — Bulan SeniorCare" },
       {
         property: "og:description",
-        content: "Access control, notifications, and age threshold configuration for OSCA Bulan.",
+        content: "Manage notifications, backups, and account security for OSCA Bulan.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -54,15 +48,6 @@ export const Route = createFileRoute("/settings")({
   }),
   component: SettingsPage,
 });
-
-const ROLES = [
-  ["OSCA Administrator", "Full access to records, benefits, analytics, and user management."],
-  ["OSCA Head", "Reviews eligibility, approves releases, and views all analytics."],
-  [
-    "BSCA / Barangay Senior Citizen Affairs",
-    "Encodes and views records for their own barangay only.",
-  ],
-];
 
 const NOTIFS = [
   ["Email advisories", "Distribution schedules and validation reminders", true],
@@ -98,7 +83,7 @@ function SettingRow({
   icon: typeof ShieldCheck;
   title: string;
   description: string;
-  to?: "/users" | "/age-threshold" | "/benefits" | "/profile" | "/audit-logs" | "/seniors";
+  to?: "/profile" | "/audit-logs";
 }) {
   const destination =
     to ??
@@ -106,19 +91,11 @@ function SettingRow({
       ? "/profile"
       : title === "Audit logs"
         ? "/audit-logs"
-        : title === "Barangay management"
-          ? "/users"
-          : title === "Senior record settings"
-            ? "/seniors"
-            : undefined);
+        : undefined);
   const rowDescription =
     title === "Security settings"
       ? "Change your password and manage account security"
-      : title === "Barangay management"
-        ? "Manage barangay president accounts and their assigned scopes"
-        : title === "Senior record settings"
-          ? "Search, register, and manage senior citizen records"
-          : description;
+      : description;
   const content = (
     <>
       <SettingIcon icon={icon} />
@@ -288,32 +265,10 @@ function SettingsPage() {
   return (
     <AppShell
       title="Settings"
-      subtitle="Access control, notifications, and age threshold rules"
+      subtitle="Notifications, backups, and privacy & security"
       breadcrumb={["Dashboard", "Settings"]}
     >
       <div className="mx-auto max-w-5xl space-y-6">
-        <section>
-          <SettingsGroupTitle>System</SettingsGroupTitle>
-          <div className="space-y-1">
-            <SettingRow
-              icon={ShieldCheck}
-              title="User roles & access control"
-              description={ROLES.map(([role]) => role).join(" · ")}
-              to="/users"
-            />
-            <SettingRow
-              icon={Building2}
-              title="Barangay management"
-              description="Manage barangay scopes and registered senior coverage"
-            />
-            <SettingRow
-              icon={FileText}
-              title="Senior record settings"
-              description="Required fields, documents, and validation rules"
-            />
-          </div>
-        </section>
-
         <section>
           <SettingsGroupTitle>Notifications</SettingsGroupTitle>
           <div className="space-y-1">
@@ -363,26 +318,6 @@ function SettingsPage() {
               <AuthAlert tone="error">{notificationError}</AuthAlert>
             </div>
           )}
-        </section>
-
-        <section>
-          <SettingsGroupTitle>Registry & benefits</SettingsGroupTitle>
-          <div className="space-y-1">
-            <SettingRow
-              icon={SlidersHorizontal}
-              title="Age threshold rules"
-              description={BENEFIT_PROGRAMS.filter((program) => program.type !== "social_pension")
-                .map((program) => `${program.name}: ${program.minAge}+`)
-                .join(" · ")}
-              to="/age-threshold"
-            />
-            <SettingRow
-              icon={Gift}
-              title="Benefit & assistance settings"
-              description="Programs, amounts, eligibility, and release frequency"
-              to="/benefits"
-            />
-          </div>
         </section>
 
         {isAdmin && (
