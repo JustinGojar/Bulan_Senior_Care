@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./motion.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -223,13 +224,14 @@
 
   button:not(:disabled) {
     transition:
-      transform 160ms ease,
-      box-shadow 160ms ease,
-      filter 160ms ease;
+      scale var(--motion-press) var(--motion-move),
+      background-color var(--motion-enter) var(--motion-move),
+      color var(--motion-enter) var(--motion-move),
+      box-shadow var(--motion-enter) var(--motion-move),
+      filter var(--motion-enter) var(--motion-move);
   }
 
   button:not(:disabled):hover {
-    transform: translateY(-1px);
     filter: brightness(1.04);
     box-shadow: 0 6px 16px oklch(0.2 0.03 258 / 14%);
   }
@@ -331,7 +333,7 @@
 .page-enter {
   /* "backwards" only: a transform left on after the animation would turn this
      wrapper into the containing block for fixed overlays inside the page. */
-  animation: page-enter 200ms ease-out backwards;
+  animation: page-enter var(--motion-enter) var(--motion-out) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
