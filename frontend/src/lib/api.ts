@@ -152,6 +152,7 @@ export type ApiUser = {
   address?: string | null;
   profile_photo_path?: string | null;
   email_verified_at?: string | null;
+  must_change_password?: boolean;
   roles?: Array<{ name: string }>;
   /** What this account's role may do, as the Admin set it in Settings > Roles & permissions. */
   granted_permissions?: string[];
@@ -164,6 +165,7 @@ export type ManagedUser = ApiUser & {
   birthdate?: string | null;
   barangay_id?: number | null;
   status: "active" | "inactive";
+  last_login?: string | null;
 };
 
 export type ApiSenior = {
@@ -922,7 +924,7 @@ export async function createManagedUser(data: {
   contactNumber: string;
   birthdate: string;
   barangayId?: number | null;
-  role: "admin" | "head" | "president";
+  role: "admin" | "head" | "president" | "encoder" | "viewer";
   status: "active" | "inactive";
   password: string;
   passwordConfirmation: string;
@@ -955,8 +957,29 @@ export function logout() {
   });
 }
 
-export function getManagedUsers() {
-  return apiFetch<ManagedUser[]>("/admin/users");
+export function getManagedUsers(
+  filters: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    role?: string;
+    status?: string;
+  } = {},
+) {
+  const query = new URLSearchParams({
+    per_page: String(filters.per_page ?? 25),
+    page: String(filters.page ?? 1),
+  });
+  if (filters.search) query.set("search", filters.search);
+  if (filters.role) query.set("role", filters.role);
+  if (
+    filters.status === "active" ||
+    filters.status === "inactive" ||
+    filters.status === "pending"
+  ) {
+    query.set("status", filters.status);
+  }
+  return apiFetch<PaginatedResponse<ManagedUser>>(`/admin/users?${query}`);
 }
 
 export function updateManagedUser(
@@ -975,7 +998,7 @@ export function updateManagedUser(
   return apiFetch<ManagedUser>(`/admin/users/${id}`, { method: "POST", body });
 }
 
-export type Permission =
+export type LegacyPermission =
   | "export reports"
   | "approve registrations"
   | "manage benefit requests"
@@ -983,6 +1006,30 @@ export type Permission =
   | "manage announcements"
   | "register seniors"
   | "request benefits";
+
+export type SystemPermission =
+  | "seniors.view"
+  | "seniors.create"
+  | "seniors.update"
+  | "seniors.delete"
+  | "seniors.export"
+  | "barangays.view"
+  | "barangays.manage"
+  | "lookups.view"
+  | "lookups.manage"
+  | "users.view"
+  | "users.create"
+  | "users.update"
+  | "users.deactivate"
+  | "users.reset-password"
+  | "roles.view"
+  | "roles.manage"
+  | "audit-logs.view"
+  | "audit-logs.export"
+  | "security-settings.view"
+  | "security-settings.manage";
+
+export type Permission = LegacyPermission | SystemPermission;
 
 /**
  * Whether the signed-in account may do this. Only hides actions; the API enforces it too.
@@ -996,18 +1043,44 @@ export function hasPermission(permission: Permission) {
 }
 
 export type RolePermissionsState = {
-  permissions: Array<{ key: Permission; label: string; description: string; roles: string[] }>;
-  roles: Record<"head" | "president", Permission[]>;
+  permissions: Array<{
+    key: LegacyPermission;
+    label: string;
+    description: string;
+    roles: string[];
+  }>;
+  roles: Record<"head" | "president", LegacyPermission[]>;
 };
 
 export function getRolePermissions() {
   return apiFetch<RolePermissionsState>("/admin/role-permissions", { cache: "no-store" });
 }
 
-export function updateRolePermissions(role: "head" | "president", permissions: Permission[]) {
+export function updateRolePermissions(role: "head" | "president", permissions: LegacyPermission[]) {
   return apiFetch<RolePermissionsState>(`/admin/role-permissions/${role}`, {
     method: "PUT",
     body: JSON.stringify({ permissions }),
+  });
+}
+
+export type SystemRolePermissionsState = {
+  permissions: Array<{ key: SystemPermission; label: string; module: string }>;
+  roles: Record<
+    "admin" | "head" | "encoder" | "viewer" | "president",
+    { label: string; permissions: SystemPermission[]; locked: boolean }
+  >;
+};
+
+export function getSystemRolePermissions() {
+  return apiFetch<SystemRolePermissionsState>("/admin/roles", { cache: "no-store" });
+}
+
+export function updateSystemRolePermissions(
+  roles: Partial<Record<"head" | "encoder" | "viewer" | "president", SystemPermission[]>>,
+) {
+  return apiFetch<SystemRolePermissionsState>("/admin/roles/permissions", {
+    method: "PUT",
+    body: JSON.stringify({ roles }),
   });
 }
 
@@ -1017,6 +1090,16 @@ export function setManagedUserStatus(id: number, status: "active" | "inactive") 
     method: "POST",
     body: JSON.stringify({ status }),
   });
+}
+
+export function resetManagedUserPassword(id: number) {
+  return apiFetch<{ message: string; temporary_password: string }>(
+    `/admin/users/${id}/reset-password`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
 }
 
 export function deleteManagedUser(id: number) {

@@ -46,13 +46,14 @@ class BackupAndDataPrivacyTest extends TestCase
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/users')->assertOk();
 
-        foreach ($response->json() as $user) {
+        foreach ($response->json('data') as $user) {
             $this->assertEqualsCanonicalizing(
-                ['id', 'name', 'first_name', 'middle_name', 'last_name', 'email', 'role', 'status', 'barangay_id', 'contact_number', 'birthdate', 'profile_photo_path', 'email_verified_at'],
+                ['id', 'name', 'first_name', 'middle_name', 'last_name', 'email', 'role', 'status', 'barangay_id', 'contact_number', 'birthdate', 'profile_photo_path', 'email_verified_at', 'last_login', 'must_change_password'],
                 array_keys($user),
             );
+            $this->assertArrayNotHasKey('password', $user);
+            $this->assertArrayNotHasKey('remember_token', $user);
         }
         $this->assertStringNotContainsString('secret-remember-token', $response->getContent());
-        $this->assertStringNotContainsString('password', $response->getContent());
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Support\RolePermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class SystemDataController extends Controller
 {
     public function auditLogs(Request $request): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        RolePermissions::authorizeSystem($request->user(), 'audit-logs.view');
         $perPage = min(100, max(10, $request->integer('per_page', 25)));
         $filters = $request->validate([
             'user_id' => ['nullable', 'integer'],
@@ -28,10 +29,5 @@ class SystemDataController extends Controller
             ->latest('created_at')
             ->latest('id')
             ->paginate($perPage));
-    }
-
-    private function authorizeAdmin(Request $request): void
-    {
-        abort_unless($request->user()->role === 'admin', 403, 'Only Admin can access system data tools.');
     }
 }

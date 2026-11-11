@@ -15,14 +15,13 @@ use Spatie\Permission\Models\Role;
  */
 class BscaPresidentSeeder extends Seeder
 {
-    /** Temporary password; presidents should change it after their first sign-in. */
-    private const TEMPORARY_PASSWORD = 'password';
-
     public function run(): void
     {
         Role::findOrCreate('president', 'web');
 
         $created = 0;
+        $temporaryPassword = env('OSCA_BSCA_DEFAULT_PASSWORD')
+            ?: (env('OSCA_DEMO_PASSWORD') ?: Str::password(20));
         foreach (DatabaseSeeder::BARANGAYS as $name) {
             $barangay = Barangay::firstOrCreate(['barangay_name' => $name]);
             $email = 'bsca.'.Str::slug($name).'@osca-bulan.gov.ph';
@@ -40,11 +39,12 @@ class BscaPresidentSeeder extends Seeder
                 'first_name' => 'BSCA',
                 'last_name' => $name,
                 'email' => $email,
-                'password' => self::TEMPORARY_PASSWORD,
+                'password' => $temporaryPassword,
                 'role' => 'president',
                 'barangay_id' => $barangay->id,
                 'address' => "{$name}, Bulan, Sorsogon",
                 'status' => 'active',
+                'must_change_password' => true,
             ]);
             // The office provisions these accounts, so they skip email verification.
             $president->forceFill(['email_verified_at' => now()])->save();
@@ -53,5 +53,8 @@ class BscaPresidentSeeder extends Seeder
         }
 
         $this->command?->info("Created {$created} BSCA president accounts.");
+        if ($created > 0) {
+            $this->command?->info("New BSCA accounts' temporary password: {$temporaryPassword}");
+        }
     }
 }

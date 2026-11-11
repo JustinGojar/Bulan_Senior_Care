@@ -139,10 +139,19 @@ class SeniorBulkUploadTest extends TestCase
         $response->assertJsonPath('failed.0.message', "The birthdate field must be a date before or equal to {$cutoffDate}.");
     }
 
-    public function test_admin_cannot_register_or_bulk_import_seniors(): void
+    public function test_super_admin_can_register_and_bulk_import_seniors(): void
     {
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
+        Benefit::create([
+            'benefit_name' => 'Social Pension',
+            'benefit_type' => 'social_pension',
+            'min_age' => 60,
+            'amount' => 3000,
+            'funding_source' => 'national',
+            'schedule' => 'quarterly',
+            'status' => 'active',
+        ]);
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/seniors', [
             'privacy_consent' => true,
@@ -154,21 +163,21 @@ class SeniorBulkUploadTest extends TestCase
             'contact_number' => '09123456789',
             'barangay' => 'Bulusan',
             'benefit' => 'Social Pension',
-        ])->assertForbidden();
+        ])->assertCreated();
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/seniors/bulk', [
             'records' => [[
                 'first_name' => 'Maria',
                 'last_name' => 'Santos',
-                'birthdate' => '1960-01-01',
+                'birthdate' => '1960-02-02',
                 'sex' => 'female',
                 'contact_number' => '09123456789',
                 'barangay' => 'Bulusan',
                 'benefit' => 'Social Pension',
             ]],
-        ])->assertForbidden();
+        ])->assertCreated();
 
-        $this->assertSame(0, SeniorCitizen::count());
+        $this->assertSame(2, SeniorCitizen::count());
     }
 
     public function test_admin_can_create_non_president_accounts_without_barangay_assignment(): void
