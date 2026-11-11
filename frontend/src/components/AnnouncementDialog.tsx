@@ -233,10 +233,15 @@ export function AnnouncementDialog({
           onClick={(event) => event.stopPropagation()}
           className="surface-card max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-border/60 p-0 shadow-2xl"
         >
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Announcement
-            </p>
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-card px-6 py-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Announcement
+              </p>
+              <h2 id="announcement-preview-title" className="mt-1 text-lg font-bold break-words">
+                {editing ? "Edit announcement" : announcement.title}
+              </h2>
+            </div>
             <div className="flex items-center gap-2">
               {canManage && !editing && (
                 <button
@@ -280,9 +285,6 @@ export function AnnouncementDialog({
           <div className="p-6">
             {editing ? (
               <form onSubmit={handleSaveEdit} className="space-y-4">
-                <h2 id="announcement-preview-title" className="text-lg font-bold">
-                  Edit announcement
-                </h2>
                 <div>
                   <label
                     htmlFor="announcement-edit-title"
@@ -364,9 +366,6 @@ export function AnnouncementDialog({
               </form>
             ) : (
               <>
-                <h2 id="announcement-preview-title" className="text-2xl font-extrabold">
-                  {announcement.title}
-                </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {new Date(announcement.published_at).toLocaleDateString()}
                 </p>

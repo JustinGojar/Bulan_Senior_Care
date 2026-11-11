@@ -2,6 +2,7 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "@/lib/utils";
+import { ModalLayout } from "@/components/ui/modal-layout";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/design-kit";
 
 const AlertDialog = AlertDialogPrimitive.Root;
@@ -28,7 +29,7 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
@@ -36,9 +37,12 @@ const AlertDialogContent = React.forwardRef<
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[calc(var(--radius)+8px)] border border-border/60 bg-card p-6 text-card-foreground shadow-[var(--shadow-card)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
+        "flex flex-col overflow-hidden",
       )}
       {...props}
-    />
+    >
+      <ModalLayout headerType={AlertDialogHeader}>{children}</ModalLayout>
+    </AlertDialogPrimitive.Content>
   </AlertDialogPortal>
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;
