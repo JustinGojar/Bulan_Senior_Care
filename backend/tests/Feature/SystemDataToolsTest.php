@@ -37,10 +37,11 @@ class SystemDataToolsTest extends TestCase
     public function test_audit_log_end_date_can_be_used_without_a_start_date(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        AuditLog::create([
+        $log = AuditLog::create([
             'actor_id' => $admin->id, 'action' => 'created', 'target_type' => User::class,
-            'target_id' => $admin->id, 'created_at' => '2026-01-15 12:00:00',
+            'target_id' => $admin->id,
         ]);
+        $log->forceFill(['created_at' => '2026-01-15 12:00:00'])->save();
 
         $this->actingAs($admin, 'sanctum')->getJson('/api/audit-logs?date_to=2026-01-31')
             ->assertOk()->assertJsonPath('total', 1);

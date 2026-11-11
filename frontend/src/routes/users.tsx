@@ -262,13 +262,14 @@ function UserManagement() {
   }
 
   function openEditForm(user: ManagedUser) {
+    resetForm();
     setEditingUser(user);
     setFirstName(user.first_name ?? "");
     setMiddleName(user.middle_name ?? "");
     setLastName(user.last_name ?? "");
     setEmail(user.email);
     setContactNumber(toLocalMobile(user.contact_number ?? ""));
-    setBirthdate(user.birthdate ?? "");
+    setBirthdate(user.birthdate?.slice(0, 10) ?? "");
     setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
     setRole(user.role as typeof role);
     setStatus(user.status);

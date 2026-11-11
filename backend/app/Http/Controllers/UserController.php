@@ -147,8 +147,8 @@ class UserController extends Controller
             PhotoBackup::delete($oldPhotoPath);
         }
         $user->syncRoles([$data['role']]);
-        if (isset($data['password'])) {
-            // A password set by an admin signs the user out everywhere.
+        if (isset($data['password']) || $user->status === 'inactive') {
+            // Revoke immediately, so reactivating an account cannot revive an old session.
             $user->tokens()->delete();
         }
 

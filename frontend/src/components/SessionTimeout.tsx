@@ -20,6 +20,7 @@ import {
   setSessionNotice,
 } from "@/lib/api";
 import { hasUnsavedChanges, trackUnsavedChanges } from "@/lib/unsaved-changes";
+import { readLocalValue, writeLocalValue } from "@/lib/browser-storage";
 
 // Shared through localStorage so activity in any open tab keeps every tab signed in.
 const ACTIVITY_KEY = "bulan-last-activity";
@@ -34,7 +35,7 @@ type Warning = { kind: "idle" | "expiry"; secondsLeft: number; unsaved: boolean 
 
 function readLastActivity() {
   try {
-    return Number(localStorage.getItem(ACTIVITY_KEY)) || 0;
+    return Number(readLocalValue(ACTIVITY_KEY)) || 0;
   } catch {
     return 0;
   }
@@ -42,7 +43,7 @@ function readLastActivity() {
 
 function writeLastActivity(time = Date.now()) {
   try {
-    localStorage.setItem(ACTIVITY_KEY, String(time));
+    writeLocalValue(ACTIVITY_KEY, String(time));
   } catch {
     // Without storage, other tabs simply don't see this tab's activity.
   }

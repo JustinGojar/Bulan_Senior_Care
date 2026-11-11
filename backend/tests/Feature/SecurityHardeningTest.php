@@ -25,7 +25,7 @@ class SecurityHardeningTest extends TestCase
         ])->assertOk();
         $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $user->id]);
 
-        $this->patchJson("/api/admin/users/{$user->id}/status", ['status' => 'active'])->assertOk();
+        $this->postJson("/api/admin/users/{$user->id}/status", ['status' => 'active'])->assertOk();
         $this->assertSame(0, $user->tokens()->count());
     }
 
