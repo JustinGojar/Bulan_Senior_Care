@@ -549,7 +549,7 @@ function Dashboard() {
             onSubmit={handleCreateAnnouncement}
             className="surface-card max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-border/60 p-0 shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-border px-6 py-5">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-6 py-5">
               <div className="flex items-center gap-3">
                 <span className="bg-navy grid h-10 w-10 place-items-center rounded-lg">
                   <Megaphone className="h-4 w-4 text-gold" />

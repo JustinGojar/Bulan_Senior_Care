@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ModalLayout } from "@/components/ui/modal-layout";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -40,10 +41,11 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[calc(var(--radius)+8px)] border border-border/60 bg-card p-6 text-card-foreground shadow-[var(--shadow-card)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
+        "flex flex-col overflow-hidden",
       )}
       {...props}
     >
-      {children}
+      <ModalLayout headerType={DialogHeader}>{children}</ModalLayout>
       <DialogPrimitive.Close className="absolute top-4 right-4 grid h-8 w-8 cursor-pointer place-items-center rounded-lg bg-muted text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/20 disabled:pointer-events-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
