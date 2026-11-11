@@ -1,3 +1,6 @@
+import { readLocalValue, removeLocalValue, writeLocalValue } from "./browser-storage.ts";
+import { isRejectedSession } from "./auth-response.ts";
+
 // Same origin in every environment (the dev server proxies /api), so the API's
 // SameSite=Strict session cookie is always sent.
 const API_URL = (
@@ -464,7 +467,7 @@ export type ServerNotification = {
 /** The current sign-in's id, or null when signed out. */
 export function getSessionId() {
   try {
-    return localStorage.getItem(SESSION_ID_KEY);
+    return readLocalValue(SESSION_ID_KEY);
   } catch {
     return null;
   }
@@ -473,9 +476,9 @@ export function getSessionId() {
 function startSession() {
   clearResponseCache();
   currentUser = null;
-  localStorage.removeItem(SESSION_KEY);
-  localStorage.removeItem(SESSION_NOTICE_KEY);
-  localStorage.setItem(SESSION_ID_KEY, crypto.randomUUID());
+  removeLocalValue(SESSION_KEY);
+  removeLocalValue(SESSION_NOTICE_KEY);
+  writeLocalValue(SESSION_ID_KEY, crypto.randomUUID());
 }
 
 export function clearSession() {
@@ -483,8 +486,8 @@ export function clearSession() {
   currentUser = null;
   removeLegacyStorage();
   try {
-    localStorage.removeItem(SESSION_ID_KEY);
-    localStorage.removeItem(SESSION_KEY);
+    removeLocalValue(SESSION_ID_KEY);
+    removeLocalValue(SESSION_KEY);
   } catch {
     // Nothing stored.
   }
@@ -505,12 +508,12 @@ function setSessionLimits(limits: ServerSessionLimits | undefined) {
     idleTimeoutMinutes: limits.idle_timeout_minutes,
     expiresAt: limits.expires_in_seconds ? Date.now() + limits.expires_in_seconds * 1000 : null,
   };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(stored));
+  writeLocalValue(SESSION_KEY, JSON.stringify(stored));
 }
 
 export function getSessionLimits(): SessionLimits {
   try {
-    const value = localStorage.getItem(SESSION_KEY);
+    const value = readLocalValue(SESSION_KEY);
     if (value) return JSON.parse(value) as SessionLimits;
   } catch {
     // Fall back to the defaults below.
@@ -521,7 +524,7 @@ export function getSessionLimits(): SessionLimits {
 /** Remembers why the session ended, for the login page to explain. */
 export function setSessionNotice(message: string) {
   try {
-    localStorage.setItem(SESSION_NOTICE_KEY, message);
+    writeLocalValue(SESSION_NOTICE_KEY, message);
   } catch {
     // The login page just shows no explanation.
   }
@@ -541,8 +544,8 @@ export function noteSessionEnded(serverMessage?: string | null) {
 /** Returns the reason the last session ended, once. */
 export function takeSessionNotice() {
   try {
-    const message = localStorage.getItem(SESSION_NOTICE_KEY);
-    localStorage.removeItem(SESSION_NOTICE_KEY);
+    const message = readLocalValue(SESSION_NOTICE_KEY);
+    removeLocalValue(SESSION_NOTICE_KEY);
     return message;
   } catch {
     return null;
@@ -669,10 +672,7 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   if (!response.ok) {
     // A 401 for a session that was already replaced or ended must not end the current one.
     // The server also ends the session of an account whose email is no longer verified.
-    const sessionRejected =
-      response.status === 401 ||
-      (response.status === 403 &&
-        (body as { email_unverified?: boolean } | null)?.email_unverified === true);
+    const sessionRejected = isRejectedSession(response.status, body);
     if (sessionRejected && path !== "/login" && session && getSessionId() === session) {
       noteSessionEnded((body as { message?: string } | null)?.message);
       clearSession();

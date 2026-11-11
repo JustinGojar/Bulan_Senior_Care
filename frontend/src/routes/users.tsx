@@ -262,13 +262,14 @@ function UserManagement() {
   }
 
   function openEditForm(user: ManagedUser) {
+    resetForm();
     setEditingUser(user);
     setFirstName(user.first_name ?? "");
     setMiddleName(user.middle_name ?? "");
     setLastName(user.last_name ?? "");
     setEmail(user.email);
     setContactNumber(toLocalMobile(user.contact_number ?? ""));
-    setBirthdate(user.birthdate ?? "");
+    setBirthdate(user.birthdate?.slice(0, 10) ?? "");
     setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
     setRole(user.role as typeof role);
     setStatus(user.status);
@@ -456,7 +457,11 @@ function UserManagement() {
             label="Create user account"
             variant="primary"
             icon={<UserPlus className="h-5 w-5" />}
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => {
+              resetForm();
+              setError(null);
+              setShowCreateForm(true);
+            }}
           />
         ) : undefined
       }

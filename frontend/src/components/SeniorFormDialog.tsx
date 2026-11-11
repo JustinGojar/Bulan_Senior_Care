@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { localDateInputValue } from "@/lib/local-date";
 import {
   Dialog,
   DialogContent,
@@ -876,7 +877,7 @@ export function SeniorFormDialog({
                           type="date"
                           value={draft.dateOfDeath ?? ""}
                           min={draft.birthdate}
-                          max={new Date().toISOString().slice(0, 10)}
+                          max={localDateInputValue()}
                           onChange={(event) => {
                             clearFieldById("senior-date-of-death");
                             set("dateOfDeath", event.target.value);

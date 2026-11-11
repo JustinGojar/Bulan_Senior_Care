@@ -1,27 +1,12 @@
 import type { LocationRewrite } from "@tanstack/react-router";
 import { getStoredUser } from "@/lib/api";
+import { PUBLIC_PATHS, ROLE_PREFIXES } from "./route-access.ts";
+export { PUBLIC_PATHS } from "./route-access.ts";
 
 // The address bar shows account pages under the signed-in role, e.g. /admin/dashboard,
 // /head/seniors or /bsca/benefits. Routes stay unprefixed inside the app: the router strips
 // the prefix from the URL it reads and adds it back to every URL it writes.
-const ROLE_PREFIXES: Record<string, string> = {
-  admin: "admin",
-  head: "head",
-  president: "bsca",
-};
 const KNOWN_PREFIXES = new Set(Object.values(ROLE_PREFIXES));
-
-/** Pages anyone can open; they never carry a role prefix. */
-export const PUBLIC_PATHS = new Set([
-  "/",
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/privacy-policy",
-  "/terms-of-service",
-  "/refund-policy",
-  "/cookie-policy",
-]);
 
 export function rolePrefixFor(role: string | null | undefined) {
   return role ? ROLE_PREFIXES[role.toLowerCase()] : undefined;

@@ -14,6 +14,21 @@ class SecurityHardeningTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_deactivation_via_account_edit_revokes_tokens_before_reactivation(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        $user = User::factory()->create(['role' => 'head', 'status' => 'active']);
+        $user->createToken('old-session');
+
+        $this->actingAs($admin, 'sanctum')->putJson("/api/admin/users/{$user->id}", [
+            'name' => $user->name, 'email' => $user->email, 'role' => 'head', 'status' => 'inactive',
+        ])->assertOk();
+        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $user->id]);
+
+        $this->postJson("/api/admin/users/{$user->id}/status", ['status' => 'active'])->assertOk();
+        $this->assertSame(0, $user->tokens()->count());
+    }
+
     public function test_deactivating_a_user_revokes_their_existing_token(): void
     {
         /** @var User $user */
