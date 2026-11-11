@@ -56,6 +56,20 @@ const EMPTY: SeniorDraft = {
 
 const CIVIL_STATUSES = ["Single", "Married", "Widowed", "Separated", "Annulled"];
 
+const EDUCATIONAL_ATTAINMENTS = [
+  "No formal education",
+  "Elementary undergraduate",
+  "Elementary graduate",
+  "High school undergraduate",
+  "High school graduate",
+  "Senior high school undergraduate",
+  "Senior high school graduate",
+  "Vocational / Technical graduate",
+  "College undergraduate",
+  "College graduate",
+  "Postgraduate",
+];
+
 const ASSOCIATION_POSITIONS = ["President", "Secretary", "Treasurer", "PIO", "Auditor", "Member"];
 
 const RELATIONSHIPS = [
@@ -709,13 +723,27 @@ export function SeniorFormDialog({
             <div className="mt-4 space-y-4">
               <div>
                 <Label htmlFor="senior-educational-attainment">Educational attainment *</Label>
-                <Input
-                  id="senior-educational-attainment"
+                <Select
                   value={draft.educationalAttainment ?? ""}
-                  onChange={(event) => set("educationalAttainment", event.target.value)}
-                  placeholder="Highest educational attainment"
-                  className="mt-1.5"
-                />
+                  onValueChange={(value) => set("educationalAttainment", value)}
+                >
+                  <SelectTrigger id="senior-educational-attainment" className="mt-1.5 w-full">
+                    <SelectValue placeholder="Select highest educational attainment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {draft.educationalAttainment &&
+                      !EDUCATIONAL_ATTAINMENTS.includes(draft.educationalAttainment) && (
+                        <SelectItem value={draft.educationalAttainment}>
+                          {draft.educationalAttainment}
+                        </SelectItem>
+                      )}
+                    {EDUCATIONAL_ATTAINMENTS.map((attainment) => (
+                      <SelectItem key={attainment} value={attainment}>
+                        {attainment}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="senior-other-skills">Other skills *</Label>
