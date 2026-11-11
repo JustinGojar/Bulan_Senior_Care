@@ -457,7 +457,11 @@ function UserManagement() {
             label="Create user account"
             variant="primary"
             icon={<UserPlus className="h-5 w-5" />}
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => {
+              resetForm();
+              setError(null);
+              setShowCreateForm(true);
+            }}
           />
         ) : undefined
       }

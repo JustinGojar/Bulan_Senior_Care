@@ -1,3 +1,6 @@
+import { readLocalValue, removeLocalValue, writeLocalValue } from "./browser-storage.ts";
+import { isRejectedSession } from "./auth-response.ts";
+
 // Same origin in every environment (the dev server proxies /api), so the API's
 // SameSite=Strict session cookie is always sent.
 const API_URL = (
@@ -669,10 +672,7 @@ async function requestJson<T>(path: string, options: RequestInit = {}): Promise<
   if (!response.ok) {
     // A 401 for a session that was already replaced or ended must not end the current one.
     // The server also ends the session of an account whose email is no longer verified.
-    const sessionRejected =
-      response.status === 401 ||
-      (response.status === 403 &&
-        (body as { email_unverified?: boolean } | null)?.email_unverified === true);
+    const sessionRejected = isRejectedSession(response.status, body);
     if (sessionRejected && path !== "/login" && session && getSessionId() === session) {
       noteSessionEnded((body as { message?: string } | null)?.message);
       clearSession();
@@ -1377,5 +1377,3 @@ export async function updateNotificationChannelSettings(
 }
 
 export { API_URL };
-import { readLocalValue, removeLocalValue, writeLocalValue } from "./browser-storage.ts";
-

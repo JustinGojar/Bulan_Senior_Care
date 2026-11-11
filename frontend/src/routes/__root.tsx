@@ -20,6 +20,8 @@ import {
   type ApiUser,
 } from "@/lib/api";
 import { PUBLIC_PATHS, rolePrefixFor, rolePrefixOf } from "@/lib/role-path";
+import { hasSystemPermission } from "@/lib/route-access";
+import { isRejectedSession } from "@/lib/auth-response";
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/seo";
 import { THEME_KEY } from "@/lib/theme";
 // Registers the service worker and captures Chrome's install prompt for the "Install app" button.
@@ -66,7 +68,9 @@ async function requestCurrentUser() {
     const error = new Error(
       validation ?? errorBody?.message ?? `Request failed (${response.status})`,
     );
-    Object.assign(error, { status: response.status });
+    Object.assign(error, {
+      status: isRejectedSession(response.status, body) ? 401 : response.status,
+    });
     throw error;
   }
   // The body can be missing when the request is cancelled mid-response (e.g. a page reload).
@@ -169,7 +173,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     if (typeof window === "undefined") return;
 
     const roleRequirements: Record<string, string[]> = {
-      "/users": ["admin"],
       "/eligibility": ["admin", "head"],
       "/reports": ["admin", "head", "president"],
       "/analytics": ["admin", "head", "president"],
@@ -218,6 +221,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
     if (location.pathname === "/login") {
       throw redirect({ to: "/dashboard" });
+    }
+
+    if (!isPublic && user.must_change_password && location.pathname !== "/profile") {
+      throw redirect({ to: "/profile" });
+    }
+
+    if (location.pathname === "/users" && !hasSystemPermission(user, "users.view")) {
+      throw redirect({ to: "/unauthorized" });
     }
 
     // Put the address bar under this account's role (/admin, /head or /bsca) when a typed URL,
