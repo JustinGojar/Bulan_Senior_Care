@@ -1,0 +1,122 @@
+/* Shared motion: quiet entrances, short exits, no spring/bounce on everyday UI. */
+:root {
+  --motion-enter: 200ms;
+  --motion-exit: 160ms;
+  --motion-press: 120ms;
+  --motion-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-move: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Radix supplies trigger-relative origins and keeps closing surfaces mounted.
+   Preserve its fade/slide/0.95 scale keyframes and positioning transforms. */
+:is([role="dialog"], [role="alertdialog"])[data-state],
+[data-radix-popper-content-wrapper] > [data-state] {
+  animation-duration: var(--motion-enter);
+  animation-timing-function: var(--motion-out);
+}
+
+:is([role="dialog"], [role="alertdialog"])[data-state="closed"],
+[data-radix-popper-content-wrapper] > [data-state="closed"] {
+  animation-duration: var(--motion-exit);
+  animation-timing-function: var(--motion-in);
+}
+
+/* Apply press feedback immediately; animate only the release. Exclude controls
+   whose own state/position is meaningful, and leave disabled buttons alone. */
+button:not(:disabled) {
+  transition-property: background-color, color, border-color, box-shadow, filter, scale;
+  transition-duration: var(--motion-press);
+  transition-timing-function: var(--motion-move);
+}
+
+button:not(:disabled):not([aria-disabled="true"]):not([role="switch"]):not([role="checkbox"]):not(
+    [role="radio"]
+  ):not([role="combobox"]):not([role="tab"]):active {
+  scale: 0.97;
+  transition-duration: 0s;
+}
+
+[role="switch"] > span {
+  transition-duration: var(--motion-enter);
+  transition-timing-function: var(--motion-move);
+  transition-property: transform, translate, scale;
+}
+
+[role="switch"]:not(:disabled):active > span {
+  scale: 1.12 1;
+  transition-duration: 0s;
+}
+
+/* Fade rows in 30ms apart; cap the delay so long lists stay responsive.
+   Opacity avoids changing table geometry or creating containing blocks. */
+tbody > tr {
+  --row-delay: 210ms;
+  animation: row-reveal var(--motion-enter) var(--motion-out) var(--row-delay) backwards;
+}
+tbody > tr:nth-child(1) {
+  --row-delay: 0ms;
+}
+tbody > tr:nth-child(2) {
+  --row-delay: 30ms;
+}
+tbody > tr:nth-child(3) {
+  --row-delay: 60ms;
+}
+tbody > tr:nth-child(4) {
+  --row-delay: 90ms;
+}
+tbody > tr:nth-child(5) {
+  --row-delay: 120ms;
+}
+tbody > tr:nth-child(6) {
+  --row-delay: 150ms;
+}
+tbody > tr:nth-child(7) {
+  --row-delay: 180ms;
+}
+
+@keyframes row-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A single confirmation pulse on success, leaving toast positioning intact. */
+[data-sonner-toast][data-type="success"] [data-icon] {
+  animation: success-confirm 400ms var(--motion-out);
+}
+
+@keyframes success-confirm {
+  0%,
+  100% {
+    scale: 1;
+  }
+  45% {
+    scale: 1.08;
+  }
+}
+
+/* Custom account/announcement overlays do not use Radix. Avoid transform here:
+   it would change how nested fixed confirmation dialogs are positioned. */
+.fixed.inset-0 > .surface-card {
+  animation: row-reveal var(--motion-enter) var(--motion-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  button:active,
+  [role="switch"]:active > span {
+    scale: 1 !important;
+  }
+}
