@@ -546,6 +546,16 @@ function SeniorRecords() {
   const isHead = currentUser?.role === "head";
   const isPresident = currentUser?.role === "president";
   const isAdmin = currentUser?.role === "admin";
+  const systemPermissions = currentUser?.granted_permissions ?? [];
+  const canCreateSeniors =
+    isAdmin ||
+    systemPermissions.includes("seniors.create") ||
+    (isPresident && hasPermission("register seniors"));
+  const canUpdateSeniors =
+    !isPresident && (isAdmin || systemPermissions.includes("seniors.update"));
+  const canDeleteSeniors = isAdmin || systemPermissions.includes("seniors.delete");
+  const canExportSeniors =
+    isAdmin || systemPermissions.includes("seniors.export") || hasPermission("export reports");
   const [filter, setFilter] = useState<string>(() =>
     status ? `${status.charAt(0).toUpperCase()}${status.slice(1)}` : "All",
   );
@@ -816,7 +826,7 @@ function SeniorRecords() {
       breadcrumb={["Dashboard", "Senior Records"]}
       actions={
         <div className="flex gap-2 sm:gap-3">
-          {isPresident && hasPermission("register seniors") && (
+          {canCreateSeniors && (
             <>
               <IconActionButton
                 label="Register Senior"
@@ -848,20 +858,22 @@ function SeniorRecords() {
               onClick={openArchive}
             />
           )}
-          <ExportMenu formats={TABLE_FORMATS} onExport={(format) => void exportRecords(format)}>
-            <IconActionButton
-              label={exporting ? "Preparing export..." : "Export"}
-              icon={
-                exporting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Download className="h-5 w-5" />
-                )
-              }
-              disabled={exporting}
-              aria-busy={exporting}
-            />
-          </ExportMenu>
+          {canExportSeniors && (
+            <ExportMenu formats={TABLE_FORMATS} onExport={(format) => void exportRecords(format)}>
+              <IconActionButton
+                label={exporting ? "Preparing export..." : "Export"}
+                icon={
+                  exporting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )
+                }
+                disabled={exporting}
+                aria-busy={exporting}
+              />
+            </ExportMenu>
+          )}
         </div>
       }
     >
@@ -1163,18 +1175,20 @@ function SeniorRecords() {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button
-                        aria-label={`Edit record of ${s.name}`}
-                        title="Edit record"
-                        onClick={() => {
-                          setEditing(s);
-                          setFormOpen(true);
-                        }}
-                        className={actionButtonClass}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      {isAdmin && (
+                      {canUpdateSeniors && (
+                        <button
+                          aria-label={`Edit record of ${s.name}`}
+                          title="Edit record"
+                          onClick={() => {
+                            setEditing(s);
+                            setFormOpen(true);
+                          }}
+                          className={actionButtonClass}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {canDeleteSeniors && (
                         <button
                           aria-label={`Archive record of ${s.name}`}
                           title="Archive record"
@@ -1184,7 +1198,7 @@ function SeniorRecords() {
                           <Archive className="h-4 w-4" />
                         </button>
                       )}
-                      {!isAdmin && (
+                      {isPresident && (
                         <button
                           aria-label={`Archive record of ${s.name}`}
                           title="Archive record"
@@ -1387,7 +1401,7 @@ function SeniorRecords() {
         </DialogContent>
       </Dialog>
 
-      {(!isHead || !!editing) && (
+      {(canCreateSeniors || (Boolean(editing) && canUpdateSeniors)) && (
         <SeniorFormDialog
           open={formOpen}
           onOpenChange={setFormOpen}

@@ -76,9 +76,14 @@ function ProfilePage() {
   const [recentActivity, setRecentActivity] = useState<AuditLog[] | null>(null);
   const isAdmin = user?.role?.toLowerCase() === "admin";
   const isPresident = user?.role?.toLowerCase() === "president";
+  const mustChangePassword = Boolean(user?.must_change_password);
   // A president's address always comes from their assigned barangay and can't be edited.
   const displayedAddress =
     isPresident && assignedBarangay ? `${assignedBarangay}, Bulan, Sorsogon` : address;
+
+  useEffect(() => {
+    if (mustChangePassword) setPasswordDialogOpen(true);
+  }, [mustChangePassword]);
 
   useEffect(() => {
     apiFetch<ApiUser>("/user")
@@ -142,7 +147,7 @@ function ProfilePage() {
     : user?.role?.toLowerCase() === "head"
       ? "OSCA Head"
       : user?.role?.toLowerCase() === "admin"
-        ? "OSCA Admin"
+        ? "Super Admin"
         : (user?.role ?? "user");
   const initials = (name || "User")
     .split(" ")
@@ -225,6 +230,11 @@ function ProfilePage() {
           password_confirmation: passwordConfirmation,
         }),
       });
+      if (user) {
+        const updated = { ...user, must_change_password: false };
+        setUser(updated);
+        setStoredUser(updated);
+      }
       setCurrentPassword("");
       setPassword("");
       setPasswordConfirmation("");
@@ -490,7 +500,12 @@ function ProfilePage() {
             </div>
           </section>
 
-          <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+          <Dialog
+            open={passwordDialogOpen}
+            onOpenChange={(open) => {
+              if (open || !mustChangePassword) setPasswordDialogOpen(open);
+            }}
+          >
             <button
               type="button"
               onClick={() => setPasswordDialogOpen(true)}
@@ -513,8 +528,9 @@ function ProfilePage() {
               <DialogHeader>
                 <DialogTitle className="font-display">Change Password</DialogTitle>
                 <DialogDescription>
-                  Enter your current password and choose a new password of at least 8 characters
-                  with uppercase, lowercase, a number and a symbol.
+                  {mustChangePassword
+                    ? "Your temporary password must be replaced before you can use the portal."
+                    : "Enter your current password and choose a new password of at least 8 characters with uppercase, lowercase, a number and a symbol."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={savePassword} className="space-y-4">

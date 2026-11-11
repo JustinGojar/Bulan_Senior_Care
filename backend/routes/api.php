@@ -28,7 +28,7 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middle
 Route::post('/verify-email', [AuthController::class, 'verifyEmail'])->middleware('throttle:6,1');
 Route::get('/announcements', [AnnouncementController::class, 'index']);
 
-Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api'])->group(function () {
+Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.change', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/overview', OverviewController::class);
@@ -48,12 +48,16 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:api']
     Route::post('/seniors/{senior}/review', [SeniorCitizenController::class, 'flagForReview']);
     Route::post('/seniors/{senior}/documents', [SeniorCitizenController::class, 'resubmitDocuments']);
     Route::post('/seniors/bulk', [SeniorCitizenController::class, 'bulkStore']);
+    Route::get('/admin/roles', [RolePermissionController::class, 'systemIndex']);
+    Route::put('/admin/roles/permissions', [RolePermissionController::class, 'updateSystemRoles']);
+    Route::put('/admin/roles/{role}/permissions', [RolePermissionController::class, 'updateSystemRole']);
     Route::get('/admin/role-permissions', [RolePermissionController::class, 'index']);
     Route::put('/admin/role-permissions/{role}', [RolePermissionController::class, 'update']);
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::post('/admin/users', [UserController::class, 'store']);
     Route::put('/admin/users/{user}', [UserController::class, 'update']);
     Route::post('/admin/users/{user}/status', [UserController::class, 'updateStatus']);
+    Route::post('/admin/users/{user}/reset-password', [UserController::class, 'resetPassword']);
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
     Route::get('/seniors/duplicate-check', [SeniorCitizenController::class, 'checkDuplicate']);
     Route::apiResource('seniors', SeniorCitizenController::class);

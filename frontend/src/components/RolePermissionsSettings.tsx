@@ -5,7 +5,7 @@ import { AuthAlert } from "@/components/AuthLayout";
 import {
   getRolePermissions,
   updateRolePermissions,
-  type Permission,
+  type LegacyPermission,
   type RolePermissionsState,
 } from "@/lib/api";
 
@@ -28,7 +28,7 @@ export function RolePermissionsSettings() {
       );
   }, []);
 
-  async function toggle(role: "head" | "president", permission: Permission) {
+  async function toggle(role: "head" | "president", permission: LegacyPermission) {
     if (!state) return;
     const granted = state.roles[role];
     const next = granted.includes(permission)

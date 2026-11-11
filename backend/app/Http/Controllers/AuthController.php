@@ -38,6 +38,8 @@ class AuthController extends Controller
 
     public function barangays(Request $request): JsonResponse
     {
+        RolePermissions::authorizeSystem($request->user(), 'barangays.view');
+
         // Saving a barangay clears this entry.
         return response()->json(Cache::remember(Barangay::LIST_CACHE_KEY, now()->addHour(), fn () => Barangay::query()->orderBy('barangay_name')->get(['id', 'barangay_name'])->toArray()));
     }
@@ -153,6 +155,7 @@ class AuthController extends Controller
         // The token goes in an HttpOnly cookie, never the body, so page scripts cannot read it.
         return response()->json([
             'user' => RolePermissions::withGranted($user->load('roles')),
+            'must_change_password' => $user->must_change_password,
             'session' => self::sessionLimits(),
         ])->withCookie(AuthenticateFromCookie::issue($request, $token));
     }
@@ -431,7 +434,7 @@ class AuthController extends Controller
             'password' => ['required', 'confirmed', 'different:current_password', Password::defaults()],
         ], ['password.different' => self::SAME_PASSWORD_MESSAGE]);
 
-        $request->user()->update(['password' => $data['password']]);
+        $request->user()->update(['password' => $data['password'], 'must_change_password' => false]);
         $request->user()->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
 
         return response()->json(['message' => 'Password changed successfully.']);

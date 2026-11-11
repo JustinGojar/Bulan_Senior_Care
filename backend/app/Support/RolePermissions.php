@@ -14,6 +14,51 @@ class RolePermissions
 {
     public const GUARD = 'web';
 
+    public const SYSTEM_ROLES = [
+        'admin' => 'Super Admin',
+        'head' => 'OSCA Head',
+        'encoder' => 'Encoder',
+        'viewer' => 'Viewer',
+        'president' => 'BSCA President',
+    ];
+
+    public const SYSTEM_PERMISSIONS = [
+        'seniors.view' => ['label' => 'View senior records', 'module' => 'seniors'],
+        'seniors.create' => ['label' => 'Register senior records', 'module' => 'seniors'],
+        'seniors.update' => ['label' => 'Update senior records', 'module' => 'seniors'],
+        'seniors.delete' => ['label' => 'Delete senior records', 'module' => 'seniors'],
+        'seniors.export' => ['label' => 'Export senior records', 'module' => 'seniors'],
+        'barangays.view' => ['label' => 'View barangays', 'module' => 'barangays'],
+        'barangays.manage' => ['label' => 'Manage barangays', 'module' => 'barangays'],
+        'lookups.view' => ['label' => 'View dropdown values', 'module' => 'lookups'],
+        'lookups.manage' => ['label' => 'Manage dropdown values', 'module' => 'lookups'],
+        'users.view' => ['label' => 'View users', 'module' => 'users'],
+        'users.create' => ['label' => 'Create users', 'module' => 'users'],
+        'users.update' => ['label' => 'Update users', 'module' => 'users'],
+        'users.deactivate' => ['label' => 'Deactivate users', 'module' => 'users'],
+        'users.reset-password' => ['label' => 'Reset user passwords', 'module' => 'users'],
+        'roles.view' => ['label' => 'View roles', 'module' => 'roles'],
+        'roles.manage' => ['label' => 'Manage role permissions', 'module' => 'roles'],
+        'audit-logs.view' => ['label' => 'View audit logs', 'module' => 'audit-logs'],
+        'audit-logs.export' => ['label' => 'Export audit logs', 'module' => 'audit-logs'],
+        'security-settings.view' => ['label' => 'View security settings', 'module' => 'security-settings'],
+        'security-settings.manage' => ['label' => 'Manage security settings', 'module' => 'security-settings'],
+    ];
+
+    public const SYSTEM_DEFAULTS = [
+        'admin' => '*',
+        'head' => [
+            'seniors.view', 'seniors.create', 'seniors.update', 'seniors.delete', 'seniors.export',
+            'barangays.view', 'lookups.view', 'lookups.manage', 'users.view', 'audit-logs.view',
+            'audit-logs.export',
+        ],
+        'encoder' => ['seniors.view', 'seniors.create', 'seniors.update', 'barangays.view', 'lookups.view'],
+        'viewer' => ['seniors.view', 'barangays.view', 'lookups.view'],
+        // Keep the existing President role and its scoped workflows while giving it the
+        // equivalent senior and lookup access needed by its current screens.
+        'president' => ['seniors.view', 'seniors.create', 'seniors.update', 'barangays.view', 'lookups.view'],
+    ];
+
     /** Every permission the Admin can manage, with the roles it applies to. */
     public const PERMISSIONS = [
         'export reports' => [
@@ -71,7 +116,10 @@ class RolePermissions
     /** The user, with the permission names their role has, for the app to show or hide actions. */
     public static function withGranted(User $user): User
     {
-        return $user->setAttribute('granted_permissions', self::granted($user->role));
+        return $user->setAttribute(
+            'granted_permissions',
+            array_values(array_unique([...self::granted($user->role), ...self::systemGranted($user->role ?? '')])),
+        );
     }
 
     /** Stops the request with a 403 when the user's role lacks the permission. */
@@ -82,6 +130,68 @@ class RolePermissions
             403,
             'Your role does not have permission to '.lcfirst(self::PERMISSIONS[$permission]['label']).'. Ask the Admin to enable it in Settings.',
         );
+    }
+
+    public static function allowsSystem(User $user, string $permission): bool
+    {
+        return $user->role === 'admin'
+            || (isset(self::SYSTEM_PERMISSIONS[$permission])
+                && in_array($permission, self::systemGranted($user->role ?? ''), true));
+    }
+
+    public static function authorizeSystem(User $user, string $permission): void
+    {
+        abort_unless(
+            self::allowsSystem($user, $permission),
+            403,
+            'Your role does not have permission to '.lcfirst(self::SYSTEM_PERMISSIONS[$permission]['label'] ?? 'perform this action').'.',
+        );
+    }
+
+    public static function systemGranted(string $role): array
+    {
+        if ($role === 'admin') {
+            return array_keys(self::SYSTEM_PERMISSIONS);
+        }
+
+        return Role::query()
+            ->where('name', $role)
+            ->where('guard_name', self::GUARD)
+            ->first()
+            ?->permissions
+            ->pluck('name')
+            ->intersect(array_keys(self::SYSTEM_PERMISSIONS))
+            ->values()
+            ->all() ?? [];
+    }
+
+    public static function syncSystem(string $role, array $permissions): void
+    {
+        abort_unless(isset(self::SYSTEM_ROLES[$role]) && $role !== 'admin', 404);
+        foreach (array_keys(self::SYSTEM_PERMISSIONS) as $name) {
+            Permission::findOrCreate($name, self::GUARD);
+        }
+
+        $roleModel = Role::findOrCreate($role, self::GUARD);
+        $legacyPermissions = self::granted($role);
+        $roleModel->syncPermissions([
+            ...$legacyPermissions,
+            ...array_intersect($permissions, array_keys(self::SYSTEM_PERMISSIONS)),
+        ]);
+    }
+
+    public static function grantSystemDefaults(): void
+    {
+        foreach (array_keys(self::SYSTEM_PERMISSIONS) as $name) {
+            Permission::findOrCreate($name, self::GUARD);
+        }
+
+        foreach (self::SYSTEM_DEFAULTS as $role => $permissions) {
+            $roleModel = Role::findOrCreate($role, self::GUARD);
+            $roleModel->givePermissionTo(
+                $permissions === '*' ? array_keys(self::SYSTEM_PERMISSIONS) : $permissions,
+            );
+        }
     }
 
     /** The permissions a role has now. */
@@ -105,7 +215,10 @@ class RolePermissions
         foreach ($allowed as $name) {
             Permission::findOrCreate($name, self::GUARD);
         }
-        Role::findOrCreate($role, self::GUARD)->syncPermissions(array_values(array_intersect($permissions, $allowed)));
+        Role::findOrCreate($role, self::GUARD)->syncPermissions([
+            ...array_values(array_intersect($permissions, $allowed)),
+            ...self::systemGranted($role),
+        ]);
     }
 
     /** Gives every role all of its permissions; used when they are first set up. */

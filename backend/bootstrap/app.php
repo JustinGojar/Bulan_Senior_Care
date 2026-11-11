@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Middleware\AuthenticateFromCookie;
 use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnforceTokenIdleTimeout;
+use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\SecurityHeaders;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AuthenticateFromCookie::class);
         $middleware->alias([
             'token.idle' => EnforceTokenIdleTimeout::class,
+            'password.change' => RequirePasswordChange::class,
             'verified.api' => EnsureEmailIsVerified::class,
         ]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, EnforceTokenIdleTimeout::class);

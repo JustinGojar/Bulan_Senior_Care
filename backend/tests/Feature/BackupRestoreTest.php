@@ -61,6 +61,7 @@ class BackupRestoreTest extends TestCase
         $this->seed();
         /** @var User $admin */
         $admin = User::query()->where('role', 'admin')->firstOrFail();
+        $admin->forceFill(['must_change_password' => false])->save();
         $backup = $this->backupOf($admin);
         $tables = array_keys(json_decode($backup, true)['tables']);
         $before = collect($tables)->mapWithKeys(fn ($table) => [$table => DB::table($table)->get()->map(fn ($row) => (array) $row)->all()]);

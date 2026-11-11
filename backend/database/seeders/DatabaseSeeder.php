@@ -4,7 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Barangay;
 use App\Models\User;
+use App\Support\RolePermissions;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
@@ -36,19 +38,47 @@ class DatabaseSeeder extends Seeder
             'zone_number' => $index + 1,
         ])->mapWithKeys(fn (array $barangay) => [$barangay['barangay_name'] => Barangay::updateOrCreate(['barangay_name' => $barangay['barangay_name']], $barangay)]);
 
+        $demoPassword = env('OSCA_DEMO_PASSWORD') ?: Str::password(20);
+        $superAdminPassword = env('OSCA_SUPER_ADMIN_PASSWORD') ?: Str::password(24);
         $accounts = [
-            ['name' => 'Geraldine So', 'email' => 'admin@osca-bulan.gov.ph', 'role' => 'admin', 'barangay_id' => null],
-            ['name' => 'Maribel Dela Cruz', 'email' => 'head@osca-bulan.gov.ph', 'role' => 'head', 'barangay_id' => null],
+            [
+                'name' => 'OSCA Super Admin',
+                'email' => env('OSCA_SUPER_ADMIN_EMAIL', 'admin@osca-bulan.gov.ph'),
+                'password' => $superAdminPassword,
+                'role' => 'admin',
+                'barangay_id' => null,
+            ],
+            ['name' => 'OSCA Head', 'email' => env('OSCA_HEAD_EMAIL', 'head@osca-bulan.gov.ph'), 'password' => $demoPassword, 'role' => 'head', 'barangay_id' => null],
+            ['name' => 'OSCA Encoder', 'email' => env('OSCA_ENCODER_EMAIL', 'encoder@osca-bulan.gov.ph'), 'password' => $demoPassword, 'role' => 'encoder', 'barangay_id' => null],
+            ['name' => 'OSCA Viewer', 'email' => env('OSCA_VIEWER_EMAIL', 'viewer@osca-bulan.gov.ph'), 'password' => $demoPassword, 'role' => 'viewer', 'barangay_id' => null],
         ];
 
-        foreach (['admin', 'head', 'president'] as $role) {
+        foreach (array_keys(RolePermissions::SYSTEM_ROLES) as $role) {
             Role::findOrCreate($role, 'web');
         }
 
+        $createdDemoAccounts = false;
+        $createdSuperAdmin = false;
         foreach ($accounts as $account) {
-            $user = User::updateOrCreate(['email' => $account['email']], [...$account, 'password' => 'password']);
+            $user = User::firstOrCreate(
+                ['email' => $account['email']],
+                [...$account, 'must_change_password' => true],
+            );
             $user->forceFill(['email_verified_at' => $user->email_verified_at ?? now()])->save();
             $user->syncRoles([$account['role']]);
+            if ($account['role'] !== 'admin') {
+                $createdDemoAccounts = $createdDemoAccounts || $user->wasRecentlyCreated;
+            } else {
+                $createdSuperAdmin = $user->wasRecentlyCreated;
+            }
+        }
+
+        if ($createdSuperAdmin) {
+            $this->command?->info("Super Admin temporary password: {$superAdminPassword}");
+            $this->command?->warn('Change it after the first sign-in.');
+        }
+        if ($createdDemoAccounts) {
+            $this->command?->info("Demo account password: {$demoPassword}");
         }
 
         $this->call(BenefitSeeder::class);
