@@ -152,7 +152,7 @@ class UserController extends Controller
             $user->tokens()->delete();
         }
 
-        return (new ManagedUserResource($user->fresh()))->response();
+        return response()->json((new ManagedUserResource($user->fresh()))->resolve($request));
     }
 
     private function ensurePresidentBarangayAvailable(int $barangayId, ?User $except = null): void
@@ -180,7 +180,7 @@ class UserController extends Controller
         }
         AuditLog::record($request->user(), $data['status'] === 'active' ? 'activated' : 'deactivated', $user, $before, ['status' => $user->status]);
 
-        return (new ManagedUserResource($user->fresh()))->response();
+        return response()->json((new ManagedUserResource($user->fresh()))->resolve($request));
     }
 
     public function resetPassword(Request $request, User $user): JsonResponse

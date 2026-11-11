@@ -23,7 +23,7 @@ class DatabaseSeederTest extends TestCase
         $expectedTotal = $barangays->sum(fn (Barangay $barangay) => SampleDataSeeder::countFor($barangay->barangay_name));
 
         $this->assertCount(64, $barangays);
-        $this->assertSame(66, User::count());
+        $this->assertSame(68, User::count());
         $this->assertSame($expectedTotal, SeniorCitizen::withTrashed()->count());
 
         foreach ($barangays as $barangay) {
@@ -48,7 +48,7 @@ class DatabaseSeederTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(66, User::count());
+        $this->assertSame(68, User::count());
         $this->assertSame($expectedTotal, SeniorCitizen::withTrashed()->count());
         $this->assertTrue(password_verify('changed-password', $president->fresh()->password));
     }
