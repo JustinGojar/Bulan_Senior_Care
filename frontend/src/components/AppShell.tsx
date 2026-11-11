@@ -278,17 +278,35 @@ export function AppShell({
       : user?.role?.toLowerCase() === "head"
         ? "OSCA Head"
         : user?.role?.toLowerCase() === "admin"
-          ? "OSCA Admin"
-          : (user?.role ?? "Admin");
+          ? "Super Admin"
+          : user?.role?.toLowerCase() === "encoder"
+            ? "Encoder"
+            : user?.role?.toLowerCase() === "viewer"
+              ? "Viewer"
+              : (user?.role ?? "Admin");
   const isAdmin =
     user?.role?.toLowerCase() === "admin" ||
     user?.roles?.some((role) => role.name.toLowerCase() === "admin");
+  const permissions = user?.granted_permissions ?? [];
+  const canViewUsers = isAdmin || permissions.includes("users.view");
+  const canViewSettings =
+    isAdmin ||
+    permissions.some((permission) =>
+      [
+        "roles.view",
+        "barangays.view",
+        "lookups.view",
+        "audit-logs.view",
+        "security-settings.view",
+      ].includes(permission),
+    );
   const photoUrl = user?.profile_photo_path
     ? `${API_URL.replace(/\/api$/, "")}/storage/${user.profile_photo_path}`
     : defaultProfileImage;
   const visibleNav = NAV.filter(
     ({ to }) =>
-      (to !== "/users" || user?.role === "admin") &&
+      (to !== "/users" || canViewUsers) &&
+      (to !== "/settings" || canViewSettings) &&
       (to !== "/eligibility" || user?.role !== "president") &&
       (to !== "/age-threshold" || user?.role !== "president"),
   );

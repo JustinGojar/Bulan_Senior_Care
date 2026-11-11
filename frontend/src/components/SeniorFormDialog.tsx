@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -272,6 +271,7 @@ export function SeniorFormDialog({
   const [submitError, setSubmitError] = useState<string | null>(null);
   // Real-time duplicate notice while inputting data; cleared as the user edits or clears fields.
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [duplicateCheckError, setDuplicateCheckError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -317,36 +317,48 @@ export function SeniorFormDialog({
     );
   }, [open, senior, presidentBarangay]);
 
-  // Real-time duplicate check: as the user types first/last name or picks a birthdate,
-  // call /seniors/duplicate-check and show a non-blocking alert with the OSCA ID.
+  // Check only when all matching fields are present, and debounce typing to avoid excess requests.
   useEffect(() => {
     if (!open) return;
-    const lastName = draft.lastName.trim();
-    const firstName = draft.firstName.trim();
-    if (!lastName && !firstName && !draft.birthdate) {
+    const lastName = draft.lastName?.trim() ?? "";
+    const firstName = draft.firstName?.trim() ?? "";
+    const birthdate = draft.birthdate ?? "";
+    if (!lastName || !firstName || !birthdate) {
       setDuplicateWarning(null);
+      setDuplicateCheckError(null);
       return;
     }
     let cancelled = false;
-    duplicateCheckSenior({ first_name: firstName, last_name: lastName, birthdate: draft.birthdate ?? "" })
-      .then((res) => {
-        if (cancelled || !res.duplicate) {
-          setDuplicateWarning(null);
-          return;
-        }
-        setDuplicateWarning(
-          `Possible duplicate — a record is already registered (OSCA ID ${res.osca_id_number}). ${res.message ?? ""}`,
-        );
-      })
-      .catch(() => undefined);
+    setDuplicateCheckError(null);
+    const timer = window.setTimeout(() => {
+      duplicateCheckSenior({ first_name: firstName, last_name: lastName, birthdate })
+        .then((res) => {
+          if (cancelled) return;
+          setDuplicateWarning(
+            res.duplicate
+              ? `Possible duplicate — a record is already registered (OSCA ID ${res.osca_id_number}). ${res.message ?? ""}`
+              : null,
+          );
+        })
+        .catch(() => {
+          if (!cancelled)
+            setDuplicateCheckError(
+              "Duplicate check is unavailable. The record will still be checked when saved.",
+            );
+        });
+    }, 300);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [draft.firstName, draft.lastName, draft.birthdate, open]);
 
   // Clear the real-time warning when the form closes, so it doesn't stack on the next open.
   useEffect(() => {
-    if (!open) setDuplicateWarning(null);
+    if (!open) {
+      setDuplicateWarning(null);
+      setDuplicateCheckError(null);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -402,34 +414,6 @@ export function SeniorFormDialog({
   const associationAddressOptions = BARANGAYS.map(associationAddressFor);
   if (associationAddress && !associationAddressOptions.includes(associationAddress))
     associationAddressOptions.push(associationAddress);
-
-  // Real-time duplicate check: fires once all three matching fields have been entered,
-  // then asks the backend whether a senior with the same name and birthdate already exists.
-  // It only warns — it never blocks the rest of the form and matches the server's checks on submit.
-  useEffect(() => {
-    const firstName = draft.firstName.trim();
-    const lastName = draft.lastName.trim();
-    const birthdate = draft.birthdate;
-    if (!firstName || !lastName || !birthdate || !open) return;
-    let cancelled = false;
-    duplicateCheckSenior({ first_name: firstName, last_name: lastName, birthdate })
-      .then((res) => {
-        if (cancelled || !res.duplicate) return;
-        toast.warning(
-          `Possible duplicate — a senior with the same name and birthdate already exists (OSCA ${res.osca_id_number ?? ""}).`,
-        );
-      })
-      .catch(() => {
-        // The backend also enforces duplicates at submission time; nothing else to surface here.
-      });
-    const timer = window.setTimeout(() => {
-      cancelled = true;
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [draft.firstName, draft.lastName, draft.birthdate, open]);
 
   async function submit() {
     if (saving) return;
@@ -1210,6 +1194,14 @@ export function SeniorFormDialog({
             className="mb-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-700"
           >
             {duplicateWarning}
+          </p>
+        )}
+        {duplicateCheckError && (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-700"
+          >
+            {duplicateCheckError}
           </p>
         )}
         {submitError && (

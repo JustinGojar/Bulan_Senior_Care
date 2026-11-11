@@ -58,6 +58,17 @@ class FailedTestCaseFixesTest extends TestCase
         $this->assertSame(1, SeniorCitizen::count());
     }
 
+    public function test_duplicate_check_warns_for_matching_normalized_names_and_birthdate(): void
+    {
+        $senior = SeniorCitizen::findOrFail($this->register()->assertCreated()->json('id'));
+
+        $this->actingAs($this->president, 'sanctum')
+            ->getJson('/api/seniors/duplicate-check?first_name=%20JUAN%20&last_name=dela%20%20%20cruz&birthdate=1945-01-01')
+            ->assertOk()
+            ->assertJsonPath('duplicate', true)
+            ->assertJsonPath('osca_id_number', $senior->osca_id_number);
+    }
+
     public function test_archived_senior_also_counts_as_a_duplicate(): void
     {
         SeniorCitizen::findOrFail($this->register()->json('id'))->delete();

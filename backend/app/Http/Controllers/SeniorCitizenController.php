@@ -27,6 +27,7 @@ class SeniorCitizenController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        RolePermissions::authorizeSystem($request->user(), 'seniors.view');
         $query = SeniorCitizen::with([
             'barangay:id,barangay_name',
             'benefit:id,benefit_name',
@@ -392,9 +393,11 @@ class SeniorCitizenController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
-        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay presidents.');
-        RolePermissions::authorize($request->user(), 'register seniors');
+        if ($request->user()->role === 'president') {
+            RolePermissions::authorize($request->user(), 'register seniors');
+        } else {
+            RolePermissions::authorizeSystem($request->user(), 'seniors.create');
+        }
         $this->normalizeContact($request);
         $data = $request->validate($this->rules());
         // The senior, or their representative, agrees to the data privacy notice before
@@ -479,14 +482,17 @@ class SeniorCitizenController extends Controller
      */
     public function checkDuplicate(Request $request): JsonResponse
     {
-        abort_if(in_array($request->user()->role, ['admin', 'head'], true), 403, 'Only Admins can run duplicate checks.');
+        if ($request->user()->role === 'president') {
+            RolePermissions::authorize($request->user(), 'register seniors');
+        } else {
+            RolePermissions::authorizeSystem($request->user(), 'seniors.create');
+        }
         $data = $request->validate([
-            'first_name' => ['nullable', 'string', 'max:100'],
-            'last_name' => ['nullable', 'string', 'max:100'],
-            'birthdate' => ['nullable', 'date'],
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'birthdate' => ['required', 'date'],
         ]);
-        abort_if(! $data['last_name'] && ! $data['first_name'] && ! $data['birthdate'], 422, 'All three fields are required.');
-        $existing = $this->normalizeAndFind($data);
+        $existing = $this->findDuplicate($data);
         return response()->json([
             'duplicate' => (bool) $existing,
             'osca_id_number' => $existing?->osca_id_number ?? null,
@@ -496,23 +502,26 @@ class SeniorCitizenController extends Controller
         ]);
     }
 
-    private function normalizeAndFind(?array $data): ?SeniorCitizen
+    private function findDuplicate(array $data): ?SeniorCitizen
     {
         $normalize = static fn (?string $value): string => Str::lower(preg_replace('/\s+/', ' ', trim((string) $value)));
-        $matches = null;
-        $query = SeniorCitizen::withTrashed()
-            ->whereDate('birthdate', $data['birthdate'] ?? null);
-        $query->whereRaw('LOWER(TRIM(last_name)) = ?', [$normalize($data['last_name'] ?? '')])
-            ->whereRaw('LOWER(TRIM(first_name)) = ?', [$normalize($data['first_name'] ?? '')]);
-        $matches = $query->get(['id', 'osca_id_number']);
-        return $matches->isNotEmpty() ? $matches->first() : null;
+        $firstName = $normalize($data['first_name']);
+        $lastName = $normalize($data['last_name']);
+
+        return SeniorCitizen::withTrashed()
+            ->whereDate('birthdate', $data['birthdate'])
+            ->get(['id', 'osca_id_number', 'first_name', 'last_name', 'deleted_at'])
+            ->first(fn (SeniorCitizen $senior) => $normalize($senior->first_name) === $firstName
+                && $normalize($senior->last_name) === $lastName);
     }
 
     public function bulkStore(Request $request): JsonResponse
     {
-        abort_if($request->user()->role === 'head', 403, 'The Head role is read-only for senior registration.');
-        abort_if($request->user()->role === 'admin', 403, 'Seniors are registered by barangay presidents.');
-        RolePermissions::authorize($request->user(), 'register seniors');
+        if ($request->user()->role === 'president') {
+            RolePermissions::authorize($request->user(), 'register seniors');
+        } else {
+            RolePermissions::authorizeSystem($request->user(), 'seniors.create');
+        }
         $rows = $request->input('records');
         abort_if(! is_array($rows) || count($rows) === 0, 422, 'At least one senior record is required.');
         abort_if(count($rows) > 500, 422, 'You can import a maximum of 500 records at a time.');
@@ -629,6 +638,7 @@ class SeniorCitizenController extends Controller
 
     public function show(SeniorCitizen $senior): JsonResponse
     {
+        RolePermissions::authorizeSystem(request()->user(), 'seniors.view');
         $this->authorizeScope(request(), $senior);
 
         return response()->json($senior->load(['barangay', 'benefit']));
@@ -636,6 +646,7 @@ class SeniorCitizenController extends Controller
 
     public function file(Request $request, SeniorCitizen $senior, string $kind): StreamedResponse
     {
+        RolePermissions::authorizeSystem($request->user(), 'seniors.view');
         // Archived records' files are only for the Admin, who manages the archive.
         abort_if($senior->trashed() && $request->user()->role !== 'admin', 404);
         $this->authorizeScope($request, $senior);
@@ -656,6 +667,7 @@ class SeniorCitizenController extends Controller
     public function update(Request $request, SeniorCitizen $senior): JsonResponse
     {
         abort_if($request->user()->role === 'president', 403, 'President edits require Head approval.');
+        RolePermissions::authorizeSystem($request->user(), 'seniors.update');
         $this->authorizeScope($request, $senior);
         if ($request->input('contact_number') === $senior->contact_number) {
             // Unchanged. Older records (e.g. bulk imports) may hold a number in another format,
@@ -746,7 +758,7 @@ class SeniorCitizenController extends Controller
 
     public function destroy(Request $request, SeniorCitizen $senior): JsonResponse
     {
-        abort_if($request->user()->role !== 'admin', 403, 'Only Admin can delete records.');
+        RolePermissions::authorizeSystem($request->user(), 'seniors.delete');
         $senior->delete();
         AuditLog::record($request->user(), 'deleted', $senior, ['status' => $senior->status]);
 
@@ -794,12 +806,7 @@ class SeniorCitizenController extends Controller
      */
     private function abortIfDuplicate(array $data): void
     {
-        $normalize = static fn (?string $value): string => Str::lower(preg_replace('/\s+/', ' ', trim((string) $value)));
-        $existing = SeniorCitizen::withTrashed()
-            ->whereDate('birthdate', $data['birthdate'])
-            ->whereRaw('LOWER(TRIM(last_name)) = ?', [$normalize($data['last_name'] ?? '')])
-            ->get(['id', 'osca_id_number', 'first_name', 'last_name', 'barangay_id', 'deleted_at'])
-            ->first(fn (SeniorCitizen $senior) => $normalize($senior->first_name) === $normalize($data['first_name'] ?? ''));
+        $existing = $this->findDuplicate($data);
         if (! $existing) {
             return;
         }

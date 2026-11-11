@@ -14,7 +14,7 @@ import {
 import {
   getAuditLogs,
   getManagedUsers,
-  getStoredUser,
+  hasPermission,
   type AuditLog,
   type ManagedUser,
   type PaginatedResponse,
@@ -154,7 +154,8 @@ function AuditLogsPage() {
   const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isAdmin = getStoredUser()?.role?.toLowerCase() === "admin";
+  const canViewAuditLogs = hasPermission("audit-logs.view");
+  const canViewUsers = hasPermission("users.view");
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [userId, setUserId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -162,14 +163,31 @@ function AuditLogsPage() {
   const hasFilters = Boolean(userId || dateFrom || dateTo);
 
   useEffect(() => {
-    if (!isAdmin) return;
-    getManagedUsers()
-      .then((list) => setUsers([...list].sort((a, b) => a.name.localeCompare(b.name))))
-      .catch(() => setUsers([]));
-  }, [isAdmin]);
+    if (!canViewUsers) {
+      setUsers([]);
+      return;
+    }
+    getManagedUsers({ per_page: 100 })
+      .then(async (firstPage) => {
+        const remainingPages = await Promise.all(
+          Array.from({ length: firstPage.last_page - 1 }, (_, index) =>
+            getManagedUsers({ page: index + 2, per_page: 100 }),
+          ),
+        );
+        return [...firstPage.data, ...remainingPages.flatMap((result) => result.data)].sort(
+          (a, b) => a.name.localeCompare(b.name),
+        );
+      })
+      .then(setUsers)
+      .catch((reason: unknown) =>
+        setError(
+          reason instanceof Error ? reason.message : "Could not load users for audit filters.",
+        ),
+      );
+  }, [canViewUsers]);
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!canViewAuditLogs) {
       setLoading(false);
       return;
     }
@@ -182,7 +200,7 @@ function AuditLogsPage() {
       })
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false));
-  }, [isAdmin, page, userId, dateFrom, dateTo]);
+  }, [canViewAuditLogs, page, userId, dateFrom, dateTo]);
 
   return (
     <AppShell
@@ -203,26 +221,28 @@ function AuditLogsPage() {
           }
         />
 
-        {isAdmin && (
+        {canViewAuditLogs && (
           <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end">
-            <label className="block text-xs font-semibold text-muted-foreground">
-              User
-              <select
-                value={userId}
-                onChange={(event) => {
-                  setUserId(event.target.value);
-                  setPage(1);
-                }}
-                className={`${fieldClass} mt-1 h-10`}
-              >
-                <option value="">All users</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {canViewUsers && (
+              <label className="block text-xs font-semibold text-muted-foreground">
+                User
+                <select
+                  value={userId}
+                  onChange={(event) => {
+                    setUserId(event.target.value);
+                    setPage(1);
+                  }}
+                  className={`${fieldClass} mt-1 h-10`}
+                >
+                  <option value="">All users</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="block text-xs font-semibold text-muted-foreground">
               From
               <input
@@ -264,9 +284,11 @@ function AuditLogsPage() {
             </button>
           </div>
         )}
-        {!isAdmin && (
+        {!canViewAuditLogs && (
           <div className="mt-6">
-            <AuthAlert tone="error">Only administrators can access audit logs.</AuthAlert>
+            <AuthAlert tone="error">
+              Your role does not have permission to access audit logs.
+            </AuthAlert>
           </div>
         )}
         {error && (
@@ -274,7 +296,7 @@ function AuditLogsPage() {
             <AuthAlert tone="error">{error}</AuthAlert>
           </div>
         )}
-        {isAdmin && !loading && !error && logs.length === 0 && (
+        {canViewAuditLogs && !loading && !error && logs.length === 0 && (
           <EmptyState
             icon={ClipboardList}
             title={hasFilters ? "No matching activity" : "No activity recorded yet"}
@@ -288,7 +310,7 @@ function AuditLogsPage() {
         )}
 
         <div className="mt-5 space-y-3">
-          {isAdmin && loading && logs.length === 0 && (
+          {canViewAuditLogs && loading && logs.length === 0 && (
             <TileSkeletons count={4} label="Loading audit logs" />
           )}
           {logs.map((log) => (
@@ -322,7 +344,7 @@ function AuditLogsPage() {
           ))}
         </div>
 
-        {isAdmin && lastPage > 1 && (
+        {canViewAuditLogs && lastPage > 1 && (
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
             <button
               type="button"

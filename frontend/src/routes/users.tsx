@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Camera,
+  Check,
+  Copy,
   Eye,
   EyeOff,
+  KeyRound,
   Loader2,
   Pencil,
   Search,
@@ -19,6 +22,7 @@ import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
+import { SystemRolePermissionsSettings } from "@/components/SystemRolePermissionsSettings";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
 import {
@@ -45,6 +49,7 @@ import {
   deleteManagedUser,
   getManagedUsers,
   getStoredUser,
+  resetManagedUserPassword,
   setManagedUserStatus,
   updateManagedUser,
   type ManagedUser,
@@ -95,7 +100,16 @@ function initials(name: string) {
 function UserManagement() {
   const currentUser = getStoredUser();
   const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState("");
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersLastPage, setUsersLastPage] = useState(1);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [usersRefreshKey, setUsersRefreshKey] = useState(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
+  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
@@ -110,7 +124,9 @@ function UserManagement() {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
-  const [role, setRole] = useState<"admin" | "head" | "president">("president");
+  const [role, setRole] = useState<"admin" | "head" | "president" | "encoder" | "viewer">(
+    "president",
+  );
   const [status, setStatus] = useState<"active" | "inactive">("active");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -123,18 +139,54 @@ function UserManagement() {
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const isAdmin = currentUser?.role === "admin";
+  const canViewUsers = isAdmin || Boolean(currentUser?.granted_permissions?.includes("users.view"));
 
   useEffect(() => {
-    getManagedUsers()
-      .then(setUsers)
-      .catch(() => setUsers([]));
+    if (!canViewUsers) {
+      setUsersLoading(false);
+      return;
+    }
+    let active = true;
+    setUsersLoading(true);
+    setUsersError("");
+    const timer = window.setTimeout(
+      () => {
+        getManagedUsers({
+          page: usersPage,
+          search,
+          role: roleFilter,
+          status: statusFilter,
+        })
+          .then((result) => {
+            if (!active) return;
+            setUsers(result.data);
+            setUsersLastPage(result.last_page);
+            setUsersTotal(result.total);
+          })
+          .catch((reason: unknown) => {
+            if (active) {
+              setUsersError(
+                reason instanceof Error ? reason.message : "Could not load user accounts.",
+              );
+            }
+          })
+          .finally(() => {
+            if (active) setUsersLoading(false);
+          });
+      },
+      search ? 250 : 0,
+    );
     getBarangays()
       .then(setBarangays)
       .catch(() => {
         setBarangays([]);
         setBarangaysFailed(true);
       });
-  }, []);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [canViewUsers, usersPage, search, roleFilter, statusFilter, usersRefreshKey]);
 
   useEffect(() => {
     if (!photo) {
@@ -146,18 +198,22 @@ function UserManagement() {
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
-  if (!isAdmin) {
+  useEffect(() => {
+    setUsersPage(1);
+  }, [search, roleFilter, statusFilter]);
+
+  if (!canViewUsers) {
     return (
       <AppShell
         title="Access restricted"
-        subtitle="User Management is available to Admin accounts only"
+        subtitle="You do not have permission to view user accounts"
         breadcrumb={["Dashboard"]}
       >
         <section className={`${panelClass} p-5 sm:p-7`}>
           <SectionHeader
             icon={ShieldAlert}
             title="Admins only"
-            subtitle="You do not have permission to view user management."
+            subtitle="Ask a Super Admin to grant users.view access."
           />
         </section>
       </AppShell>
@@ -214,7 +270,7 @@ function UserManagement() {
     setContactNumber(toLocalMobile(user.contact_number ?? ""));
     setBirthdate(user.birthdate ?? "");
     setBarangayId(user.barangay_id ? String(user.barangay_id) : "");
-    setRole(user.role as "admin" | "head" | "president");
+    setRole(user.role as typeof role);
     setStatus(user.status);
     setPhoto(null);
     setRemovePhoto(false);
@@ -260,6 +316,7 @@ function UserManagement() {
           { file: photo, remove: removePhoto },
         );
         setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+        setUsersRefreshKey((current) => current + 1);
         if (updated.email !== editingUser.email) {
           toast.success(
             `User account updated. ${updated.email} must be verified before this account can log in again.`,
@@ -283,6 +340,7 @@ function UserManagement() {
           profilePhoto: photo,
         });
         setUsers((current) => [...current, created.user]);
+        setUsersRefreshKey((current) => current + 1);
         if (created.verificationEmailSent) {
           toast.success(`User account created. A verification email was sent to ${email}.`);
         } else {
@@ -314,6 +372,7 @@ function UserManagement() {
     try {
       const updated = await setManagedUserStatus(user.id, deactivate ? "inactive" : "active");
       setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setUsersRefreshKey((current) => current + 1);
       toast.success(deactivate ? "Account deactivated." : "Account reactivated.");
     } catch (reason) {
       toast.error(
@@ -333,14 +392,41 @@ function UserManagement() {
     try {
       await deleteManagedUser(user.id);
       setUsers((current) => current.filter((item) => item.id !== user.id));
+      setUsersRefreshKey((current) => current + 1);
       toast.success("User account deleted.");
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : "Unable to delete account.");
     }
   }
 
+  async function handleResetPassword(user: ManagedUser) {
+    const confirmed = await confirm({
+      title: "Reset this user's password?",
+      description: `${user.name} will be signed out of all devices and must change the temporary password at their next sign-in.`,
+      confirmLabel: "Reset password",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      const result = await resetManagedUserPassword(user.id);
+      setTemporaryPassword(result.temporary_password);
+      setPasswordCopied(false);
+      toast.success("Temporary password created. Copy it now; it will not be shown again.");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Unable to reset the password.");
+    }
+  }
+
   const roleLabel = (value: string) =>
-    value === "admin" ? "OSCA Admin" : value === "head" ? "OSCA Head" : "BSCA President";
+    value === "admin"
+      ? "Super Admin"
+      : value === "head"
+        ? "OSCA Head"
+        : value === "encoder"
+          ? "Encoder"
+          : value === "viewer"
+            ? "Viewer"
+            : "BSCA President";
   const labelClass = "mb-2 block text-sm font-semibold";
   const barangayScope = (user: ManagedUser) =>
     user.role === "president"
@@ -349,16 +435,7 @@ function UserManagement() {
   // An account cannot log in until its email is verified, whatever its status says.
   const accountStatus = (user: ManagedUser) =>
     user.status !== "active" ? "inactive" : user.email_verified_at ? "active" : "pending";
-  const normalizedSearch = search.trim().toLowerCase();
-  const filteredUsers = users.filter(
-    (user) =>
-      (!roleFilter || user.role === roleFilter) &&
-      (!statusFilter || accountStatus(user) === statusFilter) &&
-      (!normalizedSearch ||
-        [user.name, user.email, roleLabel(user.role), barangayScope(user)].some((value) =>
-          value.toLowerCase().includes(normalizedSearch),
-        )),
-  );
+  const filteredUsers = users;
   const hasFilters = Boolean(search || roleFilter || statusFilter);
   const currentPhoto =
     photoPreview ??
@@ -370,13 +447,13 @@ function UserManagement() {
 
   return (
     <AppShell
-      title="User Management"
+      title="Users & Roles"
       subtitle="Manage login accounts and barangay access"
-      breadcrumb={["Dashboard", "User Management"]}
+      breadcrumb={["Dashboard", "Users & Roles"]}
       actions={
-        isAdmin ? (
+        isAdmin && activeTab === "users" ? (
           <IconActionButton
-            label="Create BSCA / Barangay Senior Citizen Affairs"
+            label="Create user account"
             variant="primary"
             icon={<UserPlus className="h-5 w-5" />}
             onClick={() => setShowCreateForm(true)}
@@ -384,199 +461,289 @@ function UserManagement() {
         ) : undefined
       }
     >
-      <section className={`${panelClass} p-5 sm:p-7`}>
-        <SectionHeader
-          icon={UserCog}
-          title="Login accounts"
-          subtitle="Role enforcement belongs on the API; this view mirrors the approved accounts."
-          badge={
-            <span className={badgeClass}>
-              {hasFilters ? `${filteredUsers.length} of ${users.length}` : users.length} accounts
-            </span>
-          }
-        />
-        <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
-          <label className="relative block min-w-0 flex-1 basis-full sm:basis-0">
-            <span className="sr-only">Search login accounts</span>
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, email, or barangay"
-              className={`${fieldClass} h-10 pl-10 sm:h-11`}
-            />
-          </label>
-          <IconSelect
-            label="Role"
-            icon={<UserCog className="h-4 w-4" />}
-            value={roleFilter}
-            defaultValue=""
-            className="sm:w-48"
-            options={[
-              { value: "", label: "All roles" },
-              { value: "admin", label: "OSCA Admin" },
-              { value: "head", label: "OSCA Head" },
-              { value: "president", label: "BSCA President" },
-            ]}
-            onChange={setRoleFilter}
+      {isAdmin && (
+        <div className="mb-4 flex gap-2" role="tablist" aria-label="User and role management">
+          {(["users", "roles"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeTab === tab ? "bg-navy text-white dark:bg-gold dark:text-gold-foreground" : "border border-border/60 bg-card hover:bg-muted"}`}
+            >
+              {tab === "users" ? "Users" : "Roles & permissions"}
+            </button>
+          ))}
+        </div>
+      )}
+      {activeTab === "roles" && isAdmin ? (
+        <SystemRolePermissionsSettings />
+      ) : (
+        <section className={`${panelClass} p-5 sm:p-7`}>
+          <SectionHeader
+            icon={UserCog}
+            title="Login accounts"
+            subtitle="Role enforcement belongs on the API; this view mirrors the approved accounts."
+            badge={
+              <span className={badgeClass}>
+                {hasFilters ? `${usersTotal} matching` : usersTotal} accounts
+              </span>
+            }
           />
-          <IconSelect
-            label="Status"
-            icon={<ToggleRight className="h-4 w-4" />}
-            value={statusFilter}
-            defaultValue=""
-            className="sm:w-40"
-            options={[
-              { value: "", label: "All statuses" },
-              { value: "active", label: "Active" },
-              { value: "pending", label: "Pending verification" },
-              { value: "inactive", label: "Inactive" },
-            ]}
-            onChange={setStatusFilter}
-          />
-          {hasFilters && (
-            <IconActionButton
-              label="Clear filters"
-              variant="outline"
-              icon={<X className="h-4 w-4" />}
-              className="h-10 w-10 text-xs hover:translate-y-0 sm:h-11 sm:px-4"
-              onClick={() => {
-                setSearch("");
-                setRoleFilter("");
-                setStatusFilter("");
-              }}
-            />
+          {usersError && (
+            <div className="mt-4">
+              <AuthAlert tone="error">{usersError}</AuthAlert>
+            </div>
           )}
-        </div>
-        <div className="mt-4 @container overflow-x-auto rounded-lg border border-border/60">
-          <table className="w-full min-w-[720px] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
-            <thead>
-              <tr className="bg-muted text-left">
-                {["Name", "Email", "Role", "Barangay scope", "Status", "Actions"].map((heading) => (
-                  <th
-                    key={heading}
-                    className="px-4 py-3 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase"
-                  >
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="border-t border-border/60">
-                  <td className="px-4 py-3.5 font-semibold">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-white ring-2 ring-gold/40">
-                        {user.profile_photo_path ? (
-                          <img
-                            src={photoUrl(user.profile_photo_path)}
-                            alt={`${user.name} profile`}
-                            className="h-full w-full object-cover"
-                            onError={(event) => {
-                              if (user.role === "admin") event.currentTarget.src = oscaAdminImage;
-                            }}
-                          />
-                        ) : user.role === "admin" ? (
-                          <img
-                            src={oscaAdminImage}
-                            alt={`${user.name} profile`}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          initials(user.name)
-                        )}
-                      </div>
-                      {user.name}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{user.email}</td>
-                  <td className="px-4 py-3.5">
-                    <span
-                      className={
-                        user.role === "president"
-                          ? badgeClass
-                          : "rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-foreground dark:text-gold"
-                      }
+          <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
+            <label className="relative block min-w-0 flex-1 basis-full sm:basis-0">
+              <span className="sr-only">Search login accounts</span>
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search name, email, or barangay"
+                className={`${fieldClass} h-10 pl-10 sm:h-11`}
+              />
+            </label>
+            <IconSelect
+              label="Role"
+              icon={<UserCog className="h-4 w-4" />}
+              value={roleFilter}
+              defaultValue=""
+              className="sm:w-48"
+              options={[
+                { value: "", label: "All roles" },
+                { value: "admin", label: "Super Admin" },
+                { value: "head", label: "OSCA Head" },
+                { value: "encoder", label: "Encoder" },
+                { value: "viewer", label: "Viewer" },
+                { value: "president", label: "BSCA President" },
+              ]}
+              onChange={setRoleFilter}
+            />
+            <IconSelect
+              label="Status"
+              icon={<ToggleRight className="h-4 w-4" />}
+              value={statusFilter}
+              defaultValue=""
+              className="sm:w-40"
+              options={[
+                { value: "", label: "All statuses" },
+                { value: "active", label: "Active" },
+                { value: "pending", label: "Pending verification" },
+                { value: "inactive", label: "Inactive" },
+              ]}
+              onChange={setStatusFilter}
+            />
+            {hasFilters && (
+              <IconActionButton
+                label="Clear filters"
+                variant="outline"
+                icon={<X className="h-4 w-4" />}
+                className="h-10 w-10 text-xs hover:translate-y-0 sm:h-11 sm:px-4"
+                onClick={() => {
+                  setSearch("");
+                  setRoleFilter("");
+                  setStatusFilter("");
+                }}
+              />
+            )}
+          </div>
+          <div className="mt-4 @container overflow-x-auto rounded-lg border border-border/60">
+            <table className="w-full min-w-[720px] text-sm [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+              <thead>
+                <tr className="bg-muted text-left">
+                  {[
+                    "Name",
+                    "Email",
+                    "Role",
+                    "Barangay scope",
+                    "Status",
+                    "Last login",
+                    "Actions",
+                  ].map((heading) => (
+                    <th
+                      key={heading}
+                      className="px-4 py-3 text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase"
                     >
-                      {roleLabel(user.role)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-muted-foreground">{barangayScope(user)}</td>
-                  <td className="px-4 py-3.5">
-                    {accountStatus(user) === "pending" ? (
-                      <StatusPill tone="gold">Pending verification</StatusPill>
-                    ) : (
-                      <StatusPill tone={user.status === "active" ? "success" : "danger"}>
-                        {user.status === "active" ? "Active" : "Inactive"}
-                      </StatusPill>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => openEditForm(user)}
-                        aria-label={`Edit ${user.name}`}
-                        title="Edit account"
-                        className={actionButtonClass}
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {usersLoading ? (
+                  <tr>
+                    <td colSpan={7}>
+                      <div
+                        className={`${tableMessageClass} flex items-center justify-center gap-2`}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      {user.id !== currentUser?.id && (
-                        <button
-                          onClick={() => handleToggleStatus(user)}
-                          aria-label={`${user.status === "active" ? "Deactivate" : "Reactivate"} ${user.name}`}
-                          title={
-                            user.status === "active" ? "Deactivate account" : "Reactivate account"
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading user accounts…
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="border-t border-border/60">
+                      <td className="px-4 py-3.5 font-semibold">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-navy grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full text-xs text-white ring-2 ring-gold/40">
+                            {user.profile_photo_path ? (
+                              <img
+                                src={photoUrl(user.profile_photo_path)}
+                                alt={`${user.name} profile`}
+                                className="h-full w-full object-cover"
+                                onError={(event) => {
+                                  if (user.role === "admin")
+                                    event.currentTarget.src = oscaAdminImage;
+                                }}
+                              />
+                            ) : user.role === "admin" ? (
+                              <img
+                                src={oscaAdminImage}
+                                alt={`${user.name} profile`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              initials(user.name)
+                            )}
+                          </div>
+                          {user.name}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-muted-foreground">{user.email}</td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={
+                            user.role === "president"
+                              ? badgeClass
+                              : "rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-semibold text-gold-foreground dark:text-gold"
                           }
-                          className={actionButtonClass}
                         >
-                          {user.status === "active" ? (
-                            <ToggleRight className="h-4 w-4 text-success" />
-                          ) : (
-                            <ToggleLeft className="h-4 w-4" />
-                          )}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(user)}
-                        aria-label={`Delete ${user.name}`}
-                        title="Delete account"
-                        className={`${actionButtonClass} hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={6}>
-                    <div className={tableMessageClass}>
-                      <EmptyState
-                        bare
-                        icon={UserRound}
-                        title={hasFilters ? "No matching accounts" : "No login accounts yet"}
-                        description={
-                          hasFilters
-                            ? "Try a different search or clear the filters."
-                            : "Accounts you create will be listed here."
-                        }
-                        className="py-12"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                          {roleLabel(user.role)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-muted-foreground">{barangayScope(user)}</td>
+                      <td className="px-4 py-3.5">
+                        {accountStatus(user) === "pending" ? (
+                          <StatusPill tone="gold">Pending verification</StatusPill>
+                        ) : (
+                          <StatusPill tone={user.status === "active" ? "success" : "danger"}>
+                            {user.status === "active" ? "Active" : "Inactive"}
+                          </StatusPill>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-muted-foreground">
+                        {user.last_login ? new Date(user.last_login).toLocaleString() : "Never"}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {isAdmin && (
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => openEditForm(user)}
+                              aria-label={`Edit ${user.name}`}
+                              title="Edit account"
+                              className={actionButtonClass}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            {user.id !== currentUser?.id && (
+                              <button
+                                onClick={() => handleToggleStatus(user)}
+                                aria-label={`${user.status === "active" ? "Deactivate" : "Reactivate"} ${user.name}`}
+                                title={
+                                  user.status === "active"
+                                    ? "Deactivate account"
+                                    : "Reactivate account"
+                                }
+                                className={actionButtonClass}
+                              >
+                                {user.status === "active" ? (
+                                  <ToggleRight className="h-4 w-4 text-success" />
+                                ) : (
+                                  <ToggleLeft className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                            {user.id !== currentUser?.id && (
+                              <>
+                                <button
+                                  onClick={() => void handleResetPassword(user)}
+                                  aria-label={`Reset password for ${user.name}`}
+                                  title="Reset password"
+                                  className={actionButtonClass}
+                                >
+                                  <KeyRound className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => void handleDelete(user)}
+                                  aria-label={`Delete ${user.name}`}
+                                  title="Delete account"
+                                  className={`${actionButtonClass} hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+                {!usersLoading && !usersError && filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className={tableMessageClass}>
+                        <EmptyState
+                          bare
+                          icon={UserRound}
+                          title={hasFilters ? "No matching accounts" : "No login accounts yet"}
+                          description={
+                            hasFilters
+                              ? "Try a different search or clear the filters."
+                              : "Accounts you create will be listed here."
+                          }
+                          className="py-12"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+            <span>
+              Page {usersPage} of {usersLastPage} · {usersTotal} accounts
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setUsersPage((page) => Math.max(1, page - 1))}
+                disabled={usersPage <= 1 || usersLoading}
+                className="rounded-lg border border-border/60 px-3 py-2 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setUsersPage((page) => Math.min(usersLastPage, page + 1))}
+                disabled={usersPage >= usersLastPage || usersLoading}
+                className="rounded-lg border border-border/60 px-3 py-2 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {showCreateForm && isAdmin && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 px-4 backdrop-blur-[2px]">
@@ -767,35 +934,25 @@ function UserManagement() {
                   <label htmlFor="user-role" className={labelClass}>
                     Role
                   </label>
-                  {/* Accounts made here are always BSCA President (there is only one OSCA
-                      Head); existing Admin and Head accounts keep their role. */}
-                  {editingUser?.role === "admin" || editingUser?.role === "head" ? (
-                    <Select
-                      name="role"
-                      required
-                      value={role}
-                      onValueChange={(value) => setRole(value as typeof role)}
-                    >
-                      <SelectTrigger id="user-role">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {editingUser.role === "admin" ? (
-                          <SelectItem value="admin">Admin</SelectItem>
-                        ) : (
-                          <SelectItem value="head">Head</SelectItem>
-                        )}
-                        <SelectItem value="president">BSCA President</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <input
-                      id="user-role"
-                      value="BSCA President"
-                      readOnly
-                      className={`${fieldClass} h-11 bg-muted/60`}
-                    />
-                  )}
+                  <Select
+                    name="role"
+                    required
+                    value={role}
+                    onValueChange={(value) => setRole(value as typeof role)}
+                  >
+                    <SelectTrigger id="user-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {editingUser?.role === "admin" && (
+                        <SelectItem value="admin">Super Admin</SelectItem>
+                      )}
+                      <SelectItem value="head">OSCA Head</SelectItem>
+                      <SelectItem value="encoder">Encoder</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                      <SelectItem value="president">BSCA President</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label htmlFor="user-status" className={labelClass}>
@@ -928,6 +1085,51 @@ function UserManagement() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {temporaryPassword && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4 backdrop-blur-[2px]">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="temporary-password-title"
+            className={`${panelClass} w-full max-w-md p-6`}
+          >
+            <h2 id="temporary-password-title" className="text-lg font-semibold">
+              Temporary password
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Share this password securely. It is shown only once, and the user must change it at
+              their next sign-in.
+            </p>
+            <code className="mt-4 block select-all break-all rounded-lg border border-border/60 bg-muted p-3 text-base">
+              {temporaryPassword}
+            </code>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  void navigator.clipboard
+                    .writeText(temporaryPassword)
+                    .then(() => setPasswordCopied(true))
+                    .catch(() =>
+                      toast.error("Could not copy the password. Select it to copy manually."),
+                    )
+                }
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-border/60 px-3 text-sm font-semibold"
+              >
+                {passwordCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {passwordCopied ? "Copied" : "Copy"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTemporaryPassword(null)}
+                className="h-10 rounded-lg bg-navy px-4 text-sm font-semibold text-white dark:bg-gold dark:text-gold-foreground"
+              >
+                Done
+              </button>
+            </div>
+          </section>
         </div>
       )}
       {confirmDialog}

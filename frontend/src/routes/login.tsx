@@ -83,7 +83,12 @@ function LoginPage() {
           setError(null);
           setNotice(null);
           login(email, password)
-            .then(() => navigate({ to: "/dashboard", replace: true }))
+            .then((user) =>
+              navigate({
+                to: user.must_change_password ? "/profile" : "/dashboard",
+                replace: true,
+              }),
+            )
             .catch((reason: Error) => {
               if (reason instanceof ApiError && reason.status === 429 && reason.retryAfter) {
                 setNow(Date.now());
