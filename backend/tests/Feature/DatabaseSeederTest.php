@@ -15,9 +15,17 @@ class DatabaseSeederTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_default_seeding_preserves_accounts_without_creating_sample_records(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $this->assertSame(68, User::count());
+        $this->assertSame(0, SeniorCitizen::withTrashed()->count());
+    }
+
     public function test_it_seeds_a_president_account_and_twenty_to_thirty_seniors_per_barangay(): void
     {
         $this->seed(DatabaseSeeder::class);
+        $this->seed(SampleDataSeeder::class);
 
         $barangays = Barangay::all();
         $expectedTotal = $barangays->sum(fn (Barangay $barangay) => SampleDataSeeder::countFor($barangay->barangay_name));
@@ -47,6 +55,7 @@ class DatabaseSeederTest extends TestCase
         $president->update(['password' => 'changed-password']);
 
         $this->seed(DatabaseSeeder::class);
+        $this->seed(SampleDataSeeder::class);
 
         $this->assertSame(68, User::count());
         $this->assertSame($expectedTotal, SeniorCitizen::withTrashed()->count());

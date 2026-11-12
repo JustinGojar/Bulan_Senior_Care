@@ -82,6 +82,6 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call(BenefitSeeder::class);
-        $this->call(SampleDataSeeder::class);
+        $this->call(BscaPresidentSeeder::class);
     }
 }
