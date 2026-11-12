@@ -288,7 +288,8 @@ export function AppShell({
     user?.role?.toLowerCase() === "admin" ||
     user?.roles?.some((role) => role.name.toLowerCase() === "admin");
   const permissions = user?.granted_permissions ?? [];
-  const canViewUsers = isAdmin || permissions.includes("users.view");
+  const canViewUsers =
+    user?.role?.toLowerCase() !== "head" && (isAdmin || permissions.includes("users.view"));
   const canViewSettings =
     isAdmin ||
     permissions.some((permission) =>
