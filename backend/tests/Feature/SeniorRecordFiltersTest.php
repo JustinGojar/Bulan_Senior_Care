@@ -130,6 +130,7 @@ class SeniorRecordFiltersTest extends TestCase
         );
 
         $this->assertSame(['OSCA-MID', 'OSCA-OLD', 'OSCA-NEW'], $order(''));
+        $this->assertSame(['OSCA-NEW', 'OSCA-OLD', 'OSCA-MID'], $order('&sort=name_desc'));
         $this->assertSame(['OSCA-NEW', 'OSCA-MID', 'OSCA-OLD'], $order('&sort=latest'));
         $this->assertSame(['OSCA-OLD', 'OSCA-MID', 'OSCA-NEW'], $order('&sort=oldest'));
     }

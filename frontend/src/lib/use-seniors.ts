@@ -156,7 +156,7 @@ export function useSeniors(
     barangay?: string;
     benefit?: string;
     /** "latest" or "oldest" by date added; omitted is A–Z by name. */
-    sort?: "latest" | "oldest";
+    sort?: "latest" | "oldest" | "name_desc";
     sex?: "male" | "female";
     /** Age range in whole years, either end optional. */
     ageMin?: number;

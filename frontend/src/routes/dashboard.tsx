@@ -24,7 +24,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnnouncementDialog } from "@/components/AnnouncementDialog";
 import { AppShell } from "@/components/AppShell";
 import { AuthAlert, authSubmitClass } from "@/components/AuthLayout";
-import { EligibilityFlagDialog } from "@/components/EligibilityFlagDialog";
 import { EmptyState, SectionHeader, SkeletonValue, TileSkeletons } from "@/components/DesignKit";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -47,7 +46,7 @@ import {
   type Announcement,
   type Overview,
 } from "@/lib/api";
-import { findNewEligibilityFlags, type EligibilityFlag } from "@/lib/osca-data";
+import { findNewEligibilityFlags } from "@/lib/osca-data";
 import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useSeniors } from "@/lib/use-seniors";
 
@@ -146,7 +145,6 @@ function Dashboard() {
     currentUser?.roles?.some((role) => role.name.toLowerCase() === "head");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
-  const [selectedFlag, setSelectedFlag] = useState<EligibilityFlag | null>(null);
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
@@ -226,7 +224,7 @@ function Dashboard() {
   }
 
   // Admins see announcements and distribution side by side, so those cards share a height.
-  const isAdminLayout = currentUser?.role === "admin";
+  const isAdminLayout = currentUser?.role === "admin" || isHead;
   const firstName = currentUser?.name?.split(" ")[0];
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
@@ -269,71 +267,68 @@ function Dashboard() {
               Here&apos;s what&apos;s happening across senior citizen records and benefits in Bulan.
             </p>
           </div>
-          {isHead && hasPermission("manage announcements") && (
-            <button
-              type="button"
-              onClick={() => setShowAnnouncementForm(true)}
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-gold px-5 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)]"
-            >
-              <Plus className="h-4 w-4" />
-              New announcement
-            </button>
-          )}
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <Link to="/seniors" search={{ q: undefined, status: undefined }} className={statCardClass}>
-          <StatCardBody
-            icon={Users}
-            tone="navy"
-            label="Total Registered"
-            value={loading ? <SkeletonValue /> : totalCount.toLocaleString()}
-            change={overview?.monthly_change.total_registered}
-            description="Total number of senior citizens in the system."
-          />
-        </Link>
-        <Link to="/benefits" className={statCardClass}>
-          <StatCardBody
-            icon={PhilippinePeso}
-            tone="gold"
-            label="Benefits Distributed"
-            value={
-              overview ? (
-                <span title={formatPesoFull(overview.benefits_distributed_amount)}>
-                  {formatPesoAmount(overview.benefits_distributed_amount)}
-                </span>
-              ) : (
-                <SkeletonValue className="h-7 w-24" />
-              )
-            }
-            change={overview?.monthly_change.benefits_distributed_amount}
-            description="Total amount of benefits released to senior citizens."
-          />
-        </Link>
-        <Link to="/seniors" search={{ q: undefined, status: "active" }} className={statCardClass}>
-          <StatCardBody
-            icon={UserCheck}
-            tone="success"
-            label="Active Seniors"
-            value={loading ? <SkeletonValue /> : activeCount.toLocaleString()}
-            change={overview?.monthly_change.active_seniors}
-            description="Seniors with active records and benefits."
-          />
-        </Link>
-        <Link to="/seniors" search={{ q: undefined, status: "pending" }} className={statCardClass}>
-          <StatCardBody
-            icon={Clock}
-            tone="coral"
-            label="Pending Applications"
-            value={loading ? <SkeletonValue /> : pendingCount.toLocaleString()}
-            change={overview?.monthly_change.pending_applications}
-            description="Applications awaiting verification or approval."
-          />
-        </Link>
-      </div>
-
-      <div className={isAdminLayout ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"}>
+      <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <Link
+            to="/seniors"
+            search={{ q: undefined, status: undefined }}
+            className={statCardClass}
+          >
+            <StatCardBody
+              icon={Users}
+              tone="navy"
+              label="Total Registered"
+              value={loading ? <SkeletonValue /> : totalCount.toLocaleString()}
+              change={overview?.monthly_change.total_registered}
+              description="Total number of senior citizens in the system."
+            />
+          </Link>
+          <Link to="/benefits" className={statCardClass}>
+            <StatCardBody
+              icon={PhilippinePeso}
+              tone="gold"
+              label="Benefits Distributed"
+              value={
+                overview ? (
+                  <span title={formatPesoFull(overview.benefits_distributed_amount)}>
+                    {formatPesoAmount(overview.benefits_distributed_amount)}
+                  </span>
+                ) : (
+                  <SkeletonValue className="h-7 w-24" />
+                )
+              }
+              change={overview?.monthly_change.benefits_distributed_amount}
+              description="Total amount of benefits released to senior citizens."
+            />
+          </Link>
+          <Link to="/seniors" search={{ q: undefined, status: "active" }} className={statCardClass}>
+            <StatCardBody
+              icon={UserCheck}
+              tone="success"
+              label="Active Seniors"
+              value={loading ? <SkeletonValue /> : activeCount.toLocaleString()}
+              change={overview?.monthly_change.active_seniors}
+              description="Seniors with active records and benefits."
+            />
+          </Link>
+          <Link
+            to="/seniors"
+            search={{ q: undefined, status: "pending" }}
+            className={statCardClass}
+          >
+            <StatCardBody
+              icon={Clock}
+              tone="coral"
+              label="Pending Applications"
+              value={loading ? <SkeletonValue /> : pendingCount.toLocaleString()}
+              change={overview?.monthly_change.pending_applications}
+              description="Applications awaiting verification or approval."
+            />
+          </Link>
+        </div>
         <section
           className={`surface-card flex max-h-[430px] flex-col overflow-hidden border border-border/60 p-5 sm:p-7 ${isAdminLayout ? "lg:h-[430px]" : ""}`}
         >
@@ -342,6 +337,16 @@ function Dashboard() {
             title="Announcements"
             badge={<span className={badgeClass}>{announcements.length} total</span>}
           />
+          {hasPermission("manage announcements") && (
+            <button
+              type="button"
+              onClick={() => setShowAnnouncementForm(true)}
+              className="mt-4 inline-flex h-11 shrink-0 items-center gap-2 self-start rounded-lg bg-gold px-5 text-sm font-bold text-gold-foreground shadow-[var(--shadow-soft)]"
+            >
+              <Plus className="h-4 w-4" />
+              New announcement
+            </button>
+          )}
           <div className="mt-6 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2">
             {announcements.slice(0, 1).map((announcement) => (
               <article
@@ -381,13 +386,14 @@ function Dashboard() {
               to="/announcements"
               className="mt-4 inline-flex items-center gap-1.5 self-end text-sm font-bold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
             >
-              {announcements.length > 1
-                ? `See all ${announcements.length} announcements`
-                : "See all announcements"}
+              See all
               <ArrowRight className="h-4 w-4" />
             </Link>
           )}
         </section>
+      </div>
+
+      <div className={isAdminLayout ? "mt-6 grid gap-6 lg:grid-cols-2" : "mt-6 space-y-6"}>
         {isHead && (
           <section className="surface-card border border-border/60 p-5 sm:p-7">
             <SectionHeader
@@ -425,16 +431,7 @@ function Dashboard() {
         <section
           className={`surface-card overflow-hidden border border-border/60 p-5 sm:p-7 ${isAdminLayout ? "lg:h-[430px]" : ""}`}
         >
-          <SectionHeader
-            icon={Clock}
-            title="Distribution Status"
-            badge={
-              <span className={`${badgeClass} inline-flex items-center gap-1.5`}>
-                <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                Live
-              </span>
-            }
-          />
+          <SectionHeader icon={Clock} title="Distribution Status" />
           <div className="mt-7 space-y-5">
             {[
               {
@@ -514,10 +511,10 @@ function Dashboard() {
           {eligibilityFlags.slice(0, 6).map((flag) => {
             const { senior, program, reason } = flag;
             return (
-              <button
-                type="button"
+              <Link
+                to="/age-threshold"
+                hash="new-threshold-flags"
                 key={`${senior.id}-${program.type}`}
-                onClick={() => setSelectedFlag(flag)}
                 className={`${tileClass} cursor-pointer text-left transition-[border-color,box-shadow] hover:border-ring/40 hover:shadow-[var(--shadow-soft)] focus-visible:outline-2 focus-visible:outline-ring`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -528,7 +525,7 @@ function Dashboard() {
                 </div>
                 <p className="mt-2 text-xs font-semibold text-coral">{program.name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
-              </button>
+              </Link>
             );
           })}
           {loading && <TileSkeletons label="Loading senior records" />}
@@ -543,7 +540,7 @@ function Dashboard() {
         </div>
       </section>
 
-      {showAnnouncementForm && isHead && hasPermission("manage announcements") && (
+      {showAnnouncementForm && hasPermission("manage announcements") && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 px-4 backdrop-blur-[2px]">
           <form
             onSubmit={handleCreateAnnouncement}
@@ -659,7 +656,6 @@ function Dashboard() {
           }}
         />
       )}
-      <EligibilityFlagDialog flag={selectedFlag} onClose={() => setSelectedFlag(null)} />
     </AppShell>
   );
 }

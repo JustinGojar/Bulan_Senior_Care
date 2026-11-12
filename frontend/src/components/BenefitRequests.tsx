@@ -1,3 +1,4 @@
+import { IconSelect } from "@/components/IconActionButton";
 import { Check, ClipboardList, HandCoins, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -298,22 +299,21 @@ export function BenefitRequestsPanel({ role }: { role?: string | undefined }) {
             : "Requests you submitted for your barangay's seniors and where they stand."
         }
         badge={
-          <select
-            aria-label="Filter benefit requests by status"
+          <IconSelect
+            label="Filter benefit requests by status"
+            icon={<ClipboardList className="h-4 w-4" />}
             value={filter}
-            onChange={(event) => {
-              setFilter(event.target.value as BenefitRequestStatus | "");
+            defaultValue=""
+            className="sm:w-60"
+            options={[
+              { value: "", label: "All statuses" },
+              ...Object.entries(STATUS).map(([value, { label }]) => ({ value, label })),
+            ]}
+            onChange={(value) => {
+              setFilter(value as BenefitRequestStatus | "");
               setPage(1);
             }}
-            className={cn(fieldClass, "h-10 w-full sm:w-56")}
-          >
-            <option value="">All statuses</option>
-            {Object.entries(STATUS).map(([value, { label }]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          />
         }
       />
       <div className="mt-5 space-y-3">

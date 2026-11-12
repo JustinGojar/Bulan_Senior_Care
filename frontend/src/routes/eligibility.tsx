@@ -74,7 +74,7 @@ function isDecidable(senior: Senior) {
 }
 
 const REVIEW_FILTERS = [
-  { value: "", label: "All pending" },
+  { value: "", label: "All" },
   { value: "awaiting", label: "Awaiting review" },
   { value: "in_review", label: "In review" },
   { value: "not_eligible", label: "Not eligible" },
@@ -466,25 +466,13 @@ function EligibilityReview() {
                     <StatusPill tone="gold">In review</StatusPill>
                   </div>
                 ) : canReview ? (
-                  <div className="flex w-full justify-end gap-2 sm:w-auto">
-                    <button
-                      onClick={() => startRejecting([senior])}
-                      className={cn(
-                        secondaryButtonClass,
-                        "h-8 px-3 text-xs whitespace-nowrap text-destructive hover:border-destructive/40 hover:bg-destructive/10",
-                      )}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      Not eligible
-                    </button>
-                    <button
-                      onClick={() => reviewSenior(senior, "Active")}
-                      className={cn(primaryButtonClass, "h-8 px-3 text-xs")}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Eligible
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewing(senior)}
+                    className={cn(secondaryButtonClass, "h-8 px-3 text-xs")}
+                  >
+                    Awaiting review
+                  </button>
                 ) : null}
               </article>
             );
@@ -567,7 +555,7 @@ function EligibilityReview() {
           {viewing?.reviewNote && (
             <DocumentReviewNotice senior={viewing} canResubmit={false} onResubmitted={setViewing} />
           )}
-          <dl className="grid grid-cols-2 gap-3 text-sm">
+          <dl className="divide-y divide-border/60 text-sm">
             {[
               ["Senior ID", viewing?.id],
               ["Name", viewing?.name],
@@ -577,11 +565,11 @@ function EligibilityReview() {
               ["Benefits", viewing && benefitLabel(viewing.benefit)],
               ["Status", viewing?.status],
             ].map(([label, value]) => (
-              <div key={String(label)} className={`${tileClass} p-3`}>
+              <div key={String(label)} className="flex items-baseline justify-between gap-4 py-3">
                 <dt className="text-[0.6875rem] font-semibold tracking-wider text-muted-foreground uppercase">
                   {label}
                 </dt>
-                <dd className="mt-1 font-semibold">{value || "Not provided"}</dd>
+                <dd className="text-right font-semibold">{value || "Not provided"}</dd>
               </div>
             ))}
           </dl>

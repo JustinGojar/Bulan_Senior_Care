@@ -95,6 +95,7 @@ type AnalyticsResponse = {
     registered: number;
     active: number;
     released: number;
+    recipients: number;
   }>;
   age_distribution: Array<{ age: string; count: number }>;
   benefit_records: Array<{ name: string; value: number }>;
@@ -345,10 +346,35 @@ function AnalyticsOverview({ isPresident }: { isPresident: boolean }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    apiFetch<AnalyticsResponse>("/analytics")
-      .then(setAnalytics)
-      .catch((reason: Error) => setError(reason.message))
-      .finally(() => setLoading(false));
+    let active = true;
+    let fetching = false;
+    const refresh = async () => {
+      if (fetching || document.visibilityState === "hidden") return;
+      fetching = true;
+      try {
+        const result = await apiFetch<AnalyticsResponse>("/analytics");
+        if (active) {
+          setAnalytics(result);
+          setError(null);
+        }
+      } catch (reason) {
+        if (active)
+          setError(reason instanceof Error ? reason.message : "Unable to load analytics.");
+      } finally {
+        fetching = false;
+        if (active) setLoading(false);
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 30000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, []);
   const barangaySummary = analytics?.barangay_summary ?? [];
   const zoneParticipants = barangaySummary.map(({ barangay: zone, registered: total }) => ({
@@ -356,7 +382,9 @@ function AnalyticsOverview({ isPresident }: { isPresident: boolean }) {
     total,
   }));
   const ageDistribution = analytics?.age_distribution ?? [];
-  const benefitRecords = analytics?.benefit_records ?? [];
+  const benefitRecords = (analytics?.released_benefit_records ?? []).map(
+    ({ name, senior_count }) => ({ name, value: senior_count }),
+  );
   const releaseStatusRecords = analytics?.benefit_status_records ?? [];
   const municipalTotal = analytics?.municipal.total_registered ?? 0;
   const trendData = analytics?.trend ?? [];
@@ -474,15 +502,15 @@ function AnalyticsOverview({ isPresident }: { isPresident: boolean }) {
         <section className={`${panelClass} p-5 sm:p-7`}>
           <SectionHeader
             icon={PieIcon}
-            title="Benefit Records"
-            subtitle="Seniors per benefit, based on their age."
+            title="Benefit Recipients"
+            subtitle="Distinct seniors with a recorded release for each benefit."
           />
           <div className="mt-6 h-72">
             {!loading && benefitRecords.length === 0 ? (
               <EmptyState
                 icon={PieIcon}
                 title="No benefit records yet"
-                description="Benefit assignments will be charted here."
+                description="Recorded benefit recipients will be charted here."
                 className="h-full"
               />
             ) : (
@@ -625,7 +653,7 @@ function AnalyticsOverview({ isPresident }: { isPresident: boolean }) {
             </thead>
             <tbody>
               {barangaySummary.map((row) => {
-                const pct = Math.round((row.released / row.registered) * 100);
+                const pct = percent(row.recipients, row.registered);
                 return (
                   <tr key={row.barangay} className="border-t border-border/60">
                     <td className="px-4 py-3.5 font-semibold">{row.barangay}</td>
