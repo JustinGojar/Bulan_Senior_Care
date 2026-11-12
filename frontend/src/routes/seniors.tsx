@@ -576,7 +576,7 @@ function SeniorRecords() {
       .catch(() => setPresidentBarangay(undefined));
   }, [isPresident, currentUser?.barangay_id]);
   const [benefitFilter, setBenefitFilter] = useState("All");
-  const [sortBy, setSortBy] = useState<"name" | "latest" | "oldest">("name");
+  const [sortBy, setSortBy] = useState<"name" | "name_desc" | "latest" | "oldest">("latest");
   const [ageRange, setAgeRange] = useState("All");
   const [sexFilter, setSexFilter] = useState<"All" | "male" | "female">("All");
   const selectedAgeRange = AGE_RANGES.find((range) => range.value === ageRange);
@@ -982,9 +982,10 @@ function SeniorRecords() {
           className="sm:flex-1 xl:w-[205px] xl:flex-none"
           icon={<ArrowUpDown className="h-4 w-4" />}
           value={sortBy}
-          defaultValue="name"
+          defaultValue="latest"
           options={[
             { value: "name", label: "Name (A–Z)" },
+            { value: "name_desc", label: "Name (Z–A)" },
             { value: "latest", label: "Latest record" },
             { value: "oldest", label: "Oldest record" },
           ]}
@@ -1004,7 +1005,7 @@ function SeniorRecords() {
             setBarangayFilter(isPresident ? (presidentBarangay ?? "All") : "All");
             setFilter("All");
             setBenefitFilter("All");
-            setSortBy("name");
+            setSortBy("latest");
             setAgeRange("All");
             setSexFilter("All");
           }}
@@ -1420,6 +1421,7 @@ function SeniorRecords() {
                 );
               } else {
                 const created = await createSenior(draft);
+                if (sortBy === "latest") setPage(1);
                 toast.success(`${draft.name} was registered and is pending review.`);
                 // The record is saved even if the form download fails; it can be downloaded later
                 // from the senior's profile.

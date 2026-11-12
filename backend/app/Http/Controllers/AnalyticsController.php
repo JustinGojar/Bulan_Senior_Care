@@ -40,7 +40,7 @@ class AnalyticsController extends Controller
         $isPresident = $request->user()->role === 'president';
 
         // All counting happens in the database so the response time stays flat as records grow.
-        $seniors = SeniorCitizen::query()->where('senior_citizens.status', '!=', 'pending');
+        $seniors = SeniorCitizen::query();
         if ($isPresident) {
             $seniors->where('senior_citizens.barangay_id', $request->user()->barangay_id);
         } else {
@@ -91,9 +91,9 @@ class AnalyticsController extends Controller
             ->join('senior_citizens', 'senior_citizens.id', '=', 'benefit_transactions.senior_citizen_id')
             ->where('benefit_transactions.status', 'released')
             ->groupBy('senior_citizens.barangay_id')
-            ->selectRaw('senior_citizens.barangay_id, COUNT(*) AS released')
+            ->selectRaw('senior_citizens.barangay_id, COUNT(*) AS released, COUNT(DISTINCT benefit_transactions.senior_citizen_id) AS recipients')
             ->toBase()
-            ->pluck('released', 'barangay_id');
+            ->get()->keyBy('barangay_id');
 
         $barangayRows = (clone $seniors)
             ->selectRaw(
@@ -112,10 +112,11 @@ class AnalyticsController extends Controller
         $barangaySummary = [];
         foreach ($barangayRows as $row) {
             $name = $barangayNames[$row->barangay_id] ?? 'Unassigned';
-            $barangaySummary[$name] ??= ['barangay' => $name, 'registered' => 0, 'active' => 0, 'released' => 0];
+            $barangaySummary[$name] ??= ['barangay' => $name, 'registered' => 0, 'active' => 0, 'released' => 0, 'recipients' => 0];
             $barangaySummary[$name]['registered'] += (int) $row->registered;
             $barangaySummary[$name]['active'] += (int) $row->active;
-            $barangaySummary[$name]['released'] += (int) ($releasedByBarangay[$row->barangay_id] ?? 0);
+            $barangaySummary[$name]['released'] += (int) ($releasedByBarangay[$row->barangay_id]->released ?? 0);
+            $barangaySummary[$name]['recipients'] += (int) ($releasedByBarangay[$row->barangay_id]->recipients ?? 0);
         }
         $barangaySummary = collect(array_values($barangaySummary));
 

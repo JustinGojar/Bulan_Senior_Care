@@ -202,6 +202,8 @@ function SettingsPage() {
       localStorage.removeItem(NOTIFICATION_SETTINGS_KEY);
     }
 
+    if (getStoredUser()?.role !== "admin") return;
+
     getNotificationChannelSettings()
       .then(({ settings, configured }) => {
         if (cancelled) return;
@@ -295,6 +297,7 @@ function SettingsPage() {
                   aria-busy={savingNotification === label}
                   disabled={
                     savingNotification === label ||
+                    (label === "Email advisories" && !isAdmin) ||
                     (label === "Email advisories" &&
                       !notificationSettings[label] &&
                       (!channelReadiness || !channelReadiness.email_advisories))

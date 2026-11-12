@@ -287,7 +287,7 @@ function AgeThresholdPage() {
         </div>
       </section>
 
-      <section className={`${panelClass} mt-6 p-5 sm:p-7`}>
+      <section id="new-threshold-flags" className={`${panelClass} mt-6 scroll-mt-6 p-5 sm:p-7`}>
         <SectionHeader
           icon={AlertTriangle}
           title="New threshold flags"

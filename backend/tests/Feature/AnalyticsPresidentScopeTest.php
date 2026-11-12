@@ -64,6 +64,7 @@ class AnalyticsPresidentScopeTest extends TestCase
             ->assertJsonPath('barangay_summary.0.barangay', 'Zone 1')
             ->assertJsonPath('barangay_summary.0.registered', 1)
             ->assertJsonPath('barangay_summary.0.released', 2)
+            ->assertJsonPath('barangay_summary.0.recipients', 1)
             ->assertJsonPath('age_distribution.1.count', 1)
             ->assertJsonPath('age_distribution.4.count', 0)
             // Benefit records count seniors by age rule, not transactions.
@@ -78,7 +79,7 @@ class AnalyticsPresidentScopeTest extends TestCase
             ->assertJsonPath('benefit_status_records.0.not_released', 0);
     }
 
-    public function test_age_brackets_use_exact_birthdays_and_skip_pending_and_archived_seniors(): void
+    public function test_age_brackets_use_exact_birthdays_include_pending_and_skip_archived_seniors(): void
     {
         $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         /** @var User $admin */
@@ -92,13 +93,13 @@ class AnalyticsPresidentScopeTest extends TestCase
         $this->actingAs($admin, 'sanctum')
             ->getJson('/api/analytics')
             ->assertOk()
-            ->assertJsonPath('municipal.total_registered', 3)
+            ->assertJsonPath('municipal.total_registered', 4)
             ->assertJsonPath('age_distribution.0.count', 0)
             ->assertJsonPath('age_distribution.1.count', 2)
-            ->assertJsonPath('age_distribution.2.count', 0)
+            ->assertJsonPath('age_distribution.2.count', 1)
             ->assertJsonPath('age_distribution.4.count', 1)
-            ->assertJsonPath('barangay_summary.0.registered', 3)
-            ->assertJsonPath('trend.0.municipal', 3);
+            ->assertJsonPath('barangay_summary.0.registered', 4)
+            ->assertJsonPath('trend.0.municipal', 4);
     }
 
     public function test_benefit_records_follow_the_expanded_centenarian_age_bands(): void

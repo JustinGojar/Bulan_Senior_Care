@@ -125,6 +125,7 @@ class SeniorCitizenController extends Controller
         match ($request->string('sort')->toString()) {
             'latest' => $query->orderByDesc('created_at')->orderByDesc('id'),
             'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'name_desc' => $query->orderByDesc('last_name')->orderByDesc('first_name')->orderByDesc('id'),
             default => $query->orderBy('last_name')->orderBy('first_name')->orderBy('id'),
         };
         $loadSeniors = fn () => $query->paginate($perPage)->toArray();

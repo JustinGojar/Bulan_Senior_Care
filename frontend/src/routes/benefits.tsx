@@ -259,7 +259,7 @@ function BenefitTracking() {
       )
       .catch((reason: Error) => setError(reason.message));
     apiFetch<PaginatedResponse<BenefitTransaction> & { periods?: string[] }>(
-      `/benefit-transactions?page=${transactionPage}&per_page=25${
+      `/benefit-transactions?page=${transactionPage}&per_page=10${
         selectedPeriod === "All" ? "" : `&period=${encodeURIComponent(selectedPeriod)}`
       }`,
     )
