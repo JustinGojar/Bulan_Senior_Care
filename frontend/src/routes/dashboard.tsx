@@ -46,7 +46,7 @@ import {
   type Announcement,
   type Overview,
 } from "@/lib/api";
-import { findNewEligibilityFlags } from "@/lib/osca-data";
+import { findNewEligibilityFlags, type EligibilityFlag } from "@/lib/osca-data";
 import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { useSeniors } from "@/lib/use-seniors";
 
@@ -138,7 +138,7 @@ function StatCardBody({
 }
 
 function Dashboard() {
-  const { seniors, totalCount, activeCount, pendingCount, loading } = useSeniors();
+  const { loadAllSeniors, totalCount, activeCount, pendingCount, loading } = useSeniors();
   const currentUser = getStoredUser();
   const isHead =
     currentUser?.role?.toLowerCase() === "head" ||
@@ -153,9 +153,33 @@ function Dashboard() {
   const [announcementError, setAnnouncementError] = useState<string | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [announcementSaving, setAnnouncementSaving] = useState(false);
-  const eligibilityFlags = findNewEligibilityFlags(
-    seniors.filter((senior) => senior.status === "Active"),
-  );
+  const [eligibilityFlags, setEligibilityFlags] = useState<EligibilityFlag[]>([]);
+  const [flagsLoading, setFlagsLoading] = useState(true);
+  const [flagsError, setFlagsError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setFlagsLoading(true);
+    setFlagsError(null);
+    // Inspect every page so the six-card preview is not limited to the first 50 seniors.
+    loadAllSeniors()
+      .then((records) => {
+        if (active) {
+          setEligibilityFlags(
+            findNewEligibilityFlags(records.filter((senior) => senior.status === "Active")),
+          );
+        }
+      })
+      .catch(() => {
+        if (active)
+          setFlagsError("Unable to load age threshold records. Please refresh to try again.");
+      })
+      .finally(() => {
+        if (active) setFlagsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadAllSeniors]);
   useEffect(() => {
     getAnnouncements()
       .then((loadedAnnouncements) => {
@@ -503,7 +527,11 @@ function Dashboard() {
           subtitle="Derived eligibility surfaced from current senior ages."
           badge={
             <span className="rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-bold text-gold-foreground dark:text-gold">
-              {loading ? "Loading..." : `${eligibilityFlags.length} flags to review`}
+              {flagsLoading
+                ? "Loading..."
+                : flagsError
+                  ? "Unavailable"
+                  : `${eligibilityFlags.length} flags to review`}
             </span>
           }
         />
@@ -528,8 +556,13 @@ function Dashboard() {
               </Link>
             );
           })}
-          {loading && <TileSkeletons label="Loading senior records" />}
-          {!loading && eligibilityFlags.length === 0 && (
+          {flagsLoading && <TileSkeletons count={6} label="Loading age threshold records" />}
+          {flagsError && (
+            <div className="md:col-span-2 xl:col-span-3">
+              <AuthAlert tone="error">{flagsError}</AuthAlert>
+            </div>
+          )}
+          {!flagsLoading && !flagsError && eligibilityFlags.length === 0 && (
             <EmptyState
               icon={CheckCircle2}
               title="No age threshold flags"
