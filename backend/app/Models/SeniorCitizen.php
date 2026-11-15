@@ -43,7 +43,7 @@ class SeniorCitizen extends Model
         'civil_status', 'educational_attainment', 'other_skills', 'family_composition',
         'association_name', 'association_address', 'association_membership_date', 'association_position',
         'living_arrangement', 'registration_date', 'status',
-        'photo_path', 'id_document_path', 'valid_id_path', 'birth_certificate_path',
+        'photo_path', 'id_document_path', 'valid_id_path', 'valid_id_paths', 'birth_certificate_path',
         'privacy_consent_version', 'privacy_consent_at',
         'inactive_reason', 'date_of_death', 'death_certificate_path', 'inactive_remarks',
         'inactivated_by', 'inactivated_at',
@@ -68,7 +68,7 @@ class SeniorCitizen extends Model
         // it ends once the record is reviewed (approved or rejected) or new documents come in.
         static::saving(function (SeniorCitizen $senior) {
             if ($senior->review_note !== null && ! $senior->isDirty('review_note')
-                && ($senior->status !== 'pending' || $senior->isDirty(['valid_id_path', 'birth_certificate_path']))) {
+                && ($senior->status !== 'pending' || $senior->isDirty(['valid_id_path', 'valid_id_paths', 'birth_certificate_path']))) {
                 $senior->fill(self::CLEARED_REVIEW);
             }
         });
@@ -86,6 +86,7 @@ class SeniorCitizen extends Model
     protected function casts(): array
     {
         return [
+            'valid_id_paths' => 'array',
             'birthdate' => 'date',
             'registration_date' => 'date',
             'privacy_consent_at' => 'datetime',

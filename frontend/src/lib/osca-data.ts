@@ -26,6 +26,7 @@ export type Senior = {
   photoPath?: string | null;
   idDocumentPath?: string | null;
   validIdPath?: string | null;
+  validIdPaths?: string[];
   birthCertificatePath?: string | null;
   privacyConsentAt?: string | null;
   /** Set while a pending registration is "In review": what is wrong with its documents. */

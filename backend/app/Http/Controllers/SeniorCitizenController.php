@@ -353,15 +353,18 @@ class SeniorCitizenController extends Controller
         $this->authorizeScope($request, $senior);
         abort_if($senior->status !== 'pending' || $senior->review_note === null, 422, 'This registration is not waiting for new documents.');
         $request->validate([
-            'valid_id' => ['nullable', 'required_without:birth_certificate', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'valid_id' => ['nullable', 'required_without_all:birth_certificate,valid_ids', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'valid_ids' => ['sometimes', 'array', 'min:1', 'max:10'],
+            'valid_ids.*' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'birth_certificate' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ], [
-            'valid_id.required_without' => 'Attach at least one corrected document.',
+            'valid_id.required_without_all' => 'Attach at least one corrected document.',
         ]);
 
         $data = [];
         $replacedPaths = [];
-        foreach (['valid_id', 'birth_certificate'] as $documentField) {
+        $this->storeValidIds($request, $data, $replacedPaths, $senior);
+        foreach (['birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
                 $replacedPaths[] = $senior->{"{$documentField}_path"};
                 $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
@@ -413,7 +416,9 @@ class SeniorCitizenController extends Controller
         $data['privacy_consent_at'] = now();
         // Checked before any file is stored, so a blocked duplicate leaves no uploads behind.
         $this->abortIfDuplicate($data);
-        foreach (['valid_id', 'birth_certificate'] as $documentField) {
+        $replacedPaths = [];
+        $this->storeValidIds($request, $data, $replacedPaths);
+        foreach (['birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
                 $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
             }
@@ -655,6 +660,12 @@ class SeniorCitizenController extends Controller
         // Older records kept the valid ID in id_document_path.
         if ($kind === 'valid_id') {
             $path ??= $senior->id_document_path;
+            if ($request->filled('v')) {
+                $paths = array_filter(array_merge($senior->valid_id_paths ?? [], [$path]));
+                $requestedPath = $request->query('v');
+                abort_unless(is_string($requestedPath) && in_array($requestedPath, $paths, true), 404);
+                $path = $requestedPath;
+            }
         }
         /** @var FilesystemAdapter $disk */
         $disk = Storage::disk(SeniorCitizen::FILE_DISK);
@@ -700,7 +711,8 @@ class SeniorCitizenController extends Controller
             unset($data['benefit']);
         }
         $replacedPaths = [];
-        foreach (['valid_id', 'birth_certificate'] as $documentField) {
+        $this->storeValidIds($request, $data, $replacedPaths, $senior);
+        foreach (['birth_certificate'] as $documentField) {
             if ($request->hasFile($documentField)) {
                 $replacedPaths[] = $senior->{"{$documentField}_path"};
                 $data["{$documentField}_path"] = PhotoBackup::store($request->file($documentField), 'senior-documents');
@@ -766,6 +778,21 @@ class SeniorCitizenController extends Controller
         return response()->json(status: 204);
     }
 
+    /** Replace the ID set while keeping the first ID compatible with older clients. */
+    private function storeValidIds(Request $request, array &$data, array &$replacedPaths, ?SeniorCitizen $senior = null): void
+    {
+        $files = $request->file('valid_ids') ?? ($request->hasFile('valid_id') ? [$request->file('valid_id')] : []);
+        unset($data['valid_ids'], $data['valid_id']);
+        if (! $files) {
+            return;
+        }
+        if ($senior) {
+            $replacedPaths = array_merge($replacedPaths, $senior->valid_id_paths ?? [], [$senior->valid_id_path]);
+        }
+        $data['valid_id_paths'] = array_map(fn ($file) => PhotoBackup::store($file, 'senior-documents'), $files);
+        $data['valid_id_path'] = $data['valid_id_paths'][0];
+    }
+
     private function rules(bool $sometimes = false): array
     {
         $optional = static fn (string $rule): array => $sometimes ? ['sometimes', $rule] : [$rule];
@@ -775,6 +802,8 @@ class SeniorCitizenController extends Controller
             'barangay' => [...$optional('nullable'), 'string', 'max:100'],
             'benefit' => [...$optional('required'), 'string', 'max:100'],
             'valid_id' => ['sometimes', 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'valid_ids' => ['sometimes', 'array', 'min:1', 'max:10'],
+            'valid_ids.*' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'birth_certificate' => ['sometimes', 'nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'profile_photo' => [...($sometimes ? ['sometimes', 'nullable'] : ['nullable']), 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'last_name' => [...$optional('required'), 'string', 'max:100'],

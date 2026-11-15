@@ -34,6 +34,7 @@ export type SeniorDraft = Omit<Senior, "id"> & {
   associationPosition?: string;
   document?: File | null;
   validId?: File | null;
+  validIds?: File[];
   birthCertificate?: File | null;
   profilePhoto?: File | null;
   /** Documentation when the status is set to Inactive. */
@@ -127,6 +128,11 @@ export function mapSenior(senior: ApiSenior): Senior {
     photoPath: senior.photo_path ?? null,
     idDocumentPath: senior.id_document_path ?? null,
     validIdPath: senior.valid_id_path ?? senior.id_document_path ?? null,
+    validIdPaths: senior.valid_id_paths?.length
+      ? senior.valid_id_paths
+      : [senior.valid_id_path ?? senior.id_document_path].filter((path): path is string =>
+          Boolean(path),
+        ),
     birthCertificatePath: senior.birth_certificate_path ?? null,
     privacyConsentAt: senior.privacy_consent_at ?? null,
     reviewNote: senior.review_note ?? null,
@@ -322,7 +328,9 @@ export function useSeniors(
       body.append("benefit", draft.benefit);
       body.append("privacy_consent", draft.privacyConsent ? "1" : "0");
       body.append("privacy_consent_version", PRIVACY_CONSENT_VERSION);
-      if (draft.validId) body.append("valid_id", draft.validId);
+      if (draft.validIds?.length)
+        draft.validIds.forEach((file) => body.append("valid_ids[]", file));
+      else if (draft.validId) body.append("valid_id", draft.validId);
       if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
       if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
       const result = await apiFetch<ApiSenior>("/seniors", {
@@ -400,7 +408,9 @@ export function useSeniors(
           if (draft.deathCertificate) body.append("death_certificate", draft.deathCertificate);
         }
       }
-      if (draft.validId) body.append("valid_id", draft.validId);
+      if (draft.validIds?.length)
+        draft.validIds.forEach((file) => body.append("valid_ids[]", file));
+      else if (draft.validId) body.append("valid_id", draft.validId);
       if (draft.birthCertificate) body.append("birth_certificate", draft.birthCertificate);
       if (draft.profilePhoto) body.append("profile_photo", draft.profilePhoto);
       const result = await apiFetch<ApiSenior>(`/seniors/${id}`, {

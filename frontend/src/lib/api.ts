@@ -195,6 +195,7 @@ export type ApiSenior = {
   photo_path?: string | null;
   id_document_path?: string | null;
   valid_id_path?: string | null;
+  valid_id_paths?: string[] | null;
   birth_certificate_path?: string | null;
   privacy_consent_at?: string | null;
   status: "active" | "pending" | "inactive";

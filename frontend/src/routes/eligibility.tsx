@@ -580,7 +580,10 @@ function EligibilityReview() {
             <div className="mt-3 grid grid-cols-2 gap-4">
               {(
                 [
-                  ["Valid ID", "valid_id", viewing?.validIdPath ?? viewing?.idDocumentPath],
+                  ...(viewing?.validIdPaths?.length
+                    ? viewing.validIdPaths
+                    : [viewing?.validIdPath ?? viewing?.idDocumentPath]
+                  ).map((path, index) => [`Valid ID ${index + 1}`, "valid_id", path]),
                   ["Birth Certificate", "birth_certificate", viewing?.birthCertificatePath],
                 ] as [string, SeniorFileKind, string | null | undefined][]
               ).map(([label, kind, path]) => (

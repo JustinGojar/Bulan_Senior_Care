@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -259,9 +260,10 @@ export function SeniorFormDialog({
   onSubmit: (draft: SeniorDraft) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<SeniorDraft>(EMPTY);
-  const [validId, setValidId] = useState<File | null>(null);
+  const [validIds, setValidIds] = useState<File[]>([]);
   const [birthCertificate, setBirthCertificate] = useState<File | null>(null);
-  const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
+  const [photoToEdit, setPhotoToEdit] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [familyRows, setFamilyRows] = useState<FamilyRow[]>(() => parseFamilyRows(""));
@@ -279,7 +281,8 @@ export function SeniorFormDialog({
     setSubmitError(null);
     setDuplicateWarning(null);
     setFamilyRows(parseFamilyRows(senior?.familyComposition ?? ""));
-    setValidId(null);
+    setValidIds([]);
+    setPhotoToEdit(null);
     setBirthCertificate(null);
     setProfilePhoto(null);
     setPrivacyConsent(false);
@@ -363,16 +366,12 @@ export function SeniorFormDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!validId) {
-      setValidIdPreview(null);
-      return;
-    }
-    const preview = validId.type.startsWith("image/") ? URL.createObjectURL(validId) : null;
-    setValidIdPreview(preview);
+    const preview = profilePhoto ? URL.createObjectURL(profilePhoto) : null;
+    setPhotoPreview(preview);
     return () => {
       if (preview) URL.revokeObjectURL(preview);
     };
-  }, [validId]);
+  }, [profilePhoto]);
 
   useEffect(() => {
     if (!birthCertificate) {
@@ -423,7 +422,7 @@ export function SeniorFormDialog({
       ...draft,
       associationAddress,
       profilePhoto: senior ? true : profilePhoto,
-      validId: senior ? true : validId,
+      validId: senior ? true : validIds.length > 0,
       birthCertificate: senior ? true : birthCertificate,
     };
     const errors: Array<[string, string]> = REQUIRED_FIELDS.filter(({ key }) => {
@@ -478,7 +477,7 @@ export function SeniorFormDialog({
         contact: `+63${draft.contact}`,
         address: `${draft.address.trim()}, ${associationAddressFor(draft.barangay)}`,
         associationAddress,
-        validId,
+        validIds,
         birthCertificate,
         profilePhoto,
         privacyConsent: !senior && privacyConsent,
@@ -1033,56 +1032,113 @@ export function SeniorFormDialog({
             <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               Documents and photo
             </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4">
               <div>
                 <Label htmlFor="senior-profile-photo">Profile Picture{!senior && " *"}</Label>
                 <Input
                   id="senior-profile-photo"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  capture="user"
-                  onChange={(event) => setProfilePhoto(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    if (
+                      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+                      file.size > 2 * 1024 * 1024
+                    ) {
+                      flagFieldById(
+                        "senior-profile-photo",
+                        "Choose a JPG, PNG or WebP photo up to 2 MB.",
+                      );
+                      return;
+                    }
+                    clearFieldById("senior-profile-photo");
+                    setPhotoToEdit(file);
+                  }}
                   className="mt-1.5 cursor-pointer"
                 />
               </div>
 
+              {photoPreview && (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={photoPreview}
+                    alt="Profile picture preview"
+                    className="h-24 w-24 rounded-lg border border-border object-cover"
+                  />
+                  <button
+                    type="button"
+                    className={secondaryButtonClass}
+                    onClick={() => setPhotoToEdit(profilePhoto)}
+                  >
+                    Edit picture
+                  </button>
+                </div>
+              )}
               <div>
-                <Label htmlFor="senior-valid-id">Valid ID{!senior && " *"}</Label>
+                <Label htmlFor="senior-valid-id">Valid IDs{!senior && " *"}</Label>
                 <Input
                   id="senior-valid-id"
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
-                  capture="environment"
-                  required={!senior}
+                  multiple
                   onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    setValidId(file);
+                    const files = Array.from(event.target.files ?? []);
+                    event.target.value = "";
+                    if (
+                      files.some(
+                        (file) =>
+                          !/\.(pdf|jpe?g|png)$/i.test(file.name) || file.size > 5 * 1024 * 1024,
+                      ) ||
+                      validIds.length + files.length > 10
+                    ) {
+                      flagFieldById(
+                        "senior-valid-id",
+                        "Choose up to 10 PDF, JPG or PNG files, up to 5 MB each.",
+                      );
+                      return;
+                    }
+                    clearFieldById("senior-valid-id");
+                    setValidIds((current) => [...current, ...files]);
                   }}
                   className="mt-1.5 cursor-pointer"
                 />
-                {validIdPreview ? (
-                  <a
-                    href={validIdPreview}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 block w-fit"
-                  >
-                    <img
-                      src={validIdPreview}
-                      alt="Valid ID preview"
-                      className="h-24 w-24 rounded-lg border border-border/60 object-cover"
-                    />
-                  </a>
-                ) : (
-                  senior?.validIdPath && (
-                    <PrivateFileLink
-                      path={seniorFileUrl(senior.id, "valid_id", senior.validIdPath)}
-                      className="mt-2 block w-fit"
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Select one or more IDs, including front and back. Up to 10 files, 5 MB each.
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {validIds.map((file, index) => (
+                    <li
+                      key={`${file.name}-${index}`}
+                      className="flex items-center justify-between gap-3 text-sm"
                     >
-                      <span className="text-xs text-muted-foreground">Current Valid ID</span>
-                    </PrivateFileLink>
-                  )
-                )}
+                      <span className="min-w-0 truncate">{file.name}</span>
+                      <button
+                        type="button"
+                        className={secondaryButtonClass}
+                        aria-label={`Remove ${file.name}`}
+                        onClick={() =>
+                          setValidIds((current) => current.filter((_, i) => i !== index))
+                        }
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {!validIds.length &&
+                  (senior?.validIdPaths ?? (senior?.validIdPath ? [senior.validIdPath] : [])).map(
+                    (path, index) => (
+                      <PrivateFileLink
+                        key={path}
+                        path={seniorFileUrl(senior!.id, "valid_id", path)}
+                        className="mt-2 block text-xs text-muted-foreground"
+                      >
+                        Current Valid ID {index + 1}
+                      </PrivateFileLink>
+                    ),
+                  )}
               </div>
               <div>
                 <Label htmlFor="senior-birth-certificate">Birth certificate{!senior && " *"}</Label>
@@ -1222,6 +1278,15 @@ export function SeniorFormDialog({
           </button>
         </DialogFooter>
       </DialogContent>
+      <PhotoEditorDialog
+        file={open ? photoToEdit : null}
+        onCancel={() => setPhotoToEdit(null)}
+        onApply={(file) => {
+          setProfilePhoto(file);
+          setPhotoToEdit(null);
+          clearFieldById("senior-profile-photo");
+        }}
+      />
     </Dialog>
   );
 }

@@ -1767,19 +1767,22 @@ function SeniorRecords() {
                     <span>Valid ID</span>
                   </PrivateFileLink>
                 )}
-                {viewing.validIdPath && (
-                  <PrivateFileLink
-                    path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
-                    className="flex w-20 flex-col gap-2 text-xs font-semibold"
-                  >
-                    <DocumentPreview
-                      storedPath={viewing.validIdPath}
-                      path={seniorFileUrl(viewing.id, "valid_id", viewing.validIdPath)}
-                      alt="Valid ID"
-                      className="h-20 w-20 rounded-lg border border-border/60 object-cover"
-                    />
-                    <span>Valid ID</span>
-                  </PrivateFileLink>
+                {(viewing.validIdPaths ?? (viewing.validIdPath ? [viewing.validIdPath] : [])).map(
+                  (path, index) => (
+                    <PrivateFileLink
+                      key={path}
+                      path={seniorFileUrl(viewing.id, "valid_id", path)}
+                      className="flex w-20 flex-col gap-2 text-xs font-semibold"
+                    >
+                      <DocumentPreview
+                        storedPath={path}
+                        path={seniorFileUrl(viewing.id, "valid_id", path)}
+                        alt="Valid ID"
+                        className="h-20 w-20 rounded-lg border border-border/60 object-cover"
+                      />
+                      <span>Valid ID {index + 1}</span>
+                    </PrivateFileLink>
+                  ),
                 )}
                 {viewing.birthCertificatePath && (
                   <PrivateFileLink

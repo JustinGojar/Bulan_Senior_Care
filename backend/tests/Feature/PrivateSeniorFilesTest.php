@@ -151,6 +151,71 @@ class PrivateSeniorFilesTest extends TestCase
         $this->assertSame('id-scan', $this->privateDisk->get($senior->valid_id_path));
     }
 
+    public function test_president_can_register_multiple_private_ids_and_each_can_be_viewed(): void
+    {
+        $president = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->zoneOne->id]);
+        $this->actingAs($president, 'sanctum')->post('/api/seniors', [
+            'privacy_consent' => true,
+            'privacy_consent_version' => '2026-10-07',
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'birthdate' => '1960-01-01',
+            'sex' => 'male',
+            'contact_number' => '09123456789',
+            'barangay' => 'Zone 1',
+            'benefit' => 'Social Pension',
+            'valid_ids' => [
+                UploadedFile::fake()->create('front.pdf', 20, 'application/pdf'),
+                UploadedFile::fake()->create('back.pdf', 30, 'application/pdf'),
+            ],
+        ], ['Accept' => 'application/json'])->assertCreated()->assertJsonCount(2, 'valid_id_paths');
+
+        $senior = SeniorCitizen::firstOrFail();
+        $this->assertSame($senior->valid_id_paths[0], $senior->valid_id_path);
+        foreach ($senior->valid_id_paths as $path) {
+            $this->privateDisk->assertExists($path);
+            $this->publicDisk->assertMissing($path);
+            $this->assertDatabaseHas('stored_photos', ['path' => $path]);
+            $this->get('/api/seniors/'.$senior->osca_id_number.'/files/valid_id?v='.urlencode($path))->assertOk();
+        }
+        $this->getJson('/api/seniors/'.$senior->osca_id_number.'/files/valid_id?v='.urlencode('../other.pdf'))->assertNotFound();
+        $outsider = User::factory()->create(['role' => 'president', 'status' => 'active', 'barangay_id' => $this->zoneTwo->id]);
+        $this->actingAs($outsider, 'sanctum')->getJson('/api/seniors/'.$senior->osca_id_number.'/files/valid_id?v='.urlencode($senior->valid_id_paths[1]))->assertForbidden();
+    }
+
+    public function test_replacing_multiple_ids_removes_old_files_and_preserves_single_upload_support(): void
+    {
+        $senior = $this->seniorWithDocument($this->zoneOne);
+        $this->actingAs($this->admin, 'sanctum')->post('/api/seniors/'.$senior->osca_id_number, [
+            '_method' => 'PUT',
+            'valid_ids' => [
+                UploadedFile::fake()->create('front.pdf', 20, 'application/pdf'),
+                UploadedFile::fake()->create('back.pdf', 20, 'application/pdf'),
+            ],
+        ], ['Accept' => 'application/json'])->assertOk();
+        $paths = $senior->fresh()->valid_id_paths;
+        $this->assertCount(2, $paths);
+        $this->actingAs($this->admin, 'sanctum')->post('/api/seniors/'.$senior->osca_id_number, [
+            '_method' => 'PUT',
+            'valid_id' => UploadedFile::fake()->create('replacement.pdf', 20, 'application/pdf'),
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonCount(1, 'valid_id_paths');
+        foreach ($paths as $path) {
+            $this->privateDisk->assertMissing($path);
+            $this->assertDatabaseMissing('stored_photos', ['path' => $path]);
+        }
+    }
+
+    public function test_invalid_files_in_id_array_are_rejected_before_storage(): void
+    {
+        $senior = $this->seniorWithDocument($this->zoneOne);
+        $this->actingAs($this->admin, 'sanctum')->post('/api/seniors/'.$senior->osca_id_number, [
+            '_method' => 'PUT',
+            'valid_ids' => [UploadedFile::fake()->create('script.exe', 20, 'application/octet-stream')],
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('valid_ids.0');
+        $this->assertNull($senior->fresh()->valid_id_paths);
+        $this->privateDisk->assertExists($senior->valid_id_path);
+    }
+
     private function seniorWithDocument(Barangay $barangay): SeniorCitizen
     {
         $this->privateDisk->put('senior-documents/id.pdf', 'id-scan');
