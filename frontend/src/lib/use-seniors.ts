@@ -246,7 +246,10 @@ export function useSeniors(
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    apiFetch<PaginatedSeniorsResponse>(listPath, { signal: controller.signal })
+    apiFetch<PaginatedSeniorsResponse>(listPath, {
+      signal: controller.signal,
+      ...(reloadKey > 0 ? { cache: "no-store" as const } : {}),
+    })
       .then((result) => {
         if (!current) return;
         setSeniors(result.data.map(mapSenior));
@@ -262,7 +265,9 @@ export function useSeniors(
         if (!current) return;
         setLoading(false);
       });
-    void apiFetch<SeniorSummaryResponse>("/seniors?summary_only=1")
+    void apiFetch<SeniorSummaryResponse>("/seniors?summary_only=1", {
+      ...(reloadKey > 0 ? { cache: "no-store" as const } : {}),
+    })
       .then((result) => {
         if (!current) return;
         setTotalCount(result.total);

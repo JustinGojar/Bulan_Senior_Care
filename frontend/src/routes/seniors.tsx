@@ -611,6 +611,7 @@ function SeniorRecords() {
   });
   const [formOpen, setFormOpen] = useState(false);
   const [submittedEditName, setSubmittedEditName] = useState<string | null>(null);
+  const hasPendingEdits = seniors.some((senior) => senior.awaitingHeadApproval);
   // Pick up Head-approved edits when a president returns to the registry.
   useEffect(() => {
     if (!isPresident) return;
@@ -619,17 +620,25 @@ function SeniorRecords() {
     };
     window.addEventListener("focus", refreshRecords);
     document.addEventListener("visibilitychange", refreshRecords);
+    const interval = hasPendingEdits ? window.setInterval(refreshRecords, 5000) : null;
     return () => {
+      if (interval !== null) window.clearInterval(interval);
       window.removeEventListener("focus", refreshRecords);
       document.removeEventListener("visibilitychange", refreshRecords);
     };
-  }, [isPresident, reload]);
+  }, [isPresident, hasPendingEdits, reload]);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
   // Set while the record being viewed comes from the archive.
   const [viewingArchive, setViewingArchive] = useState<{ at: string; by: string | null } | null>(
     null,
   );
+  useEffect(() => {
+    if (!isPresident || viewingArchive) return;
+    setViewing((current) =>
+      current ? (seniors.find((senior) => senior.id === current.id) ?? current) : current,
+    );
+  }, [isPresident, seniors, viewingArchive]);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [downloadingForm, setDownloadingForm] = useState(false);
   const [deleting, setDeleting] = useState<Senior | null>(null);
@@ -1523,8 +1532,16 @@ function SeniorRecords() {
                     </button>
                   )}
                   {viewing && (
-                    <StatusPill tone={STATUS_TONE[viewing.status] ?? "neutral"}>
-                      {seniorStatusLabel(viewing)}
+                    <StatusPill
+                      tone={
+                        viewing.awaitingHeadApproval
+                          ? "gold"
+                          : (STATUS_TONE[viewing.status] ?? "neutral")
+                      }
+                    >
+                      {viewing.awaitingHeadApproval
+                        ? "Waiting for Head approval"
+                        : seniorStatusLabel(viewing)}
                     </StatusPill>
                   )}
                   {viewing?.reviewNote && <StatusPill tone="gold">In review</StatusPill>}
