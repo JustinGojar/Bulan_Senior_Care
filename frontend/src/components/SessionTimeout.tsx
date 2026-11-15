@@ -14,7 +14,9 @@ export function SessionTimeout() {
       void apiFetch("/session/heartbeat", { cache: "no-store", signal: controller.signal })
         // Transient network failures retry next time. The API handles revoked/expired sessions.
         .catch(() => undefined)
-        .finally(() => { inFlight = false; });
+        .finally(() => {
+          inFlight = false;
+        });
     };
     heartbeat();
     // Keep background tabs alive too; closing one tab must not sign out another.
