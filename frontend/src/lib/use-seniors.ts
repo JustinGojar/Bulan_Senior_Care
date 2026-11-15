@@ -101,6 +101,7 @@ export function mapSenior(senior: ApiSenior): Senior {
   const fallbackBenefit = benefitForAge(age);
   return {
     id: senior.osca_id_number,
+    awaitingHeadApproval: senior.awaiting_head_approval ?? false,
     name: [senior.first_name, senior.middle_name, senior.last_name].filter(Boolean).join(" "),
     lastName: senior.last_name,
     firstName: senior.first_name,
@@ -370,6 +371,11 @@ export function useSeniors(
           barangay: draft.barangay,
           benefit: draft.benefit,
         });
+        setSeniors((current) =>
+          current.map((senior) =>
+            senior.id === id ? { ...senior, ...draft, id, awaitingHeadApproval: true } : senior,
+          ),
+        );
         return;
       }
       const body = new FormData();

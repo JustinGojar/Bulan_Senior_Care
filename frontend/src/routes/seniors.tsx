@@ -1171,7 +1171,9 @@ function SeniorRecords() {
                   </td>
                   <td className="max-w-40 px-4 py-3.5">{benefitLabel(s.benefit)}</td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
-                    {s.deceased ? (
+                    {s.awaitingHeadApproval ? (
+                      <StatusPill tone="gold">Waiting for Head approval</StatusPill>
+                    ) : s.deceased ? (
                       <StatusPill tone="neutral">Deceased</StatusPill>
                     ) : s.reviewNote ? (
                       <StatusPill tone="gold">In review</StatusPill>
@@ -1966,8 +1968,8 @@ function SeniorRecords() {
           <AlertDialogHeader>
             <AlertDialogTitle>Waiting for Head approval</AlertDialogTitle>
             <AlertDialogDescription>
-              Your edit request for {submittedEditName} was submitted successfully. The record will
-              update once the Head approves your changes.
+              Your changes for {submittedEditName} are now shown in the record and are waiting for
+              Head approval. They will become final once the Head approves your request.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

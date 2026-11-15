@@ -131,6 +131,30 @@ class SeniorCitizenController extends Controller
         $loadSeniors = fn () => $query->paginate($perPage)->toArray();
         $result = Cache::remember($cacheKey.':'.$perPage, now()->addSeconds($cacheTtl), $loadSeniors);
 
+        // Show the president the submitted version while preserving the official record
+        // for the Head's comparison and approval. Resolve this outside the list cache.
+        if ($request->user()->role === 'president') {
+            $pendingEdits = \App\Models\SeniorEditRequest::where('status', 'pending')
+                ->whereIn('senior_citizen_id', array_column($result['data'], 'id'))
+                ->get()->keyBy('senior_citizen_id');
+            foreach ($result['data'] as &$record) {
+                $edit = $pendingEdits->get($record['id']);
+                $record['awaiting_head_approval'] = $edit !== null;
+                if ($edit) {
+                    $changes = $edit->changes;
+                    $record = array_replace($record, array_intersect_key($changes, array_flip([
+                        'first_name', 'middle_name', 'last_name', 'birthdate', 'place_of_birth',
+                        'sex', 'civil_status', 'educational_attainment', 'other_skills',
+                        'family_composition', 'association_name', 'association_address',
+                        'association_membership_date', 'association_position', 'address', 'contact_number',
+                    ])));
+                    $record['barangay']['barangay_name'] = $changes['barangay'];
+                    $record['benefit']['benefit_name'] = $changes['benefit'];
+                }
+            }
+            unset($record);
+        }
+
         return response()->json($result);
     }
 

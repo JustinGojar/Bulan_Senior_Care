@@ -172,6 +172,7 @@ export type ManagedUser = ApiUser & {
 };
 
 export type ApiSenior = {
+  awaiting_head_approval?: boolean;
   id: number;
   osca_id_number: string;
   first_name: string;

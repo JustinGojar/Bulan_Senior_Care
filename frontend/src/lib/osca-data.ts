@@ -1,4 +1,5 @@
 export type Senior = {
+  awaitingHeadApproval?: boolean;
   id: string;
   name: string;
   lastName?: string;

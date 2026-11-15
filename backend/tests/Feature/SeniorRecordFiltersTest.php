@@ -14,6 +14,46 @@ class SeniorRecordFiltersTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_president_sees_submitted_edits_until_head_reviews_them(): void
+    {
+        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        $president = User::factory()->create(['role' => 'president', 'barangay_id' => $zone->id]);
+        $head = User::factory()->create(['role' => 'head']);
+        Benefit::create([
+            'benefit_name' => 'Social Pension', 'benefit_type' => 'social_pension',
+            'min_age' => 60, 'amount' => 3000, 'funding_source' => 'national',
+            'schedule' => 'quarterly', 'status' => 'active',
+        ]);
+        $senior = $this->createSenior($president, $zone, 'OSCA-EDIT', 'Juan', 'Reyes');
+
+        foreach (['declined', 'approved'] as $decision) {
+            // Prime the cached list before submitting to verify the pending view is fresh.
+            $this->actingAs($president, 'sanctum')->getJson('/api/seniors')->assertOk();
+            $response = $this->postJson('/api/senior-edit-requests', [
+                'senior_id' => $senior->osca_id_number,
+                'changes' => [
+                    'first_name' => 'Updated Juan', 'last_name' => 'Reyes',
+                    'birthdate' => '1950-01-01', 'contact_number' => '+639123456789',
+                    'barangay' => 'Zone 1', 'benefit' => 'Social Pension',
+                ],
+            ])->assertCreated();
+
+            $this->getJson('/api/seniors')->assertOk()
+                ->assertJsonPath('data.0.first_name', 'Updated Juan')
+                ->assertJsonPath('data.0.awaiting_head_approval', true);
+            $this->assertSame('Juan', $senior->fresh()->first_name);
+            $this->actingAs($head, 'sanctum')->getJson('/api/seniors')->assertOk()
+                ->assertJsonPath('data.0.first_name', 'Juan');
+
+            $this->patchJson('/api/senior-edit-requests/'.$response->json('id'), [
+                'status' => $decision,
+            ])->assertOk();
+            $this->actingAs($president, 'sanctum')->getJson('/api/seniors')->assertOk()
+                ->assertJsonPath('data.0.awaiting_head_approval', false)
+                ->assertJsonPath('data.0.first_name', $decision === 'approved' ? 'Updated Juan' : 'Juan');
+        }
+    }
+
     public function test_senior_search_matches_barangay_and_benefit_filter_matches_assigned_benefit(): void
     {
         /** @var User $admin */
