@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { localDateInputValue } from "@/lib/local-date";
 import {
   Dialog,
@@ -1103,24 +1104,25 @@ export function SeniorFormDialog({
                 <p className="mt-1 text-xs text-muted-foreground">
                   Select one or more IDs, including front and back. Up to 10 files, 5 MB each.
                 </p>
-                <ul className="mt-2 space-y-2">
+                <ul className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {validIds.map((file, index) => (
                     <li
                       key={`${file.name}-${index}`}
-                      className="flex items-start justify-between gap-3 text-sm"
+                      className="relative min-w-0 rounded-lg border border-border/60 p-3 pt-9 text-sm"
                     >
                       <div className="min-w-0 flex-1">
                         <UploadPreview file={file} />
                       </div>
                       <button
                         type="button"
-                        className={secondaryButtonClass}
+                        className="absolute top-1 right-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label={`Remove ${file.name}`}
+                        title={`Remove ${file.name}`}
                         onClick={() =>
                           setValidIds((current) => current.filter((_, i) => i !== index))
                         }
                       >
-                        Remove
+                        <X className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </li>
                   ))}
