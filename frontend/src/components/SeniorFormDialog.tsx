@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PhotoEditorDialog } from "@/components/PhotoEditorDialog";
+import { UploadPreview } from "@/components/UploadPreview";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -264,7 +265,6 @@ export function SeniorFormDialog({
   const [birthCertificate, setBirthCertificate] = useState<File | null>(null);
   const [photoToEdit, setPhotoToEdit] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [birthCertificatePreview, setBirthCertificatePreview] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [familyRows, setFamilyRows] = useState<FamilyRow[]>(() => parseFamilyRows(""));
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -372,20 +372,6 @@ export function SeniorFormDialog({
       if (preview) URL.revokeObjectURL(preview);
     };
   }, [profilePhoto]);
-
-  useEffect(() => {
-    if (!birthCertificate) {
-      setBirthCertificatePreview(null);
-      return;
-    }
-    const preview = birthCertificate.type.startsWith("image/")
-      ? URL.createObjectURL(birthCertificate)
-      : null;
-    setBirthCertificatePreview(preview);
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [birthCertificate]);
 
   const set = <K extends keyof SeniorDraft>(key: K, value: SeniorDraft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -900,7 +886,8 @@ export function SeniorFormDialog({
                           }}
                           className="mt-1.5"
                         />
-                        {senior?.deceased?.certificatePath && (
+                        {draft.deathCertificate && <UploadPreview file={draft.deathCertificate} />}
+                        {!draft.deathCertificate && senior?.deceased?.certificatePath && (
                           <PrivateFileLink
                             path={seniorFileUrl(
                               senior.id,
@@ -1064,11 +1051,18 @@ export function SeniorFormDialog({
 
               {photoPreview && (
                 <div className="flex items-center gap-3">
-                  <img
-                    src={photoPreview}
-                    alt="Profile picture preview"
-                    className="h-24 w-24 rounded-lg border border-border object-cover"
-                  />
+                  <a
+                    href={photoPreview}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open profile picture preview"
+                  >
+                    <img
+                      src={photoPreview}
+                      alt="Profile picture preview"
+                      className="h-24 w-24 rounded-lg border border-border object-cover"
+                    />
+                  </a>
                   <button
                     type="button"
                     className={secondaryButtonClass}
@@ -1113,9 +1107,11 @@ export function SeniorFormDialog({
                   {validIds.map((file, index) => (
                     <li
                       key={`${file.name}-${index}`}
-                      className="flex items-center justify-between gap-3 text-sm"
+                      className="flex items-start justify-between gap-3 text-sm"
                     >
-                      <span className="min-w-0 truncate">{file.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <UploadPreview file={file} />
+                      </div>
                       <button
                         type="button"
                         className={secondaryButtonClass}
@@ -1159,19 +1155,8 @@ export function SeniorFormDialog({
                 <p className="mt-1 text-xs text-muted-foreground">
                   PDF, JPG, or PNG up to 5 MB each.
                 </p>
-                {birthCertificatePreview ? (
-                  <a
-                    href={birthCertificatePreview}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 block w-fit"
-                  >
-                    <img
-                      src={birthCertificatePreview}
-                      alt="Birth Certificate preview"
-                      className="h-24 w-24 rounded-lg border border-border/60 object-cover"
-                    />
-                  </a>
+                {birthCertificate ? (
+                  <UploadPreview file={birthCertificate} />
                 ) : (
                   senior?.birthCertificatePath && (
                     <PrivateFileLink
