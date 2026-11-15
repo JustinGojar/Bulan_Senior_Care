@@ -610,6 +610,20 @@ function SeniorRecords() {
     ...(selectedAgeRange ? { ageMin: selectedAgeRange.min, ageMax: selectedAgeRange.max } : {}),
   });
   const [formOpen, setFormOpen] = useState(false);
+  const [submittedEditName, setSubmittedEditName] = useState<string | null>(null);
+  // Pick up Head-approved edits when a president returns to the registry.
+  useEffect(() => {
+    if (!isPresident) return;
+    const refreshRecords = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    window.addEventListener("focus", refreshRecords);
+    document.addEventListener("visibilitychange", refreshRecords);
+    return () => {
+      window.removeEventListener("focus", refreshRecords);
+      document.removeEventListener("visibilitychange", refreshRecords);
+    };
+  }, [isPresident, reload]);
   const [editing, setEditing] = useState<Senior | null>(null);
   const [viewing, setViewing] = useState<Senior | null>(null);
   // Set while the record being viewed comes from the archive.
@@ -658,6 +672,7 @@ function SeniorRecords() {
     try {
       await reviewSeniorEditRequest(request.id, status);
       setEditRequests((current) => current.filter((item) => item.id !== request.id));
+      if (status === "approved") reload();
       toast.success(
         status === "approved" ? "Senior record update approved." : "Senior record update declined.",
       );
@@ -1414,11 +1429,11 @@ function SeniorRecords() {
             try {
               if (editing) {
                 await updateSenior(editing.id, draft);
-                toast.success(
-                  isPresident
-                    ? "Update request sent to the Head for approval."
-                    : `${draft.name}'s record was updated.`,
-                );
+                if (isPresident) {
+                  setSubmittedEditName(draft.name);
+                } else {
+                  toast.success(`${draft.name}'s record was updated.`);
+                }
               } else {
                 const created = await createSenior(draft);
                 if (sortBy === "latest") setPage(1);
@@ -1940,6 +1955,23 @@ function SeniorRecords() {
             >
               Archive record
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={submittedEditName !== null}
+        onOpenChange={(open) => !open && setSubmittedEditName(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Waiting for Head approval</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your edit request for {submittedEditName} was submitted successfully. The record will
+              update once the Head approves your changes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>OK</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
