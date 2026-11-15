@@ -508,7 +508,9 @@ export function SeniorFormDialog({
           </DialogTitle>
           <DialogDescription>
             {senior
-              ? `Update the OSCA profile for ${senior.name}.`
+              ? isPresident
+                ? `Update the OSCA profile for ${senior.name}. Changes will be sent to the Head for approval.`
+                : `Update the OSCA profile for ${senior.name}.`
               : "Add a new senior citizen to the Bulan OSCA registry."}
           </DialogDescription>
         </DialogHeader>
@@ -1274,7 +1276,13 @@ export function SeniorFormDialog({
             Cancel
           </button>
           <button onClick={() => void submit()} disabled={saving} className={primaryButtonClass}>
-            {saving ? "Saving..." : senior ? "Save changes" : "Register senior"}
+            {saving
+              ? "Saving..."
+              : senior
+                ? isPresident
+                  ? "Submit edit request"
+                  : "Save changes"
+                : "Register senior"}
           </button>
         </DialogFooter>
       </DialogContent>

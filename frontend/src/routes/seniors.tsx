@@ -551,7 +551,8 @@ function SeniorRecords() {
     !isAdmin &&
     (systemPermissions.includes("seniors.create") ||
       (isPresident && hasPermission("register seniors")));
-  const canUpdateSeniors = !isAdmin && !isPresident && systemPermissions.includes("seniors.update");
+  const canUpdateSeniors =
+    !isAdmin && (isPresident || systemPermissions.includes("seniors.update"));
   const canDeleteSeniors = !isAdmin && systemPermissions.includes("seniors.delete");
   const canExportSeniors =
     isAdmin || systemPermissions.includes("seniors.export") || hasPermission("export reports");
