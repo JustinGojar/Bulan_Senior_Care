@@ -88,7 +88,7 @@ class SeniorEditRequestController extends Controller
         abort_if($seniorEditRequest->status !== 'pending', 422, 'This request has already been reviewed.');
         $data = $request->validate([
             'status' => ['required', 'in:approved,declined'],
-            'remarks' => ['nullable', 'string', 'max:500'],
+            'remarks' => ['required_if:status,declined', 'nullable', 'string', 'max:500'],
         ]);
         $senior = $seniorEditRequest->senior;
 
@@ -111,6 +111,16 @@ class SeniorEditRequestController extends Controller
                 ...$data,
                 'reviewed_by' => $request->user()->id,
                 'reviewed_at' => now(),
+            ]);
+            DB::table('notifications')->insert([
+                'recipient_account_id' => $seniorEditRequest->requested_by,
+                'message' => 'Your edit request for '.($senior?->osca_id_number ?? 'a senior record')
+                    .' was '.$data['status'].'.'
+                    .($data['status'] === 'declined' ? ' Reason: '.$data['remarks'] : ''),
+                'channel' => 'in_app',
+                'status' => 'unread',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         });
 

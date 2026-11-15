@@ -45,9 +45,27 @@ class SeniorRecordFiltersTest extends TestCase
             $this->actingAs($head, 'sanctum')->getJson('/api/seniors')->assertOk()
                 ->assertJsonPath('data.0.first_name', 'Juan');
 
+            if ($decision === 'declined') {
+                $this->patchJson('/api/senior-edit-requests/'.$response->json('id'), [
+                    'status' => 'declined', 'remarks' => '   ',
+                ])->assertUnprocessable()->assertJsonValidationErrors('remarks');
+                $this->assertDatabaseHas('senior_edit_requests', [
+                    'id' => $response->json('id'), 'status' => 'pending',
+                ]);
+            }
             $this->patchJson('/api/senior-edit-requests/'.$response->json('id'), [
                 'status' => $decision,
+                'remarks' => $decision === 'declined' ? 'Please correct the name.' : null,
             ])->assertOk();
+            if ($decision === 'declined') {
+                $this->assertDatabaseHas('senior_edit_requests', [
+                    'id' => $response->json('id'), 'remarks' => 'Please correct the name.',
+                ]);
+                $this->assertDatabaseHas('notifications', [
+                    'recipient_account_id' => $president->id,
+                    'message' => 'Your edit request for OSCA-EDIT was declined. Reason: Please correct the name.',
+                ]);
+            }
             $this->actingAs($president, 'sanctum')->getJson('/api/seniors')->assertOk()
                 ->assertJsonPath('data.0.awaiting_head_approval', false)
                 ->assertJsonPath('data.0.first_name', $decision === 'approved' ? 'Updated Juan' : 'Juan');

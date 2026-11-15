@@ -638,6 +638,9 @@ function SeniorRecords() {
   const [archivedRecords, setArchivedRecords] = useState<ArchivedSenior[]>([]);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [reviewingRequestId, setReviewingRequestId] = useState<number | null>(null);
+  const [reviewRequest, setReviewRequest] = useState<SeniorEditRequest | null>(null);
+  const [decliningRequest, setDecliningRequest] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
   const [benefitTransactions, setBenefitTransactions] = useState<BenefitTransaction[]>([]);
   const [bulkPreview, setBulkPreview] = useState<Array<Record<string, string>> | null>(null);
   const bulkFileInput = useRef<HTMLInputElement>(null);
@@ -668,10 +671,22 @@ function SeniorRecords() {
   }, [viewing]);
 
   async function reviewEditRequest(request: SeniorEditRequest, status: "approved" | "declined") {
+    if (status === "declined" && !declineReason.trim()) {
+      toast.error("Enter a reason for declining this request.");
+      return;
+    }
     setReviewingRequestId(request.id);
     try {
-      await reviewSeniorEditRequest(request.id, status);
+      await reviewSeniorEditRequest(
+        request.id,
+        status,
+        status === "declined" ? declineReason.trim() : undefined,
+      );
       setEditRequests((current) => current.filter((item) => item.id !== request.id));
+      setReviewRequest(null);
+      setViewing(null);
+      setDecliningRequest(false);
+      setDeclineReason("");
       if (status === "approved") reload();
       toast.success(
         status === "approved" ? "Senior record update approved." : "Senior record update declined.",
@@ -1081,20 +1096,28 @@ function SeniorRecords() {
                   <button
                     type="button"
                     disabled={reviewingRequestId === request.id}
-                    onClick={() => reviewEditRequest(request, "declined")}
-                    className={`${secondaryButtonClass} h-10 text-destructive`}
+                    onClick={() => {
+                      if (!request.senior) {
+                        toast.error("This senior record is no longer available.");
+                        return;
+                      }
+                      const { barangay, benefit, ...changes } = request.changes;
+                      setViewing({
+                        ...mapSenior({
+                          ...request.senior,
+                          ...changes,
+                          barangay: { ...request.senior.barangay, barangay_name: barangay },
+                        }),
+                        benefit,
+                      });
+                      setViewingArchive(null);
+                      setReviewRequest(request);
+                      setDecliningRequest(false);
+                      setDeclineReason("");
+                    }}
+                    className={`${secondaryButtonClass} h-10`}
                   >
-                    <X className="h-4 w-4" />
-                    {reviewingRequestId === request.id ? "Saving..." : "Decline"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={reviewingRequestId === request.id}
-                    onClick={() => reviewEditRequest(request, "approved")}
-                    className={`${primaryButtonClass} h-10`}
-                  >
-                    <Check className="h-4 w-4" />
-                    {reviewingRequestId === request.id ? "Saving..." : "Approve"}
+                    <Eye className="h-4 w-4" /> View
                   </button>
                 </div>
               </div>
@@ -1464,8 +1487,12 @@ function SeniorRecords() {
         open={!!viewing}
         onOpenChange={(o) => {
           if (o) return;
+          if (reviewingRequestId !== null) return;
           setViewing(null);
           setViewingArchive(null);
+          setReviewRequest(null);
+          setDecliningRequest(false);
+          setDeclineReason("");
         }}
       >
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
@@ -1908,6 +1935,85 @@ function SeniorRecords() {
                 </>
               )}
             </button>
+          )}
+          {reviewRequest && (
+            <section className="mt-4 space-y-4 border-t border-border/60 pt-5">
+              <h3 className="font-semibold">Review submitted changes</h3>
+              <p className="text-sm text-muted-foreground">
+                Requested by {reviewRequest.requester?.name ?? "BSCA"}. The details above show the
+                submitted version of the record.
+              </p>
+              <dl className="space-y-3 text-sm">
+                {changedFields(reviewRequest).map(([field, current, next]) => (
+                  <div key={field}>
+                    <dt className="font-semibold">{field}</dt>
+                    <dd className="break-words text-muted-foreground">Current: {current}</dd>
+                    <dd className="break-words">Submitted: {next}</dd>
+                  </div>
+                ))}
+              </dl>
+              {decliningRequest && (
+                <div>
+                  <label htmlFor="edit-decline-reason" className="text-sm font-semibold">
+                    Reason for declining *
+                  </label>
+                  <textarea
+                    id="edit-decline-reason"
+                    value={declineReason}
+                    onChange={(event) => setDeclineReason(event.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    required
+                    autoFocus
+                    disabled={reviewingRequestId !== null}
+                    placeholder="Explain what needs to be corrected."
+                    className={`${fieldClass} mt-2 h-auto w-full py-2`}
+                  />
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                {decliningRequest ? (
+                  <>
+                    <button
+                      type="button"
+                      className={secondaryButtonClass}
+                      disabled={reviewingRequestId !== null}
+                      onClick={() => setDecliningRequest(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className={primaryButtonClass}
+                      disabled={reviewingRequestId !== null || !declineReason.trim()}
+                      onClick={() => void reviewEditRequest(reviewRequest, "declined")}
+                    >
+                      {reviewingRequestId !== null ? "Saving..." : "Confirm decline"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={`${secondaryButtonClass} text-destructive`}
+                      disabled={reviewingRequestId !== null}
+                      onClick={() => setDecliningRequest(true)}
+                    >
+                      <X className="h-4 w-4" /> Decline
+                    </button>
+                    <button
+                      type="button"
+                      className={primaryButtonClass}
+                      disabled={reviewingRequestId !== null}
+                      onClick={() => void reviewEditRequest(reviewRequest, "approved")}
+                    >
+                      <Check className="h-4 w-4" />{" "}
+                      {reviewingRequestId !== null ? "Saving..." : "Approve"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </section>
           )}
           {viewing &&
             !viewingArchive &&

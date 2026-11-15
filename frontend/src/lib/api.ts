@@ -1283,10 +1283,14 @@ export function reviewBenefitRequest(
   });
 }
 
-export function reviewSeniorEditRequest(id: number, status: "approved" | "declined") {
+export function reviewSeniorEditRequest(
+  id: number,
+  status: "approved" | "declined",
+  remarks?: string,
+) {
   return apiFetch<SeniorEditRequest>(`/senior-edit-requests/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, remarks }),
   });
 }
 
