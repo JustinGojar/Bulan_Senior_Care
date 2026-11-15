@@ -1100,7 +1100,7 @@ function SeniorRecords() {
                 "Contact",
                 "Benefit",
                 "Status",
-                "Actions",
+                ...(!isAdmin ? ["Actions"] : []),
               ].map((h) => (
                 <th
                   key={h}
@@ -1115,13 +1115,13 @@ function SeniorRecords() {
             {loading ? (
               <TableSkeletonRows
                 rows={6}
-                columns={8}
+                columns={isAdmin ? 7 : 8}
                 label="Loading senior records"
                 cellClassName="px-4 py-[19px]"
               />
             ) : error ? (
               <tr>
-                <td colSpan={8} className="py-12">
+                <td colSpan={isAdmin ? 7 : 8} className="py-12">
                   <div className={tableMessageClass}>
                     <div className="mx-auto max-w-md px-5">
                       <AuthAlert tone="error">
@@ -1166,77 +1166,79 @@ function SeniorRecords() {
                       </StatusPill>
                     )}
                   </td>
-                  <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
-                    <div className="flex gap-1.5">
-                      <button
-                        aria-label={`View record of ${s.name}`}
-                        title="View record"
-                        onClick={() => setViewing(s)}
-                        className={actionButtonClass}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      {canUpdateSeniors && (
+                  {!isAdmin && (
+                    <td className="sticky right-0 bg-card px-4 py-3.5 shadow-[-10px_0_12px_-12px_rgba(0,0,0,0.35)]">
+                      <div className="flex gap-1.5">
                         <button
-                          aria-label={`Edit record of ${s.name}`}
-                          title="Edit record"
-                          onClick={() => {
-                            setEditing(s);
-                            setFormOpen(true);
-                          }}
+                          aria-label={`View record of ${s.name}`}
+                          title="View record"
+                          onClick={() => setViewing(s)}
                           className={actionButtonClass}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </button>
-                      )}
-                      {canDeleteSeniors && (
-                        <button
-                          aria-label={`Archive record of ${s.name}`}
-                          title="Archive record"
-                          onClick={() => setDeleting(s)}
-                          className={actionButtonClass}
-                        >
-                          <Archive className="h-4 w-4" />
-                        </button>
-                      )}
-                      {isPresident && (
-                        <button
-                          aria-label={`Archive record of ${s.name}`}
-                          title="Archive record"
-                          onClick={async () => {
-                            const confirmed = await confirm({
-                              title: "Archive this record?",
-                              description: `${s.name} (${s.id}) will be moved to the archive and hidden from the active list.`,
-                              confirmLabel: "Archive record",
-                            });
-                            if (!confirmed) return;
-                            try {
-                              await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, {
-                                method: "POST",
+                        {canUpdateSeniors && (
+                          <button
+                            aria-label={`Edit record of ${s.name}`}
+                            title="Edit record"
+                            onClick={() => {
+                              setEditing(s);
+                              setFormOpen(true);
+                            }}
+                            className={actionButtonClass}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canDeleteSeniors && (
+                          <button
+                            aria-label={`Archive record of ${s.name}`}
+                            title="Archive record"
+                            onClick={() => setDeleting(s)}
+                            className={actionButtonClass}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                        )}
+                        {isPresident && (
+                          <button
+                            aria-label={`Archive record of ${s.name}`}
+                            title="Archive record"
+                            onClick={async () => {
+                              const confirmed = await confirm({
+                                title: "Archive this record?",
+                                description: `${s.name} (${s.id}) will be moved to the archive and hidden from the active list.`,
+                                confirmLabel: "Archive record",
                               });
-                              toast.success(`${s.name}'s record was archived.`);
-                              window.location.reload();
-                            } catch (error) {
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : "Unable to archive the record.",
-                              );
-                            }
-                          }}
-                          className={actionButtonClass}
-                        >
-                          <Archive className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                              if (!confirmed) return;
+                              try {
+                                await apiFetch(`/seniors/${encodeURIComponent(s.id)}/archive`, {
+                                  method: "POST",
+                                });
+                                toast.success(`${s.name}'s record was archived.`);
+                                window.location.reload();
+                              } catch (error) {
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Unable to archive the record.",
+                                );
+                              }
+                            }}
+                            className={actionButtonClass}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
             {!loading && !error && rows.length === 0 && (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={isAdmin ? 7 : 8}>
                   <div className={tableMessageClass}>
                     <EmptyState
                       bare

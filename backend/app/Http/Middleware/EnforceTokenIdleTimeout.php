@@ -30,7 +30,9 @@ class EnforceTokenIdleTimeout
             }
 
             $lastActivity = $accessToken->last_used_at ?? $accessToken->created_at;
-            $idleTimeout = (int) config('sanctum.idle_timeout', 0);
+            $idleTimeout = $accessToken->name === 'bulan-seniorcare'
+                ? (int) config('sanctum.browser_idle_timeout', 5)
+                : (int) config('sanctum.idle_timeout', 0);
 
             if ($idleTimeout > 0 && $lastActivity?->lte(now()->subMinutes($idleTimeout))) {
                 $accessToken->delete();

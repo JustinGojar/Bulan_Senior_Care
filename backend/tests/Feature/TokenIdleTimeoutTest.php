@@ -49,7 +49,7 @@ class TokenIdleTimeoutTest extends TestCase
         $this->withToken($plainTextToken)->getJson('/api/user')->assertOk();
     }
 
-    public function test_token_past_absolute_expiration_is_rejected(): void
+    public function test_active_token_has_no_absolute_expiration(): void
     {
         /** @var User $user */
         $user = User::factory()->create();
@@ -59,7 +59,7 @@ class TokenIdleTimeoutTest extends TestCase
             'last_used_at' => now()->subMinute(),
         ])->save();
 
-        $this->withToken($plainTextToken)->getJson('/api/user')->assertUnauthorized();
+        $this->withToken($plainTextToken)->getJson('/api/user')->assertOk();
     }
 
     public function test_login_reports_session_limits(): void
@@ -68,7 +68,7 @@ class TokenIdleTimeoutTest extends TestCase
 
         $this->postJson('/api/login', ['email' => 'president@example.com', 'password' => 'secret-password', 'accepted_terms' => true, 'terms_version' => '2026-10-07'])
             ->assertOk()
-            ->assertJsonPath('session.idle_timeout_minutes', 30)
-            ->assertJsonPath('session.expires_in_seconds', 720 * 60);
+            ->assertJsonPath('session.idle_timeout_minutes', 5)
+            ->assertJsonPath('session.expires_in_seconds', null);
     }
 }

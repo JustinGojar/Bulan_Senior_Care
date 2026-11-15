@@ -33,6 +33,7 @@ class CookieAuthenticationTest extends TestCase
         $cookie = $response->getCookie(AuthenticateFromCookie::COOKIE, false);
         $this->assertNotNull($cookie);
         $this->assertTrue($cookie->isHttpOnly());
+        $this->assertSame(0, $cookie->getExpiresTime());
         $this->assertSame('strict', $cookie->getSameSite());
         $this->assertSame('/api', $cookie->getPath());
         $this->assertStringNotContainsString($cookie->getValue(), $response->getContent());

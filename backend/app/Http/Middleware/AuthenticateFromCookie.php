@@ -31,12 +31,10 @@ class AuthenticateFromCookie
 
     public static function issue(Request $request, string $token): Cookie
     {
-        $expiration = (int) config('sanctum.expiration');
-
         return Cookie::create(
             self::COOKIE,
             $token,
-            $expiration > 0 ? now()->addMinutes($expiration) : 0,
+            0, // Session cookie: no fixed expiry while the browser is running.
             '/api',
             null,
             $request->isSecure(),

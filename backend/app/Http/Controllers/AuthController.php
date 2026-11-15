@@ -187,9 +187,20 @@ class AuthController extends Controller
         $expiration = (int) config('sanctum.expiration');
 
         return [
-            'idle_timeout_minutes' => max(0, (int) config('sanctum.idle_timeout', 0)),
+            'idle_timeout_minutes' => (int) config('sanctum.browser_idle_timeout', 5),
             'expires_in_seconds' => $expiration > 0 ? $expiration * 60 : null,
         ];
+    }
+
+    public function heartbeat(Request $request): JsonResponse
+    {
+        $response = response()->json(['active' => true])->header('Cache-Control', 'no-store');
+        // Convert older fixed-duration portal cookies into browser-session cookies as well.
+        if ($request->cookies->has(AuthenticateFromCookie::COOKIE) && $request->bearerToken()) {
+            $response->withCookie(AuthenticateFromCookie::issue($request, $request->bearerToken()));
+        }
+
+        return $response;
     }
 
     private static function dummyPasswordHash(): string

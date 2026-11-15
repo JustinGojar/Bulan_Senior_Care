@@ -10,7 +10,7 @@ class RequirePasswordChange
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $allowedUris = ['api/user', 'api/logout', 'api/profile/password'];
+        $allowedUris = ['api/user', 'api/logout', 'api/profile/password', 'api/session/heartbeat'];
         if ($request->user()?->must_change_password && ! in_array($request->route()?->uri(), $allowedUris, true)) {
             return response()->json([
                 'message' => 'Change your temporary password before continuing.',

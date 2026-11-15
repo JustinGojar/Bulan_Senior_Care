@@ -50,8 +50,11 @@ return [
     |
     */
 
-    // Signs every session out after this many minutes, however active it is.
-    'expiration' => (int) env('SANCTUM_EXPIRATION', 720) ?: null,
+    // Open browser sessions renew through heartbeat requests, without an absolute login cap.
+    'expiration' => null,
+
+    // Browser sessions expire after all tabs stop sending requests (including browser crashes).
+    'browser_idle_timeout' => max(1, (int) env('BROWSER_SESSION_TIMEOUT', 5)),
 
     // Minutes without any request before EnforceTokenIdleTimeout revokes the token (0 turns it off).
     'idle_timeout' => (int) env('SANCTUM_IDLE_TIMEOUT', 30),

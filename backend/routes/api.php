@@ -31,6 +31,7 @@ Route::get('/announcements', [AnnouncementController::class, 'index']);
 Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.change', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/session/heartbeat', [AuthController::class, 'heartbeat']);
     Route::get('/overview', OverviewController::class);
     Route::get('/analytics', AnalyticsController::class);
     Route::get('/audit-logs', [SystemDataController::class, 'auditLogs']);
