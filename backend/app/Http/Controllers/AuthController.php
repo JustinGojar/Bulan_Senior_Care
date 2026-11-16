@@ -6,6 +6,7 @@ use App\Http\Middleware\AuthenticateFromCookie;
 use App\Models\Barangay;
 use App\Models\User;
 use App\Notifications\PasswordResetCodeNotification;
+use App\Notifications\EmailChangeCodeNotification;
 use App\Support\PhotoBackup;
 use App\Support\RolePermissions;
 use Illuminate\Database\Query\Builder;
@@ -400,6 +401,35 @@ class AuthController extends Controller
         return response()->json(RolePermissions::withGranted($request->user()->load('roles')));
     }
 
+    public function sendEmailChangeCode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+        ]);
+        $key = 'email-change:'.$user->id;
+        abort_if(RateLimiter::tooManyAttempts($key.':sent', 1), 429, 'Please wait one minute before requesting another code.');
+        RateLimiter::hit($key.':sent', 60);
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put($key, [
+            'email' => $data['email'],
+            'old_email' => $user->email,
+            'hash' => Hash::make($code),
+        ], now()->addMinutes(10));
+        try {
+            $recipient = clone $user;
+            $recipient->email = $data['email'];
+            $recipient->notify(new EmailChangeCodeNotification($code));
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+            Cache::forget($key);
+            RateLimiter::clear($key.':sent');
+            return response()->json(['message' => 'Could not send the code. Please try again.'], 503);
+        }
+
+        return response()->json(['message' => 'A 6-digit code was sent to your new email address. It expires in 10 minutes.']);
+    }
+
     public function updateProfile(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -411,13 +441,29 @@ class AuthController extends Controller
         ]);
 
         $user = $request->user();
+        $emailChanged = $data['email'] !== $user->email;
+        $codeKey = 'email-change:'.$user->id;
+        if ($emailChanged) {
+            $request->validate(['email_code' => ['required', 'digits:6']]);
+            abort_if(RateLimiter::tooManyAttempts($codeKey.':attempts', 5), 429, 'Too many incorrect codes. Please try again in 10 minutes.');
+            $pending = Cache::get($codeKey);
+            if (! $pending || $pending['email'] !== $data['email'] || $pending['old_email'] !== $user->email || ! Hash::check($request->input('email_code'), $pending['hash'])) {
+                RateLimiter::hit($codeKey.':attempts', 600);
+                if (RateLimiter::tooManyAttempts($codeKey.':attempts', 5)) {
+                    Cache::forget($codeKey);
+                }
+                return response()->json(['message' => 'The email verification code is incorrect or expired. Request a new code if needed.'], 422);
+            }
+        }
         $oldPhotoPath = $user->profile_photo_path;
         if ($request->hasFile('profile_photo')) {
             $data['profile_photo_path'] = PhotoBackup::store($request->file('profile_photo'), 'profile-photos');
         }
         unset($data['profile_photo']);
         $user->fill($data);
-        $emailChanged = $user->isDirty('email');
+        if ($emailChanged) {
+            $user->email_verified_at = now();
+        }
         $user->save();
 
         if (isset($data['profile_photo_path'])) {
@@ -425,14 +471,9 @@ class AuthController extends Controller
         }
 
         if ($emailChanged) {
-            // The new address must be verified before this account can sign in again.
-            $sent = $user->requireEmailReverification();
-
-            return response()->json([
-                'user' => $user->fresh()->load('roles'),
-                'email_verification_required' => true,
-                'verification_email_sent' => $sent,
-            ])->withCookie(AuthenticateFromCookie::forget($request));
+            Cache::forget($codeKey);
+            RateLimiter::clear($codeKey.':attempts');
+            RateLimiter::clear($codeKey.':sent');
         }
 
         return response()->json($user->fresh()->load('roles'));

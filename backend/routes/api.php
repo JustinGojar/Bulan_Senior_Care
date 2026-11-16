@@ -38,6 +38,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
     Route::post('/admin/backups', [BackupController::class, 'store'])->middleware('throttle:6,1');
     Route::post('/admin/backups/restore', [BackupController::class, 'restore'])->middleware('throttle:3,1');
     Route::post('/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/profile/email-code', [AuthController::class, 'sendEmailChangeCode'])->middleware('throttle:6,1');
     Route::post('/profile/password', [AuthController::class, 'changePassword']);
     Route::get('/barangays', [AuthController::class, 'barangays']);
     Route::post('/admin/barangay-presidents', [AuthController::class, 'createBarangayPresident']);

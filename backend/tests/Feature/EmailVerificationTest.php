@@ -92,18 +92,54 @@ class EmailVerificationTest extends TestCase
         Notification::assertSentTo($head, VerifyEmailNotification::class);
     }
 
-    public function test_changing_own_email_signs_out_until_the_new_address_is_verified(): void
+    public function test_changing_own_email_requires_a_code_before_saving(): void
     {
         Notification::fake();
         $user = User::factory()->create(['role' => 'head', 'status' => 'active', 'email' => 'old@example.com']);
+        $payload = ['name' => $user->name, 'email' => 'new@example.com'];
+        $this->actingAs($user, 'sanctum')->postJson('/api/profile', $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors('email_code');
+        $this->assertSame('old@example.com', $user->fresh()->email);
 
-        $this->actingAs($user, 'sanctum')
-            ->postJson('/api/profile', ['name' => $user->name, 'email' => 'new@example.com'])
-            ->assertOk()
-            ->assertJson(['email_verification_required' => true, 'verification_email_sent' => true]);
+        $this->postJson('/api/profile/email-code', ['email' => 'new@example.com'])->assertOk();
+        $this->assertSame('old@example.com', $user->fresh()->email);
+        $code = null;
+        Notification::assertSentTo($user, \App\Notifications\EmailChangeCodeNotification::class, function ($notification, $channels, $recipient) use (&$code) {
+            $code = $notification->code;
+            return $recipient->email === 'new@example.com';
+        });
+        $this->postJson('/api/profile', [...$payload, 'email_code' => $code])->assertOk()->assertJsonPath('email', 'new@example.com');
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
+        $this->assertNull(\Illuminate\Support\Facades\Cache::get('email-change:'.$user->id));
+        $this->getJson('/api/user')->assertOk();
+    }
 
-        $this->assertFalse($user->fresh()->hasVerifiedEmail());
-        Notification::assertSentTo($user, VerifyEmailNotification::class);
+    public function test_email_change_code_is_bound_to_address_expires_and_is_rate_limited(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['role' => 'head', 'email' => 'old@example.com']);
+        $this->actingAs($user, 'sanctum')->postJson('/api/profile/email-code', ['email' => 'new@example.com'])->assertOk();
+        $code = Notification::sent($user, \App\Notifications\EmailChangeCodeNotification::class)->first()->code;
+        $this->postJson('/api/profile/email-code', ['email' => 'new@example.com'])->assertStatus(429);
+        $this->postJson('/api/profile', ['name' => $user->name, 'email' => 'other@example.com', 'email_code' => $code])->assertUnprocessable();
+        $this->travel(11)->minutes();
+        $this->postJson('/api/profile', ['name' => $user->name, 'email' => 'new@example.com', 'email_code' => $code])->assertUnprocessable();
+        $this->assertSame('old@example.com', $user->fresh()->email);
+    }
+
+    public function test_five_wrong_email_codes_block_the_change(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['role' => 'head', 'email' => 'old@example.com']);
+        $this->actingAs($user, 'sanctum')->postJson('/api/profile/email-code', ['email' => 'new@example.com'])->assertOk();
+        $code = Notification::sent($user, \App\Notifications\EmailChangeCodeNotification::class)->first()->code;
+        $wrong = $code === '000000' ? '111111' : '000000';
+        $payload = ['name' => $user->name, 'email' => 'new@example.com'];
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/profile', [...$payload, 'email_code' => $wrong])->assertUnprocessable();
+        }
+        $this->postJson('/api/profile', [...$payload, 'email_code' => $code])->assertStatus(429);
+        $this->assertSame('old@example.com', $user->fresh()->email);
     }
 
     public function test_verification_email_uses_branded_template(): void

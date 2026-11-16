@@ -40,7 +40,6 @@ import {
   getAuditLogs,
   getStoredUser,
   logout,
-  noteSessionEnded,
   setStoredUser,
   type ApiUser,
   type AuditLog,
@@ -57,6 +56,9 @@ function ProfilePage() {
   const [user, setUser] = useState<ApiUser | null>(getStoredUser());
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [emailCode, setEmailCode] = useState("");
+  const [codeSentTo, setCodeSentTo] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
   const [contact, setContact] = useState(user?.contact_number ?? "");
   const [address, setAddress] = useState(user?.address ?? "");
   const [assignedBarangay, setAssignedBarangay] = useState("");
@@ -167,6 +169,26 @@ function ProfilePage() {
     setPhoto(null);
     setOriginalPhoto(null);
     setEditing(false);
+    setEmailCode("");
+    setCodeSentTo("");
+  }
+
+  async function sendEmailCode() {
+    setSendingCode(true);
+    const targetEmail = email;
+    try {
+      const result = await apiFetch<{ message: string }>("/profile/email-code", {
+        method: "POST",
+        body: JSON.stringify({ email: targetEmail }),
+      });
+      setCodeSentTo(targetEmail);
+      setEmailCode("");
+      toast.success(result.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not send verification code.");
+    } finally {
+      setSendingCode(false);
+    }
   }
 
   async function saveProfile(event: React.FormEvent) {
@@ -180,22 +202,10 @@ function ProfilePage() {
       form.append("contact_number", contact);
       if (!isPresident) form.append("address", address);
       if (photo) form.append("profile_photo", photo);
-      const result = await apiFetch<
-        | ApiUser
-        | { user: ApiUser; email_verification_required: true; verification_email_sent: boolean }
-      >("/profile", { method: "POST", body: form });
-      if ("email_verification_required" in result) {
-        // The server ended this session; the new address must be verified before signing in.
-        noteSessionEnded(
-          result.verification_email_sent
-            ? `Your email was changed. Verify ${result.user.email} using the link we sent, then log in again.`
-            : `Your email was changed to ${result.user.email}. Log in to get a verification link.`,
-        );
-        clearSession();
-        window.location.href = "/login";
-        return;
-      }
-      const updated = result;
+      if (email !== user?.email) form.append("email_code", emailCode);
+      const updated = await apiFetch<ApiUser>("/profile", { method: "POST", body: form });
+      setEmailCode("");
+      setCodeSentTo("");
       setUser(updated);
       setStoredUser(updated);
       setPhoto(null);
@@ -349,12 +359,35 @@ function ProfilePage() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setEmailCode("");
+                    setCodeSentTo("");
+                  }}
                   readOnly={!editing}
                   className={profileFieldClass}
                   required
                 />
               </label>
+              {editing && email !== user?.email && (
+                <div className="space-y-3 rounded-lg border border-border p-4">
+                  <p className="text-sm text-muted-foreground" aria-live="polite">
+                    {codeSentTo === email
+                      ? `Enter the 6-digit code sent to ${codeSentTo}. It expires in 10 minutes.`
+                      : "Verify your new email address before saving. Your current email stays unchanged until you confirm the code."}
+                  </p>
+                  <button type="button" onClick={() => void sendEmailCode()} disabled={sendingCode || busy || !email}
+                    className="text-sm font-semibold text-primary underline disabled:opacity-50">
+                    {sendingCode ? "Sending code..." : codeSentTo === email ? "Resend code" : "Send verification code"}
+                  </button>
+                  <label className="block text-sm font-semibold">
+                    Authentication code
+                    <input value={emailCode} onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                      inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
+                      placeholder="Enter 6-digit code" required className={`${fieldClass} mt-2 h-11`} />
+                  </label>
+                </div>
+              )}
               <label className="block text-sm font-semibold text-foreground">
                 Contact number
                 <input
