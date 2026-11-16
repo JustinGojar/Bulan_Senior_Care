@@ -376,15 +376,33 @@ function ProfilePage() {
                       ? `Enter the 6-digit code sent to ${codeSentTo}. It expires in 10 minutes.`
                       : "Verify your new email address before saving. Your current email stays unchanged until you confirm the code."}
                   </p>
-                  <button type="button" onClick={() => void sendEmailCode()} disabled={sendingCode || busy || !email}
-                    className="text-sm font-semibold text-primary underline disabled:opacity-50">
-                    {sendingCode ? "Sending code..." : codeSentTo === email ? "Resend code" : "Send verification code"}
+                  <button
+                    type="button"
+                    onClick={() => void sendEmailCode()}
+                    disabled={sendingCode || busy || !email}
+                    className="text-sm font-semibold text-primary underline disabled:opacity-50"
+                  >
+                    {sendingCode
+                      ? "Sending code..."
+                      : codeSentTo === email
+                        ? "Resend code"
+                        : "Send verification code"}
                   </button>
                   <label className="block text-sm font-semibold">
                     Authentication code
-                    <input value={emailCode} onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                      inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}
-                      placeholder="Enter 6-digit code" required className={`${fieldClass} mt-2 h-11`} />
+                    <input
+                      value={emailCode}
+                      onChange={(event) =>
+                        setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{6}"
+                      maxLength={6}
+                      placeholder="Enter 6-digit code"
+                      required
+                      className={`${fieldClass} mt-2 h-11`}
+                    />
                   </label>
                 </div>
               )}
