@@ -659,7 +659,7 @@ function BenefitTracking() {
           value={selectedBenefit}
           options={benefitOptions.map((benefit) => ({
             value: benefit,
-            label: benefit === "All" ? "All Programs" : benefit,
+            label: benefit === "All" ? (isHead ? "Expanded Centenarian" : "All Programs") : benefit,
           }))}
           onChange={setSelectedBenefit}
         />

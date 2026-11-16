@@ -13,6 +13,16 @@ class SeniorBulkUploadTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_head_cannot_register_or_bulk_import_seniors(): void
+    {
+        $head = User::factory()->create(['role' => 'head']);
+
+        $this->actingAs($head, 'sanctum')->postJson('/api/seniors', [])->assertForbidden();
+        $this->postJson('/api/seniors/bulk', ['records' => [[]]])->assertForbidden();
+
+        $this->assertDatabaseCount('senior_citizens', 0);
+    }
+
     public function test_president_can_create_pending_senior_without_document_files(): void
     {
         $barangay = Barangay::create([

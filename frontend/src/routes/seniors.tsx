@@ -549,6 +549,7 @@ function SeniorRecords() {
   const systemPermissions = currentUser?.granted_permissions ?? [];
   const canCreateSeniors =
     !isAdmin &&
+    !isHead &&
     (systemPermissions.includes("seniors.create") ||
       (isPresident && hasPermission("register seniors")));
   const canUpdateSeniors =

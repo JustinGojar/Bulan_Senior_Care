@@ -109,7 +109,7 @@ function watchUnreadCount(
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { to: "/seniors", label: "Senior Record", icon: Users },
+  { to: "/seniors", label: "Senior Citizen Record", icon: Users },
   { to: "/eligibility", label: "Eligibility Review", icon: ClipboardCheck },
   { to: "/age-threshold", label: "Age Threshold", icon: ClipboardCheck },
   { to: "/benefits", label: "Benefit Tracking", icon: HandCoins },

@@ -421,6 +421,7 @@ class SeniorCitizenController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_if($request->user()->role === 'head', 403, 'Only the BSCA president can register seniors.');
         if ($request->user()->role === 'president') {
             RolePermissions::authorize($request->user(), 'register seniors');
         } else {
@@ -547,6 +548,7 @@ class SeniorCitizenController extends Controller
 
     public function bulkStore(Request $request): JsonResponse
     {
+        abort_if($request->user()->role === 'head', 403, 'Only the BSCA president can register seniors.');
         if ($request->user()->role === 'president') {
             RolePermissions::authorize($request->user(), 'register seniors');
         } else {
