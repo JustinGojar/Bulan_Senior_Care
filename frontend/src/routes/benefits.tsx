@@ -654,7 +654,7 @@ function BenefitTracking() {
       <div className="mb-5 flex flex-wrap items-center gap-2 p-3 sm:p-4">
         <IconSelect
           label="Program"
-          className="sm:min-w-40 sm:flex-1 xl:w-44 xl:flex-none"
+          className="sm:min-w-60 sm:flex-1 xl:w-60 xl:flex-none"
           icon={<Grid2X2 className="h-4 w-4" />}
           value={selectedBenefit}
           options={benefitOptions.map((benefit) => ({
