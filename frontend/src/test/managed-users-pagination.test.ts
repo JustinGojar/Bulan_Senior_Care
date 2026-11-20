@@ -6,10 +6,13 @@ afterEach(() => vi.unstubAllGlobals());
 it("reads resource pagination metadata and requests ten accounts on each page", async () => {
   const fetchMock = vi.fn().mockImplementation(async (url: string) => {
     const page = Number(new URL(url, "http://localhost").searchParams.get("page"));
-    return new Response(JSON.stringify({
-      data: [{ id: page }],
-      meta: { current_page: page, last_page: 2, per_page: 10, total: 11 },
-    }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(
+      JSON.stringify({
+        data: [{ id: page }],
+        meta: { current_page: page, last_page: 2, per_page: 10, total: 11 },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   });
   vi.stubGlobal("fetch", fetchMock);
 
