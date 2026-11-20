@@ -301,6 +301,8 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Keep Cypress bootstrap injection from changing the document structure during hydration. */}
+        <script data-cy-bootstrap suppressHydrationWarning>{`/* Cypress bootstrap */`}</script>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: splashScript }} />
         <style dangerouslySetInnerHTML={{ __html: splashCss }} />

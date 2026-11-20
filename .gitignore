@@ -36,3 +36,8 @@ claude.exe
 
 # Vite dependency cache
 .vite/
+
+# Cypress local credentials and generated artifacts
+frontend/cypress.env.json
+frontend/cypress/screenshots/
+frontend/cypress/videos/
