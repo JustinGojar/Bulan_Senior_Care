@@ -58,7 +58,8 @@ class UserController extends Controller
                 }
             })
             ->orderBy('name')
-            ->paginate($filters['per_page'] ?? 25);
+            ->orderBy('id')
+            ->paginate($filters['per_page'] ?? 10);
 
         return ManagedUserResource::collection($users)->response();
     }

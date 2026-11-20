@@ -31,6 +31,25 @@ class UserAccountRulesTest extends TestCase
         $this->assertSame(1, User::where('role', 'admin')->count());
     }
 
+    public function test_accounts_are_paginated_in_groups_of_ten(): void
+    {
+        User::factory()->count(10)->create(['role' => 'head']);
+
+        $first = $this->actingAs($this->admin, 'sanctum')->getJson('/api/admin/users')
+            ->assertOk()->assertJsonCount(10, 'data')
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonPath('meta.total', 11);
+        $second = $this->getJson('/api/admin/users?page=2')->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('meta.current_page', 2);
+
+        $this->assertCount(11, array_unique(array_merge(
+            array_column($first->json('data'), 'id'),
+            array_column($second->json('data'), 'id'),
+        )));
+    }
+
     public function test_admin_can_create_a_head_account(): void
     {
         $this->actingAs($this->admin, 'sanctum')

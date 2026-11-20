@@ -959,7 +959,7 @@ export function logout() {
   });
 }
 
-export function getManagedUsers(
+export async function getManagedUsers(
   filters: {
     page?: number;
     per_page?: number;
@@ -969,7 +969,7 @@ export function getManagedUsers(
   } = {},
 ) {
   const query = new URLSearchParams({
-    per_page: String(filters.per_page ?? 25),
+    per_page: String(filters.per_page ?? 10),
     page: String(filters.page ?? 1),
   });
   if (filters.search) query.set("search", filters.search);
@@ -981,7 +981,12 @@ export function getManagedUsers(
   ) {
     query.set("status", filters.status);
   }
-  return apiFetch<PaginatedResponse<ManagedUser>>(`/admin/users?${query}`);
+  // Laravel resource collections put pagination fields inside meta.
+  const result = await apiFetch<{
+    data: ManagedUser[];
+    meta: Omit<PaginatedResponse<ManagedUser>, "data">;
+  }>(`/admin/users?${query}`);
+  return { ...result.meta, data: result.data };
 }
 
 export function updateManagedUser(

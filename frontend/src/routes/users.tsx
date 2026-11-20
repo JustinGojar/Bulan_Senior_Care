@@ -159,6 +159,10 @@ function UserManagement() {
         })
           .then((result) => {
             if (!active) return;
+            if (usersPage > result.last_page) {
+              setUsersPage(result.last_page);
+              return;
+            }
             setUsers(result.data);
             setUsersLastPage(result.last_page);
             setUsersTotal(result.total);
