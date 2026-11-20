@@ -159,6 +159,45 @@ class UserAccountRulesTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $president->id, 'role' => 'president', 'barangay_id' => $barangay->id]);
     }
 
+    public function test_deleted_president_can_be_replaced_with_a_new_account_and_photo(): void
+    {
+        Storage::fake('public');
+        $barangay = Barangay::create(['barangay_name' => 'Beguin', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
+        $previous = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
+        $this->actingAs($this->admin, 'sanctum')
+            ->deleteJson("/api/admin/users/{$previous->id}")->assertNoContent();
+
+        $response = $this->post('/api/admin/users', $this->account([
+            'role' => 'president',
+            'barangay_id' => $barangay->id,
+            'profile_photo' => UploadedFile::fake()->image('barangay.jpg'),
+        ]), ['Accept' => 'application/json'])->assertCreated();
+
+        Storage::disk('public')->assertExists($response->json('user.profile_photo_path'));
+        $this->assertSoftDeleted($previous);
+        $this->assertSame(1, User::where('barangay_id', $barangay->id)->where('role', 'president')->count());
+        $this->assertSame(2, User::withTrashed()->where('barangay_id', $barangay->id)->where('role', 'president')->count());
+    }
+
+    public function test_existing_account_can_take_a_deleted_presidents_barangay(): void
+    {
+        $barangay = Barangay::create(['barangay_name' => 'Beguin', 'municipality' => 'Bulan', 'province' => 'Sorsogon']);
+        $previous = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
+        $previous->delete();
+        $replacement = User::factory()->create(['role' => 'head']);
+
+        $this->actingAs($this->admin, 'sanctum')->putJson("/api/admin/users/{$replacement->id}", [
+            'name' => $replacement->name,
+            'email' => $replacement->email,
+            'role' => 'president',
+            'status' => 'active',
+            'barangay_id' => $barangay->id,
+        ])->assertOk();
+
+        $this->assertSame('president', $replacement->fresh()->role);
+        $this->assertSoftDeleted($previous);
+    }
+
     public function test_mobile_number_must_be_eleven_digits_starting_with_09(): void
     {
         foreach (['0917123456', '091712345678', '+639171234567', '0817 123 4567', 'abc'] as $number) {
