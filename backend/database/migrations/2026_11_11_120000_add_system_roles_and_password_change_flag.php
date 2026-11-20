@@ -10,9 +10,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table): void {
-            $table->boolean('must_change_password')->default(false);
-        });
+        if (! Schema::hasColumn('users', 'must_change_password')) {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->boolean('must_change_password')->default(false);
+            });
+        }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         RolePermissions::grantSystemDefaults();
@@ -20,8 +22,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table): void {
-            $table->dropColumn('must_change_password');
-        });
+        // The column is now owned by 2026_10_10_125000, before BSCA accounts are seeded.
     }
 };

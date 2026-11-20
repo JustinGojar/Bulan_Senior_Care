@@ -5,15 +5,34 @@ namespace Tests\Feature;
 use App\Models\Barangay;
 use App\Models\SeniorCitizen;
 use App\Models\User;
+use Database\Seeders\BscaPresidentSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\SampleDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_password_change_flag_exists_before_bsca_seeding_and_survives_later_migration(): void
+    {
+        $earlyMigration = require database_path('migrations/2026_10_10_125000_add_password_change_flag_to_users.php');
+        $laterMigration = require database_path('migrations/2026_11_11_120000_add_system_roles_and_password_change_flag.php');
+
+        $earlyMigration->down();
+        $this->assertFalse(Schema::hasColumn('users', 'must_change_password'));
+        $earlyMigration->up();
+        $this->seed(BscaPresidentSeeder::class);
+        $this->assertSame(64, User::where('must_change_password', true)->count());
+
+        $laterMigration->up();
+        $earlyMigration->up(); // Already-upgraded databases can apply the earlier migration safely.
+        $laterMigration->down();
+        $this->assertSame(64, User::where('must_change_password', true)->count());
+    }
 
     public function test_default_seeding_preserves_accounts_without_creating_sample_records(): void
     {

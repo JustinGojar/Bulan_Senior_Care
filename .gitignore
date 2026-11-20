@@ -41,3 +41,14 @@ claude.exe
 frontend/cypress.env.json
 frontend/cypress/screenshots/
 frontend/cypress/videos/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
