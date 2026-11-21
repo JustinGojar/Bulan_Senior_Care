@@ -15,7 +15,7 @@ class TokenIdleTimeoutTest extends TestCase
         /** @var User $user */
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('test')->plainTextToken;
-        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(31)])->save();
+        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(60)])->save();
 
         $this->withToken($plainTextToken)
             ->getJson('/api/user')
@@ -44,7 +44,7 @@ class TokenIdleTimeoutTest extends TestCase
         /** @var User $user */
         $user = User::factory()->create();
         $plainTextToken = $user->createToken('test')->plainTextToken;
-        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(14)])->save();
+        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(59)])->save();
 
         $this->withToken($plainTextToken)->getJson('/api/user')->assertOk();
     }
@@ -68,7 +68,27 @@ class TokenIdleTimeoutTest extends TestCase
 
         $this->postJson('/api/login', ['email' => 'president@example.com', 'password' => 'secret-password', 'accepted_terms' => true, 'terms_version' => '2026-10-07'])
             ->assertOk()
-            ->assertJsonPath('session.idle_timeout_minutes', 5)
+            ->assertJsonPath('session.idle_timeout_minutes', 60)
             ->assertJsonPath('session.expires_in_seconds', null);
+    }
+
+    public function test_browser_session_is_valid_before_one_hour_of_inactivity(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('bulan-seniorcare')->plainTextToken;
+        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(59)])->save();
+
+        $this->withToken($token)->getJson('/api/user')->assertOk();
+    }
+
+    public function test_browser_session_expires_at_one_hour_of_inactivity(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('bulan-seniorcare')->plainTextToken;
+        $user->tokens()->first()->forceFill(['last_used_at' => now()->subMinutes(60)])->save();
+
+        $this->withToken($token)->getJson('/api/user')->assertUnauthorized()
+            ->assertJsonPath('message', 'Your session expired due to inactivity. Please log in again.');
+        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $user->id]);
     }
 }

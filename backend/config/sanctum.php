@@ -54,10 +54,10 @@ return [
     'expiration' => null,
 
     // Browser sessions expire after all tabs stop sending requests (including browser crashes).
-    'browser_idle_timeout' => max(1, (int) env('BROWSER_SESSION_TIMEOUT', 5)),
+    'browser_idle_timeout' => max(1, (int) env('BROWSER_SESSION_TIMEOUT', 60)),
 
     // Minutes without any request before EnforceTokenIdleTimeout revokes the token (0 turns it off).
-    'idle_timeout' => (int) env('SANCTUM_IDLE_TIMEOUT', 30),
+    'idle_timeout' => (int) env('SANCTUM_IDLE_TIMEOUT', 60),
 
     /*
     |--------------------------------------------------------------------------

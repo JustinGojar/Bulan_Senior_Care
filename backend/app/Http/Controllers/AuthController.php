@@ -188,7 +188,7 @@ class AuthController extends Controller
         $expiration = (int) config('sanctum.expiration');
 
         return [
-            'idle_timeout_minutes' => (int) config('sanctum.browser_idle_timeout', 5),
+            'idle_timeout_minutes' => (int) config('sanctum.browser_idle_timeout', 60),
             'expires_in_seconds' => $expiration > 0 ? $expiration * 60 : null,
         ];
     }
