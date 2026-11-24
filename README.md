@@ -139,6 +139,34 @@ The development seeder creates sample accounts for each role. Their sign-in deta
 
 To report a security issue, contact the repository owner directly rather than opening a public issue.
 
+### Applying the browser security protections
+
+The backend and frontend share `backend/resources/browser-security.json`. Production responses restrict scripts to this site's files and hashes of the built startup scripts, deny framing, and disable MIME sniffing. Inline styles remain allowed because the component library uses style attributes; arbitrary inline JavaScript and script event handlers are blocked. PDF previews use same-origin/blob frames. Fonts and their licenses are shipped in `frontend/public/fonts`, so the portal no longer loads a third-party stylesheet requiring SRI. Keep license notices in bundled dependencies; they are not secrets.
+
+API responses (including login, errors and cookie-authenticated requests) and uploaded-file responses use `Cache-Control: no-store, private`. Hashed public JavaScript/CSS can still be cached. A scanner's “Retrieved from Cache” or “Modern Web Application” informational finding does not by itself require disabling public asset caching.
+
+For local production-style testing, run from the repository root:
+
+```powershell
+cd frontend
+npm run build:railway
+cd ../backend
+php artisan config:clear
+php -S 127.0.0.1:8088 -t public public/router.php
+```
+
+Start **MySQL in the XAMPP Control Panel** and leave it running. Scan `http://127.0.0.1:8088`, not Vite's development server; Vite needs a relaxed development-only policy for hot reload. JMeter login requests must use a valid account password and an HTTP Cookie Manager for subsequent authenticated requests. Login throttling remains enabled (20 requests/minute per IP and a separate failed-password lockout); a 429 during a load test is an intentional protection.
+
+For Railway, redeploy the changed repository using its Dockerfile. For Vercel, use **`npm run build`** as the build command with `frontend` as the root directory, and enable **Include source files outside of the Root Directory** so the shared policy can be imported. Set `BACKEND_URL` to the Laravel HTTPS origin so `/api` and `/storage` are proxied. The build adds headers to Vercel's generated routing configuration, including static HTML. No deployment is performed by a local build.
+
+Set `APP_ENV=production`, `APP_DEBUG=false`, and the correct HTTPS `APP_URL`/`FRONTEND_URL` on the production backend. Rebuild Laravel's configuration with `php artisan config:cache` after changing environment settings (the Railway Docker startup already does this). Do not change your local database or reset user passwords for a security scan.
+
+`CORS_ALLOWED_ORIGINS` defaults to empty because the browser uses the same-origin `/api` proxy. If a separate browser origin needs direct API access, configure exact comma-separated origins, for example `CORS_ALLOWED_ORIGINS=https://portal.example.com,http://localhost:5173`, then clear/rebuild the configuration cache. Wildcards, paths and arbitrary localhost ports are not accepted. Cross-origin cookies remain disabled; browser login should use the proxy. CORS does not replace authentication and does not restrict tools such as JMeter.
+
+If you serve static files directly with Apache, Nginx or another CDN, that server bypasses `public/router.php`; apply the same headers there or use the supplied router deployment. Do not paste a fixed CSP hash list into your host settings: startup hashes change on every build. Re-scan the deployed HTTPS URL after deployment, checking the HTML, API errors and static assets. Production hosts and ZAP results still require verification on the actual deployment.
+
+The script policy follows [MDN's CSP hash guidance](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src). If future changes add third-party scripts or styles, pin their bytes and apply [Subresource Integrity](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Subresource_Integrity), or serve them locally.
+
 ---
 
 © Office of Senior Citizen Affairs, Municipality of Bulan, Sorsogon.

@@ -273,12 +273,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: `${SITE_URL}/og-image.png` },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
-      },
+      { rel: "stylesheet", href: "/fonts/portal.css" },
       {
         rel: "stylesheet",
         href: appCss,
@@ -301,8 +296,6 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Keep Cypress bootstrap injection from changing the document structure during hydration. */}
-        <script data-cy-bootstrap suppressHydrationWarning>{`/* Cypress bootstrap */`}</script>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: splashScript }} />
         <style dangerouslySetInnerHTML={{ __html: splashCss }} />

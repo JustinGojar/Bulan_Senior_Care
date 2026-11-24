@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn (Request $request) =>
             $request->is('api/*') ? null : route('login')
         );
-        $middleware->append(SecurityHeaders::class);
+        $middleware->prepend(SecurityHeaders::class);
         // Global, so the cookie's token is in place before the idle check and auth:sanctum run.
         $middleware->prepend(AuthenticateFromCookie::class);
         $middleware->alias([

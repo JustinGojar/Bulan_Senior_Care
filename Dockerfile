@@ -4,6 +4,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+COPY backend/resources/browser-security.json /app/backend/resources/browser-security.json
 COPY backend/public/ /app/backend/public/
 RUN npm run build:railway
 
@@ -30,6 +31,7 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/fra
 
 # Code is baked into the image, so compiled PHP never needs revalidating.
 RUN printf '%s\n' \
+    'expose_php=Off' \
     'opcache.enable=1' \
     'opcache.enable_cli=1' \
     'opcache.memory_consumption=128' \

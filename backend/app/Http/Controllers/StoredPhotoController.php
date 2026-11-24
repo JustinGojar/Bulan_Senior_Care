@@ -19,7 +19,7 @@ class StoredPhotoController extends Controller
 
         return response($contents, 200, [
             'Content-Type' => $mimeType,
-            'Cache-Control' => 'private, max-age=86400',
+            'Cache-Control' => 'no-store, private',
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

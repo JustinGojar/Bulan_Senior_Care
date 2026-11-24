@@ -8,6 +8,7 @@ class ApiAuthenticationTest extends TestCase
 {
     public function test_unauthenticated_api_requests_receive_a_json_401(): void
     {
+        config(['cors.allowed_origins' => ['http://localhost:5173']]);
         $this->withHeader('Origin', 'http://localhost:5173')
             ->get('/api/seniors')
             ->assertUnauthorized()
@@ -17,6 +18,7 @@ class ApiAuthenticationTest extends TestCase
 
     public function test_cors_preflight_allows_the_local_frontend_origin(): void
     {
+        config(['cors.allowed_origins' => ['http://localhost:5173']]);
         $this->withHeaders([
             'Origin' => 'http://localhost:5173',
             'Access-Control-Request-Method' => 'GET',

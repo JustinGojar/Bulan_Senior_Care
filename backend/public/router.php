@@ -6,9 +6,11 @@
  * The built-in server sends static files uncompressed and without cache
  * headers, so browsers download every script again on each visit. This router
  * serves the built frontend with pre-compressed copies (.br / .gz made at build
- * time) and long-lived cache headers, caches uploaded files for a day, and
+ * time) and long-lived cache headers, prevents uploaded-file caching, and
  * hands everything else to Laravel.
  */
+
+require_once __DIR__.'/../app/Support/BrowserSecurity.php';
 
 $publicPath = __DIR__;
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
@@ -41,9 +43,15 @@ $sendFile = static function (string $file, string $cacheControl) use ($types): b
     $extension = strtolower(pathinfo($file, PATHINFO_EXTENSION));
     $etag = '"'.dechex(filemtime($file)).'-'.dechex(filesize($file)).'"';
 
+    header_remove('X-Powered-By');
     header('Cache-Control: '.$cacheControl);
-    header('X-Content-Type-Options: nosniff');
-    header('Referrer-Policy: strict-origin-when-cross-origin');
+    $buildRoot = realpath(__DIR__.'/spa-assets');
+    $html = $extension === 'html' && $buildRoot !== false
+        && str_starts_with(realpath($file), $buildRoot.DIRECTORY_SEPARATOR)
+        ? file_get_contents($file) : null;
+    foreach (\App\Support\BrowserSecurity::headers($html) as $name => $value) {
+        header($name.': '.$value);
+    }
     header('ETag: '.$etag);
     header('Vary: Accept-Encoding');
     header('Content-Type: '.($types[$extension] ?? (mime_content_type($file) ?: 'application/octet-stream')));
@@ -73,10 +81,10 @@ $sendFile = static function (string $file, string $cacheControl) use ($types): b
 
 // The installable-app files are built into spa-assets but answered at the site root:
 // a service worker only controls pages under its own path, and the manifest names /icons/.
-if (preg_match('#^/(sw\.js|manifest\.webmanifest|icons/[A-Za-z0-9_-]+\.png)$#', $uri, $match)) {
+if (preg_match('#^/(sw\.js|manifest\.webmanifest|icons/[A-Za-z0-9_-]+\.png|fonts/[A-Za-z0-9_.-]+)$#', $uri, $match)) {
     $pwaFile = $publicPath.'/spa-assets/'.$match[1];
     if (is_file($pwaFile)) {
-        return $sendFile($pwaFile, str_starts_with($match[1], 'icons/') ? 'public, max-age=86400' : 'no-cache');
+        return $sendFile($pwaFile, (str_starts_with($match[1], 'icons/') || str_starts_with($match[1], 'fonts/')) ? 'public, max-age=86400' : 'no-cache');
     }
 }
 
@@ -91,18 +99,18 @@ if ($isUnder('spa-assets') && ! str_ends_with($path, '.php')) {
     // Hashed build output never changes for a given name.
     $cache = $isUnder('spa-assets/assets')
         ? 'public, max-age=31536000, immutable'
-        : 'public, max-age=3600';
+        : 'no-cache';
 
     return $sendFile($path, $cache);
 }
 
 if ($isUnder('storage') && ! str_ends_with($path, '.php')) {
-    // Uploaded photos and ID documents: only the viewer's browser may keep a copy, never a shared proxy.
-    return $sendFile($path, 'private, max-age=86400');
+    // Uploaded files must not remain in browser or shared caches.
+    return $sendFile($path, 'no-store, private');
 }
 
 if ($uri !== '/' && $isFile && str_starts_with($path, $publicPath.DIRECTORY_SEPARATOR) && ! str_ends_with($path, '.php')) {
-    return false;
+    return $sendFile($path, 'no-cache');
 }
 
 require $publicPath.'/index.php';

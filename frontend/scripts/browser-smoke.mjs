@@ -54,6 +54,7 @@ try {
   let nextId = 0;
   const pending = new Map();
   const exceptions = [];
+  const cspErrors = [];
   const writes = [];
   const user = {
     id: 999,
@@ -90,6 +91,11 @@ try {
       if (event.error) request?.reject(new Error(event.error.message));
       else request?.resolve(event.result);
     }
+    if (
+      event.method === "Log.entryAdded" &&
+      /content security policy|violates.*directive/i.test(event.params.entry.text)
+    )
+      cspErrors.push(event.params.entry.text);
     if (event.method === "Runtime.exceptionThrown")
       exceptions.push(event.params.exceptionDetails.text);
     if (event.method === "Fetch.requestPaused") {
@@ -132,10 +138,13 @@ try {
       if (await evaluate(expression)) return;
       await delay(100);
     }
-    throw new Error(`Timed out: ${expression}`);
+    throw new Error(
+      `Timed out: ${expression}; CSP: ${JSON.stringify(cspErrors)}; errors: ${JSON.stringify(exceptions)}`,
+    );
   };
   await send("Page.enable");
   await send("Runtime.enable");
+  await send("Log.enable");
   // Intercept every API request: this script never mutates the local database.
   await send("Fetch.enable", { patterns: [{ urlPattern: "*/api/*" }] });
   await send("Page.navigate", { url: `${base}/verify-email` });
@@ -256,6 +265,17 @@ try {
   await waitFor('location.pathname === "/viewer/unauthorized"');
   console.log("PASS viewer URL prefix and denied user-list access");
   assert.deepEqual(exceptions, [], "Uncaught browser errors");
+  assert.deepEqual(cspErrors, [], "Content Security Policy blocked application resources");
+  console.log("PASS no CSP violations during portal workflows");
+  await evaluate(`(() => {
+    window.__unexpectedScriptRan = false;
+    const script = document.createElement("script");
+    script.textContent = "window.__unexpectedScriptRan = true";
+    document.head.appendChild(script);
+    script.remove();
+  })()`);
+  assert.equal(await evaluate("window.__unexpectedScriptRan"), false);
+  console.log("PASS CSP blocks an unexpected inline script");
 } finally {
   socket?.close();
   browser.kill();

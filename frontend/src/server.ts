@@ -1,4 +1,5 @@
 import "./lib/error-capture";
+import { securityHeaders } from "../scripts/browser-security.mjs";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
@@ -49,13 +50,43 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return await protectResponse(await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return await protectResponse(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };
+
+// These HTML responses contain the public SPA shell, never authenticated API data.
+async function protectResponse(response: Response): Promise<Response> {
+  const html = response.headers.get("content-type")?.includes("text/html")
+    ? await response.text()
+    : null;
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(securityHeaders(html ?? "")))
+    headers.set(name, value as string);
+  if (import.meta.env.DEV) {
+    // Vite adds refresh scripts after rendering; production never uses this policy.
+    headers.set(
+      "Content-Security-Policy",
+      securityHeaders()
+        ["Content-Security-Policy"].replace(
+          "script-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+        )
+        .replace("connect-src 'self'", "connect-src 'self' ws: wss:"),
+    );
+  }
+  headers.set("Cache-Control", "no-store, private");
+  return new Response(html ?? response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
