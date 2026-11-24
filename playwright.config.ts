@@ -1,12 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./frontend/e2e",
   fullyParallel: true,
+  // The PHP development server handles one request at a time.
+  workers: 1,
   retries: 0,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:5173", // change if your port is different
+    baseURL: "http://localhost:5173",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -17,17 +19,18 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "npm run dev",
-      cwd: "./frontend", // change to your frontend folder name
-      url: "http://localhost:5173", // change if your port is different
-      reuseExistingServer: true,
+      command: "npm run dev -- --port 5173 --strictPort",
+      cwd: "./frontend",
+      url: "http://localhost:5173",
+      reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },
     {
-      command: "php artisan serve",
+      // Preserve CI's database environment in the PHP server subprocess.
+      command: "php artisan serve --no-reload",
       cwd: "./backend",
       url: "http://127.0.0.1:8000/up",
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },
   ],
