@@ -13,6 +13,34 @@ class SeniorBulkUploadTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_bulk_import_still_succeeds_when_reviewer_notification_fails(): void
+    {
+        User::factory()->create(['role' => 'head', 'status' => 'active']);
+        \App\Models\Notification::creating(static function (): void {
+            throw new \RuntimeException('Notification service unavailable');
+        });
+
+        try {
+            $this->test_president_can_bulk_import_into_their_barangay();
+        } finally {
+            \App\Models\Notification::flushEventListeners();
+        }
+    }
+
+    public function test_single_registration_still_succeeds_when_reviewer_notification_fails(): void
+    {
+        User::factory()->create(['role' => 'head', 'status' => 'active']);
+        \App\Models\Notification::creating(static function (): void {
+            throw new \RuntimeException('Notification service unavailable');
+        });
+
+        try {
+            $this->test_president_can_create_pending_senior_without_document_files();
+        } finally {
+            \App\Models\Notification::flushEventListeners();
+        }
+    }
+
     public function test_head_cannot_register_or_bulk_import_seniors(): void
     {
         $head = User::factory()->create(['role' => 'head']);

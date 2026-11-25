@@ -654,6 +654,8 @@ function SeniorRecords() {
   const [benefitTransactions, setBenefitTransactions] = useState<BenefitTransaction[]>([]);
   const [bulkPreview, setBulkPreview] = useState<Array<Record<string, string>> | null>(null);
   const bulkFileInput = useRef<HTMLInputElement>(null);
+  const bulkImportLock = useRef(false);
+  const [bulkProgress, setBulkProgress] = useState<number | null>(null);
 
   useEffect(() => {
     if (isHead)
@@ -765,6 +767,10 @@ function SeniorRecords() {
       toast.error("The file must contain a header row and at least one senior record.");
       return;
     }
+    if (records.length > 500) {
+      toast.error("You can import a maximum of 500 records at a time. Please split the file.");
+      return;
+    }
     const normalizedRecords = records.map((record) => {
       const fullName = splitBulkName(record["name"] ?? record["full_name"]);
       const birthdate = normalizeBulkDate(
@@ -814,9 +820,25 @@ function SeniorRecords() {
   }
 
   async function confirmBulkImport() {
-    if (!bulkPreview) return;
+    if (!bulkPreview || bulkImportLock.current) return;
+    bulkImportLock.current = true;
+    setBulkProgress(0);
+    let completed = 0;
     try {
-      const result = await bulkCreateSeniors(bulkPreview);
+      const result: Awaited<ReturnType<typeof bulkCreateSeniors>> = {
+        created: [],
+        failed: [],
+        message: "",
+      };
+      // Small batches provide confirmed progress and avoid one long-running request.
+      for (let offset = 0; offset < bulkPreview.length; offset += 20) {
+        const batch = bulkPreview.slice(offset, offset + 20);
+        const response = await bulkCreateSeniors(batch);
+        result.created.push(...response.created.map((row) => ({ ...row, row: row.row + offset })));
+        result.failed.push(...response.failed.map((row) => ({ ...row, row: row.row + offset })));
+        completed += batch.length;
+        setBulkProgress(completed);
+      }
       const failed = result.failed.length;
       if (failed)
         toast.error(
@@ -824,9 +846,15 @@ function SeniorRecords() {
         );
       else toast.success(`${result.created.length} senior records added and are pending review.`);
       setBulkPreview(null);
-      if (result.created.length > 0) window.location.reload();
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Bulk upload failed.");
+      toast.error(
+        `${reason instanceof Error ? reason.message : "Upload interrupted."} ${completed} rows were processed. The list is refreshing; check saved records before retrying.`,
+      );
+      setBulkPreview(null);
+    } finally {
+      reload();
+      setBulkProgress(null);
+      bulkImportLock.current = false;
     }
   }
 
@@ -1333,7 +1361,10 @@ function SeniorRecords() {
         </div>
       </div>
 
-      <Dialog open={!!bulkPreview} onOpenChange={(open) => !open && setBulkPreview(null)}>
+      <Dialog
+        open={!!bulkPreview}
+        onOpenChange={(open) => !open && !bulkImportLock.current && setBulkPreview(null)}
+      >
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Preview bulk import</DialogTitle>
@@ -1342,6 +1373,28 @@ function SeniorRecords() {
               rejected by the server.
             </DialogDescription>
           </DialogHeader>
+          {bulkProgress !== null && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-lg border border-primary/30 bg-primary/5 p-4"
+            >
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
+                Uploading senior records…
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {bulkProgress} of {bulkPreview?.length ?? 0} records processed. Please keep this
+                page open.
+              </p>
+              <progress
+                aria-label="Senior records processed"
+                value={bulkProgress}
+                max={bulkPreview?.length || 1}
+                className="mt-3 h-2 w-full accent-primary motion-safe:animate-pulse"
+              />
+            </div>
+          )}
           <div className="max-h-80 overflow-auto rounded-lg border border-border/60">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-muted">
@@ -1377,13 +1430,19 @@ function SeniorRecords() {
             <button
               type="button"
               onClick={() => setBulkPreview(null)}
+              disabled={bulkProgress !== null}
               className={secondaryButtonClass}
             >
               Cancel
             </button>
-            <button type="button" onClick={confirmBulkImport} className={primaryButtonClass}>
+            <button
+              type="button"
+              onClick={confirmBulkImport}
+              disabled={bulkProgress !== null}
+              className={primaryButtonClass}
+            >
               <Upload className="h-4 w-4" />
-              Import records
+              {bulkProgress !== null ? "Uploading…" : "Import records"}
             </button>
           </div>
         </DialogContent>

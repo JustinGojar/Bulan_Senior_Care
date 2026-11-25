@@ -330,19 +330,36 @@ class SeniorCitizenController extends Controller
     /** Tells the Admin and Head that a new registration is pending on Eligibility Review. */
     private function notifyReviewersOfRegistration(Request $request, string $message, ?int $seniorId = null): void
     {
-        User::query()
-            ->whereIn('role', ['admin', 'head'])
-            ->where('status', 'active')
-            ->each(fn (User $reviewer) => Notification::create([
-                'recipient_account_id' => $reviewer->id,
-                'sender_account_id' => $request->user()->id,
-                'message' => $message,
-                'channel' => 'in_app',
-                'date_sent' => now(),
-                'status' => 'unread',
-                'source_type' => 'registration_pending',
-                'source_id' => $seniorId,
-            ]));
+        try {
+            User::query()
+                ->whereIn('role', ['admin', 'head'])
+                ->where('status', 'active')
+                ->each(fn (User $reviewer) => Notification::create([
+                    'recipient_account_id' => $reviewer->id,
+                    'sender_account_id' => $request->user()->id,
+                    'message' => $message,
+                    'channel' => 'in_app',
+                    'date_sent' => now(),
+                    'status' => 'unread',
+                    'source_type' => 'registration_pending',
+                    'source_id' => $seniorId,
+                ]));
+        } catch (\Throwable $exception) {
+            // The registration has already been committed. A notification failure
+            // must not tell the president that the saved record failed.
+            report($exception);
+        }
+    }
+
+    private function scheduleRegistrationAdvisory(SeniorCitizen $senior): void
+    {
+        app()->terminating(static function () use ($senior): void {
+            try {
+                AdvisoryDispatcher::forPendingSenior($senior);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        });
     }
 
     /** An in-app notification and an email advisory to the senior's barangay president. */
@@ -496,7 +513,7 @@ class SeniorCitizenController extends Controller
             'status' => $senior->status,
             'privacy_consent_version' => $senior->privacy_consent_version,
         ]);
-        AdvisoryDispatcher::forPendingSenior($senior);
+        $this->scheduleRegistrationAdvisory($senior);
         $this->notifyReviewersOfRegistration(
             $request,
             "{$request->user()->name} registered {$senior->first_name} {$senior->last_name} ({$senior->osca_id_number}). The registration is waiting for eligibility review.",
@@ -649,7 +666,7 @@ class SeniorCitizenController extends Controller
                 continue;
             }
             $created[] = ['row' => $index + 2, 'osca_id_number' => $senior->osca_id_number];
-            AdvisoryDispatcher::forPendingSenior($senior);
+            $this->scheduleRegistrationAdvisory($senior);
         }
         // One notice for the whole upload, so a 500-row file does not flood the reviewers' inbox.
         if (count($created) > 0) {

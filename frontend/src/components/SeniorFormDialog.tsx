@@ -487,7 +487,7 @@ export function SeniorFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle className="font-display">
@@ -1258,8 +1258,28 @@ export function SeniorFormDialog({
             {submitError}
           </p>
         )}
+        {saving && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-lg border border-primary/30 bg-primary/5 p-4"
+          >
+            <p className="text-sm font-semibold">Uploading and saving senior record…</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Please keep this page open. The records will refresh when saving finishes.
+            </p>
+            <progress
+              aria-label="Saving senior record"
+              className="mt-3 h-2 w-full accent-primary motion-safe:animate-pulse"
+            />
+          </div>
+        )}
         <DialogFooter>
-          <button onClick={() => onOpenChange(false)} className={secondaryButtonClass}>
+          <button
+            disabled={saving}
+            onClick={() => onOpenChange(false)}
+            className={secondaryButtonClass}
+          >
             Cancel
           </button>
           <button onClick={() => void submit()} disabled={saving} className={primaryButtonClass}>
