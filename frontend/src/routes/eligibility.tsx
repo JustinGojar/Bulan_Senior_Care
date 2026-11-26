@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { flagSeniorForReview, useSeniors } from "@/lib/use-seniors";
 import { Textarea } from "@/components/ui/textarea";
 import { DocumentReviewNotice } from "@/components/DocumentReviewNotice";
+import { composeReviewNote, suggestedReviewNote } from "@/lib/review-suggestions";
 import { BARANGAYS, benefitLabel, type Senior } from "@/lib/osca-data";
 import {
   Dialog,
@@ -112,6 +113,8 @@ function EligibilityReview() {
   const [viewing, setViewing] = useState<Senior | null>(null);
   const [reviewNoteOpen, setReviewNoteOpen] = useState(false);
   const [reviewNote, setReviewNote] = useState("");
+  const [additionalReviewNote, setAdditionalReviewNote] = useState("");
+  const finalReviewNote = composeReviewNote(reviewNote, additionalReviewNote);
   const [savingReview, setSavingReview] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkReviewing, setBulkReviewing] = useState(false);
@@ -201,10 +204,10 @@ function EligibilityReview() {
   }
 
   async function submitReviewNote() {
-    if (!viewing || !reviewNote.trim()) return;
+    if (!viewing || !finalReviewNote || finalReviewNote.length > 500) return;
     setSavingReview(true);
     try {
-      const updated = await flagSeniorForReview(viewing.id, reviewNote.trim());
+      const updated = await flagSeniorForReview(viewing.id, finalReviewNote);
       toast.success(`${viewing.name} is in review. The barangay president was notified.`);
       setViewing(updated);
       setReviewNoteOpen(false);
@@ -620,7 +623,8 @@ function EligibilityReview() {
             <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-border/60 pt-5">
               <button
                 onClick={() => {
-                  setReviewNote(viewing?.reviewNote ?? "");
+                  setReviewNote(viewing.reviewNote ?? suggestedReviewNote(viewing));
+                  setAdditionalReviewNote("");
                   setReviewNoteOpen(true);
                 }}
                 className={cn(secondaryButtonClass, "h-9 px-4 text-sm whitespace-nowrap")}
@@ -662,8 +666,9 @@ function EligibilityReview() {
           <DialogHeader>
             <DialogTitle className="font-display">Put in review</DialogTitle>
             <DialogDescription>
-              Tell the barangay president what is wrong with the documents of {viewing?.name}. They
-              will be notified and can upload corrected documents.
+              Review the suggested instructions for {viewing?.name} and edit them as needed. The
+              barangay president will receive these instructions and any additional message when you
+              click Put in review.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -673,15 +678,48 @@ function EligibilityReview() {
             }}
             className="space-y-4"
           >
-            <Textarea
-              value={reviewNote}
-              onChange={(event) => setReviewNote(event.target.value)}
-              maxLength={500}
-              rows={4}
-              autoFocus
-              aria-label="What is wrong with the documents"
-              placeholder="e.g. The valid ID is blurry and the birth certificate belongs to someone else."
-            />
+            <div className="space-y-2">
+              <label htmlFor="review-instructions" className="text-sm font-medium">
+                Review instructions
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Suggested from the record. Check the documents before sending.
+              </p>
+              <Textarea
+                id="review-instructions"
+                value={reviewNote}
+                onChange={(event) => setReviewNote(event.target.value)}
+                maxLength={500}
+                rows={4}
+                autoFocus
+                disabled={savingReview}
+                placeholder="Describe what the barangay president needs to correct."
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="additional-review-note" className="text-sm font-medium">
+                Additional instructions (optional)
+              </label>
+              <Textarea
+                id="additional-review-note"
+                value={additionalReviewNote}
+                onChange={(event) => setAdditionalReviewNote(event.target.value)}
+                maxLength={500}
+                rows={2}
+                disabled={savingReview}
+                placeholder="Add any other corrections or suggestions from the Head."
+              />
+            </div>
+            <p
+              className={cn(
+                "text-xs",
+                finalReviewNote.length > 500 ? "text-destructive" : "text-muted-foreground",
+              )}
+              aria-live="polite"
+            >
+              {finalReviewNote.length}/500 characters total.
+              {finalReviewNote.length > 500 && " Shorten the message before sending."}
+            </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -693,7 +731,7 @@ function EligibilityReview() {
               </button>
               <button
                 type="submit"
-                disabled={savingReview || !reviewNote.trim()}
+                disabled={savingReview || !finalReviewNote || finalReviewNote.length > 500}
                 className={cn(primaryButtonClass, "h-9 px-4 text-sm")}
               >
                 {savingReview ? (
