@@ -16,7 +16,8 @@ class SeniorRecordFiltersTest extends TestCase
 
     public function test_president_sees_submitted_edits_until_head_reviews_them(): void
     {
-        $zone = Barangay::create(['barangay_name' => 'Zone 1']);
+        // Approval resolves the barangay by name, so reuse the zone seeded by migrations.
+        $zone = Barangay::firstOrCreate(['barangay_name' => 'Zone 1']);
         $president = User::factory()->create(['role' => 'president', 'barangay_id' => $zone->id]);
         $head = User::factory()->create(['role' => 'head']);
         Benefit::create([
