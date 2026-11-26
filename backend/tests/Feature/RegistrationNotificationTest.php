@@ -53,7 +53,7 @@ class RegistrationNotificationTest extends TestCase
             'birthdate' => '1955-03-04',
             'sex' => 'female',
             'contact_number' => $contact,
-            'barangay' => 'Zone 8 (Loyo)',
+            'barangay' => 'Zone 8',
             'benefit' => 'Social Pension',
         ];
 
@@ -79,7 +79,7 @@ class RegistrationNotificationTest extends TestCase
                 'birthdate' => now()->subYears(40)->toDateString(),
                 'sex' => 'male',
                 'contact_number' => '09171234564',
-                'barangay' => 'Zone 8 (Loyo)',
+                'barangay' => 'Zone 8',
                 'benefit' => 'Social Pension',
             ]],
         ])->assertOk()->assertJsonCount(0, 'created');
@@ -90,7 +90,7 @@ class RegistrationNotificationTest extends TestCase
     /** @return array{User, User, User, User} president, admin, head, inactive head */
     private function accounts(): array
     {
-        $barangay = Barangay::firstOrCreate(['barangay_name' => 'Zone 8 (Loyo)']);
+        $barangay = Barangay::firstOrCreate(['barangay_name' => 'Zone 8']);
         Benefit::firstOrCreate(['benefit_type' => 'social_pension'], [
             'benefit_name' => 'Social Pension',
             'min_age' => 60,

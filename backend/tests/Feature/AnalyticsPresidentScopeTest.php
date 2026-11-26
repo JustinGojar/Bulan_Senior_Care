@@ -104,7 +104,7 @@ class AnalyticsPresidentScopeTest extends TestCase
 
     public function test_benefit_records_follow_the_expanded_centenarian_age_bands(): void
     {
-        $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
+        $barangay = Barangay::create(['barangay_name' => 'Zone 8']);
         /** @var User $admin */
         $admin = User::factory()->create(['role' => 'admin']);
         // No milestone grant: 79, 82 and 92 (between milestone ages), 86, 96 and 101.

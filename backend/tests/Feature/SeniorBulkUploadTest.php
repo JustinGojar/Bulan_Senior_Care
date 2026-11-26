@@ -107,7 +107,7 @@ class SeniorBulkUploadTest extends TestCase
     public function test_president_can_bulk_import_into_their_barangay(): void
     {
         // Migrations already seed the barangays, so the president is assigned to the existing one.
-        $barangay = Barangay::firstOrCreate(['barangay_name' => 'Zone 8 (Loyo)']);
+        $barangay = Barangay::firstOrCreate(['barangay_name' => 'Zone 8']);
         /** @var User $user */
         $user = User::factory()->create(['role' => 'president', 'barangay_id' => $barangay->id]);
 
@@ -131,7 +131,7 @@ class SeniorBulkUploadTest extends TestCase
                 'place_of_birth' => 'Bulan, Sorsogon',
                 'sex' => 'female',
                 'contact_number' => '09123456789',
-                'barangay' => 'Zone 8 (Loyo)',
+                'barangay' => 'Zone 8',
                 'civil_status' => 'Married',
                 'educational_attainment' => 'College graduate',
                 'other_skills' => 'Singer',

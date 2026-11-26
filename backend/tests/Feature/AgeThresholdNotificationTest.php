@@ -145,7 +145,7 @@ class AgeThresholdNotificationTest extends TestCase
 
     private function presidentWithCentenarianProgram(): array
     {
-        $barangay = Barangay::create(['barangay_name' => 'Zone 8 (Loyo)']);
+        $barangay = Barangay::create(['barangay_name' => 'Zone 8']);
         /** @var User $president */
         $president = User::factory()->create([
             'role' => 'president',

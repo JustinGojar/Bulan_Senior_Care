@@ -23,9 +23,9 @@ class DatabaseSeeder extends Seeder
         'R. Gerona (Butag)', 'Recto', 'Roxas (Busay)', 'Sagrada', 'San Francisco (Polot)',
         'San Isidro (Cabugaan)', 'San Juan Bag-o', 'San Juan Daan', 'San Rafael (Togbongon)',
         'San Ramon', 'San Vicente', 'Santa Remedios', 'Santa Teresita (Trece)', 'Sigad',
-        'Somagongsong', 'Tarhan', 'Taromata', 'Zone 1 (Ilawod)', 'Zone 2 (Sabang)',
-        'Zone 3 (Central)', 'Zone 4 (Central Business District)', 'Zone 5 (Canipaan)',
-        'Zone 6 (Baybay)', 'Zone 7 (Iraya)', 'Zone 8 (Loyo)',
+        'Somagongsong', 'Tarhan', 'Taromata', 'Zone 1', 'Zone 2',
+        'Zone 3', 'Zone 4', 'Zone 5',
+        'Zone 6', 'Zone 7', 'Zone 8',
     ];
 
     /**

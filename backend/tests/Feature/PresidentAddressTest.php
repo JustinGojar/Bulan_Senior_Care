@@ -13,12 +13,12 @@ class PresidentAddressTest extends TestCase
 
     public function test_president_address_comes_from_the_assigned_barangay_and_cannot_be_edited(): void
     {
-        $barangay = Barangay::create(['barangay_name' => 'Zone 1 (Pob.)']);
+        $barangay = Barangay::create(['barangay_name' => 'Zone 1']);
         /** @var User $president */
         $president = User::factory()->create([
             'role' => 'president', 'status' => 'active', 'barangay_id' => $barangay->id, 'address' => 'Somewhere else',
         ]);
-        $this->assertSame('Zone 1 (Pob.), Bulan, Sorsogon', $president->address);
+        $this->assertSame('Zone 1, Bulan, Sorsogon', $president->address);
 
         $this->actingAs($president, 'sanctum')
             ->post('/api/profile', [
@@ -27,7 +27,7 @@ class PresidentAddressTest extends TestCase
                 'address' => 'Typed by the president',
             ])
             ->assertOk()
-            ->assertJsonPath('address', 'Zone 1 (Pob.), Bulan, Sorsogon');
+            ->assertJsonPath('address', 'Zone 1, Bulan, Sorsogon');
     }
 
     public function test_reassigning_the_barangay_updates_the_address(): void
