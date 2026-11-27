@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { EmptyState, SectionHeader, SkeletonValue, StatusPill } from "@/components/DesignKit";
 import { ExportMenu } from "@/components/ExportMenu";
+import { useReportExportPermission } from "@/hooks/use-report-export-permission";
 import {
   TONE_BAR,
   fieldClass,
@@ -44,7 +45,6 @@ import {
   apiFetch,
   getBarangays,
   getStoredUser,
-  hasPermission,
   type AnalyticsReport,
   type ReportSnapshot,
   type ReportType,
@@ -566,13 +566,7 @@ export function ReportsPanel({
 }
 
 function ReportView({ report }: { report: AnalyticsReport }) {
-  const [canExport, setCanExport] = useState(() => hasPermission("export reports"));
-  useEffect(() => {
-    const refresh = () => setCanExport(hasPermission("export reports"));
-    window.addEventListener("bulan-user-updated", refresh);
-    refresh();
-    return () => window.removeEventListener("bulan-user-updated", refresh);
-  }, []);
+  const canExport = useReportExportPermission();
   async function printReport() {
     try {
       await apiFetch(`/reports/${report.id}/export`, { method: "POST" });

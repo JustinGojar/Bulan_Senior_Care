@@ -15,6 +15,13 @@ use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
 {
+    public function exportPermission(Request $request): JsonResponse
+    {
+        return response()->json([
+            'allowed' => \App\Support\RolePermissions::allows($request->user(), 'export reports'),
+        ]);
+    }
+
     public function export(Request $request, int $report): JsonResponse
     {
         \App\Support\RolePermissions::authorize($request->user(), 'export reports');

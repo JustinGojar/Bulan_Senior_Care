@@ -65,6 +65,7 @@ class ReportWorkflowTest extends TestCase
                 'permissions' => $enabled ? ['export reports'] : [],
             ])->assertOk();
             $this->actingAs($this->head, 'sanctum')->getJson("/api/reports/{$id}")->assertOk();
+            $this->getJson('/api/reports/export-permission')->assertOk()->assertJsonPath('allowed', $enabled);
             $response = $this->postJson("/api/reports/{$id}/export");
             $enabled ? $response->assertOk()->assertJsonStructure(['snapshot']) : $response->assertForbidden();
             $permissions = $this->getJson('/api/session/heartbeat')->assertOk()->json('user.granted_permissions');
