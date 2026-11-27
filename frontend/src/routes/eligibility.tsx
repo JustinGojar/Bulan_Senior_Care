@@ -363,7 +363,7 @@ function EligibilityReview() {
             />
           )}
         </div>
-        {canReview && pendingSeniors.length > 0 && (
+        {canReview && reviewableSeniors.length > 0 && (
           <div className={`${tileClass} mt-5 flex flex-wrap items-center gap-3 py-3`}>
             <label className="inline-flex items-center gap-2 text-sm font-semibold">
               <input
@@ -428,14 +428,16 @@ function EligibilityReview() {
                 className={`${tileClass} flex cursor-pointer flex-wrap items-center justify-between gap-4 transition-colors hover:border-navy/30`}
               >
                 <div className="flex min-w-0 items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(senior.id)}
-                    onChange={() => toggleSelected(senior.id)}
-                    disabled={bulkReviewing || !isDecidable(senior)}
-                    aria-label={`Select ${senior.name}`}
-                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--navy)]"
-                  />
+                  {canReview && isDecidable(senior) && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(senior.id)}
+                      onChange={() => toggleSelected(senior.id)}
+                      disabled={bulkReviewing}
+                      aria-label={`Select ${senior.name}`}
+                      className="mt-1 h-4 w-4 shrink-0 accent-[var(--navy)]"
+                    />
+                  )}
                   <div className="min-w-0">
                     <p className="font-bold">
                       <button
