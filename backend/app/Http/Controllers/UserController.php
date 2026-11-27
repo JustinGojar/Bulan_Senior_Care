@@ -187,6 +187,7 @@ class UserController extends Controller
     public function resetPassword(Request $request, User $user): JsonResponse
     {
         RolePermissions::authorizeSystem($request->user(), 'users.reset-password');
+        abort_if($user->role === 'admin' && $request->user()->role !== 'admin', 403, 'Only Admin can manage administrator accounts.');
         $temporaryPassword = Str::password(16);
 
         $user->forceFill([
@@ -211,6 +212,7 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): JsonResponse
     {
         RolePermissions::authorizeSystem($request->user(), 'users.deactivate');
+        abort_if($user->role === 'admin' && $request->user()->role !== 'admin', 403, 'Only Admin can manage administrator accounts.');
         abort_if($request->user()->id === $user->id, 422, 'You cannot delete your own account.');
         $this->ensureSuperAdminRemains($user, null, null);
 

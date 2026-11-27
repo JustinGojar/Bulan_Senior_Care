@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Deny hidden files, backups, source maps and script uploads before static serving.
+    RewriteRule (^|/)\. - [R=404,L]
+    RewriteRule \.(env|log|sql|sqlite3?|pem|key|bak|map)([./]|$) - [R=404,L,NC]
+    RewriteRule ^storage/(?!((profile-photos|announcement-posters|announcement-comments)/[A-Za-z0-9]+\.(jpe?g|png|webp))$) - [R=404,L,NC]
+    RewriteRule ^spa-assets/.*\.(php[0-9]*|phtml|phar)([./]|$) - [R=404,L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

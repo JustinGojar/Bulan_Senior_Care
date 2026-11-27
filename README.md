@@ -139,6 +139,12 @@ The development seeder creates sample accounts for each role. Their sign-in deta
 
 To report a security issue, contact the repository owner directly rather than opening a public issue.
 
+The [27 November 2026 security audit](docs/security-audit-2026-11-27.md) records the fixes, verification, and deployment work still required. Use `npm ci` and the npm lockfiles; the obsolete Bun lockfile has been removed.
+
+Before deploying, run `php artisan security:check` from `backend`. This checks resolved configuration without printing secrets or connecting to the database. Use a dedicated database account with a strong password, a private database endpoint (or verified TLS), and only the privileges needed by the application. Keep migration credentials separate from runtime credentials. Set `TRUSTED_PROXIES` to the hosting proxy IPs/CIDRs; the default trusts private networks and loopback, not arbitrary public clients. Run `python scripts/security-scan.py --history` from the repository root to repeat the redacted secret-pattern scan.
+
+Browser environment variables are public: the build accepts only `VITE_API_URL`, `VITE_API_PROXY_TARGET`, and `VITE_APP_NAME`. Keep provider credentials in backend environment variables. Production forces debug output off and API cookies to Secure. Demo seeding is refused in production; provision real accounts separately.
+
 ### Applying the browser security protections
 
 The backend and frontend share `backend/resources/browser-security.json`. Production responses restrict scripts to this site's files and hashes of the built startup scripts, deny framing, and disable MIME sniffing. Inline styles remain allowed because the component library uses style attributes; arbitrary inline JavaScript and script event handlers are blocked. PDF previews use same-origin/blob frames. Fonts and their licenses are shipped in `frontend/public/fonts`, so the portal no longer loads a third-party stylesheet requiring SRI. Keep license notices in bundled dependencies; they are not secrets.

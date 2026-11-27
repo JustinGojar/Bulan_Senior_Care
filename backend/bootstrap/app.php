@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\EnforceTokenIdleTimeout;
 use App\Http\Middleware\RequirePasswordChange;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\VerifyBrowserOrigin;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,13 +22,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Railway (and Vercel in front of it) terminate HTTPS, so trust their forwarded
         // headers; otherwise Laravel sees plain HTTP and the session cookie loses Secure.
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(headers:
+            Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
         $middleware->redirectGuestsTo(fn (Request $request) =>
             $request->is('api/*') ? null : route('login')
         );
-        $middleware->prepend(SecurityHeaders::class);
         // Global, so the cookie's token is in place before the idle check and auth:sanctum run.
         $middleware->prepend(AuthenticateFromCookie::class);
+        $middleware->prepend(VerifyBrowserOrigin::class);
+        $middleware->prepend(SecurityHeaders::class);
         $middleware->alias([
             'token.idle' => EnforceTokenIdleTimeout::class,
             'password.change' => RequirePasswordChange::class,

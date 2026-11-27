@@ -33,6 +33,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new \RuntimeException('Demo seeding is disabled in production. Provision real accounts separately.');
+        }
+
         $barangays = collect(self::BARANGAYS)->map(fn (string $name, int $index) => [
             'barangay_name' => $name,
             'zone_number' => $index + 1,

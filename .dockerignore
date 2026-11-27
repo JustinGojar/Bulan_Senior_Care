@@ -9,3 +9,12 @@
 backend/bootstrap/cache/*.php
 backend/public/storage
 backend/storage/logs/*
+backend/storage/app/**
+backend/storage/framework/**
+backend/database/*.sqlite*
+backend/database/*.sql
+**/*.log
+**/*.pem
+**/*.key
+playwright-report
+test-results

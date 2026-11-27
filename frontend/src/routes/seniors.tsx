@@ -229,7 +229,14 @@ function splitBulkName(value: unknown) {
 }
 
 async function readBulkRecords(file: File, XLSX: XlsxModule) {
-  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+  const workbook = XLSX.read(await file.arrayBuffer(), {
+    type: "array",
+    cellDates: true,
+    sheets: 0,
+    sheetRows: 502,
+    cellFormula: false,
+    cellHTML: false,
+  });
   const sheet = workbook.Sheets[workbook.SheetNames[0]!];
   if (!sheet) return [] as Record<string, unknown>[];
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
@@ -753,6 +760,10 @@ function SeniorRecords() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("The import file must be 5 MB or smaller.");
+      return;
+    }
 
     let records: Record<string, unknown>[];
     let XLSX: XlsxModule;

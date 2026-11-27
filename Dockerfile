@@ -25,6 +25,8 @@ RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --opt
 
 FROM php-base AS runtime
 
+ENV APP_ENV=production APP_DEBUG=false
+
 WORKDIR /app/backend
 COPY --from=backend-build /app/backend ./
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
@@ -32,6 +34,8 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/fra
 # Code is baked into the image, so compiled PHP never needs revalidating.
 RUN printf '%s\n' \
     'expose_php=Off' \
+    'display_errors=Off' \
+    'log_errors=On' \
     'opcache.enable=1' \
     'opcache.enable_cli=1' \
     'opcache.memory_consumption=128' \

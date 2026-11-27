@@ -110,8 +110,8 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:4096'],
         ]);
         $throttleKey = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
@@ -144,6 +144,11 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
+
+        // This custom login does not use Auth::attempt's automatic rehashing.
+        if (Hash::needsRehash($user->password)) {
+            $user->forceFill(['password' => Hash::make($credentials['password'])])->save();
+        }
 
         if (! $user->hasVerifiedEmail()) {
             return self::unverifiedLoginResponse($user);

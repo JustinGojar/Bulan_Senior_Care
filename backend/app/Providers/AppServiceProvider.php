@@ -28,10 +28,14 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // One password policy for account creation, resets, changes and admin edits.
-        Password::defaults(fn () => Password::min(8)->mixedCase()->numbers()->symbols());
+        Password::defaults(fn () => Password::min(8)->mixedCase()->numbers()->symbols()
+            ->rules([new \App\Rules\PasswordByteLength]));
 
         // Signed-in traffic per account; generous enough for page loads, polling and exports.
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)
+            ->by($request->user()?->id ?: $request->ip()));
+
+        RateLimiter::for('sensitive', fn (Request $request) => Limit::perMinute(6)
             ->by($request->user()?->id ?: $request->ip()));
 
         // Private senior photos and documents, fetched one request per file.

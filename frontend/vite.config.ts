@@ -1,9 +1,10 @@
 import { securityHeaders } from "./scripts/browser-security.mjs";
+import { assertPublicEnvironment } from "./scripts/public-env.mjs";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 
 const apiProxyTarget = process.env["VITE_API_PROXY_TARGET"] ?? "http://127.0.0.1:8000";
 // Set on Vercel: the Laravel API's public URL (e.g. https://bulan-api.up.railway.app).
@@ -29,6 +30,12 @@ export default defineConfig(({ mode }) => ({
     proxy: { "/storage": { target: apiProxyTarget, changeOrigin: true } },
   },
   plugins: [
+    {
+      name: "public-environment-check",
+      configResolved(config) {
+        assertPublicEnvironment(loadEnv(mode, config.envDir, "VITE_"));
+      },
+    },
     tanstackStart({
       server: { entry: "server" },
       spa: { enabled: true },

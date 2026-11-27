@@ -815,6 +815,7 @@ class SeniorCitizenController extends Controller
     public function destroy(Request $request, SeniorCitizen $senior): JsonResponse
     {
         RolePermissions::authorizeSystem($request->user(), 'seniors.delete');
+        $this->authorizeScope($request, $senior);
         $senior->delete();
         AuditLog::record($request->user(), 'deleted', $senior, ['status' => $senior->status]);
 
@@ -857,11 +858,11 @@ class SeniorCitizenController extends Controller
             'place_of_birth' => [...$optional('nullable'), 'string', 'max:150'],
             'sex' => [...$optional('required'), Rule::in(['male', 'female'])],
             'contact_number' => [...$optional('required'), 'regex:/^\+639\d{9}$/'],
-            'address' => [...$optional('nullable'), 'string'],
+            'address' => [...$optional('nullable'), 'string', 'max:1000'],
             'civil_status' => [...$optional('nullable'), 'string', 'max:50'],
             'educational_attainment' => [...$optional('nullable'), 'string', 'max:255'],
             'other_skills' => [...$optional('nullable'), 'string', 'max:255'],
-            'family_composition' => [...$optional('nullable'), 'string'],
+            'family_composition' => [...$optional('nullable'), 'string', 'max:10000'],
             'association_name' => [...$optional('nullable'), 'string', 'max:150'],
             'association_address' => [...$optional('nullable'), 'string', 'max:255'],
             'association_membership_date' => [...$optional('nullable'), 'date'],

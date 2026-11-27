@@ -37,7 +37,7 @@ class AuthenticateFromCookie
             0, // Session cookie: no fixed expiry while the browser is running.
             '/api',
             null,
-            $request->isSecure(),
+            app()->environment('production') || $request->isSecure(),
             true,
             true,
             Cookie::SAMESITE_STRICT,
@@ -46,6 +46,6 @@ class AuthenticateFromCookie
 
     public static function forget(Request $request): Cookie
     {
-        return Cookie::create(self::COOKIE, null, 1, '/api', null, $request->isSecure(), true, true, Cookie::SAMESITE_STRICT);
+        return Cookie::create(self::COOKIE, null, 1, '/api', null, app()->environment('production') || $request->isSecure(), true, true, Cookie::SAMESITE_STRICT);
     }
 }

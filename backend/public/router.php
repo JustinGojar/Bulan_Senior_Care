@@ -11,9 +11,20 @@
  */
 
 require_once __DIR__.'/../app/Support/BrowserSecurity.php';
+require_once __DIR__.'/../app/Support/PublicFilePolicy.php';
 
 $publicPath = __DIR__;
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
+
+if (\App\Support\PublicFilePolicy::blocked($uri)) {
+    http_response_code(404);
+    foreach (\App\Support\BrowserSecurity::headers() as $name => $value) {
+        header($name.': '.$value);
+    }
+    header('Cache-Control: no-store, private');
+    header_remove('X-Powered-By');
+    exit;
+}
 
 $types = [
     'js' => 'text/javascript; charset=UTF-8',
@@ -30,6 +41,8 @@ $types = [
     'ico' => 'image/x-icon',
     'woff' => 'font/woff',
     'woff2' => 'font/woff2',
+    'ttf' => 'font/ttf',
+    'otf' => 'font/otf',
     'txt' => 'text/plain; charset=UTF-8',
     'pdf' => 'application/pdf',
     'webmanifest' => 'application/manifest+json',
@@ -95,7 +108,7 @@ $isUnder = static fn (string $directory): bool => $isFile
     && ($root = realpath($publicPath.'/'.$directory)) !== false
     && str_starts_with($path, $root.DIRECTORY_SEPARATOR);
 
-if ($isUnder('spa-assets') && ! str_ends_with($path, '.php')) {
+if ($isUnder('spa-assets') && isset($types[strtolower(pathinfo($path, PATHINFO_EXTENSION))])) {
     // Hashed build output never changes for a given name.
     $cache = $isUnder('spa-assets/assets')
         ? 'public, max-age=31536000, immutable'
@@ -104,12 +117,13 @@ if ($isUnder('spa-assets') && ! str_ends_with($path, '.php')) {
     return $sendFile($path, $cache);
 }
 
-if ($isUnder('storage') && ! str_ends_with($path, '.php')) {
+if ($isUnder('storage') && \App\Support\PublicFilePolicy::publicUpload($uri)) {
     // Uploaded files must not remain in browser or shared caches.
     return $sendFile($path, 'no-store, private');
 }
 
-if ($uri !== '/' && $isFile && str_starts_with($path, $publicPath.DIRECTORY_SEPARATOR) && ! str_ends_with($path, '.php')) {
+if (in_array($uri, ['/favicon.ico', '/robots.txt', '/email-logo.png'], true) && $isFile
+    && str_starts_with($path, $publicPath.DIRECTORY_SEPARATOR)) {
     return $sendFile($path, 'no-cache');
 }
 

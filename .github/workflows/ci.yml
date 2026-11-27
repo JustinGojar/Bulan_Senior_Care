@@ -50,6 +50,8 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test
+      - run: npm run test:unit:run
       - run: npm run lint
       - run: npm run build:railway
-      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm audit --audit-level=moderate
+      - run: python ../scripts/security-scan.py

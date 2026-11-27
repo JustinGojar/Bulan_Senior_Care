@@ -26,7 +26,7 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->midd
 Route::post('/verify-reset-code', [AuthController::class, 'verifyResetCode'])->middleware('throttle:10,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 Route::post('/verify-email', [AuthController::class, 'verifyEmail'])->middleware('throttle:6,1');
-Route::get('/announcements', [AnnouncementController::class, 'index']);
+Route::get('/announcements', [AnnouncementController::class, 'index'])->middleware('throttle:60,1');
 
 Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.change', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -39,7 +39,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
     Route::post('/admin/backups/restore', [BackupController::class, 'restore'])->middleware('throttle:3,1');
     Route::post('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/profile/email-code', [AuthController::class, 'sendEmailChangeCode'])->middleware('throttle:6,1');
-    Route::post('/profile/password', [AuthController::class, 'changePassword']);
+    Route::post('/profile/password', [AuthController::class, 'changePassword'])->middleware('throttle:sensitive');
     Route::get('/barangays', [AuthController::class, 'barangays']);
     Route::post('/admin/barangay-presidents', [AuthController::class, 'createBarangayPresident']);
     Route::get('/seniors/archive', [SeniorCitizenController::class, 'archive']);
@@ -59,7 +59,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
     Route::post('/admin/users', [UserController::class, 'store']);
     Route::put('/admin/users/{user}', [UserController::class, 'update']);
     Route::post('/admin/users/{user}/status', [UserController::class, 'updateStatus']);
-    Route::post('/admin/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+    Route::post('/admin/users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('throttle:sensitive');
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy']);
     Route::get('/seniors/duplicate-check', [SeniorCitizenController::class, 'checkDuplicate']);
     Route::apiResource('seniors', SeniorCitizenController::class);
@@ -109,7 +109,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
 });
 
 // Private senior files and message attachments. A list page loads many photos at once, so these get their own limit.
-Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'throttle:files'])->group(function () {
+Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.change', 'throttle:files'])->group(function () {
     Route::get('/seniors/{senior}/files/{kind}', [SeniorCitizenController::class, 'file'])
         ->whereIn('kind', array_keys(SeniorCitizen::FILE_COLUMNS))
         ->withTrashed();

@@ -33,6 +33,14 @@ dist-ssr
 claude.exe
 .vercel
 .env*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+*.sql
+*.sqlite
+*.sqlite3
+*.bak
 
 # Vite dependency cache
 .vite/
