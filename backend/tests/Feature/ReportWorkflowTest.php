@@ -55,6 +55,36 @@ class ReportWorkflowTest extends TestCase
         }
     }
 
+    public function test_export_switch_applies_to_existing_sessions_in_both_directions(): void
+    {
+        $id = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/reports', ['report_type' => 'Municipal Summary'])
+            ->assertCreated()->json('id');
+        foreach ([false, true, false, true] as $enabled) {
+            $this->actingAs($this->admin, 'sanctum')->putJson('/api/admin/role-permissions/head', [
+                'permissions' => $enabled ? ['export reports'] : [],
+            ])->assertOk();
+            $this->actingAs($this->head, 'sanctum')->getJson("/api/reports/{$id}")->assertOk();
+            $response = $this->postJson("/api/reports/{$id}/export");
+            $enabled ? $response->assertOk()->assertJsonStructure(['snapshot']) : $response->assertForbidden();
+            $permissions = $this->getJson('/api/session/heartbeat')->assertOk()->json('user.granted_permissions');
+            $this->assertSame($enabled, in_array('export reports', $permissions, true));
+        }
+        $this->actingAs($this->admin, 'sanctum')->postJson("/api/reports/{$id}/export")->assertOk();
+    }
+
+    public function test_export_keeps_the_barangay_and_publication_restrictions(): void
+    {
+        \App\Support\RolePermissions::sync('president', ['export reports']);
+        $id = $this->actingAs($this->admin, 'sanctum')->postJson('/api/reports', [
+            'report_type' => 'Barangay Summary', 'barangay_id' => $this->zone1->id,
+        ])->assertCreated()->json('id');
+        $this->actingAs($this->president, 'sanctum')->postJson("/api/reports/{$id}/export")->assertNotFound();
+        AnalyticsReport::findOrFail($id)->update(['status' => 'published']);
+        $this->postJson("/api/reports/{$id}/export")->assertOk();
+        $this->actingAs($this->otherPresident, 'sanctum')->postJson("/api/reports/{$id}/export")->assertNotFound();
+    }
+
     public function test_municipal_summary_counts_every_record_and_goes_through_review(): void
     {
         $id = $this->actingAs($this->admin, 'sanctum')

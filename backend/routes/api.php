@@ -64,6 +64,7 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
     Route::get('/seniors/duplicate-check', [SeniorCitizenController::class, 'checkDuplicate']);
     Route::apiResource('seniors', SeniorCitizenController::class);
     Route::get('/reports', [ReportController::class, 'index']);
+    Route::post('/reports/{report}/export', [ReportController::class, 'export'])->whereNumber('report');
     Route::post('/reports', [ReportController::class, 'store']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->whereNumber('report');
     Route::patch('/reports/{report}', [ReportController::class, 'update']);

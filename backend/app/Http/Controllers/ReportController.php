@@ -15,6 +15,13 @@ use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
 {
+    public function export(Request $request, int $report): JsonResponse
+    {
+        \App\Support\RolePermissions::authorize($request->user(), 'export reports');
+
+        return $this->show($request, $report);
+    }
+
     private const RELATIONS = ['generator:id,name,role', 'approver:id,name,role', 'publisher:id,name,role', 'barangay:id,barangay_name'];
 
     public function index(Request $request): JsonResponse

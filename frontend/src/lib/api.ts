@@ -1040,13 +1040,13 @@ export type Permission = LegacyPermission | SystemPermission;
 
 /**
  * Whether the signed-in account may do this. Only hides actions; the API enforces it too.
- * Admin may do everything, and a profile loaded before permissions existed is not limited.
+ * Admin may do everything; other accounts must have an explicit permission grant.
  */
 export function hasPermission(permission: Permission) {
   const user = getStoredUser();
   if (!user) return false;
-  if (user.role === "admin" || !user.granted_permissions) return true;
-  return user.granted_permissions.includes(permission);
+  if (user.role === "admin") return true;
+  return user.granted_permissions?.includes(permission) ?? false;
 }
 
 export type RolePermissionsState = {

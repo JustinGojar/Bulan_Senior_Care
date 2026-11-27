@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { apiFetch, getSessionId } from "@/lib/api";
+import { apiFetch, getSessionId, setStoredUser, type ApiUser } from "@/lib/api";
 
 /** Keep a browser session alive while at least one system tab remains open. */
 export function SessionTimeout() {
@@ -11,7 +11,16 @@ export function SessionTimeout() {
       if (!getSessionId() || inFlight || Date.now() - lastAttempt < 15_000) return;
       lastAttempt = Date.now();
       inFlight = true;
-      void apiFetch("/session/heartbeat", { cache: "no-store", signal: controller.signal })
+      const session = getSessionId();
+      void apiFetch<{ user?: ApiUser }>("/session/heartbeat", {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (!controller.signal.aborted && getSessionId() === session && response.user) {
+            setStoredUser(response.user);
+          }
+        })
         // Transient network failures retry next time. The API handles revoked/expired sessions.
         .catch(() => undefined)
         .finally(() => {

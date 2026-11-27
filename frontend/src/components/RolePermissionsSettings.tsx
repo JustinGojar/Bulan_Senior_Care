@@ -39,7 +39,7 @@ export function RolePermissionsSettings() {
     try {
       setState(await updateRolePermissions(role, next));
       toast.success(
-        `${ROLE_LABEL[role]} permissions saved. They apply on the user's next sign-in or page reload.`,
+        `${ROLE_LABEL[role]} permissions saved. Open sessions refresh within 30 seconds; actions are checked immediately.`,
       );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not save permissions.");

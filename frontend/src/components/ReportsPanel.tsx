@@ -566,6 +566,21 @@ export function ReportsPanel({
 }
 
 function ReportView({ report }: { report: AnalyticsReport }) {
+  const [canExport, setCanExport] = useState(() => hasPermission("export reports"));
+  useEffect(() => {
+    const refresh = () => setCanExport(hasPermission("export reports"));
+    window.addEventListener("bulan-user-updated", refresh);
+    refresh();
+    return () => window.removeEventListener("bulan-user-updated", refresh);
+  }, []);
+  async function printReport() {
+    try {
+      await apiFetch(`/reports/${report.id}/export`, { method: "POST" });
+      window.print();
+    } catch (reason) {
+      toast.error(exportErrorMessage(reason, "Could not print the report."));
+    }
+  }
   const snapshot = report.snapshot;
   if (!snapshot) {
     return (
@@ -605,9 +620,9 @@ function ReportView({ report }: { report: AnalyticsReport }) {
           {report.remarks && <p className="mt-1 text-sm">Remarks: {report.remarks}</p>}
         </div>
         <StatusPill tone={STATUS[report.status].tone}>{STATUS[report.status].label}</StatusPill>
-        {hasPermission("export reports") && (
+        {canExport && (
           <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto print:hidden">
-            <button onClick={() => window.print()} className={secondaryButtonClass}>
+            <button onClick={() => void printReport()} className={secondaryButtonClass}>
               <Printer className="h-4 w-4" /> Print
             </button>
             <ExportMenu
@@ -1083,7 +1098,11 @@ async function exportReport(
   format?: ExportFormat,
 ) {
   try {
-    const { fileName, builders } = reportExport(report, snapshot);
+    const authorized = await apiFetch<AnalyticsReport>(`/reports/${report.id}/export`, {
+      method: "POST",
+    });
+    if (!authorized.snapshot) throw new Error("This report has no saved figures.");
+    const { fileName, builders } = reportExport(authorized, authorized.snapshot);
     const saved = await saveExport(fileName, builders, format);
     if (saved) toast.success(`${EXPORT_FORMATS[saved].label} report saved.`);
   } catch (reason) {

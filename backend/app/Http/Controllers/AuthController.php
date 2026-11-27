@@ -200,7 +200,10 @@ class AuthController extends Controller
 
     public function heartbeat(Request $request): JsonResponse
     {
-        $response = response()->json(['active' => true])->header('Cache-Control', 'no-store');
+        $response = response()->json([
+            'active' => true,
+            'user' => RolePermissions::withGranted($request->user()->load('roles')),
+        ])->header('Cache-Control', 'no-store');
         // Convert older fixed-duration portal cookies into browser-session cookies as well.
         if ($request->cookies->has(AuthenticateFromCookie::COOKIE) && $request->bearerToken()) {
             $response->withCookie(AuthenticateFromCookie::issue($request, $request->bearerToken()));
