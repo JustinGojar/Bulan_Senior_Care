@@ -43,6 +43,7 @@ import { formatPesoAmount, formatPesoFull } from "@/lib/peso";
 import { cn } from "@/lib/utils";
 import {
   BENEFIT_PROGRAMS,
+  claimMessage,
   findNewEligibilityFlags,
   programAgeLabel,
   qualifiesFor,
@@ -343,7 +344,7 @@ function AgeThresholdPage() {
       <EligibilityFlagDialog flag={selectedFlag} onClose={closeFlag} />
 
       <Dialog
-        open={selectedProgram !== null}
+        open={selectedProgram !== null && selectedFlag === null}
         onOpenChange={(open) => !open && setSelectedProgram(null)}
       >
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
@@ -378,9 +379,19 @@ function AgeThresholdPage() {
               </p>
               <div className="max-h-[55dvh] space-y-2 overflow-y-auto">
                 {visibleSeniors.map((senior) => (
-                  <article
+                  <button
                     key={senior.id}
-                    className={`${tileClass} flex flex-wrap items-center justify-between gap-2 p-3`}
+                    type="button"
+                    aria-label={`View details for ${senior.name}`}
+                    onClick={() => {
+                      if (!selectedProgram) return;
+                      setSelectedFlag({
+                        senior,
+                        program: selectedProgram,
+                        reason: claimMessage(senior.name, senior.age, selectedProgram.name),
+                      });
+                    }}
+                    className={`${tileClass} flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-left transition-colors hover:border-gold/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{senior.name}</p>
@@ -391,7 +402,7 @@ function AgeThresholdPage() {
                     <span className="shrink-0 rounded-full bg-gold/15 px-3 py-1 text-xs font-bold text-gold-foreground dark:text-gold">
                       Age {senior.age}
                     </span>
-                  </article>
+                  </button>
                 ))}
               </div>
               <Pager
