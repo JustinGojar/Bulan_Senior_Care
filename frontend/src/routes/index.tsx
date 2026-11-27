@@ -62,11 +62,6 @@ const FEATURES = [
     body: "Seniors who reach an octogenarian, nonagenarian, or centenarian age bracket are flagged automatically, together with the grant they can claim.",
   },
   {
-    icon: ClipboardList,
-    title: "Benefit Requests",
-    body: "Barangay presidents request benefits for approved seniors. Each request moves from For Verification to Approved for Release to Released, with the date recorded.",
-  },
-  {
     icon: HandCoins,
     title: "Benefit Tracking and Releases",
     body: "Group releases into dated batches with their documents, print claim forms and payroll masterlists, and block duplicate one-time grants.",
@@ -106,8 +101,8 @@ const WORKFLOW = [
   },
   {
     icon: HandCoins,
-    title: "Request and release",
-    body: "Presidents request benefits for approved seniors; the Head verifies them and records each release in dated batches.",
+    title: "Release benefits",
+    body: "The Head schedules benefit releases and records each release in dated batches.",
   },
   {
     icon: FileCheck2,
@@ -155,14 +150,8 @@ const OBJECTIVES = [
 ];
 
 const BENEFICIARIES = [
-  [
-    "OSCA Staff",
-    "Verify registrations and benefit requests, release benefits, and publish approved reports.",
-  ],
-  [
-    "Barangay Presidents",
-    "Register seniors in their barangay, fix flagged documents, and request benefits.",
-  ],
+  ["OSCA Staff", "Verify registrations, release benefits, and publish approved reports."],
+  ["Barangay Presidents", "Register seniors in their barangay and fix flagged documents."],
   ["Senior Citizens", "Receive the right benefits on time, including age milestone grants."],
   ["LGU-Bulan", "Better data for planning and decision-making on senior welfare programs."],
 ] as const;
@@ -174,7 +163,7 @@ const FAQ = [
   ],
   [
     "How is access controlled?",
-    "Three role levels — Admins manage accounts and set what each role may do, the OSCA Head verifies registrations, benefit requests, and reports, and Barangay Presidents work only with seniors in their own barangay.",
+    "Three role levels — Admins manage accounts and set what each role may do, the OSCA Head verifies registrations and reports, and Barangay Presidents work only with seniors in their own barangay.",
   ],
   [
     "Can reports be printed or downloaded?",

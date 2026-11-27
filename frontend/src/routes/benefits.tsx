@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { BenefitRequestsPanel } from "@/components/BenefitRequests";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import { EmptyState, SectionHeader, StatusPill } from "@/components/DesignKit";
@@ -906,7 +905,6 @@ function BenefitTracking() {
           />
         )}
       </div>
-      <BenefitRequestsPanel role={currentUser?.role} />
       <section id="release-queue" className={`${panelClass} mt-6 overflow-hidden p-5 sm:p-7`}>
         <SectionHeader
           icon={ShieldCheck}

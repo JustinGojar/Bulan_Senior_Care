@@ -71,11 +71,6 @@ class RolePermissions
             'description' => 'Review pending senior registrations on Eligibility Review.',
             'roles' => ['head'],
         ],
-        'manage benefit requests' => [
-            'label' => 'Verify and release benefit requests',
-            'description' => 'Approve, reject and record the release of presidents\' benefit requests.',
-            'roles' => ['head'],
-        ],
         'schedule benefit releases' => [
             'label' => 'Schedule benefit releases',
             'description' => 'Create release batches for barangays.',
@@ -89,11 +84,6 @@ class RolePermissions
         'register seniors' => [
             'label' => 'Register seniors',
             'description' => 'Add new senior citizens, one at a time or by bulk upload.',
-            'roles' => ['president'],
-        ],
-        'request benefits' => [
-            'label' => 'Request benefits',
-            'description' => 'Submit benefit requests for approved seniors.',
             'roles' => ['president'],
         ],
     ];

@@ -15,6 +15,7 @@ class NotificationController extends Controller
     public function unreadCount(Request $request): JsonResponse
     {
         $count = Notification::query()
+            ->where(fn ($query) => $query->whereNull('source_type')->orWhere('source_type', '!=', 'benefit_request'))
             ->where('recipient_account_id', $request->user()->id)
             ->where('status', 'unread')
             ->whereNull('archived_at')
@@ -35,10 +36,11 @@ class NotificationController extends Controller
 
         $announcements = Announcement::query()->get(['id', 'title']);
         $notifications = Notification::query()
-                ->where('recipient_account_id', $request->user()->id)
-                ->with('sender:id,name,role')
-                ->latest('created_at')
-                ->get();
+            ->where(fn ($query) => $query->whereNull('source_type')->orWhere('source_type', '!=', 'benefit_request'))
+            ->where('recipient_account_id', $request->user()->id)
+            ->with('sender:id,name,role')
+            ->latest('created_at')
+            ->get();
         // Age threshold and document review alerts point at a senior's row id; the senior pages
         // look seniors up by OSCA ID.
         $seniorSources = ['age_threshold', 'document_review', 'registration_review', 'registration_pending'];

@@ -25,7 +25,7 @@ Bulan SeniorCare is a web-based portal that OSCA staff and barangay senior citiz
 | --- | --- |
 | **Senior registration** | Encode profiles, photos, and supporting documents, or bulk-import a barangay list from CSV or Excel. A Data Privacy Consent form is recorded with each registration. |
 | **Eligibility review** | The OSCA Head approves or rejects registrations with a reason. Flagged documents go back to the barangay president for correction. |
-| **Benefits** | Manage benefit programs, handle benefit requests, and record releases with rosters, payroll sheets, and claim forms (PDF). |
+| **Benefits** | Manage benefit programs and record releases with rosters, payroll sheets, and claim forms (PDF). |
 | **Age milestones** | Detect seniors who reach age thresholds automatically, with notifications. |
 | **Reports and analytics** | Dashboards, descriptive analytics, and exportable reports (PDF and Excel) with an approval and publishing workflow. |
 | **Communication** | Announcements (including imports from the OSCA Facebook Page), in-app messaging with attachments, and notifications. |
@@ -37,7 +37,7 @@ Bulan SeniorCare is a web-based portal that OSCA staff and barangay senior citiz
 | --- | --- |
 | **Administrator** | Full system access, including user management and settings. |
 | **OSCA Head** | Municipal records, eligibility decisions, age thresholds, reports, and analytics. |
-| **Barangay president (BSCA)** | Seniors and benefit requests of their own barangay. |
+| **Barangay president (BSCA)** | Senior records and benefit information for their own barangay. |
 
 Each role works under its own URL prefix (`/admin`, `/head`, `/bsca`). Accounts are issued by the administrator; there is no public sign-up.
 

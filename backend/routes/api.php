@@ -6,7 +6,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BenefitController;
 use App\Http\Controllers\BenefitReleaseController;
-use App\Http\Controllers\BenefitRequestController;
 use App\Http\Controllers\BenefitTransactionController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -79,9 +78,6 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
     Route::post('/benefit-releases/{benefitRelease}/complete', [BenefitReleaseController::class, 'complete']);
     Route::post('/benefit-releases/{benefitRelease}/documents', [BenefitReleaseController::class, 'uploadDocuments']);
     Route::delete('/benefit-releases/{benefitRelease}/documents/{releaseDocument}', [BenefitReleaseController::class, 'destroyDocument']);
-    Route::get('/benefit-requests', [BenefitRequestController::class, 'index']);
-    Route::post('/benefit-requests', [BenefitRequestController::class, 'store']);
-    Route::patch('/benefit-requests/{benefitRequest}', [BenefitRequestController::class, 'update']);
     Route::get('/benefit-transactions', [BenefitTransactionController::class, 'index']);
     Route::post('/benefit-transactions', [BenefitTransactionController::class, 'store']);
     Route::patch('/benefit-transactions/{benefitTransaction}', [BenefitTransactionController::class, 'update']);

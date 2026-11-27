@@ -29,7 +29,6 @@ import { useMemo, useRef, useState } from "react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
-import { RequestBenefitDialog } from "@/components/BenefitRequests";
 import { useConfirmDialog } from "@/components/ConfirmDialog";
 import { AuthAlert } from "@/components/AuthLayout";
 import {
@@ -546,8 +545,6 @@ const AGE_RANGES: Array<{ value: string; min: number; max?: number }> = [
 
 function SeniorRecords() {
   const [confirm, confirmDialog] = useConfirmDialog();
-  // An approved senior a president is requesting a benefit for.
-  const [requestingBenefit, setRequestingBenefit] = useState<Senior | null>(null);
   const { q, status } = Route.useSearch();
   const currentUser = getStoredUser();
   const isHead = currentUser?.role === "head";
@@ -2103,25 +2100,8 @@ function SeniorRecords() {
               </div>
             </section>
           )}
-          {viewing &&
-            !viewingArchive &&
-            isPresident &&
-            hasPermission("request benefits") &&
-            viewing.status === "Active" && (
-              <button
-                type="button"
-                onClick={() => setRequestingBenefit(viewing)}
-                className={`${secondaryButtonClass} mt-3 h-12 w-full`}
-              >
-                <HandCoins className="h-4 w-4" /> Request Benefit
-              </button>
-            )}
         </DialogContent>
       </Dialog>
-      <RequestBenefitDialog
-        senior={requestingBenefit}
-        onOpenChange={(open) => !open && setRequestingBenefit(null)}
-      />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>

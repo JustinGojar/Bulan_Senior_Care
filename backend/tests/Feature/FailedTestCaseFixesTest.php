@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Announcement;
 use App\Models\Barangay;
 use App\Models\Benefit;
-use App\Models\BenefitTransaction;
 use App\Models\Notification;
 use App\Models\SeniorCitizen;
 use App\Models\User;
@@ -37,14 +36,6 @@ class FailedTestCaseFixesTest extends TestCase
             'birthdate' => '1945-01-01', 'sex' => 'male', 'contact_number' => '09171234567', 'barangay' => 'Zone 1', 'benefit' => 'Social Pension',
             ...$overrides,
         ]);
-    }
-
-    private function approvedSenior(): SeniorCitizen
-    {
-        $senior = SeniorCitizen::findOrFail($this->register()->assertCreated()->json('id'));
-        $senior->update(['status' => 'active']);
-
-        return $senior;
     }
 
     /** LDR-009 */
@@ -106,65 +97,6 @@ class FailedTestCaseFixesTest extends TestCase
         $senior = SeniorCitizen::findOrFail($this->register()->json('id'));
 
         $this->actingAs($this->president, 'sanctum')->postJson("/api/seniors/{$senior->osca_id_number}/reject", ['reason' => 'No'])->assertForbidden();
-    }
-
-    /** LDR-013, HD-008, HD-009, HD-010 */
-    public function test_benefit_request_is_verified_and_released_by_the_head(): void
-    {
-        $senior = $this->approvedSenior();
-
-        $request = $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
-            'senior_id' => $senior->osca_id_number, 'benefit_id' => $this->pension->id,
-        ])->assertCreated()->assertJsonPath('status', 'for_verification');
-        $id = $request->json('id');
-
-        $this->actingAs($this->head, 'sanctum')->getJson('/api/benefit-requests?status=for_verification')
-            ->assertOk()->assertJsonPath('data.0.id', $id);
-        $this->patchJson("/api/benefit-requests/{$id}", ['action' => 'verify'])
-            ->assertOk()->assertJsonPath('status', 'approved')->assertJsonPath('verifier.id', $this->head->id);
-        $this->patchJson("/api/benefit-requests/{$id}", ['action' => 'release', 'release_date' => today()->toDateString()])
-            ->assertOk()
-            ->assertJsonPath('status', 'released')
-            ->assertJsonPath('releaser.name', $this->head->name)
-            ->assertJsonPath('release_date', fn ($date) => str_starts_with($date, today()->toDateString()));
-
-        $transaction = BenefitTransaction::sole();
-        $this->assertSame('released', $transaction->status);
-        $this->assertSame($this->head->id, $transaction->distributed_by);
-
-        // HD-010: the same benefit cannot be released twice for the same period.
-        $second = $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
-            'senior_id' => $senior->osca_id_number, 'benefit_id' => $this->pension->id,
-        ])->assertCreated()->json('id');
-        $this->actingAs($this->head, 'sanctum')->patchJson("/api/benefit-requests/{$second}", ['action' => 'verify'])->assertOk();
-        $this->patchJson("/api/benefit-requests/{$second}", ['action' => 'release', 'release_date' => today()->toDateString()])
-            ->assertStatus(422)->assertJsonPath('message', fn (string $message) => str_contains($message, 'already released'));
-    }
-
-    public function test_benefit_request_needs_an_approved_senior_and_no_open_request(): void
-    {
-        $pending = SeniorCitizen::findOrFail($this->register()->json('id'));
-        $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
-            'senior_id' => $pending->osca_id_number, 'benefit_id' => $this->pension->id,
-        ])->assertStatus(422);
-
-        $pending->update(['status' => 'active']);
-        $this->postJson('/api/benefit-requests', ['senior_id' => $pending->osca_id_number, 'benefit_id' => $this->pension->id])->assertCreated();
-        $this->postJson('/api/benefit-requests', ['senior_id' => $pending->osca_id_number, 'benefit_id' => $this->pension->id])
-            ->assertStatus(422)->assertJsonPath('message', 'This senior already has an open request for this benefit.');
-    }
-
-    public function test_head_rejecting_a_benefit_request_needs_a_reason(): void
-    {
-        $senior = $this->approvedSenior();
-        $id = $this->actingAs($this->president, 'sanctum')->postJson('/api/benefit-requests', [
-            'senior_id' => $senior->osca_id_number, 'benefit_id' => $this->pension->id,
-        ])->json('id');
-
-        $this->actingAs($this->head, 'sanctum')->patchJson("/api/benefit-requests/{$id}", ['action' => 'reject'])->assertStatus(422);
-        $this->patchJson("/api/benefit-requests/{$id}", ['action' => 'reject', 'reason' => 'Not eligible'])
-            ->assertOk()->assertJsonPath('status', 'rejected')->assertJsonPath('rejection_reason', 'Not eligible');
-        $this->actingAs($this->president, 'sanctum')->patchJson("/api/benefit-requests/{$id}", ['action' => 'verify'])->assertForbidden();
     }
 
     /** HD-012 */

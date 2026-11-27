@@ -25,7 +25,7 @@ const LEGACY_STORAGE_KEYS = ["bulan-api-token", "bulan-api-user", "bulan-api-cac
 const UNCACHED_PATHS = ["/user", "/messages/unread-summary", "/notifications/unread-count"];
 // Data that other people change: reuse briefly, never show it stale. Senior records are
 // here so a record another account just registered is never hidden behind an old list.
-const LIVE_PATHS = ["/notifications", "/messages", "/seniors", "/benefit-requests"];
+const LIVE_PATHS = ["/notifications", "/messages", "/seniors"];
 const LIVE_FRESH_TTL = 10_000;
 
 type CacheEntry = { session: string | null; data: unknown; fetchedAt: number; freshTtl: number };
@@ -1008,11 +1008,9 @@ export function updateManagedUser(
 export type LegacyPermission =
   | "export reports"
   | "approve registrations"
-  | "manage benefit requests"
   | "schedule benefit releases"
   | "manage announcements"
-  | "register seniors"
-  | "request benefits";
+  | "register seniors";
 
 export type SystemPermission =
   | "seniors.view"
@@ -1228,63 +1226,6 @@ export function rejectSeniorRegistration(oscaId: string, reason: string) {
   return apiFetch<ApiSenior>(`/seniors/${encodeURIComponent(oscaId)}/reject`, {
     method: "POST",
     body: JSON.stringify({ reason }),
-  });
-}
-
-export type BenefitRequestStatus = "for_verification" | "approved" | "rejected" | "released";
-
-export type BenefitRequest = {
-  id: number;
-  status: BenefitRequestStatus;
-  remarks?: string | null;
-  rejection_reason?: string | null;
-  period_label?: string | null;
-  release_date?: string | null;
-  verified_at?: string | null;
-  created_at: string;
-  senior: {
-    id: number;
-    osca_id_number: string;
-    first_name: string;
-    middle_name?: string | null;
-    last_name: string;
-    birthdate?: string | null;
-    barangay?: { barangay_name: string } | null;
-  };
-  benefit: { id: number; benefit_name: string; amount?: string | null; schedule?: string | null };
-  requester?: { name: string; role: string } | null;
-  verifier?: { name: string; role: string } | null;
-  releaser?: { name: string; role: string } | null;
-};
-
-export function getBenefitRequests(params: { status?: BenefitRequestStatus; page?: number } = {}) {
-  const query = new URLSearchParams({ page: String(params.page ?? 1), per_page: "25" });
-  if (params.status) query.set("status", params.status);
-  return apiFetch<PaginatedResponse<BenefitRequest>>(`/benefit-requests?${query}`);
-}
-
-/** `oscaId` is the senior's OSCA ID, as the senior pages identify records. */
-export function createBenefitRequest(oscaId: string, benefitId: number, remarks?: string) {
-  return apiFetch<BenefitRequest>("/benefit-requests", {
-    method: "POST",
-    body: JSON.stringify({
-      senior_id: oscaId,
-      benefit_id: benefitId,
-      remarks: remarks?.trim() || null,
-    }),
-  });
-}
-
-export function reviewBenefitRequest(
-  id: number,
-  review:
-    | { action: "verify" }
-    | { action: "reject"; reason: string }
-    | { action: "release"; release_date: string; period_label?: string },
-) {
-  return apiFetch<BenefitRequest>(`/benefit-requests/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(review),
   });
 }
 

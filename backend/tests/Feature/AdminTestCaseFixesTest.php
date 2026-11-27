@@ -59,8 +59,8 @@ class AdminTestCaseFixesTest extends TestCase
 
         $this->actingAs($this->admin, 'sanctum')->getJson('/api/admin/role-permissions')
             ->assertOk()->assertJsonPath('roles.head', fn (array $granted) => in_array('manage announcements', $granted, true));
-        $this->putJson('/api/admin/role-permissions/head', ['permissions' => ['approve registrations', 'manage benefit requests', 'schedule benefit releases']])
-            ->assertOk()->assertJsonPath('roles.head', ['approve registrations', 'manage benefit requests', 'schedule benefit releases']);
+        $this->putJson('/api/admin/role-permissions/head', ['permissions' => ['approve registrations', 'schedule benefit releases']])
+            ->assertOk()->assertJsonPath('roles.head', ['approve registrations', 'schedule benefit releases']);
 
         $this->actingAs($this->head, 'sanctum')->getJson('/api/user')
             ->assertJsonPath('granted_permissions', fn (array $granted) => ! in_array('export reports', $granted, true));
@@ -73,8 +73,8 @@ class AdminTestCaseFixesTest extends TestCase
         $this->actingAs($this->head, 'sanctum')->getJson('/api/admin/role-permissions')->assertForbidden();
         $this->actingAs($this->admin, 'sanctum')->putJson('/api/admin/role-permissions/admin', ['permissions' => []])->assertNotFound();
         // A permission that does not apply to the role is ignored.
-        $this->putJson('/api/admin/role-permissions/president', ['permissions' => ['request benefits', 'manage announcements']])
-            ->assertOk()->assertJsonPath('roles.president', ['request benefits']);
+        $this->putJson('/api/admin/role-permissions/president', ['permissions' => ['register seniors', 'manage announcements']])
+            ->assertOk()->assertJsonPath('roles.president', ['register seniors']);
     }
 
     /** ADM-014 */
