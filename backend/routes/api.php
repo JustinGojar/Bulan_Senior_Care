@@ -72,6 +72,8 @@ Route::middleware(['token.idle', 'auth:sanctum', 'verified.api', 'password.chang
     Route::post('/senior-edit-requests', [SeniorEditRequestController::class, 'store']);
     Route::patch('/senior-edit-requests/{seniorEditRequest}', [SeniorEditRequestController::class, 'update']);
     Route::get('/benefits', [BenefitController::class, 'index']);
+    Route::post('/benefit-transactions/export', [BenefitTransactionController::class, 'export']);
+    Route::post('/benefit-releases/{benefitRelease}/export', [BenefitReleaseController::class, 'export']);
     Route::get('/benefit-releases', [BenefitReleaseController::class, 'index']);
     Route::post('/benefit-releases', [BenefitReleaseController::class, 'store']);
     Route::get('/benefit-releases/{benefitRelease}', [BenefitReleaseController::class, 'show']);

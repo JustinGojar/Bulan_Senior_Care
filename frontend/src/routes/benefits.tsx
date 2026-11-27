@@ -1,3 +1,4 @@
+import { useReportExportPermission } from "@/hooks/use-report-export-permission";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Award,
@@ -107,6 +108,7 @@ function localToday() {
 const PROGRAM_ICONS = [Coins, Gift, Users, HeartHandshake, Banknote, Award];
 
 function BenefitTracking() {
+  const canExport = useReportExportPermission();
   const navigate = useNavigate();
   const [confirm, confirmDialog] = useConfirmDialog();
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
@@ -439,6 +441,11 @@ function BenefitTracking() {
       return;
     }
     try {
+      const permission = await apiFetch<{ allowed: boolean }>("/reports/export-permission", {
+        cache: "no-store",
+      });
+      if (!permission.allowed)
+        throw new Error("Your role does not have permission to export reports.");
       const saved = await saveExport(
         `bulan-seniorcare-benefits-${localToday()}`,
         tableExportBuilders({
@@ -500,7 +507,8 @@ function BenefitTracking() {
     const all: BenefitTransaction[] = [];
     for (let page = 1, lastPage = 1; page <= lastPage; page += 1) {
       const result = await apiFetch<PaginatedResponse<BenefitTransaction>>(
-        `/benefit-transactions?page=${page}&per_page=1000`,
+        `/benefit-transactions/export?page=${page}&per_page=1000`,
+        { method: "POST" },
       );
       all.push(...result.data);
       lastPage = result.last_page;
@@ -633,7 +641,7 @@ function BenefitTracking() {
             icon={<History className="h-5 w-5" />}
             onClick={() => navigate({ to: "/releases" })}
           />
-          {isHead && (
+          {isHead && canExport && (
             <ExportMenu formats={TABLE_FORMATS} onExport={(format) => void exportBenefits(format)}>
               <IconActionButton
                 label="Export"
@@ -912,23 +920,25 @@ function BenefitTracking() {
           subtitle="Transactions are linked to a senior and program; one-time grants cannot be duplicated."
           badge={
             <div className="flex flex-wrap gap-2">
-              <ExportMenu
-                formats={TABLE_FORMATS}
-                onExport={(format) => void exportReleaseQueue(format)}
-              >
-                <button
-                  type="button"
-                  disabled={exportingQueue}
-                  className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+              {canExport && (
+                <ExportMenu
+                  formats={TABLE_FORMATS}
+                  onExport={(format) => void exportReleaseQueue(format)}
                 >
-                  {exportingQueue ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Download className="h-3.5 w-3.5" />
-                  )}
-                  Export
-                </button>
-              </ExportMenu>
+                  <button
+                    type="button"
+                    disabled={exportingQueue}
+                    className={`${secondaryButtonClass} h-9 px-3 text-xs disabled:opacity-40`}
+                  >
+                    {exportingQueue ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                    Export
+                  </button>
+                </ExportMenu>
+              )}
             </div>
           }
         />

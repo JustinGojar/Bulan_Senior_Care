@@ -1,3 +1,5 @@
+import { useReportExportPermission } from "@/hooks/use-report-export-permission";
+import { apiFetch } from "@/lib/api";
 import {
   CheckCircle2,
   Download,
@@ -84,6 +86,7 @@ export function ReleaseRosterDialog({
   /** Called after the batch is completed or its documents change, so lists can refresh. */
   onChanged?: () => void;
 }) {
+  const canExport = useReportExportPermission();
   const user = getStoredUser();
   const canComplete = user?.role === "admin" || user?.role === "head";
   const canUpload = user?.role === "admin" || user?.role === "president";
@@ -119,7 +122,10 @@ export function ReleaseRosterDialog({
     if (!roster) return;
     setBusy("export");
     try {
-      const { fileName, builders } = releaseListExport(roster);
+      const approved = await apiFetch<ReleaseRoster>(`/benefit-releases/${roster.id}/export`, {
+        method: "POST",
+      });
+      const { fileName, builders } = releaseListExport(approved);
       await saveExport(fileName, builders, format);
     } catch (reason) {
       toast.error(exportErrorMessage(reason, "Unable to export the release batch."));
@@ -132,7 +138,10 @@ export function ReleaseRosterDialog({
     if (!roster) return;
     setBusy("payroll");
     try {
-      await printCashPayroll(roster);
+      const approved = await apiFetch<ReleaseRoster>(`/benefit-releases/${roster.id}/export`, {
+        method: "POST",
+      });
+      await printCashPayroll(approved);
     } catch {
       toast.error("Unable to create the payroll.");
     } finally {
@@ -325,7 +334,7 @@ export function ReleaseRosterDialog({
             </section>
 
             <div className="flex flex-wrap justify-end gap-2">
-              {items.length > 0 && (
+              {canExport && items.length > 0 && (
                 <>
                   <button
                     type="button"

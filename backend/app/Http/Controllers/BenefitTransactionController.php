@@ -15,6 +15,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BenefitTransactionController extends Controller
 {
+    public function export(Request $request): JsonResponse
+    {
+        \App\Support\RolePermissions::authorize($request->user(), 'export reports');
+
+        return $this->index($request);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $page = max(1, $request->integer('page', 1));

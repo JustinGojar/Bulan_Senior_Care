@@ -136,6 +136,13 @@ class BenefitReleaseController extends Controller
     }
 
     /** The batch's roster and documents: every senior listed to receive the benefit on the release date. */
+    public function export(Request $request, BenefitRelease $benefitRelease): JsonResponse
+    {
+        RolePermissions::authorize($request->user(), 'export reports');
+
+        return $this->show($request, $benefitRelease);
+    }
+
     public function show(Request $request, BenefitRelease $benefitRelease): JsonResponse
     {
         $this->authorizeBatch($request, $benefitRelease);

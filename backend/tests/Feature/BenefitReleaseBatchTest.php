@@ -70,6 +70,29 @@ class BenefitReleaseBatchTest extends TestCase
         $this->schedule([$this->sigad->id], '2027-01-22')->assertCreated();
     }
 
+    public function test_exports_follow_role_permission_without_blocking_viewing(): void
+    {
+        $id = $this->schedule([$this->calpi->id])->assertCreated()->json('id');
+        $president = User::factory()->create([
+            'role' => 'president', 'status' => 'active', 'barangay_id' => $this->calpi->id,
+        ]);
+        foreach ([$this->head, $president] as $user) {
+            foreach ([false, true, false] as $allowed) {
+                \App\Support\RolePermissions::sync($user->role, $allowed ? ['export reports'] : []);
+                $this->actingAs($user, 'sanctum');
+                $this->getJson('/api/benefit-transactions')->assertOk();
+                $this->getJson("/api/benefit-releases/{$id}")->assertOk();
+                $this->postJson('/api/benefit-transactions/export')->assertStatus($allowed ? 200 : 403);
+                $this->postJson("/api/benefit-releases/{$id}/export")->assertStatus($allowed ? 200 : 403);
+            }
+        }
+        \App\Support\RolePermissions::sync('president', ['export reports']);
+        $president->update(['barangay_id' => $this->gate->id]);
+        $this->actingAs($president, 'sanctum')->postJson("/api/benefit-releases/{$id}/export")->assertForbidden();
+        $this->actingAs($this->admin, 'sanctum')->postJson('/api/benefit-transactions/export')->assertOk();
+        $this->postJson("/api/benefit-releases/{$id}/export")->assertOk();
+    }
+
     public function test_a_barangay_cannot_be_in_two_batches_for_the_same_period(): void
     {
         $this->schedule([$this->calpi->id])->assertCreated();
