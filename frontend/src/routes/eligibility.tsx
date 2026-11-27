@@ -35,6 +35,7 @@ import {
   type SeniorFileKind,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { confirmEligibilityUpdate } from "@/lib/eligibility-review";
 import { flagSeniorForReview, useSeniors } from "@/lib/use-seniors";
 import { Textarea } from "@/components/ui/textarea";
 import { DocumentReviewNotice } from "@/components/DocumentReviewNotice";
@@ -148,7 +149,10 @@ function EligibilityReview() {
 
   async function reviewSenior(senior: Senior, status: "Active" | "Inactive") {
     try {
-      await updateSenior(senior.id, reviewedDraft(senior, status));
+      await confirmEligibilityUpdate(senior.id, status, () =>
+        updateSenior(senior.id, reviewedDraft(senior, status)),
+      );
+      reload();
       toast.success(`${senior.name} marked ${status === "Active" ? "eligible" : "not eligible"}.`);
       return true;
     } catch (error) {
@@ -245,7 +249,11 @@ function EligibilityReview() {
 
     setBulkReviewing(true);
     const results = await Promise.allSettled(
-      selected.map((senior) => updateSenior(senior.id, reviewedDraft(senior, status))),
+      selected.map((senior) =>
+        confirmEligibilityUpdate(senior.id, status, () =>
+          updateSenior(senior.id, reviewedDraft(senior, status)),
+        ),
+      ),
     );
     setBulkReviewing(false);
     const failedIds = selected
@@ -255,7 +263,7 @@ function EligibilityReview() {
     const updatedCount = selected.length - failedIds.length;
     if (failedIds.length)
       toast.error(
-        `${updatedCount} marked ${label}; ${failedIds.length} could not be updated. Please retry the rest.`,
+        `${updatedCount} confirmed ${label}; ${failedIds.length} could not be confirmed as ${label}. Refresh and review the remaining selections before retrying.`,
       );
     else
       toast.success(
