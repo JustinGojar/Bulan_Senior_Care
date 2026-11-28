@@ -2,6 +2,7 @@ import { readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { securityHeaders } from "./browser-security.mjs";
+import { edgeResponseRules } from "./edge-response-rules.mjs";
 
 // Vercel serves prerendered HTML without executing the application server.
 // Hash only immutable build output and install headers before its filesystem routes.
@@ -20,6 +21,7 @@ if (process.env.VERCEL) {
   ).join("\n");
   const config = JSON.parse(await readFile(configFile, "utf8"));
   config.routes = [
+    ...edgeResponseRules(),
     { src: "/(.*)", headers: securityHeaders(html), continue: true },
     { src: "/api(?:/.*)?", headers: { "Cache-Control": "no-store, private" }, continue: true },
     { src: "/storage/(.*)", headers: { "Cache-Control": "no-store, private" }, continue: true },
